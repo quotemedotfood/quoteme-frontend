@@ -4,7 +4,7 @@ import { Upload, Download, Trash2, Edit } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router';
 import { useUser } from '../contexts/UserContext';
-import settingsImage from 'figma:asset/2a44d7cf18f7672c57e1e8cd07027ed5a2b4bf19.png';
+import settingsImage from '/src/assets/2a44d7cf18f7672c57e1e8cd07027ed5a2b4bf19.png';
 
 export function SettingsPage() {
   const { profile, updateProfile } = useUser();

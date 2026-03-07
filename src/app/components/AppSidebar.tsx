@@ -1,6 +1,6 @@
 import { Link, useLocation } from 'react-router';
 import { LayoutDashboard, Users, FileText, Plus, Settings } from 'lucide-react';
-import logoSquare from 'figma:asset/e549e7d27b183e98e791f43494c715b8cc6ce7e9.png';
+import logoSquare from '/src/assets/e549e7d27b183e98e791f43494c715b8cc6ce7e9.png';
 import { useUser } from '../contexts/UserContext';
 
 interface NavItemProps {
