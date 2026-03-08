@@ -116,7 +116,9 @@ export function StartNewQuotePage() {
         if (localStorage.getItem('quoteme_guest_token') === null) {
           await initGuestSession();
         }
-        const response = await createGuestQuote({ raw_text: menuText, name: selectedRestaurant?.name || 'New Quote' });
+        const guestQuotePayload = { raw_text: menuText, name: selectedRestaurant?.name || 'New Quote' };
+        console.log('createGuestQuote payload:', guestQuotePayload);
+        const response = await createGuestQuote(guestQuotePayload);
         if (response.data) {
           incrementQuoteCount();
           navigate('/map-ingredients', { state: { quoteId: response.data.id } });
