@@ -84,7 +84,7 @@ export function StartNewQuotePage() {
   const [menuUrl, setMenuUrl] = useState('');
   const [isQuoteOpened, setIsQuoteOpened] = useState(false);
   const [isUpgradeDrawerOpen, setIsUpgradeDrawerOpen] = useState(false);
-  const { hasQuotesRemaining, incrementQuoteCount, quotesRemaining, profile } = useUser();
+  const { hasQuotesRemaining, incrementQuoteCount, quotesRemaining, profile, initGuestSession } = useUser();
   const [isCreatingQuote, setIsCreatingQuote] = useState(false);
 
   const handleParseMenu = () => {
@@ -113,6 +113,9 @@ export function StartNewQuotePage() {
     setIsCreatingQuote(true);
     try {
       if (profile.isGuest || localStorage.getItem('quoteme_token') === null) {
+        if (localStorage.getItem('quoteme_guest_token') === null) {
+          await initGuestSession();
+        }
         const response = await createGuestQuote({ raw_text: menuText, name: selectedRestaurant?.name || 'New Quote' });
         if (response.data) {
           incrementQuoteCount();
