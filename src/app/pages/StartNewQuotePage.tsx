@@ -117,7 +117,7 @@ export function StartNewQuotePage() {
           await initGuestSession();
         }
         const guestQuotePayload = { raw_text: menuText, name: selectedRestaurant?.name || 'New Quote' };
-        console.log('createGuestQuote payload:', guestQuotePayload);
+        console.log('createGuestQuote payload:', JSON.stringify(guestQuotePayload, null, 2));
         const response = await createGuestQuote(guestQuotePayload);
         if (response.data) {
           incrementQuoteCount();
