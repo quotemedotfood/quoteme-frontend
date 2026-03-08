@@ -340,9 +340,3 @@ export async function submitQuoteFeedback(
     body: JSON.stringify(feedback),
   });
 }
-
-// Also update getQuote return type to include lines:
-// (replace the existing getQuote function)
-export async function getQuote(id: string): Promise<ApiResponse<any>> {
-  return fetchWithAuth(`/api/v1/quotes/${id}`);
-}
