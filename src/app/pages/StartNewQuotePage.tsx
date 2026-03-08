@@ -8,7 +8,7 @@ import { useNavigate } from 'react-router';
 import { Checkbox } from '../components/ui/checkbox';
 import { useUser } from '../contexts/UserContext';
 import { UpgradeDrawer } from '../components/UpgradeDrawer';
-import { createMenu } from '../services/api';
+import { createMenu, createGuestQuote } from '../services/api';
 
 // Test restaurant data with multiple contacts
 const testRestaurants = [
@@ -110,14 +110,22 @@ export function StartNewQuotePage() {
 
     setIsCreatingQuote(true);
     try {
-      const response = await createMenu({ raw_text: menuText, name: selectedRestaurant?.name || 'New Quote' });
-      if (response.data) {
-        incrementQuoteCount();
-        navigate('/map-ingredients', { state: { menuId: response.data.id } });
+      if (profile.isGuest) {
+        const response = await createGuestQuote({ raw_text: menuText, name: selectedRestaurant?.name || 'New Quote' });
+        if (response.data) {
+          incrementQuoteCount();
+          navigate('/map-ingredients', { state: { quoteId: response.data.id } });
+        }
+      } else {
+        const response = await createMenu({ raw_text: menuText, name: selectedRestaurant?.name || 'New Quote' });
+        if (response.data) {
+          incrementQuoteCount();
+          navigate('/map-ingredients', { state: { menuId: response.data.id } });
+        }
       }
     } catch (error) {
-      console.error('Failed to create menu:', error);
-      alert('Failed to create menu. Please try again.');
+      console.error('Failed to create quote:', error);
+      alert('Failed to create quote. Please try again.');
     } finally {
       setIsCreatingQuote(false);
     }
