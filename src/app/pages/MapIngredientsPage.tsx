@@ -1,149 +1,266 @@
 import { Button } from '../components/ui/button';
-import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
-import { ArrowLeft, ChevronRight, ChevronDown, Plus, X, ThumbsUp, ThumbsDown } from 'lucide-react';
-import { useState } from 'react';
-import { useNavigate } from 'react-router';
+import { Input } from '../components/ui/input';
+import { ArrowLeft, ChevronRight, ChevronDown, Plus, X, ThumbsUp, ThumbsDown, Loader2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router';
 import { MapComponentDrawer } from '../components/MapComponentDrawer';
+import {
+  createMenu,
+  getMenuStatus,
+  createQuote,
+  getQuote,
+  submitQuoteFeedback,
+} from '../services/api';
 
-// Sample dishes with components
-const sampleDishes = [
-  {
-    id: '1',
-    name: 'Orecchiette with Broccoli Rabe',
-    components: [
-      'Orecchiette pasta',
-      'Broccoli rabe',
-      'Garlic',
-      'Calabrian chili',
-      'Parmigiano-Reggiano',
-      'Olive oil',
-    ],
-  },
-  {
-    id: '2',
-    name: 'Margherita Pizza',
-    components: [
-      'Pizza dough',
-      'San Marzano tomatoes',
-      'Fresh mozzarella',
-      'Fresh basil',
-      'Extra virgin olive oil',
-      'Salt',
-    ],
-  },
-];
+// ─── Types ────────────────────────────────────────────────────────────────────
 
-// Ingredient to suggested product match (first suggestion from bot)
-const ingredientMatches: Record<string, { product: string; sku: string; pack: string }> = {
-  'Orecchiette pasta': { product: 'De Cecco Orecchiette Pasta', sku: 'DC-1234', pack: '12/1 lb' },
-  'Broccoli rabe': { product: 'Fresh Broccoli Rabe', sku: 'VEG-5678', pack: '12 bunches' },
-  'Garlic': { product: 'Fresh Garlic Cloves', sku: 'VEG-9012', pack: '30 lb case' },
-  'Calabrian chili': { product: 'Tutto Calabria Hot Chili Pepper Spread', sku: 'TC-3456', pack: '6/10.5 oz' },
-  'Parmigiano-Reggiano': { product: 'Parmigiano-Reggiano DOP 24mo', sku: 'CHZ-7890', pack: '1/20 lb wheel' },
-  'Olive oil': { product: 'Extra Virgin Olive Oil', sku: 'OIL-2345', pack: '6/1 L' },
-  'Pizza dough': { product: 'Fresh Pizza Dough Balls', sku: 'DGH-6789', pack: '50/8 oz' },
-  'San Marzano tomatoes': { product: 'Cento San Marzano Tomatoes', sku: 'CAN-0123', pack: '6/#10 can' },
-  'Fresh mozzarella': { product: 'BelGioioso Fresh Mozzarella', sku: 'CHZ-4567', pack: '6/8 oz' },
-  'Fresh basil': { product: 'Fresh Basil Bunch', sku: 'HRB-8901', pack: '12 bunches' },
-  'Extra virgin olive oil': { product: 'Colavita Extra Virgin Olive Oil', sku: 'OIL-2346', pack: '12/750 ml' },
-  'Salt': { product: 'Kosher Salt', sku: 'SLT-5432', pack: '12/3 lb' },
-};
+interface AlignmentCandidate {
+  id: string;
+  rank: number; // 1=Best Match, 2=Alternate, 3=Premium
+  product: {
+    id: string;
+    name: string;
+    item_number: string;
+    pack_size: string;
+    price_cents: number;
+  };
+}
 
-// Sample categories for product organization
-const sampleCategories = [
-  {
-    id: 'pasta',
-    name: 'Pasta & Dough',
-    mappedItems: 2,
-    totalItems: 2,
-    ingredients: ['Orecchiette pasta', 'Pizza dough'],
-  },
-  {
-    id: 'vegetables',
-    name: 'Vegetables & Herbs',
-    mappedItems: 1,
-    totalItems: 2,
-    ingredients: ['Broccoli rabe', 'Fresh basil'],
-  },
-  {
-    id: 'condiments',
-    name: 'Condiments & Spices',
-    mappedItems: 0,
-    totalItems: 2,
-    ingredients: ['Calabrian chili', 'Salt'],
-  },
-  {
-    id: 'cheese',
-    name: 'Cheese',
-    mappedItems: 0,
-    totalItems: 2,
-    ingredients: ['Parmigiano-Reggiano', 'Fresh mozzarella'],
-  },
-  {
-    id: 'oil',
-    name: 'Oil & Vinegar',
-    mappedItems: 0,
-    totalItems: 2,
-    ingredients: ['Olive oil', 'Extra virgin olive oil'],
-  },
-  {
-    id: 'canned',
-    name: 'Canned Goods',
-    mappedItems: 0,
-    totalItems: 2,
-    ingredients: ['San Marzano tomatoes', 'Garlic'],
-  },
-];
+interface QuoteLine {
+  id: string;
+  dish_component: {
+    id: string;
+    name: string;
+    dish: {
+      id: string;
+      name: string;
+    };
+  };
+  selected_product_id: string | null;
+  alignment_candidates: AlignmentCandidate[];
+}
+
+interface QuoteData {
+  id: string;
+  menu_id: string;
+  status: string;
+  lines: QuoteLine[];
+}
+
+interface Dish {
+  id: string;
+  name: string;
+  components: string[];
+  componentLines: Record<string, QuoteLine>;
+}
+
+// ─── Component ────────────────────────────────────────────────────────────────
 
 export function MapIngredientsPage() {
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Router state passed from StartNewQuotePage
+  const routerMenuId: string | undefined = (location.state as any)?.menuId;
+  const routerQuoteId: string | undefined = (location.state as any)?.quoteId;
+
+  // ── Core state ──
+  const [quoteId, setQuoteId] = useState<string | null>(routerQuoteId || null);
+  const [menuId, setMenuId] = useState<string | null>(routerMenuId || null);
+  const [dishes, setDishes] = useState<Dish[]>([]);
+  const [selectedDish, setSelectedDish] = useState<Dish | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [loadingStatus, setLoadingStatus] = useState('Processing menu…');
+  const [error, setError] = useState<string | null>(null);
+
+  // ── Tab / drawer state ──
   const [selectedTab, setSelectedTab] = useState<'dishes' | 'categories'>('dishes');
-  const [dishes, setDishes] = useState(sampleDishes);
-  const [selectedDish, setSelectedDish] = useState(sampleDishes[0]);
-  const [expandedCategories, setExpandedCategories] = useState<string[]>([]);
   const [mapDrawerOpen, setMapDrawerOpen] = useState(false);
   const [selectedComponent, setSelectedComponent] = useState('');
   const [mappedComponents, setMappedComponents] = useState<Record<string, string[]>>({});
-  
-  // New Dish Drawer State
-  const [isAddDishDrawerOpen, setIsAddDishDrawerOpen] = useState(false);
+  const [expandedCategories, setExpandedCategories] = useState<string[]>([]);
   const [isDishListDrawerOpen, setIsDishListDrawerOpen] = useState(false);
+  const [isAddDishDrawerOpen, setIsAddDishDrawerOpen] = useState(false);
   const [newDishName, setNewDishName] = useState('');
   const [newDishComponents, setNewDishComponents] = useState('');
-  
-  // Rating Drawer State
+  const [addDishLoading, setAddDishLoading] = useState(false);
+
+  // ── Feedback state ──
   const [isFeedbackDrawerOpen, setIsFeedbackDrawerOpen] = useState(false);
   const [feedbackText, setFeedbackText] = useState('');
   const [thumbsUpActive, setThumbsUpActive] = useState(false);
 
-  const handleAlignWithCatalog = () => {
-    if (!newDishComponents) return;
+  // ─── Build dish list from quote lines ─────────────────────────────────────
 
-    // Parse components
-    const components = newDishComponents
-      .split('\n')
-      .map(c => c.trim())
-      .filter(c => c.length > 0);
+  function buildDishesFromLines(lines: QuoteLine[]): Dish[] {
+    const dishMap: Record<string, Dish> = {};
+    for (const line of lines) {
+      const dish = line.dish_component?.dish;
+      if (!dish) continue;
+      if (!dishMap[dish.id]) {
+        dishMap[dish.id] = { id: dish.id, name: dish.name, components: [], componentLines: {} };
+      }
+      const compName = line.dish_component.name;
+      dishMap[dish.id].components.push(compName);
+      dishMap[dish.id].componentLines[compName] = line;
+    }
+    return Object.values(dishMap);
+  }
 
-    // Create new dish
-    const newDish = {
-      id: `dish-${Date.now()}`,
-      name: newDishName || `New Dish (${components.length} components)`,
-      components: components
-    };
+  // ─── Poll menu status then load quote ─────────────────────────────────────
 
-    // Update dishes list
-    setDishes([...dishes, newDish]);
-    setSelectedDish(newDish);
-    
-    // Close drawer and reset form
-    setIsAddDishDrawerOpen(false);
-    setIsDishListDrawerOpen(false); // Also close list drawer if open
-    setNewDishName('');
-    setNewDishComponents('');
-  };
+  useEffect(() => {
+    if (!menuId && !quoteId) {
+      setLoading(false);
+      setError('No menu provided. Please start a new quote.');
+      return;
+    }
+
+    let cancelled = false;
+
+    async function pollAndLoad() {
+      try {
+        // If we already have a quoteId, just load it
+        if (quoteId) {
+          setLoadingStatus('Loading matches…');
+          const res = await getQuote(quoteId);
+          if (cancelled) return;
+          if (res.error || !res.data) throw new Error(res.error || 'Failed to load quote');
+          const built = buildDishesFromLines((res.data as QuoteData).lines || []);
+          setDishes(built);
+          setSelectedDish(built[0] || null);
+          setLoading(false);
+          return;
+        }
+
+        // Poll menu status
+        setLoadingStatus('Processing menu…');
+        let attempts = 0;
+        while (attempts < 30) {
+          if (cancelled) return;
+          const statusRes = await getMenuStatus(menuId!);
+          if (statusRes.error) throw new Error(statusRes.error);
+          const status = (statusRes.data as any)?.status;
+          if (status === 'processed' || status === 'completed') break;
+          if (status === 'failed') throw new Error('Menu processing failed. Please try again.');
+          await new Promise(r => setTimeout(r, 2000));
+          attempts++;
+        }
+        if (attempts >= 30) throw new Error('Menu processing timed out. Please try again.');
+
+        // Create quote
+        setLoadingStatus('Building quote…');
+        const quoteRes = await createQuote(menuId!);
+        if (cancelled) return;
+        if (quoteRes.error || !quoteRes.data) throw new Error(quoteRes.error || 'Failed to create quote');
+        const newQuoteId = (quoteRes.data as QuoteData).id;
+        setQuoteId(newQuoteId);
+
+        // Load full quote with lines
+        setLoadingStatus('Loading matches…');
+        const fullQuote = await getQuote(newQuoteId);
+        if (cancelled) return;
+        if (fullQuote.error || !fullQuote.data) throw new Error(fullQuote.error || 'Failed to load quote');
+        const built = buildDishesFromLines((fullQuote.data as QuoteData).lines || []);
+        setDishes(built);
+        setSelectedDish(built[0] || null);
+        setLoading(false);
+      } catch (e: any) {
+        if (!cancelled) {
+          setError(e.message || 'Something went wrong');
+          setLoading(false);
+        }
+      }
+    }
+
+    pollAndLoad();
+    return () => { cancelled = true; };
+  }, [menuId, quoteId]);
+
+  // ─── Add dish manually ────────────────────────────────────────────────────
+
+  async function handleAlignWithCatalog() {
+    if (!newDishComponents.trim()) return;
+    setAddDishLoading(true);
+    try {
+      const components = newDishComponents.split('\n').map(c => c.trim()).filter(Boolean);
+      const text = newDishName
+        ? `${newDishName}\n${components.join('\n')}`
+        : components.join('\n');
+
+      const menuRes = await createMenu({ raw_text: text, name: newDishName || 'Manual Dish' });
+      if (menuRes.error || !menuRes.data) throw new Error(menuRes.error || 'Failed to create menu');
+      const newMenuId = (menuRes.data as any).id;
+
+      // Poll
+      let attempts = 0;
+      while (attempts < 30) {
+        const statusRes = await getMenuStatus(newMenuId);
+        const status = (statusRes.data as any)?.status;
+        if (status === 'processed' || status === 'completed') break;
+        await new Promise(r => setTimeout(r, 2000));
+        attempts++;
+      }
+
+      const quoteRes = await createQuote(newMenuId);
+      if (quoteRes.error || !quoteRes.data) throw new Error(quoteRes.error);
+      const newQId = (quoteRes.data as any).id;
+
+      const fullQuote = await getQuote(newQId);
+      if (fullQuote.error || !fullQuote.data) throw new Error(fullQuote.error);
+      const newDishes = buildDishesFromLines((fullQuote.data as QuoteData).lines || []);
+      setDishes(prev => [...prev, ...newDishes]);
+      setSelectedDish(newDishes[0] || selectedDish);
+      if (!quoteId) setQuoteId(newQId);
+    } catch (e: any) {
+      console.error('Add dish error:', e.message);
+    } finally {
+      setAddDishLoading(false);
+      setIsAddDishDrawerOpen(false);
+      setIsDishListDrawerOpen(false);
+      setNewDishName('');
+      setNewDishComponents('');
+    }
+  }
+
+  // ─── Feedback ─────────────────────────────────────────────────────────────
+
+  async function handleThumbsUp() {
+    setThumbsUpActive(!thumbsUpActive);
+    if (quoteId) {
+      await submitQuoteFeedback(quoteId, { rating: 'thumbs_up' });
+    }
+  }
+
+  async function handleSubmitFeedback() {
+    if (quoteId) {
+      await submitQuoteFeedback(quoteId, { rating: 'thumbs_down', notes: feedbackText });
+    }
+    setIsFeedbackDrawerOpen(false);
+    setFeedbackText('');
+  }
+
+  async function handleRetryQuote() {
+    if (quoteId) {
+      await submitQuoteFeedback(quoteId, { rating: 'thumbs_down', notes: feedbackText });
+    }
+    setIsFeedbackDrawerOpen(false);
+    setFeedbackText('');
+    // Reload
+    setLoading(true);
+    setLoadingStatus('Rebuilding quote with your feedback…');
+    const res = await getQuote(quoteId!);
+    if (!res.error && res.data) {
+      const built = buildDishesFromLines((res.data as QuoteData).lines || []);
+      setDishes(built);
+      setSelectedDish(built[0] || null);
+    }
+    setLoading(false);
+  }
+
+  // ─── Helpers ──────────────────────────────────────────────────────────────
 
   const handleMapComponent = (componentName: string) => {
     setSelectedComponent(componentName);
@@ -152,67 +269,106 @@ export function MapIngredientsPage() {
 
   const handleApplyMapping = (componentName: string, skuIds: string[]) => {
     if (skuIds.length > 0) {
-      setMappedComponents({ ...mappedComponents, [componentName]: skuIds });
+      setMappedComponents(prev => ({ ...prev, [componentName]: skuIds }));
     }
   };
 
-  const toggleCategory = (categoryId: string) => {
-    if (expandedCategories.includes(categoryId)) {
-      setExpandedCategories(expandedCategories.filter((id) => id !== categoryId));
-    } else {
-      setExpandedCategories([...expandedCategories, categoryId]);
-    }
+  const toggleCategory = (id: string) => {
+    setExpandedCategories(prev =>
+      prev.includes(id) ? prev.filter(c => c !== id) : [...prev, id]
+    );
   };
 
-  const handleThumbsUp = () => {
-    setThumbsUpActive(!thumbsUpActive);
-    console.log('User rated quote positively');
-    // Could send feedback to API here
+  // ─── Loading screen ───────────────────────────────────────────────────────
+
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-[#FFF9F3]">
+        <div className="text-center space-y-4">
+          <Loader2 className="w-8 h-8 animate-spin text-[#F2993D] mx-auto" />
+          <p className="text-sm text-gray-500">{loadingStatus}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-[#FFF9F3]">
+        <div className="text-center space-y-4 max-w-sm px-4">
+          <p className="text-red-500 text-sm">{error}</p>
+          <Button
+            onClick={() => navigate('/start-new-quote')}
+            className="bg-[#F2993D] hover:bg-[#E08935] text-white"
+          >
+            Start Over
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // ─── Render component row ─────────────────────────────────────────────────
+
+  const renderComponentRow = (component: string, line?: QuoteLine) => {
+    const bestMatch = line?.alignment_candidates?.find(c => c.rank === 1);
+    const isMapped = mappedComponents[component]?.length > 0;
+
+    return (
+      <div
+        key={component}
+        className="flex items-center justify-between gap-4 py-3 border-b border-gray-100 last:border-b-0"
+      >
+        <div className="flex items-center gap-3 flex-1">
+          <span className="text-sm text-[#2A2A2A]">{component}</span>
+        </div>
+
+        <div className="flex-1 text-center">
+          {bestMatch ? (
+            <div className="text-xs text-gray-500">
+              <div className="font-medium">{bestMatch.product.name}</div>
+              <div className="text-gray-400">
+                {bestMatch.product.item_number} • {bestMatch.product.pack_size}
+              </div>
+            </div>
+          ) : (
+            <span className="text-xs text-gray-400 italic">No match found</span>
+          )}
+        </div>
+
+        <div className="flex-shrink-0">
+          <Button
+            size="sm"
+            className={`text-xs px-3 py-1 ${isMapped ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-[#A5CFDD] hover:bg-[#8db9c9] text-[#2A2A2A]'}`}
+            onClick={() => handleMapComponent(component)}
+          >
+            {isMapped ? 'Mapped ✓' : 'Add Match'}
+          </Button>
+        </div>
+      </div>
+    );
   };
 
-  const handleThumbsDown = () => {
-    setIsFeedbackDrawerOpen(true);
-  };
-
-  const handleSubmitFeedback = () => {
-    console.log('Submitting feedback:', feedbackText);
-    // Send feedback to API
-    setIsFeedbackDrawerOpen(false);
-    setFeedbackText('');
-  };
-
-  const handleRetryQuote = () => {
-    console.log('Retrying quote with feedback:', feedbackText);
-    // Send feedback and trigger retry logic
-    setIsFeedbackDrawerOpen(false);
-    setFeedbackText('');
-    // Could navigate back or refresh the matches
-  };
+  // ─── Main render ──────────────────────────────────────────────────────────
 
   return (
     <div className="flex h-screen bg-[#FFF9F3]">
-      {/* Left Sidebar - Dish List */}
+      {/* Left Sidebar */}
       <div className="hidden md:flex w-64 bg-white border-r border-gray-200 flex-col">
         <div className="p-4 border-b border-gray-200">
           <h3 className="text-sm font-medium text-gray-500 mb-2">DISHES</h3>
         </div>
-
         <div className="flex-1 overflow-y-auto">
           {dishes.map((dish) => (
             <button
               key={dish.id}
               onClick={() => setSelectedDish(dish)}
               className={`w-full p-4 text-left border-b border-gray-100 hover:bg-gray-50 transition-colors ${
-                selectedDish.id === dish.id ? 'bg-blue-50 border-l-4 border-l-blue-500' : ''
+                selectedDish?.id === dish.id ? 'bg-blue-50 border-l-4 border-l-blue-500' : ''
               }`}
             >
               <div className="flex items-start gap-2">
-                <input
-                  type="checkbox"
-                  className="mt-1"
-                  checked={true}
-                  readOnly
-                />
+                <input type="checkbox" className="mt-1" checked readOnly />
                 <div className="flex-1">
                   <p className="text-sm font-medium text-[#2A2A2A]">{dish.name}</p>
                   <p className="text-xs text-gray-500 mt-1">{dish.components.length} ingredients</p>
@@ -234,7 +390,6 @@ export function MapIngredientsPage() {
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col">
-        {/* Header */}
         <div className="bg-white border-b border-gray-200 px-4 md:px-6 py-4">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4 max-w-6xl mx-auto">
             <div className="flex items-center gap-3 w-full sm:w-auto">
@@ -249,8 +404,8 @@ export function MapIngredientsPage() {
                 <p className="text-sm text-gray-500">Select product matches for each ingredient</p>
               </div>
             </div>
-            <Button 
-              onClick={() => navigate('/quote-builder')}
+            <Button
+              onClick={() => navigate('/quote-builder', { state: { quoteId } })}
               className="bg-[#F2993D] hover:bg-[#e88929] text-white"
             >
               Adjust pricing
@@ -258,184 +413,88 @@ export function MapIngredientsPage() {
           </div>
         </div>
 
-        {/* Content Area */}
         <div className="flex-1 overflow-y-auto">
           <div className="max-w-6xl mx-auto p-4 md:p-6">
             {/* Mobile Dish Selector */}
             <div className="md:hidden mb-4 bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-               <label className="text-sm font-medium text-gray-500 mb-2 block">Current Dish</label>
-               <button 
+              <label className="text-sm font-medium text-gray-500 mb-2 block">Current Dish</label>
+              <button
                 className="w-full flex items-center justify-between px-3 py-2 border border-gray-300 rounded-md text-sm bg-white text-[#2A2A2A]"
                 onClick={() => setIsDishListDrawerOpen(true)}
-               >
-                 <span className="truncate font-medium">{selectedDish.name}</span>
-                 <div className="flex items-center gap-2 text-gray-500">
-                    <span className="text-xs">({selectedDish.components.length})</span>
-                    <ChevronDown className="w-4 h-4" />
-                 </div>
-               </button>
+              >
+                <span className="truncate font-medium">{selectedDish?.name || 'Select a dish'}</span>
+                <div className="flex items-center gap-2 text-gray-500">
+                  <span className="text-xs">({selectedDish?.components.length ?? 0})</span>
+                  <ChevronDown className="w-4 h-4" />
+                </div>
+              </button>
             </div>
 
-            {/* Main Content Card with Tabs */}
+            {/* Main Card with Tabs */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-              {/* Tabs */}
               <div className="flex border-b border-gray-200">
-                <button
-                  onClick={() => setSelectedTab('dishes')}
-                  className={`px-6 py-3 text-sm font-medium transition-colors border-b-2 ${
-                    selectedTab === 'dishes'
-                      ? 'border-blue-500 text-blue-600'
-                      : 'border-transparent text-gray-600 hover:text-gray-900'
-                  }`}
-                >
-                  Dishes
-                </button>
-                <button
-                  onClick={() => setSelectedTab('categories')}
-                  className={`px-6 py-3 text-sm font-medium transition-colors border-b-2 ${
-                    selectedTab === 'categories'
-                      ? 'border-blue-500 text-blue-600'
-                      : 'border-transparent text-gray-600 hover:text-gray-900'
-                  }`}
-                >
-                  Categories
-                </button>
+                {(['dishes', 'categories'] as const).map(tab => (
+                  <button
+                    key={tab}
+                    onClick={() => setSelectedTab(tab)}
+                    className={`px-6 py-3 text-sm font-medium transition-colors border-b-2 capitalize ${
+                      selectedTab === tab
+                        ? 'border-blue-500 text-blue-600'
+                        : 'border-transparent text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    {tab}
+                  </button>
+                ))}
               </div>
 
-              {/* Tab Content */}
               <div className="p-6">
                 {selectedTab === 'dishes' ? (
-                  /* Dish Content */
                   <div>
                     <h2 className="text-lg font-medium text-[#4F4F4F] mb-2">
-                      {selectedDish.name}
+                      {selectedDish?.name || 'No dish selected'}
                     </h2>
                     <p className="text-sm text-gray-500 mb-6">
                       Select a match for each ingredient from your distributor's catalog
                     </p>
-
-                    {/* Ingredients List */}
                     <div className="space-y-3">
-                      {selectedDish.components.map((component, index) => {
-                        const isMapped = mappedComponents[component] && mappedComponents[component].length > 0;
-                        const firstAlignment = ingredientMatches[component];
-                        return (
-                        <div
-                          key={index}
-                          className="flex items-center justify-between gap-4 py-3 border-b border-gray-100 last:border-b-0"
-                        >
-                          {/* Left: Ingredient Name */}
-                          <div className="flex items-center gap-3 flex-1">
-                            <span className="text-sm text-[#2A2A2A]">{component}</span>
-                          </div>
-                          
-                          {/* Middle: Suggested Match */}
-                          <div className="flex-1 text-center">
-                            {firstAlignment && (
-                              <div className="text-xs text-gray-500">
-                                <div className="font-medium">{firstAlignment.product}</div>
-                                <div className="text-gray-400">{firstAlignment.sku} • {firstAlignment.pack}</div>
-                              </div>
-                            )}
-                          </div>
-                          
-                          {/* Right: Add Match Button */}
-                          <div className="flex-shrink-0">
-                            <Button
-                              size="sm"
-                              className="bg-[#A5CFDD] hover:bg-[#8db9c9] text-[#2A2A2A] text-xs px-3 py-1"
-                              onClick={() => handleMapComponent(component)}
-                            >
-                              Add Match
-                            </Button>
-                          </div>
-                        </div>
-                        );
-                      })}
+                      {(selectedDish?.components || []).map(component =>
+                        renderComponentRow(component, selectedDish?.componentLines[component])
+                      )}
                     </div>
                   </div>
                 ) : (
-                  /* Category Content */
+                  /* Categories — group all components across all dishes */
                   <div>
-                    <h2 className="text-lg font-medium text-[#4F4F4F] mb-2">
-                      Match by Category
-                    </h2>
-                    <p className="text-sm text-gray-500 mb-6">
-                      Ingredients organized by product category
-                    </p>
-
-                    {/* Categories List */}
+                    <h2 className="text-lg font-medium text-[#4F4F4F] mb-2">All Dishes</h2>
+                    <p className="text-sm text-gray-500 mb-6">Ingredients organized by dish</p>
                     <div className="space-y-2">
-                      {sampleCategories.map((category) => {
-                        const isExpanded = expandedCategories.includes(category.id);
+                      {dishes.map(dish => {
+                        const isExpanded = expandedCategories.includes(dish.id);
+                        const mappedCount = dish.components.filter(c => mappedComponents[c]?.length > 0).length;
                         return (
-                          <div
-                            key={category.id}
-                            className="border border-gray-200 rounded-lg overflow-hidden"
-                          >
-                            {/* Category Header */}
+                          <div key={dish.id} className="border border-gray-200 rounded-lg overflow-hidden">
                             <button
-                              onClick={() => toggleCategory(category.id)}
+                              onClick={() => toggleCategory(dish.id)}
                               className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
                             >
                               <div className="flex items-center gap-3">
                                 <div className="w-5 h-5 rounded-full border border-gray-300 flex items-center justify-center text-gray-400">
-                                  {isExpanded ? (
-                                    <ChevronDown className="w-4 h-4" />
-                                  ) : (
-                                    <ChevronRight className="w-4 h-4" />
-                                  )}
+                                  {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                                 </div>
                                 <span className="text-sm font-medium text-[#2A2A2A]">
-                                  {category.name} ({category.mappedItems}/{category.totalItems})
+                                  {dish.name} ({mappedCount}/{dish.components.length})
                                 </span>
                               </div>
-                              <ChevronDown
-                                className={`w-5 h-5 text-gray-400 transition-transform ${
-                                  isExpanded ? 'rotate-180' : ''
-                                }`}
-                              />
+                              <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
                             </button>
-
-                            {/* Expanded Ingredients */}
                             {isExpanded && (
                               <div className="border-t border-gray-200 bg-gray-50">
-                                {category.ingredients.map((ingredient, index) => {
-                                  const isMapped = mappedComponents[ingredient] && mappedComponents[ingredient].length > 0;
-                                  const firstAlignment = ingredientMatches[ingredient];
-                                  return (
-                                  <div
-                                    key={index}
-                                    className="flex items-center justify-between gap-4 px-4 py-3 border-b border-gray-200 last:border-b-0"
-                                  >
-                                    {/* Left: Ingredient Name */}
-                                    <div className="flex items-center gap-3 pl-8 flex-1">
-                                      <span className="text-sm text-[#2A2A2A]">{ingredient}</span>
-                                    </div>
-                                    
-                                    {/* Middle: Suggested Match */}
-                                    <div className="flex-1 text-center">
-                                      {firstAlignment && (
-                                        <div className="text-xs text-gray-500">
-                                          <div className="font-medium">{firstAlignment.product}</div>
-                                          <div className="text-gray-400">{firstAlignment.sku} • {firstAlignment.pack}</div>
-                                        </div>
-                                      )}
-                                    </div>
-                                    
-                                    {/* Right: Add Match Button */}
-                                    <div className="flex-shrink-0">
-                                      <Button
-                                        size="sm"
-                                        className="bg-[#A5CFDD] hover:bg-[#8db9c9] text-[#2A2A2A] text-xs px-3 py-1"
-                                        onClick={() => handleMapComponent(ingredient)}
-                                      >
-                                        Add Match
-                                      </Button>
-                                    </div>
+                                {dish.components.map(c =>
+                                  <div key={c} className="pl-8">
+                                    {renderComponentRow(c, dish.componentLines[c])}
                                   </div>
-                                  );
-                                })}
+                                )}
                               </div>
                             )}
                           </div>
@@ -447,7 +506,7 @@ export function MapIngredientsPage() {
               </div>
             </div>
 
-            {/* Rate This Quote Card */}
+            {/* Rate This Quote */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mt-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-semibold text-[#2A2A2A]">Rate this quote</h3>
@@ -459,7 +518,7 @@ export function MapIngredientsPage() {
                     <ThumbsUp className={`w-5 h-5 ${thumbsUpActive ? 'text-[#F2993D]' : 'text-[#4F4F4F]'}`} />
                   </button>
                   <button
-                    onClick={handleThumbsDown}
+                    onClick={() => setIsFeedbackDrawerOpen(true)}
                     className="p-2 rounded-lg hover:bg-[#F2993D]/20 transition-colors border border-gray-200"
                   >
                     <ThumbsDown className="w-5 h-5 text-[#4F4F4F]" />
@@ -482,59 +541,29 @@ export function MapIngredientsPage() {
       {/* Mobile Dish List Drawer */}
       {isDishListDrawerOpen && (
         <div className="fixed inset-0 z-50 flex justify-end">
-          {/* Overlay */}
-          <div 
-            className="fixed inset-0 bg-black/20" 
-            onClick={() => setIsDishListDrawerOpen(false)}
-          />
-          
-          {/* Drawer Content */}
+          <div className="fixed inset-0 bg-black/20" onClick={() => setIsDishListDrawerOpen(false)} />
           <div className="relative w-full max-w-xs bg-white h-full shadow-xl flex flex-col animate-in slide-in-from-right duration-300">
             <div className="flex items-center justify-between p-4 border-b border-gray-100">
               <h2 className="text-lg font-semibold text-[#2A2A2A]">Select Dish</h2>
-              <button 
-                onClick={() => setIsDishListDrawerOpen(false)}
-                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-              >
+              <button onClick={() => setIsDishListDrawerOpen(false)} className="p-2 hover:bg-gray-100 rounded-full">
                 <X className="w-5 h-5 text-gray-500" />
               </button>
             </div>
-            
             <div className="flex-1 overflow-y-auto">
-              {dishes.map((dish) => (
+              {dishes.map(dish => (
                 <button
                   key={dish.id}
-                  onClick={() => {
-                    setSelectedDish(dish);
-                    setIsDishListDrawerOpen(false);
-                  }}
-                  className={`w-full p-4 text-left border-b border-gray-100 hover:bg-gray-50 transition-colors ${
-                    selectedDish.id === dish.id ? 'bg-blue-50 border-l-4 border-l-blue-500' : ''
-                  }`}
+                  onClick={() => { setSelectedDish(dish); setIsDishListDrawerOpen(false); }}
+                  className={`w-full p-4 text-left border-b border-gray-100 hover:bg-gray-50 ${selectedDish?.id === dish.id ? 'bg-blue-50 border-l-4 border-l-blue-500' : ''}`}
                 >
-                  <div className="flex items-start gap-2">
-                    <input
-                      type="checkbox"
-                      className="mt-1"
-                      defaultChecked
-                      readOnly
-                    />
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-[#2A2A2A]">{dish.name}</p>
-                      <p className="text-xs text-gray-500 mt-1">{dish.components.length} ingredients</p>
-                    </div>
-                  </div>
+                  <p className="text-sm font-medium text-[#2A2A2A]">{dish.name}</p>
+                  <p className="text-xs text-gray-500 mt-1">{dish.components.length} ingredients</p>
                 </button>
               ))}
             </div>
-
             <div className="p-4 border-t border-gray-100 bg-gray-50">
-              <Button
-                onClick={() => setIsAddDishDrawerOpen(true)}
-                className="w-full h-auto py-3 bg-[#F2993D] hover:bg-[#E08935] text-white whitespace-normal text-center"
-              >
-                <Plus className="w-4 h-4 mr-2 shrink-0" />
-                Manually Add A Dish or Ingredient
+              <Button onClick={() => setIsAddDishDrawerOpen(true)} className="w-full bg-[#F2993D] hover:bg-[#E08935] text-white">
+                <Plus className="w-4 h-4 mr-2" /> Manually Add A Dish
               </Button>
             </div>
           </div>
@@ -544,24 +573,14 @@ export function MapIngredientsPage() {
       {/* Add Dish Drawer */}
       {isAddDishDrawerOpen && (
         <div className="fixed inset-0 z-50 flex justify-end">
-          {/* Overlay */}
-          <div 
-            className="fixed inset-0 bg-black/20" 
-            onClick={() => setIsAddDishDrawerOpen(false)}
-          />
-          
-          {/* Drawer Content */}
+          <div className="fixed inset-0 bg-black/20" onClick={() => setIsAddDishDrawerOpen(false)} />
           <div className="relative w-full max-w-md bg-white h-full shadow-xl flex flex-col animate-in slide-in-from-right duration-300">
             <div className="flex items-center justify-between p-4 border-b border-gray-100">
               <h2 className="text-lg font-semibold text-[#2A2A2A]">Manually Add Dish</h2>
-              <button 
-                onClick={() => setIsAddDishDrawerOpen(false)}
-                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-              >
+              <button onClick={() => setIsAddDishDrawerOpen(false)} className="p-2 hover:bg-gray-100 rounded-full">
                 <X className="w-5 h-5 text-gray-500" />
               </button>
             </div>
-            
             <div className="flex-1 overflow-y-auto p-6 space-y-6">
               <div className="space-y-2">
                 <Label htmlFor="dish-name">Dish Name (Optional)</Label>
@@ -572,27 +591,27 @@ export function MapIngredientsPage() {
                   onChange={(e) => setNewDishName(e.target.value)}
                 />
               </div>
-
               <div className="space-y-2">
                 <Label htmlFor="dish-components">List Ingredients</Label>
                 <p className="text-xs text-gray-500">Enter each ingredient on a new line.</p>
                 <Textarea
                   id="dish-components"
-                  placeholder="Spaghetti&#10;Pancetta&#10;Eggs&#10;Parmesan cheese&#10;Black pepper"
+                  placeholder={"Spaghetti\nPancetta\nEggs\nParmesan cheese\nBlack pepper"}
                   className="min-h-[200px]"
                   value={newDishComponents}
                   onChange={(e) => setNewDishComponents(e.target.value)}
                 />
               </div>
             </div>
-
             <div className="p-4 border-t border-gray-100 bg-gray-50">
-              <Button 
+              <Button
                 onClick={handleAlignWithCatalog}
                 className="w-full bg-[#F2993D] hover:bg-[#E08935] text-white"
-                disabled={!newDishComponents.trim()}
+                disabled={!newDishComponents.trim() || addDishLoading}
               >
-                Match With Catalog
+                {addDishLoading ? (
+                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Matching…</>
+                ) : 'Match With Catalog'}
               </Button>
             </div>
           </div>
@@ -602,46 +621,33 @@ export function MapIngredientsPage() {
       {/* Feedback Drawer */}
       {isFeedbackDrawerOpen && (
         <div className="fixed inset-0 z-50 flex justify-end">
-          {/* Overlay */}
-          <div 
-            className="fixed inset-0 bg-black/20" 
-            onClick={() => setIsFeedbackDrawerOpen(false)}
-          />
-          
-          {/* Drawer Content */}
+          <div className="fixed inset-0 bg-black/20" onClick={() => setIsFeedbackDrawerOpen(false)} />
           <div className="relative w-full max-w-md bg-white h-full shadow-xl flex flex-col animate-in slide-in-from-right duration-300">
             <div className="flex items-center justify-between p-4 border-b border-gray-100">
               <h2 className="text-lg font-semibold text-[#2A2A2A]">Provide Feedback</h2>
-              <button 
-                onClick={() => setIsFeedbackDrawerOpen(false)}
-                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-              >
+              <button onClick={() => setIsFeedbackDrawerOpen(false)} className="p-2 hover:bg-gray-100 rounded-full">
                 <X className="w-5 h-5 text-gray-500" />
               </button>
             </div>
-            
-            <div className="flex-1 overflow-y-auto p-6 space-y-6">
-              <div className="space-y-2">
-                <Label htmlFor="feedback-text">Feedback</Label>
-                <Textarea
-                  id="feedback-text"
-                  placeholder="Please provide any feedback or suggestions for improvement."
-                  className="min-h-[200px]"
-                  value={feedbackText}
-                  onChange={(e) => setFeedbackText(e.target.value)}
-                />
-              </div>
+            <div className="flex-1 overflow-y-auto p-6">
+              <Label htmlFor="feedback-text">What could be improved?</Label>
+              <Textarea
+                id="feedback-text"
+                placeholder="e.g. Wrong brand for olive oil, prefer organic options…"
+                className="min-h-[200px] mt-2"
+                value={feedbackText}
+                onChange={(e) => setFeedbackText(e.target.value)}
+              />
             </div>
-
             <div className="p-4 border-t border-gray-100 bg-gray-50 space-y-3">
-              <Button 
+              <Button
                 onClick={handleSubmitFeedback}
                 className="w-full bg-[#A5CFDD] hover:bg-[#8db9c9] text-[#2A2A2A]"
                 disabled={!feedbackText.trim()}
               >
                 Submit
               </Button>
-              <Button 
+              <Button
                 onClick={handleRetryQuote}
                 className="w-full bg-[#F2993D] hover:bg-[#E08935] text-white"
                 disabled={!feedbackText.trim()}

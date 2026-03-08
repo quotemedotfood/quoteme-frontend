@@ -2,12 +2,13 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
-import { ExternalLink, Upload, Plus, Link as LinkIcon, X, PlusCircle } from 'lucide-react';
+import { ExternalLink, Upload, Plus, Link as LinkIcon, X, PlusCircle, Loader2 } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { Checkbox } from '../components/ui/checkbox';
 import { useUser } from '../contexts/UserContext';
 import { UpgradeDrawer } from '../components/UpgradeDrawer';
+import { createMenu } from '../services/api';
 
 // Test restaurant data with multiple contacts
 const testRestaurants = [
@@ -84,6 +85,7 @@ export function StartNewQuotePage() {
   const [isQuoteOpened, setIsQuoteOpened] = useState(false);
   const [isUpgradeDrawerOpen, setIsUpgradeDrawerOpen] = useState(false);
   const { hasQuotesRemaining, incrementQuoteCount, quotesRemaining, profile } = useUser();
+  const [isCreatingQuote, setIsCreatingQuote] = useState(false);
 
   const handleParseMenu = () => {
     if (pasteText) {
@@ -94,18 +96,31 @@ export function StartNewQuotePage() {
     }
   };
 
-  const handleContinueToQuoteBuilder = () => {
-    // Check if user has quotes remaining
+  const handleContinueToQuoteBuilder = async () => {
+    const menuText = pasteText || menuPreviewText;
+    if (!menuText) {
+      alert('Please paste or parse menu text before continuing.');
+      return;
+    }
+
     if (!hasQuotesRemaining()) {
       setIsUpgradeDrawerOpen(true);
       return;
     }
 
-    // Increment quote count
-    incrementQuoteCount();
-    
-    // Navigate to next step
-    navigate('/map-ingredients');
+    setIsCreatingQuote(true);
+    try {
+      const response = await createMenu({ raw_text: menuText, name: selectedRestaurant?.name || 'New Quote' });
+      if (response.data) {
+        incrementQuoteCount();
+        navigate('/map-ingredients', { state: { menuId: response.data.id } });
+      }
+    } catch (error) {
+      console.error('Failed to create menu:', error);
+      alert('Failed to create menu. Please try again.');
+    } finally {
+      setIsCreatingQuote(false);
+    }
   };
 
   const handleRestaurantChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -522,8 +537,16 @@ export function StartNewQuotePage() {
                 <Button
                     className="w-full sm:w-auto bg-[#F2993D] hover:bg-[#e88929] text-white"
                     onClick={handleContinueToQuoteBuilder}
+                    disabled={isCreatingQuote}
                 >
-                    Match Ingredients to Catalog
+                    {isCreatingQuote ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Creating…
+                      </>
+                    ) : (
+                      'Match Ingredients to Catalog'
+                    )}
                 </Button>
                 <Button 
                     variant="outline" 

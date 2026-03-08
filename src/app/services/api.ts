@@ -326,3 +326,23 @@ export async function sendQuote(id: string): Promise<ApiResponse<any>> {
     method: 'POST',
   });
 }
+
+export async function getMenuStatus(id: string): Promise<ApiResponse<{ status: string }>> {
+  return fetchWithAuth(`/api/v1/menus/${id}/status`);
+}
+
+export async function submitQuoteFeedback(
+  quoteId: string,
+  feedback: { rating: 'thumbs_up' | 'thumbs_down'; notes?: string }
+): Promise<ApiResponse<any>> {
+  return fetchWithAuth(`/api/v1/quotes/${quoteId}/feedback`, {
+    method: 'POST',
+    body: JSON.stringify(feedback),
+  });
+}
+
+// Also update getQuote return type to include lines:
+// (replace the existing getQuote function)
+export async function getQuote(id: string): Promise<ApiResponse<any>> {
+  return fetchWithAuth(`/api/v1/quotes/${id}`);
+}
