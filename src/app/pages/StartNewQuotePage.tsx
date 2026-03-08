@@ -108,9 +108,11 @@ export function StartNewQuotePage() {
       return;
     }
 
+    console.log('profile:', profile);
+
     setIsCreatingQuote(true);
     try {
-      if (profile.isGuest) {
+      if (profile.isGuest || localStorage.getItem('quoteme_token') === null) {
         const response = await createGuestQuote({ raw_text: menuText, name: selectedRestaurant?.name || 'New Quote' });
         if (response.data) {
           incrementQuoteCount();
