@@ -238,7 +238,7 @@ export async function getGuestSession(token: string): Promise<ApiResponse<GuestS
 export async function createGuestQuote(quoteData: GuestQuote): Promise<ApiResponse<Quote>> {
   return fetchWithGuest('/api/v1/guest/quotes', {
     method: 'POST',
-    body: JSON.stringify(quoteData),
+    body: JSON.stringify({ ...quoteData, distributor_id: '88c1038d-6b3b-4cc0-ba35-32c32f435f91' }),
   });
 }
 
