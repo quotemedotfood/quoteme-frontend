@@ -31,14 +31,25 @@ interface AlignmentCandidate {
 
 interface QuoteLine {
   id: string;
-  dish_component: {
+  component: {
     id: string;
     name: string;
-    dish: {
-      id: string;
-      name: string;
-    };
+    source_dish: string;
+  } | null;
+  product: {
+    id: string;
+    item_number: string;
+    brand: string;
+    product: string;
+    pack_size: string;
+    category: string;
   };
+  quantity: number;
+  unit_price: string | null;
+  unit_price_cents: number | null;
+  category: string;
+  alignment_selected: number;
+  chef_note: string | null;
   selected_product_id: string | null;
   alignment_candidates: AlignmentCandidate[];
 }
@@ -98,14 +109,14 @@ export function MapIngredientsPage() {
   function buildDishesFromLines(lines: QuoteLine[]): Dish[] {
     const dishMap: Record<string, Dish> = {};
     for (const line of lines) {
-      const dish = line.dish_component?.dish;
-      if (!dish) continue;
-      if (!dishMap[dish.id]) {
-        dishMap[dish.id] = { id: dish.id, name: dish.name, components: [], componentLines: {} };
+      const comp = line.component;
+      if (!comp) continue;
+      const dishKey = comp.source_dish || 'Unknown Dish';
+      if (!dishMap[dishKey]) {
+        dishMap[dishKey] = { id: dishKey, name: dishKey, components: [], componentLines: {} };
       }
-      const compName = line.dish_component.name;
-      dishMap[dish.id].components.push(compName);
-      dishMap[dish.id].componentLines[compName] = line;
+      dishMap[dishKey].components.push(comp.name);
+      dishMap[dishKey].componentLines[comp.name] = line;
     }
     return Object.values(dishMap);
   }
