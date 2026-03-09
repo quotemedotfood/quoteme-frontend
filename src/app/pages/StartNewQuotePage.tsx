@@ -136,7 +136,7 @@ export function StartNewQuotePage() {
         const response = await createGuestQuote(guestQuotePayload);
         if (response.data) {
           incrementQuoteCount();
-          navigate('/map-ingredients', { state: { quoteId: response.data.id } });
+          navigate('/map-ingredients', { state: { quoteId: response.data.quote_id } });
         }
       } else {
         const response = await createMenu({ raw_text: menuText, name: selectedRestaurant?.name || 'New Quote' });
