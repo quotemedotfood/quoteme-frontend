@@ -879,7 +879,7 @@ export function StartNewQuotePage() {
                         Building quote...
                       </>
                     ) : (
-                      'Skip'
+                      'Skip To Quote'
                     )}
                 </Button>
                 <Button
