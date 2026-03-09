@@ -72,6 +72,16 @@ export interface GuestQuoteCreateResponse {
 }
 
 // Full quote response (show)
+export interface QuoteContact {
+  id: string;
+  first_name: string;
+  last_name: string;
+  role: string | null;
+  email: string | null;
+  phone: string | null;
+  is_primary: boolean;
+}
+
 export interface QuoteResponse {
   id: string;
   status: string;
@@ -84,6 +94,7 @@ export interface QuoteResponse {
   total_cents: number;
   total: string;
   created_at: string;
+  contacts?: QuoteContact[];
   lines: QuoteLineResponse[];
 }
 
@@ -362,7 +373,22 @@ export async function convertGuestToUser(data: GuestConvertData): Promise<ApiRes
 
 // ============= AUTHENTICATED ENDPOINTS =============
 
-export async function getCatalogs(): Promise<ApiResponse<any[]>> {
+export interface CatalogSummary {
+  id: string;
+  version?: number;
+  status: string;
+  row_count: number;
+  activated_at: string | null;
+  created_at: string;
+}
+
+export interface CatalogUploadResponse {
+  id: string;
+  item_count: number;
+  message: string;
+}
+
+export async function getCatalogs(): Promise<ApiResponse<CatalogSummary[]>> {
   return fetchWithAuth('/api/v1/catalogs');
 }
 
@@ -371,6 +397,73 @@ export async function uploadCatalog(skus: any[]): Promise<ApiResponse<any>> {
     method: 'POST',
     body: JSON.stringify({ skus }),
   });
+}
+
+export async function uploadCatalogFile(file: File): Promise<ApiResponse<CatalogUploadResponse>> {
+  const token = getAuthToken();
+  const headers: Record<string, string> = {};
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const formData = new FormData();
+  formData.append('file', file);
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/v1/catalogs/upload`, {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      return { error: errorData.error || `HTTP ${response.status}` };
+    }
+
+    const data = await response.json();
+    return { data };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : 'Network error' };
+  }
+}
+
+export async function extractMenuText(payload: { file?: File; url?: string }): Promise<ApiResponse<{ text: string }>> {
+  const token = getAuthToken();
+  const guestToken = getGuestToken();
+  const headers: Record<string, string> = {};
+
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  } else if (guestToken) {
+    headers['X-Guest-Token'] = guestToken;
+  }
+
+  const formData = new FormData();
+  if (payload.file) {
+    formData.append('file', payload.file);
+  }
+  if (payload.url) {
+    formData.append('url', payload.url);
+  }
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/v1/menus/extract_text`, {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      return { error: errorData.error || `HTTP ${response.status}` };
+    }
+
+    const data = await response.json();
+    return { data };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : 'Network error' };
+  }
 }
 
 export async function createMenu(menuData: { raw_text: string; name: string }): Promise<ApiResponse<MenuCreateResponse>> {
@@ -408,8 +501,38 @@ export async function sendQuote(id: string): Promise<ApiResponse<any>> {
   });
 }
 
+export async function sendQuoteSms(id: string): Promise<ApiResponse<any>> {
+  return fetchWithAuth(`/api/v1/quotes/${id}/send_sms`, {
+    method: 'POST',
+  });
+}
+
 export async function getMenuStatus(id: string): Promise<ApiResponse<MenuStatusResponse>> {
   return fetchWithAuth(`/api/v1/menus/${id}/status`);
+}
+
+export async function downloadQuotePdf(id: string): Promise<{ blob?: Blob; error?: string }> {
+  const token = getAuthToken();
+  const guestToken = getGuestToken();
+  const headers: Record<string, string> = {};
+
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  } else if (guestToken) {
+    headers['X-Guest-Token'] = guestToken;
+  }
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/v1/quotes/${id}/pdf`, { headers });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      return { error: errorData.error || `HTTP ${response.status}` };
+    }
+    const blob = await response.blob();
+    return { blob };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : 'Network error' };
+  }
 }
 
 export async function submitQuoteFeedback(

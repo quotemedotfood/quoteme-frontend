@@ -79,7 +79,7 @@ export function MapComponentDrawer({
     setNotes('');
   };
 
-  // Show alternates (skip position 1 which is already the main match)
+  const bestMatch = candidates.find(c => c.position === 1);
   const alternates = candidates.filter(c => c.position > 1);
 
   return (
@@ -102,6 +102,45 @@ export function MapComponentDrawer({
         </DrawerHeader>
 
         <div className="flex-1 overflow-y-auto p-6 space-y-6 min-h-0">
+          {/* Current Best Match */}
+          {bestMatch && (
+            <div>
+              <h3 className="text-sm font-medium text-[#2A2A2A] mb-3">Current Match</h3>
+              <div className="border-2 border-green-200 rounded-lg p-4 bg-green-50/50">
+                <div className="flex items-start justify-between mb-2">
+                  <div className="flex-1">
+                    <h4 className="text-sm font-medium text-[#2A2A2A]">
+                      {bestMatch.product.brand} {bestMatch.product.product}
+                    </h4>
+                    <p className="text-sm text-gray-600 mt-1">{bestMatch.product.pack_size}</p>
+                  </div>
+                  <div className="text-right ml-4">
+                    <span className="inline-block px-2 py-0.5 text-xs rounded bg-green-100 text-green-700">
+                      Best Match
+                    </span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-4 text-xs text-gray-500">
+                  <span>
+                    <span className="font-medium">Item #:</span> {bestMatch.product.item_number}
+                  </span>
+                  <span className="inline-block px-2 py-0.5 bg-gray-100 text-gray-700 rounded">
+                    {bestMatch.product.category}
+                  </span>
+                  {bestMatch.score != null && (
+                    <span className={`font-medium ${
+                      Math.round(bestMatch.score * 100) >= 70 ? 'text-green-600' :
+                      Math.round(bestMatch.score * 100) >= 40 ? 'text-yellow-600' :
+                      'text-red-500'
+                    }`}>
+                      {(bestMatch.score * 100).toFixed(0)}% match
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
           {alternates.length === 0 ? (
             <p className="text-sm text-gray-400 italic text-center py-8">No alternate matches found</p>
           ) : (
@@ -144,8 +183,12 @@ export function MapComponentDrawer({
                             {candidate.product.category}
                           </span>
                           {candidate.score != null && (
-                            <span className="text-gray-400">
-                              Score: {(candidate.score * 100).toFixed(0)}%
+                            <span className={`font-medium ${
+                              Math.round(candidate.score * 100) >= 70 ? 'text-green-600' :
+                              Math.round(candidate.score * 100) >= 40 ? 'text-yellow-600' :
+                              'text-red-500'
+                            }`}>
+                              {(candidate.score * 100).toFixed(0)}% match
                             </span>
                           )}
                         </div>

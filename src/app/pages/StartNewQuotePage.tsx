@@ -2,13 +2,14 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
-import { ExternalLink, Upload, Plus, Link as LinkIcon, X, PlusCircle, Loader2 } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { ExternalLink, Upload, Plus, Link as LinkIcon, X, PlusCircle, Loader2, FileText } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router';
 import { Checkbox } from '../components/ui/checkbox';
 import { useUser } from '../contexts/UserContext';
 import { UpgradeDrawer } from '../components/UpgradeDrawer';
-import { createMenu, createGuestQuote } from '../services/api';
+import { createMenu, createGuestQuote, extractMenuText, getCatalogs, uploadCatalogFile } from '../services/api';
+import type { CatalogSummary } from '../services/api';
 
 // Test restaurant data with multiple contacts
 const testRestaurants = [
@@ -87,28 +88,172 @@ export function StartNewQuotePage() {
   const { hasQuotesRemaining, incrementQuoteCount, quotesRemaining, profile, initGuestSession } = useUser();
   const [isCreatingQuote, setIsCreatingQuote] = useState(false);
   const [loadingPhase, setLoadingPhase] = useState(0);
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [isExtracting, setIsExtracting] = useState(false);
+  const [extractError, setExtractError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
+
+  // Catalog upload state
+  const [catalogs, setCatalogs] = useState<CatalogSummary[]>([]);
+  const [catalogLoading, setCatalogLoading] = useState(false);
+  const [catalogUploading, setCatalogUploading] = useState(false);
+  const [catalogUploadResult, setCatalogUploadResult] = useState<{ message: string; isError: boolean } | null>(null);
+  const [isDraggingCatalog, setIsDraggingCatalog] = useState(false);
+  const catalogFileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!isCreatingQuote) {
       setLoadingPhase(0);
       return;
     }
-    const phases = [0, 1, 2, 3];
+    const phases = [0, 1, 2, 3, 4, 5];
+    const delays = [4000, 4000, 4000, 4000, 15000, 0];
     let current = 0;
-    const interval = setInterval(() => {
-      current = Math.min(current + 1, phases.length - 1);
-      setLoadingPhase(current);
-    }, 3000);
-    return () => clearInterval(interval);
+    let timeout: ReturnType<typeof setTimeout>;
+    const advance = () => {
+      if (current < phases.length - 1) {
+        current++;
+        setLoadingPhase(current);
+        if (delays[current] > 0) {
+          timeout = setTimeout(advance, delays[current]);
+        }
+      }
+    };
+    timeout = setTimeout(advance, delays[0]);
+    return () => clearTimeout(timeout);
   }, [isCreatingQuote]);
+
+  // Load existing catalogs on mount
+  useEffect(() => {
+    const token = localStorage.getItem('quoteme_token');
+    if (!token) return;
+    setCatalogLoading(true);
+    getCatalogs().then(res => {
+      if (res.data) setCatalogs(res.data);
+      setCatalogLoading(false);
+    });
+  }, []);
+
+  // Catalog file upload handler
+  const handleCatalogFileSelect = async (file: File) => {
+    const ext = file.name.toLowerCase();
+    if (!ext.endsWith('.csv') && !ext.endsWith('.xlsx') && !ext.endsWith('.xls')) {
+      setCatalogUploadResult({ message: 'Unsupported file type. Please upload a CSV or Excel file.', isError: true });
+      return;
+    }
+    setCatalogUploading(true);
+    setCatalogUploadResult(null);
+    const res = await uploadCatalogFile(file);
+    if (res.error) {
+      setCatalogUploadResult({ message: res.error, isError: true });
+    } else if (res.data) {
+      setCatalogUploadResult({ message: res.data.message, isError: false });
+      // Refresh catalog list
+      const listRes = await getCatalogs();
+      if (listRes.data) setCatalogs(listRes.data);
+    }
+    setCatalogUploading(false);
+  };
+
+  const handleCatalogDragOver = (e: React.DragEvent) => { e.preventDefault(); setIsDraggingCatalog(true); };
+  const handleCatalogDragLeave = () => setIsDraggingCatalog(false);
+  const handleCatalogDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDraggingCatalog(false);
+    const file = e.dataTransfer.files[0];
+    if (file) handleCatalogFileSelect(file);
+  };
 
   const handleParseMenu = () => {
     if (pasteText) {
       setMenuPreviewText(pasteText);
-    } else {
-      // Simulation for demo purposes if no text is pasted
-      setMenuPreviewText("Parsed Menu Data:\n\nAppetizers:\n- Calamari Fritti $14\n- Bruschetta $10\n\nMain Courses:\n- Orecchiette with Broccoli Rabe $18\n- Margherita Pizza $16\n- Grilled Salmon $24\n\nDesserts:\n- Tiramisu $9");
+    } else if (uploadedFile) {
+      handleFileExtract(uploadedFile);
+    } else if (menuUrl) {
+      handleUrlExtract();
     }
+  };
+
+  // Handle file selection (from picker or drop)
+  const handleFileSelect = (file: File) => {
+    setUploadedFile(file);
+    setExtractError(null);
+
+    // CSV/text files — read directly client-side
+    const ext = file.name.toLowerCase();
+    if (ext.endsWith('.csv') || ext.endsWith('.txt')) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const text = e.target?.result as string;
+        setPasteText(text);
+        setMenuPreviewText(text);
+      };
+      reader.readAsText(file);
+    } else {
+      // Image/PDF — extract via backend
+      handleFileExtract(file);
+    }
+  };
+
+  // Extract text from uploaded image/PDF via backend
+  async function handleFileExtract(file: File) {
+    setIsExtracting(true);
+    setExtractError(null);
+    try {
+      const res = await extractMenuText({ file });
+      if (res.error) {
+        setExtractError(res.error);
+      } else if (res.data?.text) {
+        setPasteText(res.data.text);
+        setMenuPreviewText(res.data.text);
+      }
+    } catch (e: any) {
+      setExtractError(e.message || 'Failed to extract text');
+    } finally {
+      setIsExtracting(false);
+    }
+  }
+
+  // Extract text from URL via backend
+  async function handleUrlExtract() {
+    if (!menuUrl.trim()) return;
+    setIsExtracting(true);
+    setExtractError(null);
+    try {
+      // Ensure URL has protocol
+      let url = menuUrl.trim();
+      if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        url = 'https://' + url;
+      }
+      const res = await extractMenuText({ url });
+      if (res.error) {
+        setExtractError(res.error);
+      } else if (res.data?.text) {
+        setPasteText(res.data.text);
+        setMenuPreviewText(res.data.text);
+      }
+    } catch (e: any) {
+      setExtractError(e.message || 'Failed to extract text from URL');
+    } finally {
+      setIsExtracting(false);
+    }
+  }
+
+  // Drag and drop handlers
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) handleFileSelect(file);
   };
 
   const handleContinueToQuoteBuilder = async () => {
@@ -136,13 +281,13 @@ export function StartNewQuotePage() {
         const response = await createGuestQuote(guestQuotePayload);
         if (response.data) {
           incrementQuoteCount();
-          navigate('/map-ingredients', { state: { quoteId: response.data.quote_id } });
+          navigate('/map-ingredients', { state: { quoteId: response.data.quote_id, isOpenQuote: isQuoteOpened } });
         }
       } else {
         const response = await createMenu({ raw_text: menuText, name: selectedRestaurant?.name || 'New Quote' });
         if (response.data) {
           incrementQuoteCount();
-          navigate('/map-ingredients', { state: { quoteId: response.data.quote_id } });
+          navigate('/map-ingredients', { state: { quoteId: response.data.quote_id, isOpenQuote: isQuoteOpened } });
         }
       }
     } catch (error) {
@@ -383,33 +528,88 @@ export function StartNewQuotePage() {
             Upload your entire catalog or details
           </p>
 
+          {/* Active / Recent Catalogs */}
           <div className="mb-4">
-            <h3 className="text-sm mb-2">Selected Catalog(s)</h3>
-            <div className="border border-gray-200 rounded-lg p-4 flex items-center justify-between bg-gray-50">
-              <div className="flex items-center gap-2">
-                <span className="text-2xl">📄</span>
-                <div>
-                  <p className="text-sm">Spring 2024 Catalog</p>
-                  <p className="text-xs text-gray-500 font-bold">2.5 MB, xlsx</p>
-                </div>
+            <h3 className="text-sm mb-2">Your Catalog(s)</h3>
+            {catalogLoading ? (
+              <div className="flex items-center gap-2 text-sm text-gray-400 py-3">
+                <Loader2 className="w-4 h-4 animate-spin" /> Loading catalogs...
               </div>
-              <Button variant="ghost" size="sm">
-                <ExternalLink className="w-4 h-4" />
-              </Button>
-            </div>
+            ) : catalogs.length > 0 ? (
+              <div className="space-y-2">
+                {catalogs.slice(0, 3).map(cat => (
+                  <div key={cat.id} className="border border-gray-200 rounded-lg p-4 flex items-center justify-between bg-gray-50">
+                    <div className="flex items-center gap-3">
+                      <FileText className="w-5 h-5 text-gray-400" />
+                      <div>
+                        <p className="text-sm font-medium text-[#2A2A2A]">
+                          {cat.status === 'active' ? 'Active Catalog' : `Catalog v${cat.version || '?'}`}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {cat.row_count.toLocaleString()} products • uploaded {new Date(cat.created_at).toLocaleDateString()}
+                        </p>
+                      </div>
+                    </div>
+                    {cat.status === 'active' && (
+                      <span className="text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded font-medium">Active</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-gray-400 italic py-2">No catalogs uploaded yet</p>
+            )}
           </div>
 
+          {/* Upload New Catalog */}
           <div>
-            <h3 className="text-sm mb-2">Upload Custom Catalog</h3>
-            <div className="border-2 border-dashed border-gray-200 rounded-lg p-4 text-center">
-              <Button variant="outline" size="sm">
-                <Upload className="w-4 h-4 mr-2" />
-                Upload your own catalog
-              </Button>
-              <p className="text-xs text-gray-500 mt-2 font-bold">
-                csv or Excel valid .csv, .xlsx
-              </p>
+            <h3 className="text-sm mb-2">Upload {catalogs.length > 0 ? 'New' : 'Your'} Catalog</h3>
+            <input
+              ref={catalogFileInputRef}
+              type="file"
+              accept=".csv,.xlsx,.xls"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handleCatalogFileSelect(file);
+                e.target.value = '';
+              }}
+            />
+            <div
+              className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${
+                isDraggingCatalog
+                  ? 'border-[#F2993D] bg-orange-50'
+                  : 'border-gray-200 hover:border-gray-400'
+              }`}
+              onClick={() => !catalogUploading && catalogFileInputRef.current?.click()}
+              onDragOver={handleCatalogDragOver}
+              onDragLeave={handleCatalogDragLeave}
+              onDrop={handleCatalogDrop}
+            >
+              {catalogUploading ? (
+                <div className="flex flex-col items-center gap-2">
+                  <Loader2 className="w-6 h-6 animate-spin text-[#F2993D]" />
+                  <p className="text-sm text-gray-500">Uploading and processing catalog...</p>
+                </div>
+              ) : (
+                <>
+                  <Upload className="w-6 h-6 text-gray-400 mx-auto mb-2" />
+                  <p className="text-sm text-gray-600">Drag a file here or click to browse</p>
+                  <p className="text-xs text-gray-400 mt-1">
+                    CSV or Excel (.csv, .xlsx, .xls)
+                  </p>
+                </>
+              )}
             </div>
+            {catalogUploadResult && (
+              <div className={`mt-3 p-3 rounded-lg text-sm ${
+                catalogUploadResult.isError
+                  ? 'bg-red-50 text-red-700 border border-red-200'
+                  : 'bg-green-50 text-green-700 border border-green-200'
+              }`}>
+                {catalogUploadResult.message}
+              </div>
+            )}
           </div>
         </div>
 
@@ -420,13 +620,56 @@ export function StartNewQuotePage() {
             PDF Image or screenshot taken from Epo.txt Device
           </p>
 
-          <div className="border-2 border-dashed border-gray-200 rounded-lg p-12 text-center mb-4">
-            <p className="text-sm mb-1">Drag files here or click to browse</p>
-            <p className="text-xs text-gray-500 font-bold">or, you can drop a URL</p>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".csv,.txt,.pdf,.png,.jpg,.jpeg,.gif,.webp"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) handleFileSelect(file);
+            }}
+          />
+          <div
+            className={`border-2 border-dashed rounded-lg p-12 text-center mb-4 cursor-pointer transition-colors ${
+              isDragging
+                ? 'border-[#F2993D] bg-orange-50'
+                : 'border-gray-200 hover:border-gray-400'
+            }`}
+            onClick={() => fileInputRef.current?.click()}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+          >
+            {isExtracting ? (
+              <div className="flex flex-col items-center gap-2">
+                <Loader2 className="w-6 h-6 animate-spin text-[#F2993D]" />
+                <p className="text-sm text-gray-600">Reading menu...</p>
+              </div>
+            ) : (
+              <>
+                <Upload className="w-6 h-6 text-gray-400 mx-auto mb-2" />
+                <p className="text-sm mb-1">Drag files here or click to browse</p>
+                <p className="text-xs text-gray-500 font-bold">PDF, image, CSV, or text file</p>
+              </>
+            )}
           </div>
 
+          {extractError && (
+            <div className="text-sm text-red-500 bg-red-50 border border-red-200 rounded-md p-3 mb-4">
+              {extractError}
+            </div>
+          )}
+
           <div className="flex justify-between items-center text-xs text-gray-500 font-bold">
-            <span>NO FILE PICKED</span>
+            {uploadedFile ? (
+              <span className="flex items-center gap-2">
+                <FileText className="w-3.5 h-3.5" />
+                {uploadedFile.name} ({(uploadedFile.size / 1024).toFixed(1)} KB)
+              </span>
+            ) : (
+              <span>NO FILE PICKED</span>
+            )}
           </div>
 
           {/* Divider */}
@@ -480,19 +723,32 @@ export function StartNewQuotePage() {
                 <Label htmlFor="menu-name" className="text-sm mb-2 block">
                   Menu URL
                 </Label>
-                <Input
-                  id="menu-name"
-                  type="text"
-                  placeholder="www.example.com/menu"
-                  className="bg-gray-50"
-                  value={menuUrl}
-                  onChange={(e) => setMenuUrl(e.target.value)}
-                />
+                <div className="flex gap-2">
+                  <Input
+                    id="menu-name"
+                    type="text"
+                    placeholder="www.example.com/menu"
+                    className="bg-gray-50 flex-1"
+                    value={menuUrl}
+                    onChange={(e) => setMenuUrl(e.target.value)}
+                  />
+                  <Button
+                    className="bg-[#F2993D] hover:bg-[#e88929] text-white shrink-0"
+                    onClick={handleUrlExtract}
+                    disabled={!menuUrl.trim() || isExtracting}
+                  >
+                    {isExtracting ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      'Fetch'
+                    )}
+                  </Button>
+                </div>
               </div>
               <div>
                 <Label className="text-sm mb-2 block">Click to Link from Customer Profile</Label>
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   className="w-full justify-start"
                   onClick={() => {
                     if (selectedRestaurant?.website) {
@@ -538,11 +794,16 @@ export function StartNewQuotePage() {
 
             {/* Parse Button Moved Here */}
             <div className="flex justify-center mt-2">
-              <Button 
+              <Button
                 className="bg-blue-500 hover:bg-blue-600 text-white px-8"
                 onClick={handleParseMenu}
+                disabled={isExtracting || (!pasteText && !uploadedFile && !menuUrl)}
               >
-                Parse Menu
+                {isExtracting ? (
+                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Reading menu...</>
+                ) : (
+                  'Parse Menu'
+                )}
               </Button>
             </div>
           </div>
@@ -553,7 +814,12 @@ export function StartNewQuotePage() {
             <p className="text-gray-500 text-sm mb-4 font-bold">See menu on the preview (You can manually add additional dishes or components in the next step).</p>
 
             <div className="border border-gray-200 rounded-lg p-6 min-h-[200px] bg-gray-50 text-left whitespace-pre-wrap">
-               {menuPreviewText ? (
+               {isExtracting ? (
+                   <div className="text-center pt-10 flex flex-col items-center gap-3">
+                     <Loader2 className="w-6 h-6 animate-spin text-[#F2993D]" />
+                     <p className="text-gray-500 text-sm">Reading menu from {uploadedFile ? 'file' : 'URL'}...</p>
+                   </div>
+               ) : menuPreviewText ? (
                    <p className="text-sm text-[#2A2A2A]">{menuPreviewText}</p>
                ) : (
                    <div className="text-center pt-10">
@@ -572,15 +838,22 @@ export function StartNewQuotePage() {
                     {isCreatingQuote ? (
                       <>
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        {['Reading menu…', 'Extracting ingredients…', 'Matching to catalog…', 'Almost there…'][loadingPhase]}
+                        {['Reading menu…', 'Extracting ingredients…', 'Matching to catalog…', 'Building your quote…', 'Almost there…', 'So close…'][loadingPhase]}
                       </>
                     ) : (
                       'Match Ingredients to Catalog'
                     )}
                 </Button>
-                <Button 
-                    variant="outline" 
-                    onClick={() => setMenuPreviewText('')}
+                <Button
+                    variant="outline"
+                    onClick={() => {
+                      setMenuPreviewText('');
+                      setPasteText('');
+                      setUploadedFile(null);
+                      setMenuUrl('');
+                      setExtractError(null);
+                      if (fileInputRef.current) fileInputRef.current.value = '';
+                    }}
                     className="w-full sm:w-auto text-sm"
                 >
                     Clear Results

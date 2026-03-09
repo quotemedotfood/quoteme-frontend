@@ -1,6 +1,6 @@
 import { Button } from '../components/ui/button';
-import { ArrowLeft, FileText, Download, Mail, Check, ThumbsUp, ThumbsDown, Link as LinkIcon, Info, Edit, X } from 'lucide-react';
-import { useNavigate } from 'react-router';
+import { ArrowLeft, FileText, Download, Mail, MessageSquare, Check, ThumbsUp, ThumbsDown, Link as LinkIcon, Info, Edit, X, Loader2 } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router';
 import { useState, useEffect } from 'react';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
@@ -15,41 +15,9 @@ import {
   DrawerFooter,
   DrawerClose,
 } from '../components/ui/drawer';
+import { getQuote, getGuestQuote, downloadQuotePdf, sendQuote, sendQuoteSms } from '../services/api';
+import type { QuoteResponse, QuoteLineResponse } from '../services/api';
 
-// Test restaurant data (matching StartNewQuotePage)
-const testRestaurants = [
-  {
-    id: '1',
-    name: 'The Garden Bistro',
-    businessName: 'Garden Bistro LLC',
-    email: 'sarah@gardenbistro.com',
-    contacts: [
-      { id: 'c1-1', name: 'Sarah Mitchell', email: 'sarah@gardenbistro.com', phone: '(555) 123-4567', role: 'Owner' },
-      { id: 'c1-2', name: 'James Chef', email: 'james@gardenbistro.com', phone: '(555) 123-4568', role: 'Head Chef' },
-      { id: 'c1-3', name: 'Maria Manager', email: 'maria@gardenbistro.com', phone: '(555) 123-4569', role: 'Manager' },
-    ]
-  },
-  {
-    id: '2',
-    name: 'Riverside Steakhouse',
-    businessName: 'Riverside Dining Group',
-    email: 'mchen@riversidesteakhouse.com',
-    contacts: [
-      { id: 'c2-1', name: 'Michael Chen', email: 'mchen@riversidesteakhouse.com', phone: '(555) 987-6543', role: 'General Manager' },
-      { id: 'c2-2', name: 'Lisa Sous', email: 'lisa@riversidesteakhouse.com', phone: '(555) 987-6544', role: 'Sous Chef' },
-    ]
-  },
-  {
-    id: '3',
-    name: 'Bella Italia',
-    businessName: 'Bella Italia Restaurant Inc',
-    email: 'antonio@bellaitalia.com',
-    contacts: [
-      { id: 'c3-1', name: 'Antonio Rossi', email: 'antonio@bellaitalia.com', phone: '(555) 456-7890', role: 'Owner' },
-      { id: 'c3-2', name: 'Marco Rossi', email: 'marco@bellaitalia.com', phone: '(555) 456-7891', role: 'Head Chef' },
-    ]
-  },
-];
 
 // Mock data for premium onboarding features
 const onboardingDocuments = [
@@ -65,29 +33,182 @@ const onboardingLinks = [
 
 export function ExportFinalizePage() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const quoteId: string | undefined = (location.state as any)?.quoteId;
+  const isOpenQuote: boolean = (location.state as any)?.isOpenQuote || false;
+
   const [isFinalized, setIsFinalized] = useState(false);
   const [showSuccessDrawer, setShowSuccessDrawer] = useState(false);
   const [showEditDrawer, setShowEditDrawer] = useState(false);
   const [rating, setRating] = useState<'up' | 'down' | null>(null);
   const [feedback, setFeedback] = useState('');
   const [hasInteracted, setHasInteracted] = useState(false);
-  
+
+  // Quote data
+  const [quoteData, setQuoteData] = useState<QuoteResponse | null>(null);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
+  const [downloadingCsv, setDownloadingCsv] = useState(false);
+
   // Premium feature state
   const [selectedDocs, setSelectedDocs] = useState<string[]>([]);
   const [selectedLinks, setSelectedLinks] = useState<string[]>([]);
 
-  // Customer & Contact State
-  const [selectedCustomer, setSelectedCustomer] = useState(testRestaurants[0]);
-  const [selectedContactIds, setSelectedContactIds] = useState<string[]>(['c1-1', 'c1-2']);
+  // Load quote data
+  const isGuest = !localStorage.getItem('quoteme_token');
+  const fetchQuote = (id: string) => isGuest ? getGuestQuote(id) : getQuote(id);
+
+  useEffect(() => {
+    if (!quoteId) return;
+    async function load() {
+      const res = await fetchQuote(quoteId!);
+      if (res.data) setQuoteData(res.data as QuoteResponse);
+    }
+    load();
+  }, [quoteId]);
+
+  // Deduplicate lines by product ID for export
+  function deduplicatedLines(lines: QuoteLineResponse[]): QuoteLineResponse[] {
+    const seen = new Set<string>();
+    return lines.filter(line => {
+      const key = line.product?.id || line.id;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }
+
+  // CSV download
+  async function handleCsvDownload() {
+    if (!quoteData) return;
+    setDownloadingCsv(true);
+    try {
+      const lines = deduplicatedLines(quoteData.lines || []);
+      const headers = ['Category', 'Item #', 'Brand', 'Product', 'Pack Size', 'Qty', 'Unit Price'];
+      const escCsv = (val: string) => {
+        if (val.includes(',') || val.includes('"') || val.includes('\n')) {
+          return `"${val.replace(/"/g, '""')}"`;
+        }
+        return val;
+      };
+      const rows = lines.map(line => [
+        escCsv(line.category || ''),
+        escCsv(line.product?.item_number || ''),
+        escCsv(line.product?.brand || ''),
+        escCsv(line.product?.product || ''),
+        escCsv(line.product?.pack_size || ''),
+        String(line.quantity),
+        line.unit_price || '',
+      ].join(','));
+
+      const csv = [headers.join(','), ...rows].join('\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `quote-${quoteId}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+      setHasInteracted(true);
+      setShowSuccessDrawer(true);
+    } finally {
+      setDownloadingCsv(false);
+    }
+  }
+
+  // PDF download
+  async function handlePdfDownload() {
+    if (!quoteId) return;
+    setDownloadingPdf(true);
+    try {
+      const result = await downloadQuotePdf(quoteId);
+      if (result.blob) {
+        const url = URL.createObjectURL(result.blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `quote-${quoteId}.pdf`;
+        a.click();
+        URL.revokeObjectURL(url);
+        setHasInteracted(true);
+        setShowSuccessDrawer(true);
+      }
+    } finally {
+      setDownloadingPdf(false);
+    }
+  }
+
+  // Send state
+  const [sendingEmail, setSendingEmail] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
+  const [sendingSms, setSendingSms] = useState(false);
+  const [smsSent, setSmsSent] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
+
+  // Manual send inputs (for open quotes)
+  const [manualEmail, setManualEmail] = useState('');
+  const [manualPhone, setManualPhone] = useState('');
+
+  // Derive primary contact from quote data
+  const primaryContact = quoteData?.contacts?.find(c => c.is_primary) || quoteData?.contacts?.[0] || null;
+
+  // Determine if this is effectively an open quote (either explicitly or no restaurant/contacts)
+  const effectiveOpenQuote = isOpenQuote || (!quoteData?.restaurant && !quoteData?.contacts?.length);
+
+  // Customer & Contact State (fallback to quote data when available)
+  const customerName = effectiveOpenQuote ? 'Open Quote' : (quoteData?.restaurant || 'Loading...');
+  const contactEmail = effectiveOpenQuote ? (manualEmail || null) : (primaryContact?.email || null);
+  const contactPhone = effectiveOpenQuote ? (manualPhone || null) : (primaryContact?.phone || null);
+  const contactName = primaryContact ? `${primaryContact.first_name} ${primaryContact.last_name}` : null;
+  const contacts = quoteData?.contacts || [];
+
+  const [selectedContactIds, setSelectedContactIds] = useState<string[]>([]);
+
+  // Auto-select contacts when quote data loads
+  useEffect(() => {
+    if (quoteData?.contacts?.length) {
+      setSelectedContactIds(quoteData.contacts.map(c => c.id));
+    }
+  }, [quoteData]);
 
   // Temporary State for Edit Drawer
-  const [tempCustomer, setTempCustomer] = useState(selectedCustomer);
   const [tempContactIds, setTempContactIds] = useState<string[]>(selectedContactIds);
 
-  const handleActionClick = () => {
-    setHasInteracted(true);
-    setShowSuccessDrawer(true);
-  };
+  // Send email
+  async function handleSendEmail() {
+    if (!quoteId) return;
+    setSendingEmail(true);
+    setSendError(null);
+    try {
+      const res = await sendQuote(quoteId);
+      if (res.error) {
+        setSendError(res.error);
+      } else {
+        setEmailSent(true);
+        setHasInteracted(true);
+        setShowSuccessDrawer(true);
+      }
+    } finally {
+      setSendingEmail(false);
+    }
+  }
+
+  // Send SMS
+  async function handleSendSms() {
+    if (!quoteId) return;
+    setSendingSms(true);
+    setSendError(null);
+    try {
+      const res = await sendQuoteSms(quoteId);
+      if (res.error) {
+        setSendError(res.error);
+      } else {
+        setSmsSent(true);
+        setHasInteracted(true);
+        setShowSuccessDrawer(true);
+      }
+    } finally {
+      setSendingSms(false);
+    }
+  }
 
   const handleSubmitFeedback = () => {
     setHasInteracted(true);
@@ -108,34 +229,24 @@ export function ExportFinalizePage() {
   };
 
   const openEditDrawer = () => {
-    setTempCustomer(selectedCustomer);
     setTempContactIds(selectedContactIds);
     setShowEditDrawer(true);
   };
 
   const handleSaveEdit = () => {
-    setSelectedCustomer(tempCustomer);
     setSelectedContactIds(tempContactIds);
     setShowEditDrawer(false);
   };
 
-  const handleTempCustomerChange = (customerId: string) => {
-    const customer = testRestaurants.find(r => r.id === customerId);
-    if (customer) {
-      setTempCustomer(customer);
-      setTempContactIds([]); // Reset contacts when customer changes
-    }
-  };
-
   const handleTempContactToggle = (contactId: string) => {
-    setTempContactIds(prev => 
+    setTempContactIds(prev =>
       prev.includes(contactId)
         ? prev.filter(id => id !== contactId)
         : [...prev, contactId]
     );
   };
 
-  const currentContacts = selectedCustomer.contacts.filter(c => selectedContactIds.includes(c.id));
+  const currentContacts = contacts.filter(c => selectedContactIds.includes(c.id));
 
   return (
     <div className="p-4 md:p-8 bg-[#FFF9F3] min-h-screen">
@@ -144,7 +255,7 @@ export function ExportFinalizePage() {
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
             <button
-              onClick={() => navigate('/quote-builder')}
+              onClick={() => navigate('/quote-builder', { state: { quoteId, isOpenQuote } })}
               className="text-gray-400 hover:text-gray-600"
             >
               <ArrowLeft className="w-5 h-5" />
@@ -173,15 +284,15 @@ export function ExportFinalizePage() {
                   <h2 className="text-lg text-[#2A2A2A] mb-1">Quote Summary</h2>
                   <p className="text-gray-500 text-sm">Review before finalizing</p>
                 </div>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
+                {!effectiveOpenQuote && <Button
+                  variant="outline"
+                  size="sm"
                   className="text-blue-600 border-blue-200 hover:bg-blue-50"
                   onClick={openEditDrawer}
                 >
                   <Edit className="w-3.5 h-3.5 mr-1.5" />
                   Edit
-                </Button>
+                </Button>}
               </div>
 
               <div className="space-y-4">
@@ -190,53 +301,65 @@ export function ExportFinalizePage() {
                     Customer Name
                   </label>
                   <div className="bg-gray-50 rounded-md px-4 py-2.5 text-sm text-gray-500">
-                    {selectedCustomer.name}
+                    {customerName}
                   </div>
                 </div>
 
                 {/* Contacts Section */}
-                <div>
-                  <label className="text-sm text-[#2A2A2A] font-medium block mb-2">
-                    Contacts
-                  </label>
-                  {currentContacts.length > 0 ? (
-                    <div className="space-y-2">
-                      {currentContacts.map((contact) => (
-                        <div key={contact.id} className="bg-gray-50 rounded-md px-4 py-3 border border-gray-100">
-                          <div className="flex flex-col sm:flex-row justify-between items-start gap-1">
-                            <div>
-                              <p className="text-sm font-medium text-gray-900">{contact.name}</p>
-                              <p className="text-xs text-gray-500">{contact.role}</p>
+                {effectiveOpenQuote ? (
+                  <div>
+                    <label className="text-sm text-[#2A2A2A] font-medium block mb-2">
+                      Recipient
+                    </label>
+                    <div className="text-sm text-gray-500 bg-amber-50 px-4 py-3 rounded-md border border-amber-200">
+                      Open Quote — enter recipient details in the Send to Customer section below, or export the quote to yourself.
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <label className="text-sm text-[#2A2A2A] font-medium block mb-2">
+                      Contacts
+                    </label>
+                    {currentContacts.length > 0 ? (
+                      <div className="space-y-2">
+                        {currentContacts.map((contact) => (
+                          <div key={contact.id} className="bg-gray-50 rounded-md px-4 py-3 border border-gray-100">
+                            <div className="flex flex-col sm:flex-row justify-between items-start gap-1">
+                              <div>
+                                <p className="text-sm font-medium text-gray-900">{contact.first_name} {contact.last_name}</p>
+                                <p className="text-xs text-gray-500">{contact.role}</p>
+                              </div>
+                            </div>
+                            <div className="mt-2 text-xs text-gray-500 grid grid-cols-1 sm:grid-cols-2 gap-1">
+                              <span className="flex items-center gap-1">
+                                {contact.email}
+                              </span>
+                              <span className="flex items-center gap-1">
+                                {contact.phone}
+                              </span>
                             </div>
                           </div>
-                          <div className="mt-2 text-xs text-gray-500 grid grid-cols-1 sm:grid-cols-2 gap-1">
-                            <span className="flex items-center gap-1">
-                              {contact.email}
-                            </span>
-                            <span className="flex items-center gap-1">
-                              {contact.phone}
-                            </span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-sm text-gray-400 italic bg-gray-50 px-4 py-3 rounded-md border border-dashed border-gray-200">
-                      No contacts selected
-                    </div>
-                  )}
-                </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-sm text-gray-400 italic bg-gray-50 px-4 py-3 rounded-md border border-dashed border-gray-200">
+                        No contacts selected
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 <div className="pt-4 border-t border-gray-200 space-y-3">
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-gray-600">Total Products:</span>
-                    <span className="text-sm text-[#2A2A2A] font-medium">7</span>
+                    <span className="text-sm text-[#2A2A2A] font-medium">{quoteData ? deduplicatedLines(quoteData.lines || []).length : '—'}</span>
                   </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Total Dishes:</span>
-                    <span className="text-sm text-[#2A2A2A] font-medium">2</span>
-                  </div>
-                  
+                  {quoteData && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">Quote Total:</span>
+                      <span className="text-sm text-[#2A2A2A] font-medium">{quoteData.total || '—'}</span>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -357,13 +480,13 @@ export function ExportFinalizePage() {
 
                   <div className="border-t border-gray-200 pt-4 mb-6">
                     <p className="text-xs text-gray-500 mb-1">BILL TO:</p>
-                    <p className="text-sm font-medium text-[#2A2A2A]">{selectedCustomer.name}</p>
+                    <p className="text-sm font-medium text-[#2A2A2A]">{customerName}</p>
                   </div>
 
                   <div className="border-t border-gray-200 pt-4">
                     <div className="flex justify-between items-center">
                       <span className="text-base font-semibold text-[#2A2A2A]">Total:</span>
-                      <span className="text-base font-semibold text-[#2A2A2A]">$603.75</span>
+                      <span className="text-base font-semibold text-[#2A2A2A]">{quoteData?.total || '$0.00'}</span>
                     </div>
                   </div>
                 </div>
@@ -473,22 +596,30 @@ export function ExportFinalizePage() {
               </div>
               
               <div className="space-y-3">
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   className="w-full justify-start border-gray-300 text-[#2A2A2A] h-12"
-                  disabled={!isFinalized}
-                  onClick={handleActionClick}
+                  disabled={!isFinalized || downloadingCsv || !quoteData}
+                  onClick={handleCsvDownload}
                 >
-                  <FileText className="w-4 h-4 mr-3" />
+                  {downloadingCsv ? (
+                    <Loader2 className="w-4 h-4 mr-3 animate-spin" />
+                  ) : (
+                    <FileText className="w-4 h-4 mr-3" />
+                  )}
                   CSV Export
                 </Button>
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   className="w-full justify-start border-gray-300 text-[#2A2A2A] h-12"
-                  disabled={!isFinalized}
-                  onClick={handleActionClick}
+                  disabled={!isFinalized || downloadingPdf || !quoteId}
+                  onClick={handlePdfDownload}
                 >
-                  <FileText className="w-4 h-4 mr-3" />
+                  {downloadingPdf ? (
+                    <Loader2 className="w-4 h-4 mr-3 animate-spin" />
+                  ) : (
+                    <FileText className="w-4 h-4 mr-3" />
+                  )}
                   PDF Quote
                 </Button>
               </div>
@@ -503,16 +634,86 @@ export function ExportFinalizePage() {
               <p className="text-gray-500 text-sm mb-6">
                 Emails will be sent via Quotes@Quote-me.com with your email CC'd
               </p>
-              
-              <Button 
-                variant="outline" 
-                className="w-full justify-start border-gray-300 text-[#2A2A2A] h-12"
-                disabled={!isFinalized}
-                onClick={handleActionClick}
-              >
-                <Mail className="w-4 h-4 mr-3" />
-                Email to {selectedCustomer.email || 'customer@example.com'}
-              </Button>
+
+              {sendError && (
+                <div className="text-sm text-red-500 bg-red-50 border border-red-200 rounded-md p-3 mb-3">
+                  {sendError}
+                </div>
+              )}
+
+              {effectiveOpenQuote && (
+                <div className="space-y-3 mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                  <p className="text-sm text-gray-600 font-medium">Enter recipient details</p>
+                  <div>
+                    <Label htmlFor="manual-email" className="text-sm mb-1.5 block text-gray-600">Email</Label>
+                    <Input
+                      id="manual-email"
+                      type="email"
+                      placeholder="customer@example.com"
+                      className="bg-white border-gray-300"
+                      value={manualEmail}
+                      onChange={(e) => setManualEmail(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="manual-phone" className="text-sm mb-1.5 block text-gray-600">Phone</Label>
+                    <Input
+                      id="manual-phone"
+                      type="tel"
+                      placeholder="(555) 555-5555"
+                      className="bg-white border-gray-300"
+                      value={manualPhone}
+                      onChange={(e) => setManualPhone(e.target.value)}
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-3">
+                <Button
+                  variant="outline"
+                  className={`w-full justify-start border-gray-300 text-[#2A2A2A] h-12 ${emailSent ? 'bg-green-50 border-green-300 text-green-700' : ''}`}
+                  disabled={!isFinalized || sendingEmail || !contactEmail}
+                  onClick={handleSendEmail}
+                >
+                  {sendingEmail ? (
+                    <Loader2 className="w-4 h-4 mr-3 animate-spin" />
+                  ) : emailSent ? (
+                    <Check className="w-4 h-4 mr-3" />
+                  ) : (
+                    <Mail className="w-4 h-4 mr-3" />
+                  )}
+                  {emailSent ? 'Email sent' : contactEmail ? `Email to ${contactEmail}` : 'Enter an email above'}
+                </Button>
+
+                <Button
+                  variant="outline"
+                  className={`w-full justify-start border-gray-300 text-[#2A2A2A] h-12 ${smsSent ? 'bg-green-50 border-green-300 text-green-700' : ''}`}
+                  disabled={!isFinalized || sendingSms || !contactPhone}
+                  onClick={handleSendSms}
+                >
+                  {sendingSms ? (
+                    <Loader2 className="w-4 h-4 mr-3 animate-spin" />
+                  ) : smsSent ? (
+                    <Check className="w-4 h-4 mr-3" />
+                  ) : (
+                    <MessageSquare className="w-4 h-4 mr-3" />
+                  )}
+                  {smsSent ? 'Text sent' : contactPhone ? `Text to ${contactPhone}` : 'Enter a phone above'}
+                </Button>
+
+                {effectiveOpenQuote && (
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start border-gray-300 text-[#2A2A2A] h-12"
+                    disabled={!isFinalized || sendingEmail}
+                    onClick={handleSendEmail}
+                  >
+                    <Mail className="w-4 h-4 mr-3" />
+                    Send to myself
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -600,23 +801,14 @@ export function ExportFinalizePage() {
             
             <div className="flex-1 p-6 overflow-y-auto">
               <div className="space-y-6">
-                {/* Customer Selection */}
+                {/* Customer Name (read-only, from quote) */}
                 <div>
-                  <Label htmlFor="edit-customer" className="text-sm font-medium text-gray-700 mb-2 block">
+                  <Label className="text-sm font-medium text-gray-700 mb-2 block">
                     Customer
                   </Label>
-                  <select
-                    id="edit-customer"
-                    className="w-full px-3 py-2 border border-gray-200 rounded-md bg-white text-sm focus:ring-2 focus:ring-[#F2993D] focus:border-transparent outline-none transition-all"
-                    value={tempCustomer.id}
-                    onChange={(e) => handleTempCustomerChange(e.target.value)}
-                  >
-                    {testRestaurants.map(restaurant => (
-                      <option key={restaurant.id} value={restaurant.id}>
-                        {restaurant.name}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="w-full px-3 py-2 border border-gray-200 rounded-md bg-gray-50 text-sm text-gray-700">
+                    {customerName}
+                  </div>
                 </div>
 
                 {/* Contacts Selection */}
@@ -627,11 +819,11 @@ export function ExportFinalizePage() {
                       Choose which contacts should appear on this quote.
                     </p>
                   </div>
-                  
+
                   <div className="space-y-3">
-                    {tempCustomer.contacts.map((contact) => (
+                    {contacts.map((contact) => (
                       <div key={contact.id} className="flex items-start space-x-3 bg-white p-3 rounded border border-gray-100 shadow-sm">
-                        <Checkbox 
+                        <Checkbox
                           id={`edit-${contact.id}`}
                           checked={tempContactIds.includes(contact.id)}
                           onCheckedChange={() => handleTempContactToggle(contact.id)}
@@ -643,7 +835,7 @@ export function ExportFinalizePage() {
                               htmlFor={`edit-${contact.id}`}
                               className="text-sm font-medium text-gray-900 cursor-pointer"
                             >
-                              {contact.name}
+                              {contact.first_name} {contact.last_name}
                             </label>
                             <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full border border-gray-200">
                               {contact.role}

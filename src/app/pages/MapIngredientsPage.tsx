@@ -80,6 +80,7 @@ export function MapIngredientsPage() {
   // Router state passed from StartNewQuotePage
   const routerMenuId: string | undefined = (location.state as any)?.menuId;
   const routerQuoteId: string | undefined = (location.state as any)?.quoteId;
+  const isOpenQuote: boolean = (location.state as any)?.isOpenQuote || false;
 
   // ── Core state ──
   const [quoteId, setQuoteId] = useState<string | null>(routerQuoteId || null);
@@ -326,6 +327,8 @@ export function MapIngredientsPage() {
 
   const renderComponentRow = (component: string, line?: QuoteLine) => {
     const bestMatch = line?.product;
+    const bestCandidate = line?.alignment_candidates?.find(c => c.position === 1);
+    const confidence = bestCandidate?.score != null ? Math.round(bestCandidate.score * 100) : null;
     const isMapped = mappedComponents[component]?.length > 0;
 
     return (
@@ -344,6 +347,17 @@ export function MapIngredientsPage() {
               <div className="text-gray-400">
                 {bestMatch.item_number} • {bestMatch.pack_size}
               </div>
+              {confidence != null && (
+                <div className="mt-1">
+                  <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${
+                    confidence >= 70 ? 'bg-green-100 text-green-700' :
+                    confidence >= 40 ? 'bg-yellow-100 text-yellow-700' :
+                    'bg-red-100 text-red-700'
+                  }`}>
+                    {confidence}% match
+                  </span>
+                </div>
+              )}
             </div>
           ) : (
             <span className="text-xs text-gray-400 italic">No match found</span>
@@ -419,7 +433,7 @@ export function MapIngredientsPage() {
               </div>
             </div>
             <Button
-              onClick={() => navigate('/quote-builder', { state: { quoteId } })}
+              onClick={() => navigate('/quote-builder', { state: { quoteId, isOpenQuote } })}
               className="bg-[#F2993D] hover:bg-[#e88929] text-white"
             >
               Adjust pricing
@@ -485,9 +499,13 @@ export function MapIngredientsPage() {
                     <div className="space-y-2">
                       {(() => {
                         const categoryMap: Record<string, { component: string; line: QuoteLine }[]> = {};
+                        const seenProducts = new Set<string>();
                         for (const dish of dishes) {
                           for (const comp of dish.components) {
                             const line = dish.componentLines[comp];
+                            const productKey = line?.product?.id || comp;
+                            if (seenProducts.has(productKey)) continue;
+                            seenProducts.add(productKey);
                             const cat = line?.category || 'Uncategorized';
                             if (!categoryMap[cat]) categoryMap[cat] = [];
                             categoryMap[cat].push({ component: comp, line });

@@ -23,6 +23,7 @@ export function QuoteBuilderPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const quoteId: string | undefined = (location.state as any)?.quoteId;
+  const isOpenQuote: boolean = (location.state as any)?.isOpenQuote || false;
 
   const [items, setItems] = useState<ProductItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -49,9 +50,14 @@ export function QuoteBuilderPage() {
         const res = await fetchQuote(quoteId!);
         if (res.error || !res.data) throw new Error(res.error || 'Failed to load quote');
         const data = res.data as any;
-        const productItems: ProductItem[] = (data.lines || []).map((line: any) => {
+        const seenProducts = new Set<string>();
+        const productItems: ProductItem[] = [];
+        for (const line of (data.lines || [])) {
+          const productId = line.product?.id || line.id;
+          if (seenProducts.has(productId)) continue;
+          seenProducts.add(productId);
           const priceDollars = (line.unit_price_cents || 0) / 100;
-          return {
+          productItems.push({
             id: line.id,
             dish: line.component?.source_dish || 'Unknown',
             component: line.component?.name || 'Unknown',
@@ -63,8 +69,8 @@ export function QuoteBuilderPage() {
             basePrice: priceDollars,
             currentPrice: priceDollars,
             percentChange: 0,
-          };
-        });
+          });
+        }
         setItems(productItems);
         setLoading(false);
       } catch (e: any) {
@@ -181,7 +187,7 @@ export function QuoteBuilderPage() {
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
             <button
-              onClick={() => navigate('/map-ingredients', { state: { quoteId } })}
+              onClick={() => navigate('/map-ingredients', { state: { quoteId, isOpenQuote } })}
               className="text-gray-400 hover:text-gray-600"
             >
               <ArrowLeft className="w-5 h-5" />
@@ -197,7 +203,7 @@ export function QuoteBuilderPage() {
               Save Draft
             </Button>
             <Button
-              onClick={() => navigate('/export-finalize', { state: { quoteId } })}
+              onClick={() => navigate('/export-finalize', { state: { quoteId, isOpenQuote } })}
               className="bg-[#A5CFDD] hover:bg-[#8db9c9] text-[#2A2A2A]"
             >
               Finish quote
