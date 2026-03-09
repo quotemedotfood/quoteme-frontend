@@ -1,9 +1,20 @@
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
-import { ArrowLeft, Save, Filter, Plus, Minus, Edit, ChevronUp, ChevronDown, ArrowUpDown, ArrowUp, ArrowDown, Loader2 } from 'lucide-react';
+import { ArrowLeft, Save, Filter, Plus, Minus, Edit, ChevronUp, ChevronDown, ArrowUpDown, ArrowUp, ArrowDown, Loader2, X } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router';
 import { useState, useEffect } from 'react';
 import { getQuote, getGuestQuote } from '../services/api';
+import { CatalogProductSearch } from '../components/CatalogProductSearch';
+import type { CatalogSearchProduct } from '../services/api';
+import {
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+} from '../components/ui/drawer';
 
 interface ProductItem {
   id: string;
@@ -34,6 +45,7 @@ export function QuoteBuilderPage() {
   const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [categoryFilter, setCategoryFilter] = useState('all');
+  const [addProductDrawerOpen, setAddProductDrawerOpen] = useState(false);
 
   const isGuest = !localStorage.getItem('quoteme_token');
   const fetchQuote = (id: string) => isGuest ? getGuestQuote(id) : getQuote(id);
@@ -163,6 +175,25 @@ export function QuoteBuilderPage() {
     );
   };
 
+  const handleAddProduct = (product: CatalogSearchProduct) => {
+    const priceDollars = (product.price_cents || 0) / 100;
+    const newItem: ProductItem = {
+      id: product.id,
+      dish: 'Manual Add',
+      component: product.product,
+      sku: product.item_number,
+      brand: product.brand,
+      product: product.product,
+      pack: product.pack_size,
+      category: product.category,
+      basePrice: priceDollars,
+      currentPrice: priceDollars,
+      percentChange: 0,
+    };
+    setItems(prev => [...prev, newItem]);
+    setAddProductDrawerOpen(false);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-[#FFF9F3]">
@@ -284,7 +315,12 @@ export function QuoteBuilderPage() {
                 <Edit className="w-4 h-4 mr-1" />
                 {editMode ? 'Save' : 'Edit price'}
               </Button>
-              <Button variant="outline" size="sm" className="flex-1 md:flex-none text-[#2A2A2A] border-gray-300">
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex-1 md:flex-none text-[#2A2A2A] border-gray-300"
+                onClick={() => setAddProductDrawerOpen(true)}
+              >
                 <Plus className="w-4 h-4 mr-1" />
                 Add Product
               </Button>
@@ -538,6 +574,37 @@ export function QuoteBuilderPage() {
 
 
       </div>
+
+      {/* Add Product Drawer */}
+      <Drawer open={addProductDrawerOpen} onOpenChange={setAddProductDrawerOpen} direction="right">
+        <DrawerContent className="w-full sm:max-w-lg h-full flex flex-col">
+          <DrawerHeader className="border-b border-gray-200 flex-shrink-0">
+            <div className="flex items-center justify-between">
+              <div>
+                <DrawerTitle className="text-lg">Add Product</DrawerTitle>
+                <DrawerDescription className="text-sm mt-1">
+                  Search your catalog to add a product to the quote
+                </DrawerDescription>
+              </div>
+              <DrawerClose asChild>
+                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                  <X className="h-4 w-4" />
+                </Button>
+              </DrawerClose>
+            </div>
+          </DrawerHeader>
+          <div className="flex-1 overflow-y-auto p-6">
+            <CatalogProductSearch
+              quoteId={quoteId}
+              onSelect={handleAddProduct}
+              placeholder="Search by name, brand, or item #..."
+            />
+            <p className="text-xs text-gray-400 mt-4 text-center">
+              Select a product to add it to the quote
+            </p>
+          </div>
+        </DrawerContent>
+      </Drawer>
     </div>
   );
 }
