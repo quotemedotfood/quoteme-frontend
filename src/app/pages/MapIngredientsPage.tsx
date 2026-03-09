@@ -13,6 +13,7 @@ import {
   getQuote,
   getGuestQuote,
   submitQuoteFeedback,
+  getMoreMatches,
 } from '../services/api';
 
 // ─── Types (matching backend API responses) ──────────────────────────────────
@@ -582,6 +583,14 @@ export function MapIngredientsPage() {
         componentName={selectedComponent}
         onApplyMapping={handleApplyMapping}
         candidates={selectedLine?.alignment_candidates || []}
+        onFindMoreMatches={quoteId && selectedLine ? async () => {
+          const res = await getMoreMatches(quoteId, selectedLine.id);
+          return res.data?.candidates || [];
+        } : undefined}
+        quoteId={quoteId || undefined}
+        onManualSelect={(componentName, product) => {
+          setMappedComponents(prev => ({ ...prev, [componentName]: [product.id] }));
+        }}
       />
 
       {/* Mobile Dish List Drawer */}

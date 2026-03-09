@@ -320,27 +320,29 @@ export function QuoteBuilderPage() {
                               <Minus className="w-4 h-4" />
                             </button>
                             <input
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              value={item.currentPrice}
+                              type="text"
+                              inputMode="decimal"
+                              value={`$${item.currentPrice.toFixed(2)}`}
                               onClick={(e) => e.stopPropagation()}
-                              onChange={(e) => {
-                                const val = parseFloat(e.target.value);
+                              onFocus={(e) => { e.target.value = item.currentPrice.toFixed(2); e.target.select(); }}
+                              onBlur={(e) => {
+                                const val = parseFloat(e.target.value.replace(/[^0-9.]/g, ''));
                                 if (!isNaN(val)) {
                                   setItems((prevItems) =>
                                     prevItems.map((i) => {
                                       if (i.id === item.id) {
-                                        const newPrice = Math.max(0, val);
+                                        const newPrice = Math.max(0, Math.round(val * 100) / 100);
                                         const percentChange = ((newPrice - i.basePrice) / i.basePrice) * 100;
                                         return { ...i, currentPrice: newPrice, percentChange };
                                       }
                                       return i;
                                     })
                                   );
+                                } else {
+                                  e.target.value = `$${item.currentPrice.toFixed(2)}`;
                                 }
                               }}
-                              className="w-20 text-center border border-gray-300 rounded px-1 py-1 text-sm text-[#2A2A2A] focus:outline-none focus:border-blue-500 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                              className="w-20 text-center border border-gray-300 rounded px-1 py-1 text-sm text-[#2A2A2A] focus:outline-none focus:border-blue-500"
                             />
                             <button
                               onClick={(e) => {
@@ -489,27 +491,29 @@ export function QuoteBuilderPage() {
                             <Minus className="w-4 h-4" />
                           </button>
                           <input
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            value={item.currentPrice}
+                            type="text"
+                            inputMode="decimal"
+                            value={`$${item.currentPrice.toFixed(2)}`}
                             onClick={(e) => e.stopPropagation()}
-                            onChange={(e) => {
-                              const val = parseFloat(e.target.value);
+                            onFocus={(e) => { e.target.value = item.currentPrice.toFixed(2); e.target.select(); }}
+                            onBlur={(e) => {
+                              const val = parseFloat(e.target.value.replace(/[^0-9.]/g, ''));
                               if (!isNaN(val)) {
                                 setItems((prevItems) =>
                                   prevItems.map((i) => {
                                     if (i.id === item.id) {
-                                      const newPrice = Math.max(0, val);
+                                      const newPrice = Math.max(0, Math.round(val * 100) / 100);
                                       const percentChange = ((newPrice - i.basePrice) / i.basePrice) * 100;
                                       return { ...i, currentPrice: newPrice, percentChange };
                                     }
                                     return i;
                                   })
                                 );
+                              } else {
+                                e.target.value = `$${item.currentPrice.toFixed(2)}`;
                               }
                             }}
-                            className="w-20 text-center border border-gray-300 rounded px-1 py-1 text-sm text-[#2A2A2A] focus:outline-none focus:border-blue-500 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                            className="w-20 text-center border border-gray-300 rounded px-1 py-1 text-sm text-[#2A2A2A] focus:outline-none focus:border-blue-500"
                           />
                           <button
                             onClick={(e) => {

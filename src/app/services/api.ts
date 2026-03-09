@@ -535,6 +535,45 @@ export async function downloadQuotePdf(id: string): Promise<{ blob?: Blob; error
   }
 }
 
+// Catalog product search — used for manual match selection
+export interface CatalogSearchProduct {
+  id: string;
+  item_number: string;
+  brand: string;
+  product: string;
+  pack_size: string;
+  price_cents: number | null;
+  category: string;
+}
+
+export async function searchCatalogProducts(
+  query: string,
+  quoteId?: string
+): Promise<ApiResponse<CatalogSearchProduct[]>> {
+  const isGuest = !getAuthToken();
+  if (isGuest && quoteId) {
+    return fetchWithGuest(`/api/v1/guest/quotes/${quoteId}/search_products?query=${encodeURIComponent(query)}`);
+  }
+  return fetchWithAuth(`/api/v1/products/search?query=${encodeURIComponent(query)}`);
+}
+
+export async function getMoreMatches(
+  quoteId: string,
+  lineId: string
+): Promise<ApiResponse<{ candidates: AlignmentCandidateResponse[] }>> {
+  const isGuest = !getAuthToken();
+  if (isGuest) {
+    return fetchWithGuest(`/api/v1/guest/quotes/${quoteId}/more_matches`, {
+      method: 'POST',
+      body: JSON.stringify({ line_id: lineId }),
+    });
+  }
+  return fetchWithAuth(`/api/v1/quotes/${quoteId}/more_matches`, {
+    method: 'POST',
+    body: JSON.stringify({ line_id: lineId }),
+  });
+}
+
 export async function submitQuoteFeedback(
   quoteId: string,
   feedback: { rating: 'thumbs_up' | 'thumbs_down'; notes?: string }

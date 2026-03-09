@@ -9,7 +9,9 @@ import {
   DrawerTitle,
 } from './ui/drawer';
 import { Button } from './ui/button';
-import { X } from 'lucide-react';
+import { X, Loader2 } from 'lucide-react';
+import { CatalogProductSearch } from './CatalogProductSearch';
+import type { CatalogSearchProduct } from '../services/api';
 
 interface CandidateProduct {
   id: string;
@@ -34,6 +36,9 @@ interface MapComponentDrawerProps {
   componentName: string;
   onApplyMapping?: (componentName: string, skuIds: string[]) => void;
   candidates?: AlignmentCandidate[];
+  onFindMoreMatches?: () => Promise<AlignmentCandidate[]>;
+  quoteId?: string;
+  onManualSelect?: (componentName: string, product: CatalogSearchProduct) => void;
 }
 
 function tierLabel(tier: string, position: number): string {
@@ -54,9 +59,15 @@ export function MapComponentDrawer({
   componentName,
   onApplyMapping,
   candidates = [],
+  onFindMoreMatches,
+  quoteId,
+  onManualSelect,
 }: MapComponentDrawerProps) {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [notes, setNotes] = useState('');
+  const [extraCandidates, setExtraCandidates] = useState<AlignmentCandidate[]>([]);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [manualPick, setManualPick] = useState<CatalogSearchProduct | null>(null);
 
   const handleToggle = (productId: string) => {
     setSelectedIds(prev =>
@@ -65,22 +76,41 @@ export function MapComponentDrawer({
   };
 
   const handleApply = () => {
-    if (onApplyMapping) {
+    if (manualPick && onManualSelect) {
+      onManualSelect(componentName, manualPick);
+    } else if (onApplyMapping) {
       onApplyMapping(componentName, selectedIds);
     }
     onOpenChange(false);
     setSelectedIds([]);
     setNotes('');
+    setExtraCandidates([]);
+    setManualPick(null);
   };
 
   const handleCancel = () => {
     onOpenChange(false);
     setSelectedIds([]);
     setNotes('');
+    setExtraCandidates([]);
+    setManualPick(null);
+  };
+
+  const handleFindMore = async () => {
+    if (!onFindMoreMatches) return;
+    setLoadingMore(true);
+    try {
+      const more = await onFindMoreMatches();
+      setExtraCandidates(prev => [...prev, ...more]);
+    } catch {
+      // silently fail
+    } finally {
+      setLoadingMore(false);
+    }
   };
 
   const bestMatch = candidates.find(c => c.position === 1);
-  const alternates = candidates.filter(c => c.position > 1);
+  const allAlternates = [...candidates.filter(c => c.position > 1), ...extraCandidates];
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange} direction="right">
@@ -141,15 +171,15 @@ export function MapComponentDrawer({
             </div>
           )}
 
-          {alternates.length === 0 ? (
+          {allAlternates.length === 0 ? (
             <p className="text-sm text-gray-400 italic text-center py-8">No alternate matches found</p>
           ) : (
             <div>
               <h3 className="text-sm font-medium text-[#2A2A2A] mb-3">
-                Alternate Products ({alternates.length})
+                Alternate Products ({allAlternates.length})
               </h3>
               <div className="space-y-3">
-                {alternates.map((candidate) => (
+                {allAlternates.map((candidate) => (
                   <div
                     key={candidate.id}
                     className="border border-gray-200 rounded-lg p-4 hover:border-gray-300 transition-colors"
@@ -200,6 +230,57 @@ export function MapComponentDrawer({
             </div>
           )}
 
+          {/* Find More Matches */}
+          {onFindMoreMatches && (
+            <div className="text-center">
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-[#2A2A2A] border-gray-300"
+                onClick={handleFindMore}
+                disabled={loadingMore}
+              >
+                {loadingMore ? (
+                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Finding matches...</>
+                ) : (
+                  'Find 2 more matches'
+                )}
+              </Button>
+            </div>
+          )}
+
+          {/* Manual Catalog Search */}
+          <div>
+            <h3 className="text-sm font-medium text-[#2A2A2A] mb-3">Search Catalog Manually</h3>
+            <CatalogProductSearch
+              quoteId={quoteId}
+              onSelect={(product) => setManualPick(product)}
+            />
+            {manualPick && (
+              <div className="mt-3 border-2 border-[#A5CFDD] rounded-lg p-4 bg-blue-50/30">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <h4 className="text-sm font-medium text-[#2A2A2A]">
+                      {manualPick.brand} {manualPick.product}
+                    </h4>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Item #{manualPick.item_number} &middot; {manualPick.pack_size}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setManualPick(null)}
+                    className="text-gray-400 hover:text-gray-600 p-1"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+                <span className="inline-block mt-2 px-2 py-0.5 text-xs rounded bg-[#A5CFDD]/30 text-[#2A2A2A]">
+                  Manual selection
+                </span>
+              </div>
+            )}
+          </div>
+
           {/* Notes Section */}
           <div>
             <label className="text-sm font-medium text-[#2A2A2A] block mb-2">
@@ -229,7 +310,7 @@ export function MapComponentDrawer({
               className="flex-1 bg-[#A5CFDD] hover:bg-[#8db9c9] text-[#2A2A2A]"
               onClick={handleApply}
             >
-              Add to Quote ({selectedIds.length} products)
+              {manualPick ? 'Use Selected Product' : `Add to Quote (${selectedIds.length} products)`}
             </Button>
           </div>
         </DrawerFooter>
