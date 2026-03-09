@@ -51,19 +51,96 @@ export interface GuestConvertData {
   user: SignUpData;
 }
 
-// Quote Types
-export interface Menu {
-  id: string;
-  name: string;
-  raw_text: string;
+// Menu create response
+export interface MenuCreateResponse {
+  menu_id: string;
+  quote_id: string;
+  restaurant: string;
   component_count: number;
+  components_aligned: number;
+  status: string;
 }
 
-export interface Quote {
-  id: string;
+// Guest quote create response
+export interface GuestQuoteCreateResponse {
   menu_id: string;
-  line_count: number;
+  quote_id: string;
+  component_count: number;
+  components_aligned: number;
+  quote_count: number;
+  quotes_remaining: number;
+}
+
+// Full quote response (show)
+export interface QuoteResponse {
+  id: string;
+  status: string;
+  working_label: string;
+  restaurant: string;
+  rep: string;
+  rep_reviewed: boolean;
+  sent_at: string | null;
+  pdf_url: string | null;
   total_cents: number;
+  total: string;
+  created_at: string;
+  lines: QuoteLineResponse[];
+}
+
+export interface QuoteLineResponse {
+  id: string;
+  position: number;
+  category: string;
+  quantity: number;
+  unit_price_cents: number | null;
+  unit_price: string | null;
+  alignment_selected: number;
+  chef_note: string | null;
+  component: {
+    id: string;
+    name: string;
+    source_dish: string;
+  } | null;
+  product: {
+    id: string;
+    item_number: string;
+    brand: string;
+    product: string;
+    pack_size: string;
+    category: string;
+  };
+  alignment_candidates?: AlignmentCandidateResponse[];
+}
+
+export interface AlignmentCandidateResponse {
+  id: string;
+  position: number;
+  tier: string;
+  score: number | null;
+  product: {
+    id: string;
+    item_number: string;
+    brand: string;
+    product: string;
+    pack_size: string;
+    category: string;
+  };
+}
+
+// Quote create response (authenticated)
+export interface QuoteCreateResponse {
+  id: string;
+  status: string;
+  working_label: string;
+  line_count: number;
+}
+
+// Menu status response
+export interface MenuStatusResponse {
+  menu_id: string;
+  status: string;
+  quote_id: string | null;
+  updated_at: string;
 }
 
 // Helper to get auth token
@@ -235,18 +312,18 @@ export async function getGuestSession(token: string): Promise<ApiResponse<GuestS
   }
 }
 
-export async function createGuestQuote(quoteData: GuestQuote): Promise<ApiResponse<Quote>> {
+export async function createGuestQuote(quoteData: GuestQuote): Promise<ApiResponse<GuestQuoteCreateResponse>> {
   return fetchWithGuest('/api/v1/guest/quotes', {
     method: 'POST',
     body: JSON.stringify({ ...quoteData, distributor_id: '88c1038d-6b3b-4cc0-ba35-32c32f435f91' }),
   });
 }
 
-export async function getGuestQuote(id: string): Promise<ApiResponse<Quote>> {
+export async function getGuestQuote(id: string): Promise<ApiResponse<QuoteResponse>> {
   return fetchWithGuest(`/api/v1/guest/quotes/${id}`);
 }
 
-export async function convertGuestToUser(data: GuestConvertData): Promise<ApiResponse<{ message: string; user: any; quotes_used?: number }>> {
+export async function convertGuestToUser(data: GuestConvertData): Promise<ApiResponse<{ message: string; user: any; guest_session?: { quotes_used: number } }>> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   };
@@ -296,29 +373,29 @@ export async function uploadCatalog(skus: any[]): Promise<ApiResponse<any>> {
   });
 }
 
-export async function createMenu(menuData: { raw_text: string; name: string }): Promise<ApiResponse<Menu>> {
+export async function createMenu(menuData: { raw_text: string; name: string }): Promise<ApiResponse<MenuCreateResponse>> {
   return fetchWithAuth('/api/v1/menus', {
     method: 'POST',
     body: JSON.stringify(menuData),
   });
 }
 
-export async function getMenu(id: string): Promise<ApiResponse<Menu>> {
+export async function getMenu(id: string): Promise<ApiResponse<any>> {
   return fetchWithAuth(`/api/v1/menus/${id}`);
 }
 
-export async function createQuote(menuId: string): Promise<ApiResponse<Quote>> {
+export async function createQuote(menuId: string): Promise<ApiResponse<QuoteCreateResponse>> {
   return fetchWithAuth('/api/v1/quotes', {
     method: 'POST',
     body: JSON.stringify({ menu_id: menuId }),
   });
 }
 
-export async function getQuote(id: string): Promise<ApiResponse<Quote>> {
+export async function getQuote(id: string): Promise<ApiResponse<QuoteResponse>> {
   return fetchWithAuth(`/api/v1/quotes/${id}`);
 }
 
-export async function updateQuote(id: string, updates: any): Promise<ApiResponse<Quote>> {
+export async function updateQuote(id: string, updates: any): Promise<ApiResponse<QuoteResponse>> {
   return fetchWithAuth(`/api/v1/quotes/${id}`, {
     method: 'PATCH',
     body: JSON.stringify(updates),
@@ -331,7 +408,7 @@ export async function sendQuote(id: string): Promise<ApiResponse<any>> {
   });
 }
 
-export async function getMenuStatus(id: string): Promise<ApiResponse<{ status: string }>> {
+export async function getMenuStatus(id: string): Promise<ApiResponse<MenuStatusResponse>> {
   return fetchWithAuth(`/api/v1/menus/${id}/status`);
 }
 

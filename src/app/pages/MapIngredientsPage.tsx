@@ -15,22 +15,26 @@ import {
   submitQuoteFeedback,
 } from '../services/api';
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// ─── Types (matching backend API responses) ──────────────────────────────────
 
 interface AlignmentCandidate {
   id: string;
-  rank: number; // 1=Best Match, 2=Alternate, 3=Premium
+  position: number;
+  tier: string;
+  score: number | null;
   product: {
     id: string;
-    name: string;
     item_number: string;
+    brand: string;
+    product: string;
     pack_size: string;
-    price_cents: number;
+    category: string;
   };
 }
 
 interface QuoteLine {
   id: string;
+  position: number;
   component: {
     id: string;
     name: string;
@@ -50,14 +54,13 @@ interface QuoteLine {
   category: string;
   alignment_selected: number;
   chef_note: string | null;
-  selected_product_id: string | null;
   alignment_candidates: AlignmentCandidate[];
 }
 
 interface QuoteData {
   id: string;
-  menu_id: string;
   status: string;
+  working_label: string;
   lines: QuoteLine[];
 }
 
@@ -150,32 +153,38 @@ export function MapIngredientsPage() {
           return;
         }
 
-        // Poll menu status
+        // Poll menu status until quote is ready
         setLoadingStatus('Processing menu…');
         let attempts = 0;
+        let resolvedQuoteId: string | null = null;
         while (attempts < 30) {
           if (cancelled) return;
           const statusRes = await getMenuStatus(menuId!);
           if (statusRes.error) throw new Error(statusRes.error);
-          const status = (statusRes.data as any)?.status;
-          if (status === 'processed' || status === 'completed') break;
-          if (status === 'failed') throw new Error('Menu processing failed. Please try again.');
+          const statusData = statusRes.data;
+          if (statusData?.status === 'processed' || statusData?.status === 'completed') {
+            resolvedQuoteId = statusData.quote_id || null;
+            break;
+          }
+          if (statusData?.status === 'failed') throw new Error('Menu processing failed. Please try again.');
           await new Promise(r => setTimeout(r, 2000));
           attempts++;
         }
         if (attempts >= 30) throw new Error('Menu processing timed out. Please try again.');
 
-        // Create quote
-        setLoadingStatus('Building quote…');
-        const quoteRes = await createQuote(menuId!);
-        if (cancelled) return;
-        if (quoteRes.error || !quoteRes.data) throw new Error(quoteRes.error || 'Failed to create quote');
-        const newQuoteId = (quoteRes.data as QuoteData).id;
-        setQuoteId(newQuoteId);
+        if (!resolvedQuoteId) {
+          // Fallback: create quote from menu
+          setLoadingStatus('Building quote…');
+          const quoteRes = await createQuote(menuId!);
+          if (cancelled) return;
+          if (quoteRes.error || !quoteRes.data) throw new Error(quoteRes.error || 'Failed to create quote');
+          resolvedQuoteId = quoteRes.data.id;
+        }
+        setQuoteId(resolvedQuoteId);
 
         // Load full quote with lines
         setLoadingStatus('Loading matches…');
-        const fullQuote = await fetchQuote(newQuoteId);
+        const fullQuote = await fetchQuote(resolvedQuoteId);
         if (cancelled) return;
         if (fullQuote.error || !fullQuote.data) throw new Error(fullQuote.error || 'Failed to load quote');
         const built = buildDishesFromLines((fullQuote.data as QuoteData).lines || []);
@@ -207,21 +216,7 @@ export function MapIngredientsPage() {
 
       const menuRes = await createMenu({ raw_text: text, name: newDishName || 'Manual Dish' });
       if (menuRes.error || !menuRes.data) throw new Error(menuRes.error || 'Failed to create menu');
-      const newMenuId = (menuRes.data as any).id;
-
-      // Poll
-      let attempts = 0;
-      while (attempts < 30) {
-        const statusRes = await getMenuStatus(newMenuId);
-        const status = (statusRes.data as any)?.status;
-        if (status === 'processed' || status === 'completed') break;
-        await new Promise(r => setTimeout(r, 2000));
-        attempts++;
-      }
-
-      const quoteRes = await createQuote(newMenuId);
-      if (quoteRes.error || !quoteRes.data) throw new Error(quoteRes.error);
-      const newQId = (quoteRes.data as any).id;
+      const newQId = menuRes.data.quote_id;
 
       const fullQuote = await fetchQuote(newQId);
       if (fullQuote.error || !fullQuote.data) throw new Error(fullQuote.error);

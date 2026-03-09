@@ -142,7 +142,7 @@ export function StartNewQuotePage() {
         const response = await createMenu({ raw_text: menuText, name: selectedRestaurant?.name || 'New Quote' });
         if (response.data) {
           incrementQuoteCount();
-          navigate('/map-ingredients', { state: { menuId: response.data.id } });
+          navigate('/map-ingredients', { state: { quoteId: response.data.quote_id } });
         }
       }
     } catch (error) {
