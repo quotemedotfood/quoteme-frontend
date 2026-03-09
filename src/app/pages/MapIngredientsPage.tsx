@@ -483,42 +483,55 @@ export function MapIngredientsPage() {
                     </div>
                   </div>
                 ) : (
-                  /* Categories — group all components across all dishes */
+                  /* Categories — group all components by product category */
                   <div>
-                    <h2 className="text-lg font-medium text-[#4F4F4F] mb-2">All Dishes</h2>
-                    <p className="text-sm text-gray-500 mb-6">Ingredients organized by dish</p>
+                    <h2 className="text-lg font-medium text-[#4F4F4F] mb-2">By Category</h2>
+                    <p className="text-sm text-gray-500 mb-6">Ingredients organized by product category</p>
                     <div className="space-y-2">
-                      {dishes.map(dish => {
-                        const isExpanded = expandedCategories.includes(dish.id);
-                        const mappedCount = dish.components.filter(c => mappedComponents[c]?.length > 0).length;
-                        return (
-                          <div key={dish.id} className="border border-gray-200 rounded-lg overflow-hidden">
-                            <button
-                              onClick={() => toggleCategory(dish.id)}
-                              className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
-                            >
-                              <div className="flex items-center gap-3">
-                                <div className="w-5 h-5 rounded-full border border-gray-300 flex items-center justify-center text-gray-400">
-                                  {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-                                </div>
-                                <span className="text-sm font-medium text-[#2A2A2A]">
-                                  {dish.name} ({mappedCount}/{dish.components.length})
-                                </span>
-                              </div>
-                              <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
-                            </button>
-                            {isExpanded && (
-                              <div className="border-t border-gray-200 bg-gray-50">
-                                {dish.components.map(c =>
-                                  <div key={c} className="pl-8">
-                                    {renderComponentRow(c, dish.componentLines[c])}
+                      {(() => {
+                        const categoryMap: Record<string, { component: string; line: QuoteLine }[]> = {};
+                        for (const dish of dishes) {
+                          for (const comp of dish.components) {
+                            const line = dish.componentLines[comp];
+                            const cat = line?.category || 'Uncategorized';
+                            if (!categoryMap[cat]) categoryMap[cat] = [];
+                            categoryMap[cat].push({ component: comp, line });
+                          }
+                        }
+                        const sortedCategories = Object.keys(categoryMap).sort();
+                        return sortedCategories.map(cat => {
+                          const items = categoryMap[cat];
+                          const isExpanded = expandedCategories.includes(cat);
+                          const mappedCount = items.filter(i => mappedComponents[i.component]?.length > 0).length;
+                          return (
+                            <div key={cat} className="border border-gray-200 rounded-lg overflow-hidden">
+                              <button
+                                onClick={() => toggleCategory(cat)}
+                                className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
+                              >
+                                <div className="flex items-center gap-3">
+                                  <div className="w-5 h-5 rounded-full border border-gray-300 flex items-center justify-center text-gray-400">
+                                    {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                                   </div>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
+                                  <span className="text-sm font-medium text-[#2A2A2A]">
+                                    {cat} ({mappedCount}/{items.length})
+                                  </span>
+                                </div>
+                                <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                              </button>
+                              {isExpanded && (
+                                <div className="border-t border-gray-200 bg-gray-50">
+                                  {items.map(({ component, line }) =>
+                                    <div key={component} className="pl-8">
+                                      {renderComponentRow(component, line)}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        });
+                      })()}
                     </div>
                   </div>
                 )}
