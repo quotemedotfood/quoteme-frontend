@@ -277,8 +277,12 @@ export function MapIngredientsPage() {
 
   // ─── Helpers ──────────────────────────────────────────────────────────────
 
+  const [selectedLine, setSelectedLine] = useState<QuoteLine | null>(null);
+
   const handleMapComponent = (componentName: string) => {
+    const line = selectedDish?.componentLines[componentName] || null;
     setSelectedComponent(componentName);
+    setSelectedLine(line);
     setMapDrawerOpen(true);
   };
 
@@ -326,7 +330,7 @@ export function MapIngredientsPage() {
   // ─── Render component row ─────────────────────────────────────────────────
 
   const renderComponentRow = (component: string, line?: QuoteLine) => {
-    const bestMatch = line?.alignment_candidates?.find(c => c.rank === 1);
+    const bestMatch = line?.product;
     const isMapped = mappedComponents[component]?.length > 0;
 
     return (
@@ -341,9 +345,9 @@ export function MapIngredientsPage() {
         <div className="flex-1 text-center">
           {bestMatch ? (
             <div className="text-xs text-gray-500">
-              <div className="font-medium">{bestMatch.product.name}</div>
+              <div className="font-medium">{bestMatch.brand} {bestMatch.product}</div>
               <div className="text-gray-400">
-                {bestMatch.product.item_number} • {bestMatch.product.pack_size}
+                {bestMatch.item_number} • {bestMatch.pack_size}
               </div>
             </div>
           ) : (
@@ -551,6 +555,7 @@ export function MapIngredientsPage() {
         onOpenChange={setMapDrawerOpen}
         componentName={selectedComponent}
         onApplyMapping={handleApplyMapping}
+        candidates={selectedLine?.alignment_candidates || []}
       />
 
       {/* Mobile Dish List Drawer */}

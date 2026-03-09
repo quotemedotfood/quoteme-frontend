@@ -9,150 +9,78 @@ import {
   DrawerTitle,
 } from './ui/drawer';
 import { Button } from './ui/button';
-import { Input } from './ui/input';
-import { X, Sparkles } from 'lucide-react';
+import { X } from 'lucide-react';
+
+interface CandidateProduct {
+  id: string;
+  item_number: string;
+  brand: string;
+  product: string;
+  pack_size: string;
+  category: string;
+}
+
+interface AlignmentCandidate {
+  id: string;
+  position: number;
+  tier: string;
+  score: number | null;
+  product: CandidateProduct;
+}
 
 interface MapComponentDrawerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   componentName: string;
   onApplyMapping?: (componentName: string, skuIds: string[]) => void;
+  candidates?: AlignmentCandidate[];
 }
 
-interface SuggestedSKU {
-  id: string;
-  name: string;
-  price: number;
-  unit: string;
-  sku: string;
-  inStock: boolean;
-  category: string;
+function tierLabel(tier: string, position: number): string {
+  if (position === 1) return 'Best Match';
+  if (tier === 'premium') return 'Premium';
+  return 'Alternate';
 }
 
-// Sample SKUs for demonstration
-const sampleSKUs: SuggestedSKU[] = [
-  {
-    id: '1',
-    name: 'De Cecco Orecchiette Pasta',
-    price: 28.0,
-    unit: '12/1 lb box',
-    sku: 'PST-601',
-    inStock: true,
-    category: 'Pasta',
-  },
-  {
-    id: '2',
-    name: 'Rustichella Artisan Orecchiette',
-    price: 42.0,
-    unit: '12/500g bag',
-    sku: 'PST-602',
-    inStock: true,
-    category: 'Pasta',
-  },
-  {
-    id: '3',
-    name: 'Barilla Orecchiette Pugliesi',
-    price: 24.50,
-    unit: '12/1 lb box',
-    sku: 'PST-603',
-    inStock: true,
-    category: 'Pasta',
-  },
-  {
-    id: '4',
-    name: 'Garofalo Organic Orecchiette',
-    price: 38.75,
-    unit: '12/500g bag',
-    sku: 'PST-604',
-    inStock: false,
-    category: 'Pasta',
-  },
-  {
-    id: '5',
-    name: 'Benedetto Cavalieri Orecchiette',
-    price: 52.00,
-    unit: '12/500g bag',
-    sku: 'PST-605',
-    inStock: true,
-    category: 'Pasta',
-  },
-  {
-    id: '6',
-    name: 'Pastificio dei Campi Orecchiette',
-    price: 35.25,
-    unit: '10/1 lb box',
-    sku: 'PST-606',
-    inStock: true,
-    category: 'Pasta',
-  },
-  {
-    id: '7',
-    name: 'La Molisana Orecchiette',
-    price: 26.50,
-    unit: '12/1 lb box',
-    sku: 'PST-607',
-    inStock: true,
-    category: 'Pasta',
-  },
-  {
-    id: '8',
-    name: 'Setaro Orecchiette Artigianale',
-    price: 48.00,
-    unit: '12/500g bag',
-    sku: 'PST-608',
-    inStock: false,
-    category: 'Pasta',
-  },
-];
+function tierColor(position: number): string {
+  if (position === 1) return 'bg-green-100 text-green-700';
+  if (position === 2) return 'bg-blue-100 text-blue-700';
+  return 'bg-gray-100 text-gray-600';
+}
 
 export function MapComponentDrawer({
   open,
   onOpenChange,
   componentName,
   onApplyMapping,
+  candidates = [],
 }: MapComponentDrawerProps) {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedSKUs, setSelectedSKUs] = useState<string[]>([]);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [notes, setNotes] = useState('');
-  const [visibleCount, setVisibleCount] = useState(2);
 
-  const handleShowMore = () => {
-    setVisibleCount((prev) => prev + 3);
-  };
-
-  const visibleSKUs = sampleSKUs.slice(0, visibleCount);
-  const hasMoreSKUs = visibleCount < sampleSKUs.length;
-
-  const handleToggleSKU = (skuId: string) => {
-    if (selectedSKUs.includes(skuId)) {
-      setSelectedSKUs(selectedSKUs.filter((id) => id !== skuId));
-    } else {
-      setSelectedSKUs([...selectedSKUs, skuId]);
-    }
+  const handleToggle = (productId: string) => {
+    setSelectedIds(prev =>
+      prev.includes(productId) ? prev.filter(id => id !== productId) : [...prev, productId]
+    );
   };
 
   const handleApply = () => {
-    console.log('Applying SKUs:', { selectedSKUs, notes });
-    // Call the callback with the mapping data before resetting
     if (onApplyMapping) {
-      onApplyMapping(componentName, selectedSKUs);
+      onApplyMapping(componentName, selectedIds);
     }
     onOpenChange(false);
-    // Reset state
-    setSelectedSKUs([]);
+    setSelectedIds([]);
     setNotes('');
-    setSearchQuery('');
-    setVisibleCount(2);
   };
 
   const handleCancel = () => {
     onOpenChange(false);
-    // Reset state
-    setSelectedSKUs([]);
+    setSelectedIds([]);
     setNotes('');
-    setSearchQuery('');
-    setVisibleCount(2);
   };
+
+  // Show alternates (skip position 1 which is already the main match)
+  const alternates = candidates.filter(c => c.position > 1);
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange} direction="right">
@@ -162,7 +90,7 @@ export function MapComponentDrawer({
             <div>
               <DrawerTitle className="text-lg">Select Match for {componentName}</DrawerTitle>
               <DrawerDescription className="text-sm mt-1">
-                Choose products from your catalog
+                Choose alternate products from your catalog
               </DrawerDescription>
             </div>
             <DrawerClose asChild>
@@ -174,98 +102,60 @@ export function MapComponentDrawer({
         </DrawerHeader>
 
         <div className="flex-1 overflow-y-auto p-6 space-y-6 min-h-0">
-          {/* Search Section */}
-          <div>
-            <label className="text-sm font-medium text-[#2A2A2A] block mb-2">
-              Search Catalog Products
-            </label>
-            <div className="relative">
-              <Input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Try: parm, calabrian, evoo, 18mo, orecch..."
-                className="pl-10 bg-white border-gray-300"
-              />
-              <svg
-                className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                />
-              </svg>
-            </div>
-            <p className="text-xs text-gray-500 mt-2">
-              Supports chef shorthand, brand names, and regional terminology
-            </p>
-          </div>
-
-          {/* Suggested Products */}
-          <div>
-            <h3 className="text-sm font-medium text-[#2A2A2A] mb-3">
-              Add Product to Quote ({sampleSKUs.length})
-            </h3>
-            <div className="space-y-3">
-              {visibleSKUs.map((sku) => (
-                <div
-                  key={sku.id}
-                  className="border border-gray-200 rounded-lg p-4 hover:border-gray-300 transition-colors"
-                >
-                  <div className="flex items-start gap-3">
-                    <input
-                      type="checkbox"
-                      checked={selectedSKUs.includes(sku.id)}
-                      onChange={() => handleToggleSKU(sku.id)}
-                      className="mt-1 rounded border-gray-300 text-[#A5CFDD] focus:ring-[#A5CFDD]"
-                    />
-                    <div className="flex-1">
-                      <div className="flex items-start justify-between mb-2">
-                        <div className="flex-1">
-                          <h4 className="text-sm font-medium text-[#2A2A2A]">
-                            {sku.name}
-                          </h4>
-                          <p className="text-sm text-gray-600 mt-1">{sku.unit}</p>
+          {alternates.length === 0 ? (
+            <p className="text-sm text-gray-400 italic text-center py-8">No alternate matches found</p>
+          ) : (
+            <div>
+              <h3 className="text-sm font-medium text-[#2A2A2A] mb-3">
+                Alternate Products ({alternates.length})
+              </h3>
+              <div className="space-y-3">
+                {alternates.map((candidate) => (
+                  <div
+                    key={candidate.id}
+                    className="border border-gray-200 rounded-lg p-4 hover:border-gray-300 transition-colors"
+                  >
+                    <div className="flex items-start gap-3">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.includes(candidate.product.id)}
+                        onChange={() => handleToggle(candidate.product.id)}
+                        className="mt-1 rounded border-gray-300 text-[#A5CFDD] focus:ring-[#A5CFDD]"
+                      />
+                      <div className="flex-1">
+                        <div className="flex items-start justify-between mb-2">
+                          <div className="flex-1">
+                            <h4 className="text-sm font-medium text-[#2A2A2A]">
+                              {candidate.product.brand} {candidate.product.product}
+                            </h4>
+                            <p className="text-sm text-gray-600 mt-1">{candidate.product.pack_size}</p>
+                          </div>
+                          <div className="text-right ml-4">
+                            <span className={`inline-block px-2 py-0.5 text-xs rounded ${tierColor(candidate.position)}`}>
+                              {tierLabel(candidate.tier, candidate.position)}
+                            </span>
+                          </div>
                         </div>
-                        <div className="text-right ml-4">
-                          <p className="text-sm font-semibold text-[#2A2A2A]">
-                            ${sku.price.toFixed(2)}
-                          </p>
-                          <span className="inline-block mt-1 px-2 py-0.5 text-xs bg-gray-100 text-gray-700 rounded">
-                            {sku.category}
+                        <div className="flex items-center gap-4 text-xs text-gray-500">
+                          <span>
+                            <span className="font-medium">Item #:</span> {candidate.product.item_number}
                           </span>
+                          <span className="inline-block px-2 py-0.5 bg-gray-100 text-gray-700 rounded">
+                            {candidate.product.category}
+                          </span>
+                          {candidate.score != null && (
+                            <span className="text-gray-400">
+                              Score: {(candidate.score * 100).toFixed(0)}%
+                            </span>
+                          )}
                         </div>
-                      </div>
-                      <div className="flex items-center gap-4 text-xs text-gray-500">
-                        <span>
-                          <span className="font-medium">SKU:</span> {sku.sku}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <span className={`w-2 h-2 rounded-full ${sku.inStock ? 'bg-green-500' : 'bg-red-500'}`} />
-                          {sku.inStock ? 'In Stock' : 'Out of Stock'}
-                        </span>
                       </div>
                     </div>
                   </div>
-                </div>
-              ))}
-              {hasMoreSKUs && (
-                <Button
-                  variant="outline"
-                  className="w-full border-gray-300 text-[#2A2A2A] hover:bg-gray-50"
-                  onClick={handleShowMore}
-                >
-                  <Sparkles className="w-4 h-4 mr-2" />
-                  Show More Products
-                </Button>
-              )}
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Notes Section */}
           <div>
@@ -296,7 +186,7 @@ export function MapComponentDrawer({
               className="flex-1 bg-[#A5CFDD] hover:bg-[#8db9c9] text-[#2A2A2A]"
               onClick={handleApply}
             >
-              Add to Quote ({selectedSKUs.length} products)
+              Add to Quote ({selectedIds.length} products)
             </Button>
           </div>
         </DrawerFooter>
