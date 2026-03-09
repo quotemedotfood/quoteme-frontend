@@ -11,6 +11,7 @@ import {
   getMenuStatus,
   createQuote,
   getQuote,
+  getGuestQuote,
   submitQuoteFeedback,
 } from '../services/api';
 
@@ -109,6 +110,9 @@ export function MapIngredientsPage() {
     return Object.values(dishMap);
   }
 
+  const isGuest = !localStorage.getItem('quoteme_token');
+  const fetchQuote = (id: string) => isGuest ? getGuestQuote(id) : getQuote(id);
+
   // ─── Poll menu status then load quote ─────────────────────────────────────
 
   useEffect(() => {
@@ -125,7 +129,7 @@ export function MapIngredientsPage() {
         // If we already have a quoteId, just load it
         if (quoteId) {
           setLoadingStatus('Loading matches…');
-          const res = await getQuote(quoteId);
+          const res = await fetchQuote(quoteId);
           if (cancelled) return;
           if (res.error || !res.data) throw new Error(res.error || 'Failed to load quote');
           const built = buildDishesFromLines((res.data as QuoteData).lines || []);
@@ -160,7 +164,7 @@ export function MapIngredientsPage() {
 
         // Load full quote with lines
         setLoadingStatus('Loading matches…');
-        const fullQuote = await getQuote(newQuoteId);
+        const fullQuote = await fetchQuote(newQuoteId);
         if (cancelled) return;
         if (fullQuote.error || !fullQuote.data) throw new Error(fullQuote.error || 'Failed to load quote');
         const built = buildDishesFromLines((fullQuote.data as QuoteData).lines || []);
@@ -208,7 +212,7 @@ export function MapIngredientsPage() {
       if (quoteRes.error || !quoteRes.data) throw new Error(quoteRes.error);
       const newQId = (quoteRes.data as any).id;
 
-      const fullQuote = await getQuote(newQId);
+      const fullQuote = await fetchQuote(newQId);
       if (fullQuote.error || !fullQuote.data) throw new Error(fullQuote.error);
       const newDishes = buildDishesFromLines((fullQuote.data as QuoteData).lines || []);
       setDishes(prev => [...prev, ...newDishes]);
@@ -251,7 +255,7 @@ export function MapIngredientsPage() {
     // Reload
     setLoading(true);
     setLoadingStatus('Rebuilding quote with your feedback…');
-    const res = await getQuote(quoteId!);
+    const res = await fetchQuote(quoteId!);
     if (!res.error && res.data) {
       const built = buildDishesFromLines((res.data as QuoteData).lines || []);
       setDishes(built);

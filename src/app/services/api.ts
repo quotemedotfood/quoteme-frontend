@@ -242,6 +242,10 @@ export async function createGuestQuote(quoteData: GuestQuote): Promise<ApiRespon
   });
 }
 
+export async function getGuestQuote(id: string): Promise<ApiResponse<Quote>> {
+  return fetchWithGuest(`/api/v1/guest/quotes/${id}`);
+}
+
 export async function convertGuestToUser(data: GuestConvertData): Promise<ApiResponse<{ message: string; user: any; quotes_used?: number }>> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
