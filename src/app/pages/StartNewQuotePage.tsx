@@ -3,7 +3,7 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
 import { ExternalLink, Upload, Plus, Link as LinkIcon, X, PlusCircle, Loader2 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { Checkbox } from '../components/ui/checkbox';
 import { useUser } from '../contexts/UserContext';
@@ -86,6 +86,21 @@ export function StartNewQuotePage() {
   const [isUpgradeDrawerOpen, setIsUpgradeDrawerOpen] = useState(false);
   const { hasQuotesRemaining, incrementQuoteCount, quotesRemaining, profile, initGuestSession } = useUser();
   const [isCreatingQuote, setIsCreatingQuote] = useState(false);
+  const [loadingPhase, setLoadingPhase] = useState(0);
+
+  useEffect(() => {
+    if (!isCreatingQuote) {
+      setLoadingPhase(0);
+      return;
+    }
+    const phases = [0, 1, 2, 3];
+    let current = 0;
+    const interval = setInterval(() => {
+      current = Math.min(current + 1, phases.length - 1);
+      setLoadingPhase(current);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [isCreatingQuote]);
 
   const handleParseMenu = () => {
     if (pasteText) {
@@ -557,7 +572,7 @@ export function StartNewQuotePage() {
                     {isCreatingQuote ? (
                       <>
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Creating…
+                        {['Reading menu…', 'Extracting ingredients…', 'Matching to catalog…', 'Almost there…'][loadingPhase]}
                       </>
                     ) : (
                       'Match Ingredients to Catalog'
