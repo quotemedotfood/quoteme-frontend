@@ -298,6 +298,44 @@ export function StartNewQuotePage() {
     }
   };
 
+  const handleSkipToExport = async () => {
+    const menuText = pasteText || menuPreviewText;
+    if (!menuText) {
+      alert('Please paste or parse menu text before skipping.');
+      return;
+    }
+
+    if (!hasQuotesRemaining()) {
+      setIsUpgradeDrawerOpen(true);
+      return;
+    }
+
+    setIsCreatingQuote(true);
+    try {
+      if (profile.isGuest || localStorage.getItem('quoteme_token') === null) {
+        if (localStorage.getItem('quoteme_guest_token') === null) {
+          await initGuestSession();
+        }
+        const response = await createGuestQuote({ raw_text: menuText, name: selectedRestaurant?.name || 'New Quote' });
+        if (response.data) {
+          incrementQuoteCount();
+          navigate('/export-finalize', { state: { quoteId: response.data.quote_id, isOpenQuote: isQuoteOpened } });
+        }
+      } else {
+        const response = await createMenu({ raw_text: menuText, name: selectedRestaurant?.name || 'New Quote' });
+        if (response.data) {
+          incrementQuoteCount();
+          navigate('/export-finalize', { state: { quoteId: response.data.quote_id, isOpenQuote: isQuoteOpened } });
+        }
+      }
+    } catch (error) {
+      console.error('Failed to create quote:', error);
+      alert('Failed to create quote. Please try again.');
+    } finally {
+      setIsCreatingQuote(false);
+    }
+  };
+
   const handleRestaurantChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     if (e.target.value === 'add-new') {
       setIsAddRestaurantOpen(true);
@@ -793,7 +831,7 @@ export function StartNewQuotePage() {
             </div>
 
             {/* Parse Button Moved Here */}
-            <div className="flex justify-center mt-2">
+            <div className="flex justify-center gap-3 mt-2">
               <Button
                 className="bg-blue-500 hover:bg-blue-600 text-white px-8"
                 onClick={handleParseMenu}
@@ -832,6 +870,20 @@ export function StartNewQuotePage() {
             <div className="flex flex-col sm:flex-row justify-center gap-3 mt-4">
                 <Button
                     className="w-full sm:w-auto bg-[#F2993D] hover:bg-[#e88929] text-white"
+                    onClick={handleSkipToExport}
+                    disabled={isCreatingQuote || (!pasteText && !menuPreviewText)}
+                >
+                    {isCreatingQuote ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Building quote...
+                      </>
+                    ) : (
+                      'Skip'
+                    )}
+                </Button>
+                <Button
+                    className="w-full sm:w-auto bg-[#A5CFDD] hover:bg-[#8db9c9] text-[#2A2A2A]"
                     onClick={handleContinueToQuoteBuilder}
                     disabled={isCreatingQuote}
                 >

@@ -265,13 +265,31 @@ export function ExportFinalizePage() {
               <p className="text-sm text-gray-500">Step 4 of 4</p>
             </div>
           </div>
-          <Button 
-            className="bg-[#F2993D] hover:bg-[#e88929] text-white"
-            onClick={handleDone}
-          >
-            <Check className="w-4 h-4 mr-2" />
-            Done
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              className="text-[#2A2A2A] border-gray-300"
+              onClick={() => navigate('/map-ingredients', { state: { quoteId, isOpenQuote } })}
+            >
+              <Edit className="w-4 h-4 mr-2" />
+              Edit Matches
+            </Button>
+            <Button
+              variant="outline"
+              className="text-[#2A2A2A] border-gray-300"
+              onClick={() => navigate('/quote-builder', { state: { quoteId, isOpenQuote } })}
+            >
+              <Edit className="w-4 h-4 mr-2" />
+              Edit Pricing
+            </Button>
+            <Button
+              className="bg-[#F2993D] hover:bg-[#e88929] text-white"
+              onClick={handleDone}
+            >
+              <Check className="w-4 h-4 mr-2" />
+              Done
+            </Button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
