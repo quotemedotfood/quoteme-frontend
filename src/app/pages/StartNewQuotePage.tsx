@@ -2,7 +2,7 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
-import { ExternalLink, Upload, Plus, Link as LinkIcon, X, PlusCircle, Loader2, FileText } from 'lucide-react';
+import { ExternalLink, Upload, Plus, Link as LinkIcon, X, PlusCircle, Loader2, FileText, Camera } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router';
 import { Checkbox } from '../components/ui/checkbox';
@@ -101,6 +101,19 @@ export function StartNewQuotePage() {
   const [catalogUploadResult, setCatalogUploadResult] = useState<{ message: string; isError: boolean } | null>(null);
   const [isDraggingCatalog, setIsDraggingCatalog] = useState(false);
   const catalogFileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const [hasCamera, setHasCamera] = useState(false);
+
+  // Detect touch device with camera
+  useEffect(() => {
+    const isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    if (!isTouch) return;
+
+    navigator.mediaDevices?.enumerateDevices().then(devices => {
+      const cam = devices.some(d => d.kind === 'videoinput');
+      setHasCamera(cam);
+    }).catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (!isCreatingQuote) {
@@ -668,6 +681,29 @@ export function StartNewQuotePage() {
               if (file) handleFileSelect(file);
             }}
           />
+          <input
+            ref={cameraInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) handleFileSelect(file);
+            }}
+          />
+
+          {hasCamera && (
+            <button
+              onClick={() => cameraInputRef.current?.click()}
+              disabled={isExtracting}
+              className="w-full flex items-center justify-center gap-3 mb-4 py-4 rounded-lg border-2 border-[#F2993D] bg-orange-50 hover:bg-orange-100 transition-colors"
+            >
+              <Camera className="w-6 h-6 text-[#F2993D]" />
+              <span className="text-sm font-medium text-[#F2993D]">Take Photo of Menu</span>
+            </button>
+          )}
+
           <div
             className={`border-2 border-dashed rounded-lg p-12 text-center mb-4 cursor-pointer transition-colors ${
               isDragging
