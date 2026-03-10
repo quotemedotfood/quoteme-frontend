@@ -1,7 +1,7 @@
 import { Button } from '../components/ui/button';
-import { ArrowLeft, FileText, Download, Mail, MessageSquare, Check, ThumbsUp, ThumbsDown, Link as LinkIcon, Info, Edit, X, Loader2 } from 'lucide-react';
+import { ArrowLeft, FileText, Download, Mail, MessageSquare, Check, ThumbsUp, ThumbsDown, Link as LinkIcon, Info, Edit, X, Loader2, Eye } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
@@ -15,6 +15,12 @@ import {
   DrawerFooter,
   DrawerClose,
 } from '../components/ui/drawer';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '../components/ui/dialog';
 import { getQuote, getGuestQuote, downloadQuotePdf, sendQuote, sendQuoteSms } from '../services/api';
 import type { QuoteResponse, QuoteLineResponse } from '../services/api';
 
@@ -52,6 +58,11 @@ export function ExportFinalizePage() {
   // Premium feature state
   const [selectedDocs, setSelectedDocs] = useState<string[]>([]);
   const [selectedLinks, setSelectedLinks] = useState<string[]>([]);
+
+  // PDF preview modal state
+  const [showPdfModal, setShowPdfModal] = useState(false);
+  const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null);
+  const [loadingPdfPreview, setLoadingPdfPreview] = useState(false);
 
   // Load quote data
   const isGuest = !localStorage.getItem('quoteme_token');
@@ -135,6 +146,34 @@ export function ExportFinalizePage() {
       setDownloadingPdf(false);
     }
   }
+
+  // Open PDF preview modal
+  const handleOpenPdfPreview = useCallback(async () => {
+    if (!quoteId) return;
+    // Reuse existing blob if we already fetched it
+    if (pdfBlobUrl) {
+      setShowPdfModal(true);
+      return;
+    }
+    setLoadingPdfPreview(true);
+    setShowPdfModal(true);
+    try {
+      const result = await downloadQuotePdf(quoteId);
+      if (result.blob) {
+        const url = URL.createObjectURL(result.blob);
+        setPdfBlobUrl(url);
+      }
+    } finally {
+      setLoadingPdfPreview(false);
+    }
+  }, [quoteId, pdfBlobUrl]);
+
+  // Cleanup blob URL on unmount
+  useEffect(() => {
+    return () => {
+      if (pdfBlobUrl) URL.revokeObjectURL(pdfBlobUrl);
+    };
+  }, [pdfBlobUrl]);
 
   // Send state
   const [sendingEmail, setSendingEmail] = useState(false);
@@ -477,38 +516,95 @@ export function ExportFinalizePage() {
             </div>
 
             {/* Quote Preview */}
-            <div className={`bg-white rounded-lg p-6 shadow-sm transition-opacity ${!isFinalized ? 'opacity-50 pointer-events-none' : ''}`}>
+            <div className="bg-white rounded-lg p-6 shadow-sm">
               <div className="flex items-center justify-between mb-1">
                 <h2 className="text-lg text-[#2A2A2A]">Quote Preview</h2>
-                {!isFinalized && <div className="text-xs bg-gray-100 px-2 py-1 rounded text-gray-500">Sign Up to Unlock</div>}
+                <button
+                  onClick={handleOpenPdfPreview}
+                  disabled={!quoteId}
+                  className="text-xs text-[#4A90D9] hover:text-[#3a7bc8] flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Eye className="w-3.5 h-3.5" />
+                  View Full PDF
+                </button>
               </div>
-              <p className="text-gray-500 text-sm mb-6">PDF snapshot</p>
+              <p className="text-gray-500 text-sm mb-4">Click to preview the exact PDF that will be exported</p>
 
-              <div className="bg-gray-50 rounded-lg p-8 border border-gray-200">
-                <div className="bg-white rounded-lg p-6 shadow-sm max-w-md mx-auto">
-                  <div className="flex justify-between items-start mb-6">
-                    <div>
-                      <h3 className="text-xl font-semibold text-[#2A2A2A]">QUOTE</h3>
-                      <p className="text-xs text-gray-500 mt-1">#CPRUSLIEVA</p>
+              <button
+                onClick={handleOpenPdfPreview}
+                disabled={!quoteId}
+                className="w-full text-left cursor-pointer hover:shadow-md transition-shadow rounded-lg disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <div className="bg-gray-100 rounded-lg p-4 border border-gray-200">
+                  {/* Mini PDF replica */}
+                  <div className="bg-white rounded shadow-sm p-5 max-w-md mx-auto" style={{ fontSize: '0.65rem', lineHeight: '1.4' }}>
+                    {/* Header */}
+                    <div className="mb-3">
+                      <span className="text-base font-bold" style={{ color: '#1A1A2E' }}>Quote</span>
+                      <span className="text-base font-bold" style={{ color: '#4A90D9' }}>Me</span>
+                      <div className="mt-1 border-t-2" style={{ borderColor: '#4A90D9' }} />
                     </div>
-                    <div className="text-right">
-                      <p className="text-sm font-medium text-[#2A2A2A]">Premium Food Distributors</p>
+
+                    {/* Metadata */}
+                    <div className="space-y-0.5 mb-3">
+                      {!effectiveOpenQuote && customerName !== 'Loading...' && (
+                        <div>
+                          <span className="text-gray-400">Restaurant: </span>
+                          <span className="font-semibold text-gray-700">{customerName}</span>
+                        </div>
+                      )}
+                      <div>
+                        <span className="text-gray-400">Quote #: </span>
+                        <span className="font-semibold text-gray-700">{quoteId ? quoteId.split('-')[0].toUpperCase() : '—'}</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-400">Quote Date: </span>
+                        <span className="font-semibold text-gray-700">{new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</span>
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="border-t border-gray-200 pt-4 mb-6">
-                    <p className="text-xs text-gray-500 mb-1">BILL TO:</p>
-                    <p className="text-sm font-medium text-[#2A2A2A]">{customerName}</p>
-                  </div>
+                    {/* Mini table */}
+                    <div className="border border-gray-200 rounded overflow-hidden mb-3">
+                      <div className="grid grid-cols-6 gap-0 text-[0.5rem] font-bold" style={{ backgroundColor: '#F0F4F8', color: '#1A1A2E' }}>
+                        <div className="px-1.5 py-1">Category</div>
+                        <div className="px-1.5 py-1">Item #</div>
+                        <div className="px-1.5 py-1">Brand</div>
+                        <div className="px-1.5 py-1 col-span-2">Product</div>
+                        <div className="px-1.5 py-1 text-right">Price</div>
+                      </div>
+                      {quoteData && deduplicatedLines(quoteData.lines || []).slice(0, 4).map((line, i) => (
+                        <div
+                          key={line.id}
+                          className="grid grid-cols-6 gap-0 text-[0.5rem] border-t border-gray-100"
+                          style={{ backgroundColor: i % 2 === 1 ? '#F9FAFB' : 'white' }}
+                        >
+                          <div className="px-1.5 py-0.5 truncate text-gray-600">{line.category || '—'}</div>
+                          <div className="px-1.5 py-0.5 truncate text-gray-600">{line.product?.item_number || '—'}</div>
+                          <div className="px-1.5 py-0.5 truncate text-gray-600">{line.product?.brand || '—'}</div>
+                          <div className="px-1.5 py-0.5 truncate text-gray-600 col-span-2">{line.product?.product || '—'}</div>
+                          <div className="px-1.5 py-0.5 text-right text-gray-600">{line.unit_price || '—'}</div>
+                        </div>
+                      ))}
+                      {quoteData && deduplicatedLines(quoteData.lines || []).length > 4 && (
+                        <div className="text-center text-[0.5rem] text-gray-400 py-1 border-t border-gray-100">
+                          + {deduplicatedLines(quoteData.lines || []).length - 4} more items
+                        </div>
+                      )}
+                      {!quoteData && (
+                        <div className="text-center text-[0.5rem] text-gray-400 py-2">Loading...</div>
+                      )}
+                    </div>
 
-                  <div className="border-t border-gray-200 pt-4">
-                    <div className="flex justify-between items-center">
-                      <span className="text-base font-semibold text-[#2A2A2A]">Total:</span>
-                      <span className="text-base font-semibold text-[#2A2A2A]">{quoteData?.total || '$0.00'}</span>
+                    {/* Total */}
+                    <div className="flex justify-end items-center gap-2 pt-1 border-t border-gray-200">
+                      <span className="text-gray-400 text-[0.6rem]">
+                        Total ({quoteData ? deduplicatedLines(quoteData.lines || []).length : 0} items):
+                      </span>
+                      <span className="font-bold text-sm" style={{ color: '#1A1A2E' }}>{quoteData?.total || '$0.00'}</span>
                     </div>
                   </div>
                 </div>
-              </div>
+              </button>
             </div>
           </div>
 
@@ -805,6 +901,45 @@ export function ExportFinalizePage() {
           </div>
         </DrawerContent>
       </Drawer>
+
+      {/* PDF Preview Modal */}
+      <Dialog open={showPdfModal} onOpenChange={setShowPdfModal}>
+        <DialogContent className="max-w-4xl w-[95vw] h-[90vh] p-0 flex flex-col">
+          <DialogHeader className="px-6 pt-6 pb-2 shrink-0">
+            <DialogTitle className="text-lg text-[#2A2A2A]">Quote PDF Preview</DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 min-h-0 px-6 pb-6">
+            {loadingPdfPreview ? (
+              <div className="flex items-center justify-center h-full">
+                <div className="text-center space-y-3">
+                  <Loader2 className="w-8 h-8 animate-spin text-[#F2993D] mx-auto" />
+                  <p className="text-sm text-gray-500">Loading PDF preview...</p>
+                </div>
+              </div>
+            ) : pdfBlobUrl ? (
+              <object
+                data={pdfBlobUrl}
+                type="application/pdf"
+                className="w-full h-full rounded border border-gray-200"
+              >
+                <div className="flex flex-col items-center justify-center h-full gap-4">
+                  <p className="text-sm text-gray-500">Unable to display PDF inline.</p>
+                  <Button
+                    variant="outline"
+                    onClick={() => window.open(pdfBlobUrl, '_blank')}
+                  >
+                    Open in New Tab
+                  </Button>
+                </div>
+              </object>
+            ) : (
+              <div className="flex items-center justify-center h-full">
+                <p className="text-sm text-red-500">Failed to load PDF preview.</p>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Edit Quote Details Drawer */}
       <Drawer open={showEditDrawer} onOpenChange={setShowEditDrawer} direction="right">
