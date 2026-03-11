@@ -38,7 +38,13 @@ export function CustomersPage() {
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
+  const isLoggedIn = !!localStorage.getItem('quoteme_token');
+
   const fetchRestaurants = useCallback(async () => {
+    if (!isLoggedIn) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setError(null);
     const result = await getRestaurants();
@@ -48,7 +54,7 @@ export function CustomersPage() {
       setRestaurants(result.data);
     }
     setLoading(false);
-  }, []);
+  }, [isLoggedIn]);
 
   useEffect(() => {
     fetchRestaurants();
@@ -266,8 +272,16 @@ export function CustomersPage() {
           </div>
         )}
 
+        {/* Guest State */}
+        {!isLoggedIn && !loading && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-6 text-center">
+            <p className="text-[#2A2A2A] font-medium mb-1">Sign up to manage your customers</p>
+            <p className="text-gray-500 text-sm">Create an account to add restaurants, contacts, and track quote history.</p>
+          </div>
+        )}
+
         {/* Error State */}
-        {error && !loading && (
+        {error && !loading && isLoggedIn && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
             <p className="text-red-600 text-sm">{error}</p>
             <Button
