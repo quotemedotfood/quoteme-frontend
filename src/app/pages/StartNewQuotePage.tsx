@@ -26,6 +26,7 @@ export function StartNewQuotePage() {
   const [isQuoteOpened, setIsQuoteOpened] = useState(false);
   const [isUpgradeDrawerOpen, setIsUpgradeDrawerOpen] = useState(false);
   const { hasQuotesRemaining, incrementQuoteCount, quotesRemaining, profile, initGuestSession } = useUser();
+  const isGuest = profile.isGuest || localStorage.getItem('quoteme_token') === null;
   const [isCreatingQuote, setIsCreatingQuote] = useState(false);
   const [loadingPhase, setLoadingPhase] = useState(0);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
@@ -564,15 +565,25 @@ export function StartNewQuotePage() {
 
         {/* Upload Catalog */}
         <div className="bg-white rounded-lg p-6 mb-6 shadow-sm border border-gray-200">
-          <h2 className="text-lg mb-1">Upload Catalog</h2>
+          <h2 className="text-lg mb-1">{isGuest ? 'Catalog' : 'Upload Catalog'}</h2>
           <p className="text-gray-500 text-sm mb-4 font-bold">
-            Upload your entire catalog or details
+            {isGuest ? 'Sign up to upload your own catalog' : 'Upload your entire catalog or details'}
           </p>
 
           {/* Active / Recent Catalogs */}
           <div className="mb-4">
-            <h3 className="text-sm mb-2">Your Catalog(s)</h3>
-            {catalogLoading ? (
+            <h3 className="text-sm mb-2">{isGuest ? 'Demo Catalog' : 'Your Catalog(s)'}</h3>
+            {isGuest ? (
+              <div className="border border-blue-200 rounded-lg p-4 bg-blue-50">
+                <div className="flex items-center gap-3">
+                  <FileText className="w-5 h-5 text-blue-400" />
+                  <div>
+                    <p className="text-sm font-medium text-[#2A2A2A]">Demo Catalog Active</p>
+                    <p className="text-xs text-gray-500">Sign up to upload your own product catalog</p>
+                  </div>
+                </div>
+              </div>
+            ) : catalogLoading ? (
               <div className="flex items-center gap-2 text-sm text-gray-400 py-3">
                 <Loader2 className="w-4 h-4 animate-spin" /> Loading catalogs...
               </div>
@@ -602,8 +613,8 @@ export function StartNewQuotePage() {
             )}
           </div>
 
-          {/* Upload New Catalog */}
-          <div>
+          {/* Upload New Catalog — only for logged-in users */}
+          {!isGuest && <div>
             <h3 className="text-sm mb-2">Upload {catalogs.length > 0 ? 'New' : 'Your'} Catalog</h3>
             <input
               ref={catalogFileInputRef}
@@ -651,7 +662,7 @@ export function StartNewQuotePage() {
                 {catalogUploadResult.message}
               </div>
             )}
-          </div>
+          </div>}
         </div>
 
         {/* Upload or Paste Menu */}
