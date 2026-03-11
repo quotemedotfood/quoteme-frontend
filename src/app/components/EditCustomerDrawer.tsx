@@ -11,46 +11,23 @@ import {
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
-import { X, Plus, Trash2 } from 'lucide-react';
-
-interface Customer {
-  id: number;
-  restaurantName: string;
-  group: string;
-  purchaser: string;
-  position: string;
-  email: string;
-  phone: string;
-  openQuotes: number;
-  wonQuotes: number;
-  contacts: string;
-}
-
-interface ChefContact {
-  id: number;
-  name: string;
-  role: string;
-  email: string;
-  phone: string;
-  notes: string;
-}
+import { X, Plus, Trash2, Loader2 } from 'lucide-react';
+import {
+  updateRestaurant,
+  createContact,
+  updateContact,
+  deleteContact,
+  type RestaurantDetail,
+  type RestaurantContact,
+} from '../services/api';
 
 interface EditCustomerDrawerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  customer: Customer | null;
-  chef?: ChefContact | null;
+  restaurant: RestaurantDetail | null;
+  contact?: RestaurantContact | null;
+  onSuccess?: () => void;
 }
-
-const existingGroups = [
-  'Red Door Group',
-  'Lakeside Hospitality',
-  'Bella Group',
-  'Golden Group',
-  'Coastline Dining',
-  'Urban Eats Collective',
-  'Harbor Side Restaurants',
-];
 
 const recommendedPositions = [
   'Executive Chef',
@@ -59,160 +36,315 @@ const recommendedPositions = [
   'Porter',
 ];
 
-const restaurantTypes = [
-  'Fine Dining',
-  'Casual Dining',
-  'Fast Casual',
-  'Cafe',
-  'Bar & Grill',
-  'Steakhouse',
-  'Seafood',
-  'Italian',
-  'Asian',
-  'Mexican',
-  'Other',
-];
-
-interface EditChefContact {
+interface EditableContact {
   id: string;
-  name: string;
+  isNew: boolean;
+  firstName: string;
+  lastName: string;
   role: string;
   email: string;
   phone: string;
-  notes: string;
+  isPrimary: boolean;
+  deleted: boolean;
 }
 
-interface MenuUrl {
-  id: string;
-  url: string;
-  label: string;
-}
-
-export function EditCustomerDrawer({ 
-  open, 
-  onOpenChange, 
-  customer,
-  chef 
+export function EditCustomerDrawer({
+  open,
+  onOpenChange,
+  restaurant,
+  contact,
+  onSuccess,
 }: EditCustomerDrawerProps) {
+  // Restaurant form fields
   const [formData, setFormData] = useState({
-    restaurantName: '',
-    address: '',
-    restaurantType: '',
-    group: '',
-    purchaser: '',
-    position: '',
-    email: '',
-    phone: '',
-    notes: '',
+    name: '',
+    addressLine1: '',
+    addressLine2: '',
+    city: '',
+    state: '',
+    zip: '',
   });
 
-  const [menuUrls, setMenuUrls] = useState<MenuUrl[]>([]);
-  const [chefContacts, setChefContacts] = useState<EditChefContact[]>([]);
-  const [showNewGroupInput, setShowNewGroupInput] = useState(false);
-  const [showNewPositionInput, setShowNewPositionInput] = useState(false);
+  // Contact editing (single contact mode)
+  const [contactForm, setContactForm] = useState({
+    firstName: '',
+    lastName: '',
+    role: '',
+    email: '',
+    phone: '',
+    isPrimary: false,
+  });
 
-  const addMenuUrl = () => {
-    const newMenuUrl: MenuUrl = {
-      id: Date.now().toString(),
-      url: '',
-      label: '',
-    };
-    setMenuUrls([...menuUrls, newMenuUrl]);
-  };
+  // Contact list editing (restaurant mode)
+  const [editableContacts, setEditableContacts] = useState<EditableContact[]>([]);
+  const [showNewPositionInput, setShowNewPositionInput] = useState<Record<string, boolean>>({});
 
-  const removeMenuUrl = (id: string) => {
-    setMenuUrls(menuUrls.filter(menu => menu.id !== id));
-  };
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [deletingContactId, setDeletingContactId] = useState<string | null>(null);
 
-  const updateMenuUrl = (id: string, field: keyof MenuUrl, value: string) => {
-    setMenuUrls(menuUrls.map(menu => 
-      menu.id === id ? { ...menu, [field]: value } : menu
-    ));
-  };
+  const isContactMode = !!contact;
 
-  const addChefContact = () => {
-    const newChef: EditChefContact = {
-      id: Date.now().toString(),
-      name: '',
+  // Populate form when data changes
+  useEffect(() => {
+    if (contact) {
+      setContactForm({
+        firstName: contact.first_name || '',
+        lastName: contact.last_name || '',
+        role: contact.role || '',
+        email: contact.email || '',
+        phone: contact.phone || '',
+        isPrimary: contact.is_primary,
+      });
+      setEditableContacts([]);
+    } else if (restaurant) {
+      setFormData({
+        name: restaurant.name || '',
+        addressLine1: restaurant.address_line_1 || '',
+        addressLine2: restaurant.address_line_2 || '',
+        city: restaurant.city || '',
+        state: restaurant.state || '',
+        zip: restaurant.zip || '',
+      });
+      setEditableContacts(
+        restaurant.contacts.map((c) => ({
+          id: c.id,
+          isNew: false,
+          firstName: c.first_name,
+          lastName: c.last_name,
+          role: c.role || '',
+          email: c.email || '',
+          phone: c.phone || '',
+          isPrimary: c.is_primary,
+          deleted: false,
+        }))
+      );
+    }
+    setError(null);
+    setShowNewPositionInput({});
+  }, [restaurant, contact]);
+
+  const addNewContact = () => {
+    const newContact: EditableContact = {
+      id: `new-${Date.now()}`,
+      isNew: true,
+      firstName: '',
+      lastName: '',
       role: '',
       email: '',
       phone: '',
-      notes: '',
+      isPrimary: false,
+      deleted: false,
     };
-    setChefContacts([...chefContacts, newChef]);
+    setEditableContacts([...editableContacts, newContact]);
   };
 
-  const removeChefContact = (id: string) => {
-    setChefContacts(chefContacts.filter(c => c.id !== id));
+  const markContactDeleted = (id: string) => {
+    setEditableContacts(editableContacts.map(c =>
+      c.id === id ? { ...c, deleted: true } : c
+    ));
   };
 
-  const updateChefContact = (id: string, field: keyof EditChefContact, value: string) => {
-    setChefContacts(chefContacts.map(c => 
+  const removeNewContact = (id: string) => {
+    setEditableContacts(editableContacts.filter(c => c.id !== id));
+  };
+
+  const updateEditableContact = (id: string, field: keyof EditableContact, value: string | boolean) => {
+    setEditableContacts(editableContacts.map(c =>
       c.id === id ? { ...c, [field]: value } : c
     ));
   };
 
-  // Update form when customer or chef changes
-  useEffect(() => {
-    if (chef) {
-      // Editing a chef contact
-      setFormData({
-        restaurantName: chef.name,
-        address: '',
-        restaurantType: '',
-        group: '',
-        purchaser: '',
-        position: chef.role,
-        email: chef.email,
-        phone: chef.phone,
-        notes: chef.notes,
-      });
-      setChefContacts([]);
-    } else if (customer) {
-      // Editing a customer
-      setFormData({
-        restaurantName: customer.restaurantName,
-        address: '',
-        restaurantType: '',
-        group: customer.group,
-        purchaser: customer.purchaser,
-        position: customer.position,
-        email: customer.email,
-        phone: customer.phone,
-        notes: '',
-      });
-      // In a real app, you'd fetch the chef contacts for this customer
-      setChefContacts([]);
+  const handleDeleteContact = async (contactToDelete: EditableContact) => {
+    if (contactToDelete.isNew) {
+      removeNewContact(contactToDelete.id);
+      return;
     }
-  }, [customer, chef]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+    if (!restaurant) return;
+
+    setDeletingContactId(contactToDelete.id);
+    const result = await deleteContact(restaurant.id, contactToDelete.id);
+    setDeletingContactId(null);
+
+    if (result.error) {
+      setError(`Failed to delete contact: ${result.error}`);
+      return;
+    }
+
+    markContactDeleted(contactToDelete.id);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Form submitted:', formData, chefContacts);
+    if (!restaurant) return;
+
+    setSaving(true);
+    setError(null);
+
+    if (isContactMode && contact) {
+      // Update single contact
+      const result = await updateContact(restaurant.id, contact.id, {
+        first_name: contactForm.firstName,
+        last_name: contactForm.lastName,
+        role: contactForm.role || undefined,
+        email: contactForm.email || undefined,
+        phone: contactForm.phone || undefined,
+        is_primary: contactForm.isPrimary,
+      });
+
+      if (result.error) {
+        setError(result.error);
+        setSaving(false);
+        return;
+      }
+    } else {
+      // Update restaurant
+      const restaurantResult = await updateRestaurant(restaurant.id, {
+        name: formData.name,
+        address_line_1: formData.addressLine1 || undefined,
+        address_line_2: formData.addressLine2 || undefined,
+        city: formData.city || undefined,
+        state: formData.state || undefined,
+        zip: formData.zip || undefined,
+      });
+
+      if (restaurantResult.error) {
+        setError(restaurantResult.error);
+        setSaving(false);
+        return;
+      }
+
+      // Process contact changes
+      const activeContacts = editableContacts.filter(c => !c.deleted);
+      for (const ec of activeContacts) {
+        if (ec.isNew) {
+          if (!ec.firstName && !ec.lastName) continue;
+          const result = await createContact(restaurant.id, {
+            first_name: ec.firstName,
+            last_name: ec.lastName,
+            role: ec.role || undefined,
+            email: ec.email || undefined,
+            phone: ec.phone || undefined,
+            is_primary: ec.isPrimary,
+          });
+          if (result.error) {
+            console.warn('Failed to create contact:', result.error);
+          }
+        } else {
+          // Update existing contact
+          const original = restaurant.contacts.find(c => c.id === ec.id);
+          if (!original) continue;
+
+          const hasChanged =
+            original.first_name !== ec.firstName ||
+            original.last_name !== ec.lastName ||
+            (original.role || '') !== ec.role ||
+            (original.email || '') !== ec.email ||
+            (original.phone || '') !== ec.phone ||
+            original.is_primary !== ec.isPrimary;
+
+          if (hasChanged) {
+            const result = await updateContact(restaurant.id, ec.id, {
+              first_name: ec.firstName,
+              last_name: ec.lastName,
+              role: ec.role || undefined,
+              email: ec.email || undefined,
+              phone: ec.phone || undefined,
+              is_primary: ec.isPrimary,
+            });
+            if (result.error) {
+              console.warn('Failed to update contact:', result.error);
+            }
+          }
+        }
+      }
+    }
+
+    setSaving(false);
     onOpenChange(false);
+    onSuccess?.();
   };
 
-  const handleGroupChange = (value: string) => {
+  const handlePositionChange = (contactId: string, value: string) => {
     if (value === 'add-new') {
-      setShowNewGroupInput(true);
-      setFormData({ ...formData, group: '' });
+      setShowNewPositionInput({ ...showNewPositionInput, [contactId]: true });
+      if (isContactMode) {
+        setContactForm({ ...contactForm, role: '' });
+      } else {
+        updateEditableContact(contactId, 'role', '');
+      }
     } else {
-      setShowNewGroupInput(false);
-      setFormData({ ...formData, group: value });
+      setShowNewPositionInput({ ...showNewPositionInput, [contactId]: false });
+      if (isContactMode) {
+        setContactForm({ ...contactForm, role: value });
+      } else {
+        updateEditableContact(contactId, 'role', value);
+      }
     }
   };
 
-  const handlePositionChange = (value: string) => {
-    if (value === 'add-new') {
-      setShowNewPositionInput(true);
-      setFormData({ ...formData, position: '' });
-    } else {
-      setShowNewPositionInput(false);
-      setFormData({ ...formData, position: value });
+  const renderPositionSelect = (contactId: string, currentRole: string) => {
+    if (showNewPositionInput[contactId]) {
+      return (
+        <div className="space-y-1">
+          <Input
+            type="text"
+            value={currentRole}
+            onChange={(e) => {
+              if (isContactMode) {
+                setContactForm({ ...contactForm, role: e.target.value });
+              } else {
+                updateEditableContact(contactId, 'role', e.target.value);
+              }
+            }}
+            placeholder="Enter role"
+            className="bg-white"
+          />
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setShowNewPositionInput({ ...showNewPositionInput, [contactId]: false });
+              if (isContactMode) {
+                setContactForm({ ...contactForm, role: '' });
+              } else {
+                updateEditableContact(contactId, 'role', '');
+              }
+            }}
+            className="text-xs text-gray-600"
+          >
+            Cancel - Select from list
+          </Button>
+        </div>
+      );
     }
+
+    return (
+      <select
+        value={currentRole}
+        onChange={(e) => handlePositionChange(contactId, e.target.value)}
+        className="w-full px-3 py-2 border border-gray-200 rounded-md bg-white text-sm"
+      >
+        <option value="">Select role (optional)</option>
+        {recommendedPositions.map((position) => (
+          <option key={position} value={position}>
+            {position}
+          </option>
+        ))}
+        {/* Show current role if not in list */}
+        {currentRole && !recommendedPositions.includes(currentRole) && (
+          <option value={currentRole}>{currentRole}</option>
+        )}
+        <option value="add-new" className="text-orange-500 font-medium">
+          + Add New Role
+        </option>
+      </select>
+    );
   };
 
-  const isChefContact = !!chef;
+  const activeContacts = editableContacts.filter(c => !c.deleted);
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange} direction="right">
@@ -221,11 +353,11 @@ export function EditCustomerDrawer({
           <div className="flex items-center justify-between">
             <div>
               <DrawerTitle>
-                {isChefContact ? 'Edit Chef Contact' : 'Edit Customer'}
+                {isContactMode ? 'Edit Contact' : 'Edit Customer'}
               </DrawerTitle>
               <DrawerDescription>
-                {isChefContact 
-                  ? 'Update chef contact information' 
+                {isContactMode
+                  ? `Update contact for ${restaurant?.name || ''}`
                   : 'Update restaurant customer profile'}
               </DrawerDescription>
             </div>
@@ -239,378 +371,273 @@ export function EditCustomerDrawer({
 
         <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
           <div className="flex-1 overflow-y-auto p-6 space-y-4">
-            {/* Restaurant Name / Chef Name */}
-            <div>
-              <Label htmlFor="restaurant-name" className="text-sm mb-2 block">
-                {isChefContact ? 'Chef Name' : 'Restaurant Name'} *
-              </Label>
-              <Input
-                id="restaurant-name"
-                type="text"
-                value={formData.restaurantName}
-                onChange={(e) =>
-                  setFormData({ ...formData, restaurantName: e.target.value })
-                }
-                placeholder={isChefContact ? 'Enter chef name' : 'Enter restaurant name'}
-                required
-                className="bg-gray-50"
-              />
-            </div>
-
-            {/* Address (only for customers) */}
-            {!isChefContact && (
-              <div>
-                <Label htmlFor="address" className="text-sm mb-2 block">
-                  Address *
-                </Label>
-                <Input
-                  id="address"
-                  type="text"
-                  value={formData.address}
-                  onChange={(e) =>
-                    setFormData({ ...formData, address: e.target.value })
-                  }
-                  placeholder="123 Main Street, City, State ZIP"
-                  required
-                  className="bg-gray-50"
-                />
+            {error && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                <p className="text-red-600 text-sm">{error}</p>
               </div>
             )}
 
-            {/* Menu URL (only for customers) */}
-            {!isChefContact && (
-              <div>
-                <div className="flex justify-between items-center mb-3">
-                  <Label className="text-sm">Menu URLs</Label>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={addMenuUrl}
-                    className="text-xs h-8"
-                  >
-                    <Plus className="h-3 w-3 mr-1" />
-                    Add Menu URL
-                  </Button>
-                </div>
-                <div className="space-y-3">
-                  {menuUrls.map((menu, index) => (
-                    <div key={menu.id} className="bg-gray-50 p-4 rounded-lg border border-gray-200 relative">
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="text-xs font-medium text-gray-600">Menu URL {index + 1}</span>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => removeMenuUrl(menu.id)}
-                          className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
-                      </div>
-                      <div className="space-y-2">
-                        <Input
-                          type="text"
-                          value={menu.url}
-                          onChange={(e) => updateMenuUrl(menu.id, 'url', e.target.value)}
-                          placeholder="https://www.restaurant.com/menu"
-                          className="bg-white"
-                        />
-                        <Input
-                          type="text"
-                          value={menu.label}
-                          onChange={(e) => updateMenuUrl(menu.id, 'label', e.target.value)}
-                          placeholder="Label (optional)"
-                          className="bg-white"
-                        />
-                      </div>
-                    </div>
-                  ))}
-                  {menuUrls.length === 0 && (
-                    <p className="text-xs text-gray-500 text-center py-4">
-                      No menu URLs added yet. Click "Add Menu URL" to add one.
-                    </p>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Restaurant Type (only for customers) */}
-            {!isChefContact && (
-              <div>
-                <Label htmlFor="restaurant-type" className="text-sm mb-2 block">
-                  Restaurant Type
-                </Label>
-                <select
-                  id="restaurant-type"
-                  value={formData.restaurantType}
-                  onChange={(e) =>
-                    setFormData({ ...formData, restaurantType: e.target.value })
-                  }
-                  className="w-full px-3 py-2 border border-gray-200 rounded-md bg-gray-50 text-sm"
-                >
-                  <option value="">Select a type (optional)</option>
-                  {restaurantTypes.map((type) => (
-                    <option key={type} value={type}>
-                      {type}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-
-            {/* Group Name (only for customers) */}
-            {!isChefContact && (
-              <div>
-                <Label htmlFor="group-name" className="text-sm mb-2 block">
-                  Group Name
-                </Label>
-                {!showNewGroupInput ? (
-                  <select
-                    id="group-name"
-                    value={formData.group}
-                    onChange={(e) => handleGroupChange(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-md bg-gray-50 text-sm"
-                  >
-                    <option value="">Select a group (optional)</option>
-                    {existingGroups.map((group) => (
-                      <option key={group} value={group}>
-                        {group}
-                      </option>
-                    ))}
-                    <option value="add-new" className="text-orange-500 font-medium">
-                      + Add New Group
-                    </option>
-                  </select>
-                ) : (
-                  <div className="space-y-2">
+            {isContactMode ? (
+              <>
+                {/* Single Contact Edit */}
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <Label className="text-sm mb-2 block">First Name *</Label>
                     <Input
                       type="text"
-                      value={formData.group}
-                      onChange={(e) =>
-                        setFormData({ ...formData, group: e.target.value })
-                      }
-                      placeholder="Enter new group name"
+                      value={contactForm.firstName}
+                      onChange={(e) => setContactForm({ ...contactForm, firstName: e.target.value })}
+                      placeholder="First name"
+                      required
                       className="bg-gray-50"
                     />
+                  </div>
+                  <div>
+                    <Label className="text-sm mb-2 block">Last Name *</Label>
+                    <Input
+                      type="text"
+                      value={contactForm.lastName}
+                      onChange={(e) => setContactForm({ ...contactForm, lastName: e.target.value })}
+                      placeholder="Last name"
+                      required
+                      className="bg-gray-50"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <Label className="text-sm mb-2 block">Role</Label>
+                  {renderPositionSelect('single-contact', contactForm.role)}
+                </div>
+
+                <div>
+                  <Label className="text-sm mb-2 block">Email</Label>
+                  <Input
+                    type="email"
+                    value={contactForm.email}
+                    onChange={(e) => setContactForm({ ...contactForm, email: e.target.value })}
+                    placeholder="contact@restaurant.com"
+                    className="bg-gray-50"
+                  />
+                </div>
+
+                <div>
+                  <Label className="text-sm mb-2 block">Phone</Label>
+                  <Input
+                    type="tel"
+                    value={contactForm.phone}
+                    onChange={(e) => setContactForm({ ...contactForm, phone: e.target.value })}
+                    placeholder="(555) 123-4567"
+                    className="bg-gray-50"
+                  />
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="is-primary"
+                    checked={contactForm.isPrimary}
+                    onChange={(e) => setContactForm({ ...contactForm, isPrimary: e.target.checked })}
+                    className="rounded"
+                  />
+                  <Label htmlFor="is-primary" className="text-sm cursor-pointer">
+                    Primary contact
+                  </Label>
+                </div>
+
+                {/* Delete Contact Button */}
+                {contact && restaurant && (
+                  <div className="pt-4 border-t border-gray-200">
                     <Button
                       type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        setShowNewGroupInput(false);
-                        setFormData({ ...formData, group: '' });
+                      variant="outline"
+                      className="w-full text-red-600 border-red-200 hover:bg-red-50"
+                      disabled={deletingContactId === contact.id}
+                      onClick={async () => {
+                        if (!confirm('Are you sure you want to delete this contact?')) return;
+                        setDeletingContactId(contact.id);
+                        const result = await deleteContact(restaurant.id, contact.id);
+                        setDeletingContactId(null);
+                        if (result.error) {
+                          setError(`Failed to delete: ${result.error}`);
+                          return;
+                        }
+                        onOpenChange(false);
+                        onSuccess?.();
                       }}
-                      className="text-xs text-gray-600"
                     >
-                      Cancel - Select from existing groups
+                      {deletingContactId === contact.id ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Deleting...
+                        </>
+                      ) : (
+                        <>
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          Delete Contact
+                        </>
+                      )}
                     </Button>
                   </div>
                 )}
-              </div>
-            )}
-
-            {/* Purchaser (only for customers) */}
-            {!isChefContact && (
-              <div>
-                <Label htmlFor="purchaser" className="text-sm mb-2 block">
-                  Purchaser *
-                </Label>
-                <Input
-                  id="purchaser"
-                  type="text"
-                  value={formData.purchaser}
-                  onChange={(e) =>
-                    setFormData({ ...formData, purchaser: e.target.value })
-                  }
-                  placeholder="John Smith"
-                  required
-                  className="bg-gray-50"
-                />
-              </div>
-            )}
-
-            {/* Position */}
-            <div>
-              <Label htmlFor="position" className="text-sm mb-2 block">
-                {isChefContact ? 'Role' : 'Position'}
-              </Label>
-              {!showNewPositionInput ? (
-                <select
-                  id="position"
-                  value={formData.position}
-                  onChange={(e) => handlePositionChange(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-md bg-gray-50 text-sm"
-                >
-                  <option value="">Select a position (optional)</option>
-                  {recommendedPositions.map((position) => (
-                    <option key={position} value={position}>
-                      {position}
-                    </option>
-                  ))}
-                  <option value="add-new" className="text-orange-500 font-medium">
-                    + Add New Position
-                  </option>
-                </select>
-              ) : (
-                <div className="space-y-2">
+              </>
+            ) : (
+              <>
+                {/* Restaurant Edit */}
+                <div>
+                  <Label htmlFor="restaurant-name" className="text-sm mb-2 block">
+                    Restaurant Name *
+                  </Label>
                   <Input
+                    id="restaurant-name"
                     type="text"
-                    value={formData.position}
-                    onChange={(e) =>
-                      setFormData({ ...formData, position: e.target.value })
-                    }
-                    placeholder="Enter new position"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    placeholder="Enter restaurant name"
+                    required
                     className="bg-gray-50"
                   />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setShowNewPositionInput(false);
-                      setFormData({ ...formData, position: '' });
-                    }}
-                    className="text-xs text-gray-600"
-                  >
-                    Cancel - Select from existing positions
-                  </Button>
                 </div>
-              )}
-            </div>
 
-            {/* Email */}
-            <div>
-              <Label htmlFor="email" className="text-sm mb-2 block">
-                Email *
-              </Label>
-              <Input
-                id="email"
-                type="email"
-                value={formData.email}
-                onChange={(e) =>
-                  setFormData({ ...formData, email: e.target.value })
-                }
-                placeholder="contact@restaurant.com"
-                required
-                className="bg-gray-50"
-              />
-            </div>
-
-            {/* Phone */}
-            <div>
-              <Label htmlFor="phone" className="text-sm mb-2 block">
-                Phone *
-              </Label>
-              <Input
-                id="phone"
-                type="tel"
-                value={formData.phone}
-                onChange={(e) =>
-                  setFormData({ ...formData, phone: e.target.value })
-                }
-                placeholder="(555) 123-4567"
-                required
-                className="bg-gray-50"
-              />
-            </div>
-
-            {/* Notes (only for chef contacts) */}
-            {isChefContact && (
-              <div>
-                <Label htmlFor="notes" className="text-sm mb-2 block">
-                  Notes
-                </Label>
-                <Input
-                  id="notes"
-                  type="text"
-                  value={formData.notes}
-                  onChange={(e) =>
-                    setFormData({ ...formData, notes: e.target.value })
-                  }
-                  placeholder="Add any additional notes"
-                  className="bg-gray-50"
-                />
-              </div>
-            )}
-
-            {/* Chef Contacts (only for customers) */}
-            {!isChefContact && (
-              <div>
-                <div className="flex justify-between items-center mb-3">
-                  <Label className="text-sm">Chef Contacts</Label>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={addChefContact}
-                    className="text-xs h-8"
-                  >
-                    <Plus className="h-3 w-3 mr-1" />
-                    Add Chef
-                  </Button>
+                <div>
+                  <Label className="text-sm mb-2 block">Address</Label>
+                  <Input
+                    type="text"
+                    value={formData.addressLine1}
+                    onChange={(e) => setFormData({ ...formData, addressLine1: e.target.value })}
+                    placeholder="Street address"
+                    className="bg-gray-50 mb-2"
+                  />
+                  <Input
+                    type="text"
+                    value={formData.addressLine2}
+                    onChange={(e) => setFormData({ ...formData, addressLine2: e.target.value })}
+                    placeholder="Suite, unit, etc. (optional)"
+                    className="bg-gray-50 mb-2"
+                  />
+                  <div className="grid grid-cols-3 gap-2">
+                    <Input
+                      type="text"
+                      value={formData.city}
+                      onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                      placeholder="City"
+                      className="bg-gray-50"
+                    />
+                    <Input
+                      type="text"
+                      value={formData.state}
+                      onChange={(e) => setFormData({ ...formData, state: e.target.value })}
+                      placeholder="State"
+                      className="bg-gray-50"
+                    />
+                    <Input
+                      type="text"
+                      value={formData.zip}
+                      onChange={(e) => setFormData({ ...formData, zip: e.target.value })}
+                      placeholder="ZIP"
+                      className="bg-gray-50"
+                    />
+                  </div>
                 </div>
-                <div className="space-y-3">
-                  {chefContacts.map((contact, index) => (
-                    <div key={contact.id} className="bg-gray-50 p-4 rounded-lg border border-gray-200 relative">
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="text-xs font-medium text-gray-600">Chef Contact {index + 1}</span>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => removeChefContact(contact.id)}
-                          className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </Button>
+
+                {/* Contacts Section */}
+                <div>
+                  <div className="flex justify-between items-center mb-3">
+                    <Label className="text-sm">Contacts</Label>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={addNewContact}
+                      className="text-xs h-8"
+                    >
+                      <Plus className="h-3 w-3 mr-1" />
+                      Add Contact
+                    </Button>
+                  </div>
+                  <div className="space-y-3">
+                    {activeContacts.map((ec, index) => (
+                      <div key={ec.id} className="bg-gray-50 p-4 rounded-lg border border-gray-200 relative">
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="text-xs font-medium text-gray-600">
+                            Contact {index + 1}
+                            {ec.isPrimary && <span className="text-orange-500 ml-1">(Primary)</span>}
+                            {ec.isNew && <span className="text-green-500 ml-1">(New)</span>}
+                          </span>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeleteContact(ec)}
+                            disabled={deletingContactId === ec.id}
+                            className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
+                          >
+                            {deletingContactId === ec.id ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-3 w-3" />
+                            )}
+                          </Button>
+                        </div>
+                        <div className="space-y-2">
+                          <div className="grid grid-cols-2 gap-2">
+                            <Input
+                              type="text"
+                              value={ec.firstName}
+                              onChange={(e) => updateEditableContact(ec.id, 'firstName', e.target.value)}
+                              placeholder="First Name"
+                              className="bg-white"
+                            />
+                            <Input
+                              type="text"
+                              value={ec.lastName}
+                              onChange={(e) => updateEditableContact(ec.id, 'lastName', e.target.value)}
+                              placeholder="Last Name"
+                              className="bg-white"
+                            />
+                          </div>
+                          {renderPositionSelect(ec.id, ec.role)}
+                          <Input
+                            type="email"
+                            value={ec.email}
+                            onChange={(e) => updateEditableContact(ec.id, 'email', e.target.value)}
+                            placeholder="Email"
+                            className="bg-white"
+                          />
+                          <Input
+                            type="tel"
+                            value={ec.phone}
+                            onChange={(e) => updateEditableContact(ec.id, 'phone', e.target.value)}
+                            placeholder="Phone"
+                            className="bg-white"
+                          />
+                          {!ec.isPrimary && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                setEditableContacts(editableContacts.map(c => ({
+                                  ...c,
+                                  isPrimary: c.id === ec.id,
+                                })));
+                              }}
+                              className="text-xs text-blue-600"
+                            >
+                              Set as Primary
+                            </Button>
+                          )}
+                        </div>
                       </div>
-                      <div className="space-y-2">
-                        <Input
-                          type="text"
-                          value={contact.name}
-                          onChange={(e) => updateChefContact(contact.id, 'name', e.target.value)}
-                          placeholder="Chef Name"
-                          className="bg-white"
-                        />
-                        <Input
-                          type="text"
-                          value={contact.role}
-                          onChange={(e) => updateChefContact(contact.id, 'role', e.target.value)}
-                          placeholder="Role (e.g., Sous Chef)"
-                          className="bg-white"
-                        />
-                        <Input
-                          type="email"
-                          value={contact.email}
-                          onChange={(e) => updateChefContact(contact.id, 'email', e.target.value)}
-                          placeholder="Email"
-                          className="bg-white"
-                        />
-                        <Input
-                          type="tel"
-                          value={contact.phone}
-                          onChange={(e) => updateChefContact(contact.id, 'phone', e.target.value)}
-                          placeholder="Phone"
-                          className="bg-white"
-                        />
-                        <Input
-                          type="text"
-                          value={contact.notes}
-                          onChange={(e) => updateChefContact(contact.id, 'notes', e.target.value)}
-                          placeholder="Notes (optional)"
-                          className="bg-white"
-                        />
-                      </div>
-                    </div>
-                  ))}
-                  {chefContacts.length === 0 && (
-                    <p className="text-xs text-gray-500 text-center py-4">
-                      No chef contacts added yet. Click "Add Chef" to add one.
-                    </p>
-                  )}
+                    ))}
+                    {activeContacts.length === 0 && (
+                      <p className="text-xs text-gray-500 text-center py-4">
+                        No contacts. Click "Add Contact" to add one.
+                      </p>
+                    )}
+                  </div>
                 </div>
-              </div>
+              </>
             )}
           </div>
 
@@ -618,11 +645,19 @@ export function EditCustomerDrawer({
             <Button
               type="submit"
               className="bg-[#F2993D] hover:bg-[#E08A2E] text-white w-full"
+              disabled={saving}
             >
-              Save Changes
+              {saving ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                'Save Changes'
+              )}
             </Button>
             <DrawerClose asChild>
-              <Button type="button" variant="outline" className="w-full">
+              <Button type="button" variant="outline" className="w-full" disabled={saving}>
                 Cancel
               </Button>
             </DrawerClose>

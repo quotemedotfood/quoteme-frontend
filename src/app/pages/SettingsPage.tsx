@@ -2,13 +2,18 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Upload, Download, Trash2, Edit } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
-import { useLocation } from 'react-router';
+import { useLocation, useNavigate } from 'react-router';
 import { useUser } from '../contexts/UserContext';
+import { useAuth } from '../contexts/AuthContext';
+import { updateCurrentUser } from '../services/api';
 import settingsImage from '/src/assets/2a44d7cf18f7672c57e1e8cd07027ed5a2b4bf19.png';
 
 export function SettingsPage() {
   const { profile, updateProfile } = useUser();
-  
+  const { logout } = useAuth();
+  const navigate = useNavigate();
+  const [isSaving, setIsSaving] = useState(false);
+
   // Local state for editing
   const [fullName, setFullName] = useState(profile.fullName);
   const [email, setEmail] = useState(profile.email);
@@ -36,12 +41,29 @@ export function SettingsPage() {
     setCompanyLogo(profile.distributorLogo);
   }, [profile]);
 
-  const handleSaveProfile = () => {
-    updateProfile({
-      fullName,
+  const handleSaveProfile = async () => {
+    setIsSaving(true);
+    const nameParts = fullName.trim().split(/\s+/);
+    const firstName = nameParts[0] || '';
+    const lastName = nameParts.slice(1).join(' ') || '';
+
+    const response = await updateCurrentUser({
+      first_name: firstName,
+      last_name: lastName,
       email,
-      phoneNumber,
+      phone: phoneNumber,
     });
+
+    if (response.data) {
+      updateProfile({
+        fullName: `${response.data.first_name} ${response.data.last_name}`.trim(),
+        email: response.data.email,
+        phoneNumber: response.data.phone || phoneNumber,
+      });
+    } else {
+      alert(response.error || 'Failed to save profile');
+    }
+    setIsSaving(false);
   };
 
   const handleSaveCompany = () => {
@@ -140,11 +162,12 @@ export function SettingsPage() {
               </div>
 
               <div className="flex gap-3 pt-2">
-                <Button 
+                <Button
                   onClick={handleSaveProfile}
+                  disabled={isSaving}
                   className="bg-[#F2993D] hover:bg-[#E08A2E] text-white"
                 >
-                  Save Changes
+                  {isSaving ? 'Saving...' : 'Save Changes'}
                 </Button>
                 <Button variant="outline">Reset Password</Button>
               </div>
@@ -155,7 +178,11 @@ export function SettingsPage() {
           <div className="border-t border-gray-200 pt-6">
             <h3 className="text-sm text-[#4F4F4F] mb-1">Log Out</h3>
             <p className="text-sm text-[#4F4F4F] mb-3">Log out from current session</p>
-            <Button variant="outline" className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200">
+            <Button
+              variant="outline"
+              className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+              onClick={() => { logout(); navigate('/'); }}
+            >
               Log Out
             </Button>
           </div>

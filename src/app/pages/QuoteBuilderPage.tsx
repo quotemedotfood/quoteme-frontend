@@ -3,7 +3,7 @@ import { Input } from '../components/ui/input';
 import { ArrowLeft, Save, Filter, Plus, Minus, Edit, ChevronUp, ChevronDown, ArrowUpDown, ArrowUp, ArrowDown, Loader2, X } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router';
 import { useState, useEffect } from 'react';
-import { getQuote, getGuestQuote } from '../services/api';
+import { getQuote, getGuestQuote, updateQuote, updateGuestQuote } from '../services/api';
 import { CatalogProductSearch } from '../components/CatalogProductSearch';
 import type { CatalogSearchProduct } from '../services/api';
 import {
@@ -46,9 +46,12 @@ export function QuoteBuilderPage() {
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [addProductDrawerOpen, setAddProductDrawerOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const isGuest = !localStorage.getItem('quoteme_token');
   const fetchQuote = (id: string) => isGuest ? getGuestQuote(id) : getQuote(id);
+  const persistQuote = (id: string, updates: any) => isGuest ? updateGuestQuote(id, updates) : updateQuote(id, updates);
 
   useEffect(() => {
     if (!quoteId) {
@@ -194,6 +197,42 @@ export function QuoteBuilderPage() {
     setAddProductDrawerOpen(false);
   };
 
+  const savePrices = async () => {
+    if (!quoteId) return;
+    setSaving(true);
+    setSaveError(null);
+    try {
+      // Only send lines whose price has changed from basePrice
+      const changedLines = items
+        .filter(item => Math.round(item.currentPrice * 100) !== Math.round(item.basePrice * 100))
+        .map(item => ({
+          id: item.id,
+          unit_price_cents: Math.round(item.currentPrice * 100),
+        }));
+
+      if (changedLines.length === 0) {
+        setSaving(false);
+        return;
+      }
+
+      const res = await persistQuote(quoteId, { lines: changedLines });
+      if (res.error) {
+        setSaveError(res.error);
+      } else {
+        // Update basePrices to match saved prices
+        setItems(prev => prev.map(item => ({
+          ...item,
+          basePrice: item.currentPrice,
+          percentChange: 0,
+        })));
+      }
+    } catch (e: any) {
+      setSaveError(e.message || 'Failed to save prices');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-[#FFF9F3]">
@@ -229,9 +268,14 @@ export function QuoteBuilderPage() {
             </div>
           </div>
           <div className="flex gap-3">
-            <Button variant="outline" className="border-gray-300 text-[#2A2A2A]">
-              <Save className="w-4 h-4 mr-2" />
-              Save Draft
+            <Button
+              variant="outline"
+              className="border-gray-300 text-[#2A2A2A]"
+              onClick={savePrices}
+              disabled={saving}
+            >
+              {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+              {saving ? 'Saving...' : 'Save Draft'}
             </Button>
             <Button
               onClick={() => navigate('/export-finalize', { state: { quoteId, isOpenQuote } })}
@@ -288,6 +332,12 @@ export function QuoteBuilderPage() {
           </div>
         </div>
 
+        {saveError && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4 text-sm">
+            Failed to save: {saveError}
+          </div>
+        )}
+
         {/* Products Table/Cards */}
         <div className="bg-white rounded-lg shadow-sm">
           <div className="p-4 border-b border-gray-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -310,10 +360,16 @@ export function QuoteBuilderPage() {
                 variant="outline"
                 size="sm"
                 className="flex-1 md:flex-none text-[#2A2A2A] border-gray-300"
-                onClick={() => setEditMode(!editMode)}
+                onClick={() => {
+                  if (editMode) {
+                    savePrices();
+                  }
+                  setEditMode(!editMode);
+                }}
+                disabled={saving}
               >
-                <Edit className="w-4 h-4 mr-1" />
-                {editMode ? 'Save' : 'Edit price'}
+                {saving ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Edit className="w-4 h-4 mr-1" />}
+                {editMode ? (saving ? 'Saving...' : 'Save') : 'Edit price'}
               </Button>
               <Button
                 variant="outline"

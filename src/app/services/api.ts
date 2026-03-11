@@ -15,6 +15,7 @@ export interface User {
   last_name: string;
   role: string;
   status: string;
+  phone?: string;
   distributor: {
     id: string;
     name: string;
@@ -269,6 +270,20 @@ export async function getCurrentUser(): Promise<ApiResponse<User>> {
   return fetchWithAuth('/api/v1/me');
 }
 
+export interface UpdateUserData {
+  first_name?: string;
+  last_name?: string;
+  email?: string;
+  phone?: string;
+}
+
+export async function updateCurrentUser(data: UpdateUserData): Promise<ApiResponse<User>> {
+  return fetchWithAuth('/api/v1/users/me', {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
 // ============= GUEST ENDPOINTS =============
 
 export async function createGuestSession(): Promise<ApiResponse<GuestSession>> {
@@ -332,6 +347,13 @@ export async function createGuestQuote(quoteData: GuestQuote): Promise<ApiRespon
 
 export async function getGuestQuote(id: string): Promise<ApiResponse<QuoteResponse>> {
   return fetchWithGuest(`/api/v1/guest/quotes/${id}`);
+}
+
+export async function updateGuestQuote(id: string, updates: any): Promise<ApiResponse<any>> {
+  return fetchWithGuest(`/api/v1/guest/quotes/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(updates),
+  });
 }
 
 export async function convertGuestToUser(data: GuestConvertData): Promise<ApiResponse<{ message: string; user: any; guest_session?: { quotes_used: number } }>> {
@@ -574,6 +596,52 @@ export async function getMoreMatches(
   });
 }
 
+// Quote list item (from index endpoint)
+export interface QuoteListItem {
+  id: string;
+  status: string;
+  working_label: string;
+  restaurant: string | null;
+  total_cents: number;
+  line_count: number;
+  rep_reviewed: boolean;
+  created_at: string;
+  sent_at: string | null;
+}
+
+export interface GetQuotesParams {
+  status?: string;
+  restaurant_id?: string;
+  date_from?: string;
+  date_to?: string;
+}
+
+export async function getQuotes(params?: GetQuotesParams): Promise<ApiResponse<QuoteListItem[]>> {
+  const searchParams = new URLSearchParams();
+  if (params?.status) searchParams.set('status', params.status);
+  if (params?.restaurant_id) searchParams.set('restaurant_id', params.restaurant_id);
+  if (params?.date_from) searchParams.set('date_from', params.date_from);
+  if (params?.date_to) searchParams.set('date_to', params.date_to);
+  const qs = searchParams.toString();
+  return fetchWithAuth(`/api/v1/quotes${qs ? `?${qs}` : ''}`);
+}
+
+export interface RequoteResponse {
+  id: string;
+  original_quote_id: string;
+  status: string;
+  working_label: string;
+  line_count: number;
+  matches_changed: number;
+  matches_same: number;
+}
+
+export async function requoteQuote(id: string): Promise<ApiResponse<RequoteResponse>> {
+  return fetchWithAuth(`/api/v1/quotes/${id}/requote`, {
+    method: 'POST',
+  });
+}
+
 export async function submitQuoteFeedback(
   quoteId: string,
   feedback: { rating: 'thumbs_up' | 'thumbs_down'; notes?: string }
@@ -581,5 +649,133 @@ export async function submitQuoteFeedback(
   return fetchWithAuth(`/api/v1/quotes/${quoteId}/feedback`, {
     method: 'POST',
     body: JSON.stringify(feedback),
+  });
+}
+
+// ============= RESTAURANT ENDPOINTS =============
+
+export interface RestaurantContact {
+  id: string;
+  restaurant_id?: string;
+  first_name: string;
+  last_name: string;
+  role: string | null;
+  email: string | null;
+  phone: string | null;
+  is_primary: boolean;
+}
+
+export interface RestaurantGroup {
+  id: string;
+  name: string;
+}
+
+export interface RestaurantIndexItem {
+  id: string;
+  name: string;
+  city: string | null;
+  state: string | null;
+  primary_rep: string | null;
+  contact_count: number;
+  status: string;
+  restaurant_group: RestaurantGroup | null;
+}
+
+// Alias for backward compatibility
+export type RestaurantSummary = RestaurantIndexItem;
+
+export interface RestaurantDetail {
+  id: string;
+  name: string;
+  address_line_1: string | null;
+  address_line_2: string | null;
+  city: string | null;
+  state: string | null;
+  zip: string | null;
+  phone: string | null;
+  website: string | null;
+  status: string;
+  created_at: string;
+  restaurant_group: RestaurantGroup | null;
+  relationship: {
+    id: string;
+    primary_rep: string | null;
+    status: string;
+  } | null;
+  contacts: RestaurantContact[];
+  recent_quotes: {
+    id: string;
+    status: string;
+    working_label: string;
+    created_at: string;
+    sent_at: string | null;
+  }[];
+}
+
+export async function getRestaurants(params?: { restaurant_group_id?: string }): Promise<ApiResponse<RestaurantIndexItem[]>> {
+  const queryParts: string[] = [];
+  if (params?.restaurant_group_id) {
+    queryParts.push(`restaurant_group_id=${encodeURIComponent(params.restaurant_group_id)}`);
+  }
+  const query = queryParts.length > 0 ? `?${queryParts.join('&')}` : '';
+  return fetchWithAuth(`/api/v1/restaurants${query}`);
+}
+
+export async function getRestaurant(id: string): Promise<ApiResponse<RestaurantDetail>> {
+  return fetchWithAuth(`/api/v1/restaurants/${id}`);
+}
+
+export interface CreateRestaurantData {
+  name: string;
+  address_line_1?: string;
+  address_line_2?: string;
+  city?: string;
+  state?: string;
+  zip?: string;
+  restaurant_group_id?: string;
+}
+
+export async function createRestaurant(data: CreateRestaurantData): Promise<ApiResponse<RestaurantDetail>> {
+  return fetchWithAuth('/api/v1/restaurants', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateRestaurant(id: string, data: Partial<CreateRestaurantData>): Promise<ApiResponse<RestaurantDetail>> {
+  return fetchWithAuth(`/api/v1/restaurants/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+// ============= RESTAURANT CONTACT ENDPOINTS =============
+
+export interface CreateContactData {
+  first_name: string;
+  last_name: string;
+  role?: string;
+  email?: string;
+  phone?: string;
+  is_primary?: boolean;
+}
+
+export async function createContact(restaurantId: string, data: CreateContactData): Promise<ApiResponse<RestaurantContact>> {
+  return fetchWithAuth(`/api/v1/restaurants/${restaurantId}/contacts`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateContact(restaurantId: string, contactId: string, data: Partial<CreateContactData>): Promise<ApiResponse<RestaurantContact>> {
+  return fetchWithAuth(`/api/v1/restaurants/${restaurantId}/contacts/${contactId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteContact(restaurantId: string, contactId: string): Promise<ApiResponse<{ message: string }>> {
+  return fetchWithAuth(`/api/v1/restaurants/${restaurantId}/contacts/${contactId}`, {
+    method: 'DELETE',
   });
 }

@@ -8,77 +8,17 @@ import { useNavigate } from 'react-router';
 import { Checkbox } from '../components/ui/checkbox';
 import { useUser } from '../contexts/UserContext';
 import { UpgradeDrawer } from '../components/UpgradeDrawer';
-import { createMenu, createGuestQuote, extractMenuText, getCatalogs, uploadCatalogFile } from '../services/api';
-import type { CatalogSummary } from '../services/api';
-
-// Test restaurant data with multiple contacts
-const testRestaurants = [
-  {
-    id: '1',
-    name: 'The Garden Bistro',
-    businessName: 'Garden Bistro LLC',
-    streetAddress: '456 Oak Avenue',
-    city: 'Portland',
-    state: 'OR',
-    zipCode: '97201',
-    country: 'USA',
-    website: 'www.gardenbistro.com',
-    restaurantType: 'Fine Dining',
-    cuisineType: 'American, Farm-to-Table',
-    notes: 'Focus on seasonal menus and local partnerships',
-    preferences: 'Organic produce, locally sourced meats, sustainable seafood',
-    contacts: [
-      { id: 'c1-1', name: 'Sarah Mitchell', email: 'sarah@gardenbistro.com', phone: '(555) 123-4567', role: 'Owner' },
-      { id: 'c1-2', name: 'James Chef', email: 'james@gardenbistro.com', phone: '(555) 123-4568', role: 'Head Chef' },
-      { id: 'c1-3', name: 'Maria Manager', email: 'maria@gardenbistro.com', phone: '(555) 123-4569', role: 'Manager' },
-    ]
-  },
-  {
-    id: '2',
-    name: 'Riverside Steakhouse',
-    businessName: 'Riverside Dining Group',
-    streetAddress: '789 Water Street',
-    city: 'Seattle',
-    state: 'WA',
-    zipCode: '98101',
-    country: 'USA',
-    website: 'www.riversidesteakhouse.com',
-    restaurantType: 'Casual Dining',
-    cuisineType: 'Steakhouse, Seafood',
-    notes: 'High-volume location with strong happy hour business',
-    preferences: 'Premium aged beef, fresh seafood, organic vegetables',
-    contacts: [
-      { id: 'c2-1', name: 'Michael Chen', email: 'mchen@riversidesteakhouse.com', phone: '(555) 987-6543', role: 'General Manager' },
-      { id: 'c2-2', name: 'Lisa Sous', email: 'lisa@riversidesteakhouse.com', phone: '(555) 987-6544', role: 'Sous Chef' },
-    ]
-  },
-  {
-    id: '3',
-    name: 'Bella Italia',
-    businessName: 'Bella Italia Restaurant Inc',
-    streetAddress: '123 Main Street',
-    city: 'San Francisco',
-    state: 'CA',
-    zipCode: '94102',
-    country: 'USA',
-    website: 'www.bellaitalia.com',
-    restaurantType: 'Fine Dining',
-    cuisineType: 'Italian',
-    notes: 'Family-owned, emphasis on authentic Italian recipes',
-    preferences: 'Imported Italian ingredients, fresh herbs, artisanal cheeses',
-    contacts: [
-      { id: 'c3-1', name: 'Antonio Rossi', email: 'antonio@bellaitalia.com', phone: '(555) 456-7890', role: 'Owner' },
-      { id: 'c3-2', name: 'Marco Rossi', email: 'marco@bellaitalia.com', phone: '(555) 456-7891', role: 'Head Chef' },
-    ]
-  },
-];
+import { createMenu, createGuestQuote, extractMenuText, getCatalogs, uploadCatalogFile, getRestaurants, getRestaurant } from '../services/api';
+import type { CatalogSummary, RestaurantSummary, RestaurantDetail } from '../services/api';
 
 export function StartNewQuotePage() {
   const navigate = useNavigate();
   const [isAddRestaurantOpen, setIsAddRestaurantOpen] = useState(false);
   const [isAddContactOpen, setIsAddContactOpen] = useState(false);
   const [isAddGroupOpen, setIsAddGroupOpen] = useState(false);
-  const [selectedRestaurant, setSelectedRestaurant] = useState<typeof testRestaurants[0] | null>(null);
+  const [restaurants, setRestaurants] = useState<RestaurantSummary[]>([]);
+  const [selectedRestaurant, setSelectedRestaurant] = useState<RestaurantDetail | null>(null);
+  const [restaurantsLoading, setRestaurantsLoading] = useState(false);
   const [selectedContactIds, setSelectedContactIds] = useState<string[]>([]);
   const [menuPreviewText, setMenuPreviewText] = useState('');
   const [pasteText, setPasteText] = useState('');
@@ -137,7 +77,7 @@ export function StartNewQuotePage() {
     return () => clearTimeout(timeout);
   }, [isCreatingQuote]);
 
-  // Load existing catalogs on mount
+  // Load existing catalogs and restaurants on mount
   useEffect(() => {
     const token = localStorage.getItem('quoteme_token');
     if (!token) return;
@@ -145,6 +85,11 @@ export function StartNewQuotePage() {
     getCatalogs().then(res => {
       if (res.data) setCatalogs(res.data);
       setCatalogLoading(false);
+    });
+    setRestaurantsLoading(true);
+    getRestaurants().then(res => {
+      if (res.data) setRestaurants(res.data);
+      setRestaurantsLoading(false);
     });
   }, []);
 
@@ -286,18 +231,35 @@ export function StartNewQuotePage() {
     setIsCreatingQuote(true);
     try {
       if (profile.isGuest || localStorage.getItem('quoteme_token') === null) {
-        if (localStorage.getItem('quoteme_guest_token') === null) {
+        // Ensure guest session exists — always try to init if no token
+        if (!localStorage.getItem('quoteme_guest_token')) {
           await initGuestSession();
+        }
+        // Verify token was actually created
+        if (!localStorage.getItem('quoteme_guest_token')) {
+          alert('Failed to start guest session. Please try again.');
+          setIsCreatingQuote(false);
+          return;
         }
         const guestQuotePayload = { raw_text: menuText, name: selectedRestaurant?.name || 'New Quote' };
         console.log('createGuestQuote payload:', JSON.stringify(guestQuotePayload, null, 2));
         const response = await createGuestQuote(guestQuotePayload);
+        if (response.error) {
+          console.error('createGuestQuote error:', response.error);
+          alert(`Failed to create quote: ${response.error}`);
+          return;
+        }
         if (response.data) {
           incrementQuoteCount();
           navigate('/map-ingredients', { state: { quoteId: response.data.quote_id, isOpenQuote: isQuoteOpened } });
         }
       } else {
         const response = await createMenu({ raw_text: menuText, name: selectedRestaurant?.name || 'New Quote' });
+        if (response.error) {
+          console.error('createMenu error:', response.error);
+          alert(`Failed to create quote: ${response.error}`);
+          return;
+        }
         if (response.data) {
           incrementQuoteCount();
           navigate('/map-ingredients', { state: { quoteId: response.data.quote_id, isOpenQuote: isQuoteOpened } });
@@ -326,16 +288,31 @@ export function StartNewQuotePage() {
     setIsCreatingQuote(true);
     try {
       if (profile.isGuest || localStorage.getItem('quoteme_token') === null) {
-        if (localStorage.getItem('quoteme_guest_token') === null) {
+        if (!localStorage.getItem('quoteme_guest_token')) {
           await initGuestSession();
         }
+        if (!localStorage.getItem('quoteme_guest_token')) {
+          alert('Failed to start guest session. Please try again.');
+          setIsCreatingQuote(false);
+          return;
+        }
         const response = await createGuestQuote({ raw_text: menuText, name: selectedRestaurant?.name || 'New Quote' });
+        if (response.error) {
+          console.error('createGuestQuote error:', response.error);
+          alert(`Failed to create quote: ${response.error}`);
+          return;
+        }
         if (response.data) {
           incrementQuoteCount();
           navigate('/export-finalize', { state: { quoteId: response.data.quote_id, isOpenQuote: isQuoteOpened } });
         }
       } else {
         const response = await createMenu({ raw_text: menuText, name: selectedRestaurant?.name || 'New Quote' });
+        if (response.error) {
+          console.error('createMenu error:', response.error);
+          alert(`Failed to create quote: ${response.error}`);
+          return;
+        }
         if (response.data) {
           incrementQuoteCount();
           navigate('/export-finalize', { state: { quoteId: response.data.quote_id, isOpenQuote: isQuoteOpened } });
@@ -349,14 +326,18 @@ export function StartNewQuotePage() {
     }
   };
 
-  const handleRestaurantChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+  const handleRestaurantChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
     if (e.target.value === 'add-new') {
       setIsAddRestaurantOpen(true);
       e.target.value = ''; // Reset the select
     } else if (e.target.value) {
-      const restaurant = testRestaurants.find(r => r.id === e.target.value);
-      setSelectedRestaurant(restaurant || null);
       setSelectedContactIds([]); // Reset contacts when restaurant changes
+      const res = await getRestaurant(e.target.value);
+      if (res.data) {
+        setSelectedRestaurant(res.data);
+      } else {
+        setSelectedRestaurant(null);
+      }
     } else {
       setSelectedRestaurant(null);
       setSelectedContactIds([]);
@@ -408,8 +389,8 @@ export function StartNewQuotePage() {
                   className="w-full px-3 py-2 border border-gray-200 rounded-md bg-gray-50 text-sm appearance-none pr-8"
                   onChange={handleRestaurantChange}
                 >
-                  <option>Select a customer</option>
-                  {testRestaurants.map(restaurant => (
+                  <option value="">Select a customer</option>
+                  {restaurants.map(restaurant => (
                     <option key={restaurant.id} value={restaurant.id}>
                       {restaurant.name}
                     </option>
@@ -470,7 +451,7 @@ export function StartNewQuotePage() {
                           htmlFor={contact.id}
                           className="text-sm font-medium text-gray-900 cursor-pointer"
                         >
-                          {contact.name}
+                          {contact.first_name} {contact.last_name}
                         </label>
                         <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full border border-gray-200 font-bold">
                           {contact.role}
@@ -499,70 +480,55 @@ export function StartNewQuotePage() {
                   </div>
                   <div>
                     <Label className="text-sm mb-2 block text-gray-600 font-bold">
-                      Business Name
+                      Address
                     </Label>
-                    <p className="text-sm text-[#2A2A2A]">{selectedRestaurant.businessName}</p>
-                  </div>
-                  <div>
-                    <Label className="text-sm mb-2 block text-gray-600 font-bold">
-                      Street Address
-                    </Label>
-                    <p className="text-sm text-[#2A2A2A]">{selectedRestaurant.streetAddress}</p>
+                    <p className="text-sm text-[#2A2A2A]">{selectedRestaurant.address_line_1 || '-'}</p>
                   </div>
                   <div>
                     <Label className="text-sm mb-2 block text-gray-600 font-bold">
                       City
                     </Label>
-                    <p className="text-sm text-[#2A2A2A]">{selectedRestaurant.city}</p>
+                    <p className="text-sm text-[#2A2A2A]">{selectedRestaurant.city || '-'}</p>
                   </div>
                   <div>
                     <Label className="text-sm mb-2 block text-gray-600 font-bold">
                       State
                     </Label>
-                    <p className="text-sm text-[#2A2A2A]">{selectedRestaurant.state}</p>
+                    <p className="text-sm text-[#2A2A2A]">{selectedRestaurant.state || '-'}</p>
                   </div>
                   <div>
                     <Label className="text-sm mb-2 block text-gray-600 font-bold">
                       ZIP Code
                     </Label>
-                    <p className="text-sm text-[#2A2A2A]">{selectedRestaurant.zipCode}</p>
+                    <p className="text-sm text-[#2A2A2A]">{selectedRestaurant.zip || '-'}</p>
                   </div>
+                  {selectedRestaurant.website && (
+                    <div>
+                      <Label className="text-sm mb-2 block text-gray-600 font-bold">
+                        Website
+                      </Label>
+                      <p className="text-sm text-[#2A2A2A]">{selectedRestaurant.website}</p>
+                    </div>
+                  )}
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {selectedRestaurant.phone && (
                   <div>
                     <Label className="text-sm mb-2 block text-gray-600 font-bold">
-                      Country
+                      Phone
                     </Label>
-                    <p className="text-sm text-[#2A2A2A]">{selectedRestaurant.country}</p>
+                    <p className="text-sm text-[#2A2A2A]">{selectedRestaurant.phone}</p>
                   </div>
-                  <div>
-                    <Label className="text-sm mb-2 block text-gray-600 font-bold">
-                      Restaurant Type
-                    </Label>
-                    <p className="text-sm text-[#2A2A2A]">{selectedRestaurant.restaurantType}</p>
-                  </div>
-                  <div>
-                    <Label className="text-sm mb-2 block text-gray-600 font-bold">
-                      Cuisine Type
-                    </Label>
-                    <p className="text-sm text-[#2A2A2A]">{selectedRestaurant.cuisineType}</p>
-                  </div>
-                </div>
+                )}
 
-                <div>
-                  <Label className="text-sm mb-2 block text-gray-600 font-bold">
-                    Preferences
-                  </Label>
-                  <p className="text-sm text-[#2A2A2A]">{selectedRestaurant.preferences}</p>
-                </div>
-
-                <div>
-                  <Label className="text-sm mb-2 block text-gray-600 font-bold">
-                    Notes
-                  </Label>
-                  <p className="text-sm text-[#2A2A2A]">{selectedRestaurant.notes}</p>
-                </div>
+                {selectedRestaurant.restaurant_group && (
+                  <div>
+                    <Label className="text-sm mb-2 block text-gray-600 font-bold">
+                      Restaurant Group
+                    </Label>
+                    <p className="text-sm text-[#2A2A2A]">{selectedRestaurant.restaurant_group.name}</p>
+                  </div>
+                )}
               </>
             ) : (
               <div className="text-center py-8 text-gray-400">

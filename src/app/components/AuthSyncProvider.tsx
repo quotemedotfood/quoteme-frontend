@@ -16,6 +16,7 @@ export function AuthSyncProvider({ children }: AuthSyncProviderProps) {
       updateProfile({
         fullName: `${user.first_name} ${user.last_name}`,
         email: user.email,
+        phoneNumber: user.phone || '',
         distributorName: user.distributor?.name || 'Your Distributor',
         isGuest: false,
         plan: 'free', // Backend should provide this

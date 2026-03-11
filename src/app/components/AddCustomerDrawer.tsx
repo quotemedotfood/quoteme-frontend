@@ -11,22 +11,14 @@ import {
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
-import { X, Plus, Trash2 } from 'lucide-react';
+import { X, Plus, Trash2, Loader2 } from 'lucide-react';
+import { createRestaurant, createContact } from '../services/api';
 
 interface AddCustomerDrawerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onSuccess?: () => void;
 }
-
-const existingGroups = [
-  'Red Door Group',
-  'Lakeside Hospitality',
-  'Bella Group',
-  'Golden Group',
-  'Coastline Dining',
-  'Urban Eats Collective',
-  'Harbor Side Restaurants',
-];
 
 const recommendedPositions = [
   'Executive Chef',
@@ -35,137 +27,131 @@ const recommendedPositions = [
   'Porter',
 ];
 
-const restaurantTypes = [
-  'Fine Dining',
-  'Casual Dining',
-  'Fast Casual',
-  'Cafe',
-  'Bar & Grill',
-  'Steakhouse',
-  'Seafood',
-  'Italian',
-  'Asian',
-  'Mexican',
-  'Other',
-];
-
 interface ChefContact {
   id: string;
-  name: string;
+  firstName: string;
+  lastName: string;
   role: string;
   email: string;
   phone: string;
-  notes: string;
+  isPrimary: boolean;
 }
 
-interface MenuUrl {
-  id: string;
-  url: string;
-  label: string;
-}
-
-export function AddCustomerDrawer({ open, onOpenChange }: AddCustomerDrawerProps) {
+export function AddCustomerDrawer({ open, onOpenChange, onSuccess }: AddCustomerDrawerProps) {
   const [formData, setFormData] = useState({
     restaurantName: '',
-    address: '',
-    restaurantType: '',
-    contactName: '',
-    position: '',
-    email: '',
-    phone: '',
-    groupName: '',
+    addressLine1: '',
+    addressLine2: '',
+    city: '',
+    state: '',
+    zip: '',
   });
 
-  const [menuUrls, setMenuUrls] = useState<MenuUrl[]>([]);
-  const [chefContacts, setChefContacts] = useState<ChefContact[]>([]);
-  const [showNewGroupInput, setShowNewGroupInput] = useState(false);
-  const [showNewPositionInput, setShowNewPositionInput] = useState(false);
+  const [contacts, setContacts] = useState<ChefContact[]>([]);
+  const [showNewPositionInput, setShowNewPositionInput] = useState<Record<string, boolean>>({});
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const addMenuUrl = () => {
-    const newMenuUrl: MenuUrl = {
+  const addContact = () => {
+    const newContact: ChefContact = {
       id: Date.now().toString(),
-      url: '',
-      label: '',
-    };
-    setMenuUrls([...menuUrls, newMenuUrl]);
-  };
-
-  const removeMenuUrl = (id: string) => {
-    setMenuUrls(menuUrls.filter(menu => menu.id !== id));
-  };
-
-  const updateMenuUrl = (id: string, field: keyof MenuUrl, value: string) => {
-    setMenuUrls(menuUrls.map(menu => 
-      menu.id === id ? { ...menu, [field]: value } : menu
-    ));
-  };
-
-  const addChefContact = () => {
-    const newChef: ChefContact = {
-      id: Date.now().toString(),
-      name: '',
+      firstName: '',
+      lastName: '',
       role: '',
       email: '',
       phone: '',
-      notes: '',
+      isPrimary: contacts.length === 0, // First contact is primary by default
     };
-    setChefContacts([...chefContacts, newChef]);
+    setContacts([...contacts, newContact]);
   };
 
-  const removeChefContact = (id: string) => {
-    setChefContacts(chefContacts.filter(chef => chef.id !== id));
+  const removeContact = (id: string) => {
+    const remaining = contacts.filter(c => c.id !== id);
+    // If we removed the primary, make the first remaining one primary
+    if (remaining.length > 0 && !remaining.some(c => c.isPrimary)) {
+      remaining[0].isPrimary = true;
+    }
+    setContacts(remaining);
   };
 
-  const updateChefContact = (id: string, field: keyof ChefContact, value: string) => {
-    setChefContacts(chefContacts.map(chef => 
-      chef.id === id ? { ...chef, [field]: value } : chef
+  const updateContact = (id: string, field: keyof ChefContact, value: string | boolean) => {
+    setContacts(contacts.map(c =>
+      c.id === id ? { ...c, [field]: value } : c
     ));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    // Handle form submission
-    console.log('Form submitted:', formData, chefContacts);
-    onOpenChange(false);
-    // Reset form
+  const resetForm = () => {
     setFormData({
       restaurantName: '',
-      address: '',
-      restaurantType: '',
-      contactName: '',
-      position: '',
-      email: '',
-      phone: '',
-      groupName: '',
+      addressLine1: '',
+      addressLine2: '',
+      city: '',
+      state: '',
+      zip: '',
     });
-    setMenuUrls([]);
-    setChefContacts([]);
-    setShowNewGroupInput(false);
-    setShowNewPositionInput(false);
+    setContacts([]);
+    setShowNewPositionInput({});
+    setError(null);
   };
 
-  const handleGroupChange = (value: string) => {
-    if (value === 'add-new') {
-      setShowNewGroupInput(true);
-      setFormData({ ...formData, groupName: '' });
-    } else {
-      setShowNewGroupInput(false);
-      setFormData({ ...formData, groupName: value });
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    setError(null);
+
+    // Create the restaurant
+    const result = await createRestaurant({
+      name: formData.restaurantName,
+      address_line_1: formData.addressLine1 || undefined,
+      address_line_2: formData.addressLine2 || undefined,
+      city: formData.city || undefined,
+      state: formData.state || undefined,
+      zip: formData.zip || undefined,
+    });
+
+    if (result.error) {
+      setError(result.error);
+      setSaving(false);
+      return;
     }
+
+    const restaurantId = result.data!.id;
+
+    // Create contacts
+    for (const contact of contacts) {
+      if (!contact.firstName && !contact.lastName) continue;
+      const contactResult = await createContact(restaurantId, {
+        first_name: contact.firstName,
+        last_name: contact.lastName,
+        role: contact.role || undefined,
+        email: contact.email || undefined,
+        phone: contact.phone || undefined,
+        is_primary: contact.isPrimary,
+      });
+      if (contactResult.error) {
+        // Non-fatal: restaurant was created, just warn about contact
+        console.warn('Failed to create contact:', contactResult.error);
+      }
+    }
+
+    setSaving(false);
+    resetForm();
+    onOpenChange(false);
+    onSuccess?.();
   };
 
-  const handlePositionChange = (value: string) => {
+  const handlePositionChange = (contactId: string, value: string) => {
     if (value === 'add-new') {
-      setShowNewPositionInput(true);
-      setFormData({ ...formData, position: '' });
+      setShowNewPositionInput({ ...showNewPositionInput, [contactId]: true });
+      updateContact(contactId, 'role', '');
     } else {
-      setShowNewPositionInput(false);
-      setFormData({ ...formData, position: value });
+      setShowNewPositionInput({ ...showNewPositionInput, [contactId]: false });
+      updateContact(contactId, 'role', value);
     }
   };
 
   return (
-    <Drawer open={open} onOpenChange={onOpenChange} direction="right">
+    <Drawer open={open} onOpenChange={(val) => { if (!val) resetForm(); onOpenChange(val); }} direction="right">
       <DrawerContent className="w-full sm:max-w-md h-full flex flex-col">
         <DrawerHeader className="border-b border-gray-200 flex-shrink-0">
           <div className="flex items-center justify-between">
@@ -185,6 +171,12 @@ export function AddCustomerDrawer({ open, onOpenChange }: AddCustomerDrawerProps
 
         <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
           <div className="flex-1 overflow-y-auto p-6 space-y-4">
+            {error && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                <p className="text-red-600 text-sm">{error}</p>
+              </div>
+            )}
+
             {/* Restaurant Name */}
             <div>
               <Label htmlFor="restaurant-name" className="text-sm mb-2 block">
@@ -205,324 +197,184 @@ export function AddCustomerDrawer({ open, onOpenChange }: AddCustomerDrawerProps
 
             {/* Address */}
             <div>
-              <Label htmlFor="address" className="text-sm mb-2 block">
-                Address *
+              <Label htmlFor="address-line-1" className="text-sm mb-2 block">
+                Address
               </Label>
               <Input
-                id="address"
+                id="address-line-1"
                 type="text"
-                value={formData.address}
+                value={formData.addressLine1}
                 onChange={(e) =>
-                  setFormData({ ...formData, address: e.target.value })
+                  setFormData({ ...formData, addressLine1: e.target.value })
                 }
-                placeholder="123 Main Street, City, State ZIP"
-                required
-                className="bg-gray-50"
+                placeholder="Street address"
+                className="bg-gray-50 mb-2"
               />
+              <Input
+                type="text"
+                value={formData.addressLine2}
+                onChange={(e) =>
+                  setFormData({ ...formData, addressLine2: e.target.value })
+                }
+                placeholder="Suite, unit, etc. (optional)"
+                className="bg-gray-50 mb-2"
+              />
+              <div className="grid grid-cols-3 gap-2">
+                <Input
+                  type="text"
+                  value={formData.city}
+                  onChange={(e) =>
+                    setFormData({ ...formData, city: e.target.value })
+                  }
+                  placeholder="City"
+                  className="bg-gray-50"
+                />
+                <Input
+                  type="text"
+                  value={formData.state}
+                  onChange={(e) =>
+                    setFormData({ ...formData, state: e.target.value })
+                  }
+                  placeholder="State"
+                  className="bg-gray-50"
+                />
+                <Input
+                  type="text"
+                  value={formData.zip}
+                  onChange={(e) =>
+                    setFormData({ ...formData, zip: e.target.value })
+                  }
+                  placeholder="ZIP"
+                  className="bg-gray-50"
+                />
+              </div>
             </div>
 
-            {/* Menu URL */}
+            {/* Contacts */}
             <div>
               <div className="flex justify-between items-center mb-3">
-                <Label className="text-sm">Menu URLs</Label>
+                <Label className="text-sm">Contacts</Label>
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
-                  onClick={addMenuUrl}
+                  onClick={addContact}
                   className="text-xs h-8"
                 >
                   <Plus className="h-3 w-3 mr-1" />
-                  Add Menu URL
+                  Add Contact
                 </Button>
               </div>
               <div className="space-y-3">
-                {menuUrls.map((menu, index) => (
-                  <div key={menu.id} className="bg-gray-50 p-4 rounded-lg border border-gray-200 relative">
+                {contacts.map((contact, index) => (
+                  <div key={contact.id} className="bg-gray-50 p-4 rounded-lg border border-gray-200 relative">
                     <div className="flex justify-between items-center mb-2">
-                      <span className="text-xs font-medium text-gray-600">Menu URL {index + 1}</span>
+                      <span className="text-xs font-medium text-gray-600">
+                        Contact {index + 1}
+                        {contact.isPrimary && <span className="text-orange-500 ml-1">(Primary)</span>}
+                      </span>
                       <Button
                         type="button"
                         variant="ghost"
                         size="sm"
-                        onClick={() => removeMenuUrl(menu.id)}
+                        onClick={() => removeContact(contact.id)}
                         className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
                       >
                         <Trash2 className="h-3 w-3" />
                       </Button>
                     </div>
                     <div className="space-y-2">
-                      <Input
-                        type="text"
-                        value={menu.url}
-                        onChange={(e) => updateMenuUrl(menu.id, 'url', e.target.value)}
-                        placeholder="https://www.restaurant.com/menu"
-                        className="bg-white"
-                      />
-                      <Input
-                        type="text"
-                        value={menu.label}
-                        onChange={(e) => updateMenuUrl(menu.id, 'label', e.target.value)}
-                        placeholder="Label (optional)"
-                        className="bg-white"
-                      />
-                    </div>
-                  </div>
-                ))}
-                {menuUrls.length === 0 && (
-                  <p className="text-xs text-gray-500 text-center py-4">
-                    No menu URLs added yet. Click "Add Menu URL" to add one.
-                  </p>
-                )}
-              </div>
-            </div>
-
-            {/* Restaurant Type */}
-            <div>
-              <Label htmlFor="restaurant-type" className="text-sm mb-2 block">
-                Restaurant Type
-              </Label>
-              <select
-                id="restaurant-type"
-                value={formData.restaurantType}
-                onChange={(e) =>
-                  setFormData({ ...formData, restaurantType: e.target.value })
-                }
-                className="w-full px-3 py-2 border border-gray-200 rounded-md bg-gray-50 text-sm"
-              >
-                <option value="">Select a type (optional)</option>
-                {restaurantTypes.map((type) => (
-                  <option key={type} value={type}>
-                    {type}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Contact Name */}
-            <div>
-              <Label htmlFor="contact-name" className="text-sm mb-2 block">
-                Contact Name *
-              </Label>
-              <Input
-                id="contact-name"
-                type="text"
-                value={formData.contactName}
-                onChange={(e) =>
-                  setFormData({ ...formData, contactName: e.target.value })
-                }
-                placeholder="John Smith"
-                required
-                className="bg-gray-50"
-              />
-            </div>
-
-            {/* Position */}
-            <div>
-              <Label htmlFor="position" className="text-sm mb-2 block">
-                Position
-              </Label>
-              {!showNewPositionInput ? (
-                <select
-                  id="position"
-                  value={formData.position}
-                  onChange={(e) => handlePositionChange(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-md bg-gray-50 text-sm"
-                >
-                  <option value="">Select a position (optional)</option>
-                  {recommendedPositions.map((position) => (
-                    <option key={position} value={position}>
-                      {position}
-                    </option>
-                  ))}
-                  <option value="add-new" className="text-orange-500 font-medium">
-                    + Add New Position
-                  </option>
-                </select>
-              ) : (
-                <div className="space-y-2">
-                  <Input
-                    type="text"
-                    value={formData.position}
-                    onChange={(e) =>
-                      setFormData({ ...formData, position: e.target.value })
-                    }
-                    placeholder="Enter new position"
-                    className="bg-gray-50"
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setShowNewPositionInput(false);
-                      setFormData({ ...formData, position: '' });
-                    }}
-                    className="text-xs text-gray-600"
-                  >
-                    Cancel - Select from existing positions
-                  </Button>
-                </div>
-              )}
-            </div>
-
-            {/* Email */}
-            <div>
-              <Label htmlFor="email" className="text-sm mb-2 block">
-                Email *
-              </Label>
-              <Input
-                id="email"
-                type="email"
-                value={formData.email}
-                onChange={(e) =>
-                  setFormData({ ...formData, email: e.target.value })
-                }
-                placeholder="contact@restaurant.com"
-                required
-                className="bg-gray-50"
-              />
-            </div>
-
-            {/* Phone */}
-            <div>
-              <Label htmlFor="phone" className="text-sm mb-2 block">
-                Phone *
-              </Label>
-              <Input
-                id="phone"
-                type="tel"
-                value={formData.phone}
-                onChange={(e) =>
-                  setFormData({ ...formData, phone: e.target.value })
-                }
-                placeholder="(555) 123-4567"
-                required
-                className="bg-gray-50"
-              />
-            </div>
-
-            {/* Group Name */}
-            <div>
-              <Label htmlFor="group-name" className="text-sm mb-2 block">
-                Group Name
-              </Label>
-              {!showNewGroupInput ? (
-                <select
-                  id="group-name"
-                  value={formData.groupName}
-                  onChange={(e) => handleGroupChange(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-md bg-gray-50 text-sm"
-                >
-                  <option value="">Select a group (optional)</option>
-                  {existingGroups.map((group) => (
-                    <option key={group} value={group}>
-                      {group}
-                    </option>
-                  ))}
-                  <option value="add-new" className="text-orange-500 font-medium">
-                    + Add New Group
-                  </option>
-                </select>
-              ) : (
-                <div className="space-y-2">
-                  <Input
-                    type="text"
-                    value={formData.groupName}
-                    onChange={(e) =>
-                      setFormData({ ...formData, groupName: e.target.value })
-                    }
-                    placeholder="Enter new group name"
-                    className="bg-gray-50"
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setShowNewGroupInput(false);
-                      setFormData({ ...formData, groupName: '' });
-                    }}
-                    className="text-xs text-gray-600"
-                  >
-                    Cancel - Select from existing groups
-                  </Button>
-                </div>
-              )}
-            </div>
-
-            {/* Chef Contacts */}
-            <div>
-              <div className="flex justify-between items-center mb-3">
-                <Label className="text-sm">Chef Contacts</Label>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={addChefContact}
-                  className="text-xs h-8"
-                >
-                  <Plus className="h-3 w-3 mr-1" />
-                  Add Chef
-                </Button>
-              </div>
-              <div className="space-y-3">
-                {chefContacts.map((chef, index) => (
-                  <div key={chef.id} className="bg-gray-50 p-4 rounded-lg border border-gray-200 relative">
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="text-xs font-medium text-gray-600">Chef Contact {index + 1}</span>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeChefContact(chef.id)}
-                        className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
-                    </div>
-                    <div className="space-y-2">
-                      <Input
-                        type="text"
-                        value={chef.name}
-                        onChange={(e) => updateChefContact(chef.id, 'name', e.target.value)}
-                        placeholder="Chef Name"
-                        className="bg-white"
-                      />
-                      <Input
-                        type="text"
-                        value={chef.role}
-                        onChange={(e) => updateChefContact(chef.id, 'role', e.target.value)}
-                        placeholder="Role (e.g., Sous Chef)"
-                        className="bg-white"
-                      />
+                      <div className="grid grid-cols-2 gap-2">
+                        <Input
+                          type="text"
+                          value={contact.firstName}
+                          onChange={(e) => updateContact(contact.id, 'firstName', e.target.value)}
+                          placeholder="First Name"
+                          className="bg-white"
+                        />
+                        <Input
+                          type="text"
+                          value={contact.lastName}
+                          onChange={(e) => updateContact(contact.id, 'lastName', e.target.value)}
+                          placeholder="Last Name"
+                          className="bg-white"
+                        />
+                      </div>
+                      {!showNewPositionInput[contact.id] ? (
+                        <select
+                          value={contact.role}
+                          onChange={(e) => handlePositionChange(contact.id, e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-md bg-white text-sm"
+                        >
+                          <option value="">Select role (optional)</option>
+                          {recommendedPositions.map((position) => (
+                            <option key={position} value={position}>
+                              {position}
+                            </option>
+                          ))}
+                          <option value="add-new" className="text-orange-500 font-medium">
+                            + Add New Role
+                          </option>
+                        </select>
+                      ) : (
+                        <div className="space-y-1">
+                          <Input
+                            type="text"
+                            value={contact.role}
+                            onChange={(e) => updateContact(contact.id, 'role', e.target.value)}
+                            placeholder="Enter role"
+                            className="bg-white"
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setShowNewPositionInput({ ...showNewPositionInput, [contact.id]: false });
+                              updateContact(contact.id, 'role', '');
+                            }}
+                            className="text-xs text-gray-600"
+                          >
+                            Cancel - Select from list
+                          </Button>
+                        </div>
+                      )}
                       <Input
                         type="email"
-                        value={chef.email}
-                        onChange={(e) => updateChefContact(chef.id, 'email', e.target.value)}
+                        value={contact.email}
+                        onChange={(e) => updateContact(contact.id, 'email', e.target.value)}
                         placeholder="Email"
                         className="bg-white"
                       />
                       <Input
                         type="tel"
-                        value={chef.phone}
-                        onChange={(e) => updateChefContact(chef.id, 'phone', e.target.value)}
+                        value={contact.phone}
+                        onChange={(e) => updateContact(contact.id, 'phone', e.target.value)}
                         placeholder="Phone"
                         className="bg-white"
                       />
-                      <Input
-                        type="text"
-                        value={chef.notes}
-                        onChange={(e) => updateChefContact(chef.id, 'notes', e.target.value)}
-                        placeholder="Notes (optional)"
-                        className="bg-white"
-                      />
+                      {!contact.isPrimary && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setContacts(contacts.map(c => ({
+                              ...c,
+                              isPrimary: c.id === contact.id,
+                            })));
+                          }}
+                          className="text-xs text-blue-600"
+                        >
+                          Set as Primary
+                        </Button>
+                      )}
                     </div>
                   </div>
                 ))}
-                {chefContacts.length === 0 && (
+                {contacts.length === 0 && (
                   <p className="text-xs text-gray-500 text-center py-4">
-                    No chef contacts added yet. Click "Add Chef" to add one.
+                    No contacts added yet. Click "Add Contact" to add one.
                   </p>
                 )}
               </div>
@@ -533,11 +385,19 @@ export function AddCustomerDrawer({ open, onOpenChange }: AddCustomerDrawerProps
             <Button
               type="submit"
               className="bg-[#F2993D] hover:bg-[#E08A2E] text-white w-full"
+              disabled={saving}
             >
-              Add Customer
+              {saving ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                'Add Customer'
+              )}
             </Button>
             <DrawerClose asChild>
-              <Button type="button" variant="outline" className="w-full">
+              <Button type="button" variant="outline" className="w-full" disabled={saving}>
                 Cancel
               </Button>
             </DrawerClose>
