@@ -557,7 +557,10 @@ export async function downloadQuotePdf(id: string): Promise<{ blob?: Blob; error
   }
 
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/quotes/${id}/pdf`, { headers });
+    const endpoint = token
+      ? `${API_BASE_URL}/api/v1/quotes/${id}/pdf`
+      : `${API_BASE_URL}/api/v1/guest/quotes/${id}/pdf`;
+    const response = await fetch(endpoint, { headers });
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       return { error: errorData.error || `HTTP ${response.status}` };

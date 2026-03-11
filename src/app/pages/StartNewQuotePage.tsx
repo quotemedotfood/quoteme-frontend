@@ -133,9 +133,20 @@ export function StartNewQuotePage() {
     if (file) handleCatalogFileSelect(file);
   };
 
+  // Strip standalone prices (e.g. "$12.99", "12.50", "$8") from menu text
+  // but keep numbers that are part of ingredient names (e.g. "7-grain", "100% beef")
+  const stripPrices = (text: string): string => {
+    return text
+      .replace(/\$\d+(?:\.\d{1,2})?/g, '')        // $12.99, $8
+      .replace(/(?<=\s|^)\d{1,3}\.\d{2}(?=\s|$)/gm, '') // 12.99 standalone
+      .replace(/[ \t]{2,}/g, ' ')                   // collapse extra spaces
+      .replace(/^\s+$/gm, '')                       // remove blank lines
+      .trim();
+  };
+
   const handleParseMenu = () => {
     if (pasteText) {
-      setMenuPreviewText(pasteText);
+      setMenuPreviewText(stripPrices(pasteText));
     } else if (uploadedFile) {
       handleFileExtract(uploadedFile);
     } else if (menuUrl) {
@@ -155,7 +166,7 @@ export function StartNewQuotePage() {
       reader.onload = (e) => {
         const text = e.target?.result as string;
         setPasteText(text);
-        setMenuPreviewText(text);
+        setMenuPreviewText(stripPrices(text));
       };
       reader.readAsText(file);
     } else {
@@ -174,7 +185,7 @@ export function StartNewQuotePage() {
         setExtractError(res.error);
       } else if (res.data?.text) {
         setPasteText(res.data.text);
-        setMenuPreviewText(res.data.text);
+        setMenuPreviewText(stripPrices(res.data.text));
       }
     } catch (e: any) {
       setExtractError(e.message || 'Failed to extract text');
@@ -199,7 +210,7 @@ export function StartNewQuotePage() {
         setExtractError(res.error);
       } else if (res.data?.text) {
         setPasteText(res.data.text);
-        setMenuPreviewText(res.data.text);
+        setMenuPreviewText(stripPrices(res.data.text));
       }
     } catch (e: any) {
       setExtractError(e.message || 'Failed to extract text from URL');
