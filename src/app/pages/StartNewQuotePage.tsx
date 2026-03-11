@@ -62,7 +62,7 @@ export function StartNewQuotePage() {
       return;
     }
     const phases = [0, 1, 2, 3, 4, 5];
-    const delays = [4000, 4000, 4000, 4000, 15000, 0];
+    const delays = [4000, 4000, 4000, 4000, 30000, 0];
     let current = 0;
     let timeout: ReturnType<typeof setTimeout>;
     const advance = () => {
