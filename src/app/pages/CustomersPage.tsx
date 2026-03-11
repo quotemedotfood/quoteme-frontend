@@ -40,6 +40,16 @@ export function CustomersPage() {
 
   const isLoggedIn = !!localStorage.getItem('quoteme_token');
 
+  // Sample restaurants shown to guests (display only — cannot be used for quotes)
+  const sampleRestaurants: RestaurantIndexItem[] = [
+    { id: 'sample-1', name: 'The Garden Bistro', city: 'Portland', state: 'OR', primary_rep: '--', contact_count: 2, status: 'active', restaurant_group: null },
+    { id: 'sample-2', name: 'Coastal Kitchen', city: 'San Diego', state: 'CA', primary_rep: '--', contact_count: 1, status: 'active', restaurant_group: { id: 'g1', name: 'Seaside Hospitality' } },
+    { id: 'sample-3', name: 'Fire & Smoke BBQ', city: 'Austin', state: 'TX', primary_rep: '--', contact_count: 3, status: 'active', restaurant_group: null },
+    { id: 'sample-4', name: 'Bella Cucina', city: 'Chicago', state: 'IL', primary_rep: '--', contact_count: 2, status: 'active', restaurant_group: { id: 'g2', name: 'Italian Concepts' } },
+    { id: 'sample-5', name: 'Sakura Sushi House', city: 'Seattle', state: 'WA', primary_rep: '--', contact_count: 1, status: 'active', restaurant_group: null },
+    { id: 'sample-6', name: 'Farm Table Kitchen', city: 'Nashville', state: 'TN', primary_rep: '--', contact_count: 2, status: 'active', restaurant_group: null },
+  ];
+
   const fetchRestaurants = useCallback(async () => {
     if (!isLoggedIn) {
       setLoading(false);
@@ -210,13 +220,15 @@ export function CustomersPage() {
               >
                 <SlidersHorizontal className="w-4 h-4" />
               </Button>
-              <Button
-                size="sm"
-                className="bg-[#F2993D] hover:bg-[#E08A2E] text-white h-9 px-3"
-                onClick={() => setAddCustomerOpen(true)}
-              >
-                + Add
-              </Button>
+              {isLoggedIn && (
+                <Button
+                  size="sm"
+                  className="bg-[#F2993D] hover:bg-[#E08A2E] text-white h-9 px-3"
+                  onClick={() => setAddCustomerOpen(true)}
+                >
+                  + Add
+                </Button>
+              )}
             </div>
           </div>
           {/* Mobile Search Bar */}
@@ -240,12 +252,14 @@ export function CustomersPage() {
               Manage your restaurant customers and contacts
             </p>
           </div>
-          <Button
-            className="bg-[#F2993D] hover:bg-[#E08A2E] text-white"
-            onClick={() => setAddCustomerOpen(true)}
-          >
-            + Add Customer
-          </Button>
+          {isLoggedIn && (
+            <Button
+              className="bg-[#F2993D] hover:bg-[#E08A2E] text-white"
+              onClick={() => setAddCustomerOpen(true)}
+            >
+              + Add Customer
+            </Button>
+          )}
         </div>
 
         {/* Desktop Search Section */}
@@ -274,10 +288,62 @@ export function CustomersPage() {
 
         {/* Guest State */}
         {!isLoggedIn && !loading && (
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-6 text-center">
-            <p className="text-[#2A2A2A] font-medium mb-1">Sign up to manage your customers</p>
-            <p className="text-gray-500 text-sm">Create an account to add restaurants, contacts, and track quote history.</p>
-          </div>
+          <>
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-6 text-center">
+              <p className="text-[#2A2A2A] font-medium mb-1">Sign up to manage your customers</p>
+              <p className="text-gray-500 text-sm">Create an account to add restaurants, contacts, and track quote history.</p>
+            </div>
+
+            <div className="mb-4">
+              <p className="text-xs text-gray-400 uppercase tracking-wide font-medium">Sample Customers (view only)</p>
+            </div>
+
+            {/* Mobile sample cards */}
+            <div className="md:hidden space-y-3 mb-6">
+              {sampleRestaurants.map((r) => (
+                <div key={r.id} className="rounded-lg border border-gray-200 shadow-sm p-4 opacity-75 bg-white">
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className="font-medium text-[#2A2A2A] text-base">{r.name}</h3>
+                  </div>
+                  <p className="text-sm text-gray-500 mb-3">{r.restaurant_group?.name || ''}</p>
+                  <div className="grid grid-cols-2 gap-y-3 gap-x-4 text-sm text-gray-600">
+                    <div>
+                      <span className="text-xs text-gray-400 block uppercase tracking-wide">Location</span>
+                      <span className="text-[#2A2A2A]">{[r.city, r.state].filter(Boolean).join(', ')}</span>
+                    </div>
+                    <div>
+                      <span className="text-xs text-gray-400 block uppercase tracking-wide">Contacts</span>
+                      <span className="text-[#2A2A2A]">{r.contact_count}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop sample table */}
+            <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200 hidden md:block opacity-75 mb-6">
+              <div className="overflow-x-auto">
+                <div className="min-w-[1000px]">
+                  <div className="grid grid-cols-[2fr_1fr_1fr_1fr_0.75fr] gap-4 pb-2 border-b-2 border-gray-300 text-xs text-gray-600">
+                    <div className="font-semibold">Customer Name</div>
+                    <div className="font-semibold">Group</div>
+                    <div className="font-semibold">Location</div>
+                    <div className="font-semibold">Rep</div>
+                    <div className="font-semibold">Contacts</div>
+                  </div>
+                  {sampleRestaurants.map((r) => (
+                    <div key={r.id} className="grid grid-cols-[2fr_1fr_1fr_1fr_0.75fr] gap-4 py-4 items-center border-b border-gray-100">
+                      <div>{r.name}</div>
+                      <div className="text-sm">{r.restaurant_group?.name || '--'}</div>
+                      <div className="text-sm">{[r.city, r.state].filter(Boolean).join(', ')}</div>
+                      <div className="text-sm">{r.primary_rep}</div>
+                      <div className="text-sm">{r.contact_count}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </>
         )}
 
         {/* Error State */}
@@ -296,7 +362,7 @@ export function CustomersPage() {
         )}
 
         {/* Empty State */}
-        {!loading && !error && sortedRestaurants.length === 0 && (
+        {!loading && !error && isLoggedIn && sortedRestaurants.length === 0 && (
           <div className="text-center py-12">
             <p className="text-gray-500 mb-2">
               {searchQuery ? 'No customers match your search.' : 'No customers yet.'}
