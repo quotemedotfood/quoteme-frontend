@@ -21,8 +21,8 @@ export const router = createBrowserRouter([
         path: "/",
         Component: RootLayout,
         children: [
-          { index: true, Component: CustomersPage },
-          { path: "quoteme", Component: QuoteMePage },
+          { index: true, Component: QuoteMePage },
+          { path: "customers", Component: CustomersPage },
           { path: "quotes", Component: QuotesPage },
           { path: "start-new-quote", Component: StartNewQuotePage },
           { path: "quote-builder", Component: QuoteBuilderPage },
