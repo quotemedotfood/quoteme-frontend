@@ -422,17 +422,29 @@ export async function uploadCatalog(skus: any[]): Promise<ApiResponse<any>> {
 }
 
 export async function uploadCatalogFile(file: File): Promise<ApiResponse<CatalogUploadResponse>> {
-  const token = getAuthToken();
+  const authToken = getAuthToken();
+  const guestToken = getGuestToken();
   const headers: Record<string, string> = {};
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
+
+  // Determine endpoint based on auth status
+  const isGuest = !authToken;
+  let endpoint: string;
+
+  if (isGuest) {
+    endpoint = `${API_BASE_URL}/api/v1/guest/quotes/upload_catalog`;
+    if (guestToken) {
+      headers['X-Guest-Token'] = guestToken;
+    }
+  } else {
+    endpoint = `${API_BASE_URL}/api/v1/catalogs/upload`;
+    headers['Authorization'] = `Bearer ${authToken}`;
   }
 
   const formData = new FormData();
   formData.append('file', file);
 
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/catalogs/upload`, {
+    const response = await fetch(endpoint, {
       method: 'POST',
       headers,
       body: formData,

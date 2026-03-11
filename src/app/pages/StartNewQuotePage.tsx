@@ -103,14 +103,23 @@ export function StartNewQuotePage() {
     }
     setCatalogUploading(true);
     setCatalogUploadResult(null);
+    // Ensure guest session exists for guest uploads
+    if (isGuest && !localStorage.getItem('quoteme_guest_token')) {
+      await initGuestSession();
+    }
     const res = await uploadCatalogFile(file);
     if (res.error) {
       setCatalogUploadResult({ message: res.error, isError: true });
     } else if (res.data) {
       setCatalogUploadResult({ message: res.data.message, isError: false });
-      // Refresh catalog list
-      const listRes = await getCatalogs();
-      if (listRes.data) setCatalogs(listRes.data);
+      if (!isGuest) {
+        // Refresh catalog list for logged-in users
+        const listRes = await getCatalogs();
+        if (listRes.data) setCatalogs(listRes.data);
+      } else {
+        // Show the uploaded catalog info for guests
+        setCatalogs([{ id: res.data.id, status: 'active', row_count: res.data.item_count, created_at: new Date().toISOString() } as CatalogSummary]);
+      }
     }
     setCatalogUploading(false);
   };
@@ -565,21 +574,21 @@ export function StartNewQuotePage() {
 
         {/* Upload Catalog */}
         <div className="bg-white rounded-lg p-6 mb-6 shadow-sm border border-gray-200">
-          <h2 className="text-lg mb-1">{isGuest ? 'Catalog' : 'Upload Catalog'}</h2>
+          <h2 className="text-lg mb-1">Upload Catalog</h2>
           <p className="text-gray-500 text-sm mb-4 font-bold">
-            {isGuest ? 'Sign up to upload your own catalog' : 'Upload your entire catalog or details'}
+            {isGuest ? 'Upload your catalog or use the demo catalog' : 'Upload your entire catalog or details'}
           </p>
 
           {/* Active / Recent Catalogs */}
           <div className="mb-4">
-            <h3 className="text-sm mb-2">{isGuest ? 'Demo Catalog' : 'Your Catalog(s)'}</h3>
-            {isGuest ? (
+            <h3 className="text-sm mb-2">{isGuest && catalogs.length === 0 ? 'Default Catalog' : 'Your Catalog(s)'}</h3>
+            {isGuest && catalogs.length === 0 ? (
               <div className="border border-blue-200 rounded-lg p-4 bg-blue-50">
                 <div className="flex items-center gap-3">
                   <FileText className="w-5 h-5 text-blue-400" />
                   <div>
                     <p className="text-sm font-medium text-[#2A2A2A]">Demo Catalog Active</p>
-                    <p className="text-xs text-gray-500">Sign up to upload your own product catalog</p>
+                    <p className="text-xs text-gray-500">Upload your own catalog below, or continue with the demo</p>
                   </div>
                 </div>
               </div>
@@ -613,8 +622,8 @@ export function StartNewQuotePage() {
             )}
           </div>
 
-          {/* Upload New Catalog — only for logged-in users */}
-          {!isGuest && <div>
+          {/* Upload New Catalog */}
+          <div>
             <h3 className="text-sm mb-2">Upload {catalogs.length > 0 ? 'New' : 'Your'} Catalog</h3>
             <input
               ref={catalogFileInputRef}
@@ -662,7 +671,7 @@ export function StartNewQuotePage() {
                 {catalogUploadResult.message}
               </div>
             )}
-          </div>}
+          </div>
         </div>
 
         {/* Upload or Paste Menu */}
