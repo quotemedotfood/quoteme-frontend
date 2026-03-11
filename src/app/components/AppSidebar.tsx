@@ -51,8 +51,8 @@ export function AppSidebar() {
   const { quotesRemaining, profile } = useUser();
 
   const navItems = [
-     { icon: <LayoutDashboard size={20} />, label: "Dashboard", path: "/" },
-     { icon: <Plus size={20} />, label: "New Quote", path: "/start-new-quote", highlight: true },
+     { icon: <Plus size={20} />, label: "New Quote", path: "/", highlight: true },
+     { icon: <LayoutDashboard size={20} />, label: "Dashboard", path: "/dashboard" },
      { icon: <Users size={20} />, label: "Customers", path: "/customers" },
      { icon: <FileText size={20} />, label: "Quotes", path: "/quotes" },
   ];

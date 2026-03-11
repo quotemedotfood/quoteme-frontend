@@ -397,6 +397,292 @@ export function StartNewQuotePage() {
           </p>
         </div>
 
+        {/* Upload or Paste Menu — moved to top */}
+        <div className="bg-white rounded-lg p-6 mb-6 shadow-sm border border-gray-200">
+          <h2 className="text-lg mb-1">Upload Menu</h2>
+          <p className="text-gray-500 text-sm mb-4 font-bold">
+            PDF Image or screenshot taken from Epo.txt Device
+          </p>
+
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".csv,.txt,.pdf,.png,.jpg,.jpeg,.gif,.webp"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) handleFileSelect(file);
+            }}
+          />
+          <input
+            ref={cameraInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) handleFileSelect(file);
+            }}
+          />
+
+          {hasCamera && (
+            <button
+              onClick={() => cameraInputRef.current?.click()}
+              disabled={isExtracting}
+              className="w-full flex items-center justify-center gap-3 mb-4 py-4 rounded-lg border-2 border-[#F2993D] bg-orange-50 hover:bg-orange-100 transition-colors"
+            >
+              <Camera className="w-6 h-6 text-[#F2993D]" />
+              <span className="text-sm font-medium text-[#F2993D]">Take Photo of Menu</span>
+            </button>
+          )}
+
+          <div
+            className={`border-2 border-dashed rounded-lg p-12 text-center mb-4 cursor-pointer transition-colors ${
+              isDragging
+                ? 'border-[#F2993D] bg-orange-50'
+                : 'border-gray-200 hover:border-gray-400'
+            }`}
+            onClick={() => fileInputRef.current?.click()}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+          >
+            {isExtracting ? (
+              <div className="flex flex-col items-center gap-2">
+                <Loader2 className="w-6 h-6 animate-spin text-[#F2993D]" />
+                <p className="text-sm text-gray-600">Reading menu...</p>
+              </div>
+            ) : (
+              <>
+                <Upload className="w-6 h-6 text-gray-400 mx-auto mb-2" />
+                <p className="text-sm mb-1">Drag files here or click to browse</p>
+                <p className="text-xs text-gray-500 font-bold">PDF, image, CSV, or text file</p>
+              </>
+            )}
+          </div>
+
+          {extractError && (
+            <div className="text-sm text-red-500 bg-red-50 border border-red-200 rounded-md p-3 mb-4">
+              {extractError}
+            </div>
+          )}
+
+          <div className="flex justify-between items-center text-xs text-gray-500 font-bold">
+            {uploadedFile ? (
+              <span className="flex items-center gap-2">
+                <FileText className="w-3.5 h-3.5" />
+                {uploadedFile.name} ({(uploadedFile.size / 1024).toFixed(1)} KB)
+              </span>
+            ) : (
+              <span>NO FILE PICKED</span>
+            )}
+          </div>
+
+          {/* Divider */}
+          <div className="relative flex py-5 items-center">
+            <div className="flex-grow border-t border-gray-300"></div>
+            <span className="flex-shrink-0 mx-4 text-gray-400 text-xs uppercase font-bold">OR USE A MENU URL</span>
+            <div className="flex-grow border-t border-gray-300"></div>
+          </div>
+
+          {/* Menu URLs */}
+          <div>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg">Menu URLs</h2>
+              <Button variant="ghost" size="sm" className="text-blue-600">
+                <Plus className="w-4 h-4 mr-1" />
+                Add
+              </Button>
+            </div>
+
+            <div className="bg-blue-50 border border-blue-200 rounded-md p-3 mb-4">
+              <div className="flex items-start gap-2">
+
+                <div className="flex-1">
+                  <h3 className="text-sm mb-1">
+                    Restaurant Type - Auto-Populate Quote
+                  </h3>
+                  <p className="text-xs text-gray-600 mb-2 font-bold">
+                    Select a restaurant type to auto-populate the quote with relevant
+                    catalog items
+                  </p>
+                  <select className="w-48 px-3 py-1.5 border border-blue-200 rounded-md bg-white text-xs">
+                    <option>Select restaurant type</option>
+                    <option>Bar/Grill</option>
+                    <option>Spanish</option>
+                    <option>Italian</option>
+                    <option>Brewery</option>
+                    <option>Coffee shop</option>
+                  </select>
+                  <Button
+                    size="sm"
+                    className="ml-2 bg-blue-600 hover:bg-blue-700 text-white text-xs"
+                  >
+                    Make Stock Quote
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="menu-name" className="text-sm mb-2 block">
+                  Menu URL
+                </Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="menu-name"
+                    type="text"
+                    placeholder="www.example.com/menu"
+                    className="bg-gray-50 flex-1"
+                    value={menuUrl}
+                    onChange={(e) => setMenuUrl(e.target.value)}
+                  />
+                  <Button
+                    className="bg-[#F2993D] hover:bg-[#e88929] text-white shrink-0"
+                    onClick={handleUrlExtract}
+                    disabled={!menuUrl.trim() || isExtracting}
+                  >
+                    {isExtracting ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      'Fetch'
+                    )}
+                  </Button>
+                </div>
+              </div>
+              <div>
+                <Label className="text-sm mb-2 block">Click to Link from Customer Profile</Label>
+                <Button
+                  variant="outline"
+                  className="w-full justify-start"
+                  onClick={() => {
+                    if (selectedRestaurant?.website) {
+                      setMenuUrl(selectedRestaurant.website);
+                    }
+                  }}
+                  disabled={!selectedRestaurant}
+                  title={!selectedRestaurant ? "Select a customer first" : "Use customer's website"}
+                >
+                  <LinkIcon className="w-4 h-4 mr-2" />
+                  {selectedRestaurant ? 'Link Profile URL' : 'Select Customer First'}
+                </Button>
+              </div>
+            </div>
+
+            <div className="relative flex py-5 items-center">
+              <div className="flex-grow border-t border-gray-300"></div>
+              <span className="flex-shrink-0 mx-4 text-gray-400 text-xs uppercase font-bold">OR PASTE TEXT</span>
+              <div className="flex-grow border-t border-gray-300"></div>
+            </div>
+
+            <div className="mt-2">
+              <Label className="text-sm mb-2 block">Paste menu text here...</Label>
+              <Textarea
+                className="bg-gray-50 h-32"
+                value={pasteText}
+                onChange={(e) => setPasteText(e.target.value)}
+                maxLength={5000}
+              />
+              <div className="text-right mt-1">
+                <span className="text-xs text-gray-500">
+                  {pasteText.length} / 5,000 characters
+                </span>
+              </div>
+            </div>
+
+            {/* Divider */}
+            <div className="relative flex py-5 items-center">
+              <div className="flex-grow border-t border-gray-300"></div>
+              <span className="flex-shrink-0 mx-4 text-gray-400 text-xs uppercase font-bold">CLICK HERE TO PREVIEW MENU</span>
+              <div className="flex-grow border-t border-gray-300"></div>
+            </div>
+
+            {/* Parse Button Moved Here */}
+            <div className="flex justify-center gap-3 mt-2">
+              <Button
+                className="bg-blue-500 hover:bg-blue-600 text-white px-8"
+                onClick={handleParseMenu}
+                disabled={isExtracting || (!pasteText && !uploadedFile && !menuUrl)}
+              >
+                {isExtracting ? (
+                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Reading menu...</>
+                ) : (
+                  'Parse Menu'
+                )}
+              </Button>
+            </div>
+          </div>
+
+          {/* Menu Preview */}
+          <div>
+            <h2 className="text-lg mb-1 mt-6">Menu Preview</h2>
+            <p className="text-gray-500 text-sm mb-4 font-bold">See menu on the preview (You can manually add additional dishes or components in the next step).</p>
+
+            <div className="border border-gray-200 rounded-lg p-6 min-h-[200px] bg-gray-50 text-left whitespace-pre-wrap">
+               {isExtracting ? (
+                   <div className="text-center pt-10 flex flex-col items-center gap-3">
+                     <Loader2 className="w-6 h-6 animate-spin text-[#F2993D]" />
+                     <p className="text-gray-500 text-sm">Reading menu from {uploadedFile ? 'file' : 'URL'}...</p>
+                   </div>
+               ) : menuPreviewText ? (
+                   <p className="text-sm text-[#2A2A2A]">{menuPreviewText}</p>
+               ) : (
+                   <div className="text-center pt-10">
+                        <p className="text-gray-400 font-bold">Your parsed menu will appear here</p>
+                   </div>
+               )}
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex flex-col sm:flex-row justify-center gap-3 mt-4">
+                <Button
+                    className="w-full sm:w-auto bg-[#F2993D] hover:bg-[#e88929] text-white"
+                    onClick={handleSkipToExport}
+                    disabled={isCreatingQuote || (!pasteText && !menuPreviewText)}
+                >
+                    {isCreatingQuote ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Building quote...
+                      </>
+                    ) : (
+                      'Skip To Quote'
+                    )}
+                </Button>
+                <Button
+                    className="w-full sm:w-auto bg-[#A5CFDD] hover:bg-[#8db9c9] text-[#2A2A2A]"
+                    onClick={handleContinueToQuoteBuilder}
+                    disabled={isCreatingQuote}
+                >
+                    {isCreatingQuote ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        {['Reading menu…', 'Extracting ingredients…', 'Matching to catalog…', 'Building your quote…', 'Almost there…', 'So close…'][loadingPhase]}
+                      </>
+                    ) : (
+                      'Match Ingredients to Catalog'
+                    )}
+                </Button>
+                <Button
+                    variant="outline"
+                    onClick={() => {
+                      setMenuPreviewText('');
+                      setPasteText('');
+                      setUploadedFile(null);
+                      setMenuUrl('');
+                      setExtractError(null);
+                      if (fileInputRef.current) fileInputRef.current.value = '';
+                    }}
+                    className="w-full sm:w-auto text-sm"
+                >
+                    Clear Results
+                </Button>
+            </div>
+          </div>
+        </div>
+
         {/* Customer Information */}
         <div className="bg-white rounded-lg p-6 mb-6 shadow-sm border border-gray-200">
           <div className="flex justify-between items-center mb-4">
@@ -674,291 +960,6 @@ export function StartNewQuotePage() {
           </div>
         </div>
 
-        {/* Upload or Paste Menu */}
-        <div className="bg-white rounded-lg p-6 mb-6 shadow-sm border border-gray-200">
-          <h2 className="text-lg mb-1">Upload Menu</h2>
-          <p className="text-gray-500 text-sm mb-4 font-bold">
-            PDF Image or screenshot taken from Epo.txt Device
-          </p>
-
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".csv,.txt,.pdf,.png,.jpg,.jpeg,.gif,.webp"
-            className="hidden"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) handleFileSelect(file);
-            }}
-          />
-          <input
-            ref={cameraInputRef}
-            type="file"
-            accept="image/*"
-            capture="environment"
-            className="hidden"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) handleFileSelect(file);
-            }}
-          />
-
-          {hasCamera && (
-            <button
-              onClick={() => cameraInputRef.current?.click()}
-              disabled={isExtracting}
-              className="w-full flex items-center justify-center gap-3 mb-4 py-4 rounded-lg border-2 border-[#F2993D] bg-orange-50 hover:bg-orange-100 transition-colors"
-            >
-              <Camera className="w-6 h-6 text-[#F2993D]" />
-              <span className="text-sm font-medium text-[#F2993D]">Take Photo of Menu</span>
-            </button>
-          )}
-
-          <div
-            className={`border-2 border-dashed rounded-lg p-12 text-center mb-4 cursor-pointer transition-colors ${
-              isDragging
-                ? 'border-[#F2993D] bg-orange-50'
-                : 'border-gray-200 hover:border-gray-400'
-            }`}
-            onClick={() => fileInputRef.current?.click()}
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
-          >
-            {isExtracting ? (
-              <div className="flex flex-col items-center gap-2">
-                <Loader2 className="w-6 h-6 animate-spin text-[#F2993D]" />
-                <p className="text-sm text-gray-600">Reading menu...</p>
-              </div>
-            ) : (
-              <>
-                <Upload className="w-6 h-6 text-gray-400 mx-auto mb-2" />
-                <p className="text-sm mb-1">Drag files here or click to browse</p>
-                <p className="text-xs text-gray-500 font-bold">PDF, image, CSV, or text file</p>
-              </>
-            )}
-          </div>
-
-          {extractError && (
-            <div className="text-sm text-red-500 bg-red-50 border border-red-200 rounded-md p-3 mb-4">
-              {extractError}
-            </div>
-          )}
-
-          <div className="flex justify-between items-center text-xs text-gray-500 font-bold">
-            {uploadedFile ? (
-              <span className="flex items-center gap-2">
-                <FileText className="w-3.5 h-3.5" />
-                {uploadedFile.name} ({(uploadedFile.size / 1024).toFixed(1)} KB)
-              </span>
-            ) : (
-              <span>NO FILE PICKED</span>
-            )}
-          </div>
-
-          {/* Divider */}
-          <div className="relative flex py-5 items-center">
-            <div className="flex-grow border-t border-gray-300"></div>
-            <span className="flex-shrink-0 mx-4 text-gray-400 text-xs uppercase font-bold">OR USE A MENU URL</span>
-            <div className="flex-grow border-t border-gray-300"></div>
-          </div>
-
-          {/* Menu URLs */}
-          <div>
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg">Menu URLs</h2>
-              <Button variant="ghost" size="sm" className="text-blue-600">
-                <Plus className="w-4 h-4 mr-1" />
-                Add
-              </Button>
-            </div>
-
-            <div className="bg-blue-50 border border-blue-200 rounded-md p-3 mb-4">
-              <div className="flex items-start gap-2">
-                
-                <div className="flex-1">
-                  <h3 className="text-sm mb-1">
-                    Restaurant Type - Auto-Populate Quote
-                  </h3>
-                  <p className="text-xs text-gray-600 mb-2 font-bold">
-                    Select a restaurant type to auto-populate the quote with relevant
-                    catalog items
-                  </p>
-                  <select className="w-48 px-3 py-1.5 border border-blue-200 rounded-md bg-white text-xs">
-                    <option>Select restaurant type</option>
-                    <option>Bar/Grill</option>
-                    <option>Spanish</option>
-                    <option>Italian</option>
-                    <option>Brewery</option>
-                    <option>Coffee shop</option>
-                  </select>
-                  <Button
-                    size="sm"
-                    className="ml-2 bg-blue-600 hover:bg-blue-700 text-white text-xs"
-                  >
-                    Make Stock Quote
-                  </Button>
-                </div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="menu-name" className="text-sm mb-2 block">
-                  Menu URL
-                </Label>
-                <div className="flex gap-2">
-                  <Input
-                    id="menu-name"
-                    type="text"
-                    placeholder="www.example.com/menu"
-                    className="bg-gray-50 flex-1"
-                    value={menuUrl}
-                    onChange={(e) => setMenuUrl(e.target.value)}
-                  />
-                  <Button
-                    className="bg-[#F2993D] hover:bg-[#e88929] text-white shrink-0"
-                    onClick={handleUrlExtract}
-                    disabled={!menuUrl.trim() || isExtracting}
-                  >
-                    {isExtracting ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      'Fetch'
-                    )}
-                  </Button>
-                </div>
-              </div>
-              <div>
-                <Label className="text-sm mb-2 block">Click to Link from Customer Profile</Label>
-                <Button
-                  variant="outline"
-                  className="w-full justify-start"
-                  onClick={() => {
-                    if (selectedRestaurant?.website) {
-                      setMenuUrl(selectedRestaurant.website);
-                    }
-                  }}
-                  disabled={!selectedRestaurant}
-                  title={!selectedRestaurant ? "Select a customer first" : "Use customer's website"}
-                >
-                  <LinkIcon className="w-4 h-4 mr-2" />
-                  {selectedRestaurant ? 'Link Profile URL' : 'Select Customer First'}
-                </Button>
-              </div>
-            </div>
-
-            <div className="relative flex py-5 items-center">
-              <div className="flex-grow border-t border-gray-300"></div>
-              <span className="flex-shrink-0 mx-4 text-gray-400 text-xs uppercase font-bold">OR PASTE TEXT</span>
-              <div className="flex-grow border-t border-gray-300"></div>
-            </div>
-
-            <div className="mt-2">
-              <Label className="text-sm mb-2 block">Paste menu text here...</Label>
-              <Textarea 
-                className="bg-gray-50 h-32" 
-                value={pasteText}
-                onChange={(e) => setPasteText(e.target.value)}
-                maxLength={5000}
-              />
-              <div className="text-right mt-1">
-                <span className="text-xs text-gray-500">
-                  {pasteText.length} / 5,000 characters
-                </span>
-              </div>
-            </div>
-            
-            {/* Divider */}
-            <div className="relative flex py-5 items-center">
-              <div className="flex-grow border-t border-gray-300"></div>
-              <span className="flex-shrink-0 mx-4 text-gray-400 text-xs uppercase font-bold">CLICK HERE TO PREVIEW MENU</span>
-              <div className="flex-grow border-t border-gray-300"></div>
-            </div>
-
-            {/* Parse Button Moved Here */}
-            <div className="flex justify-center gap-3 mt-2">
-              <Button
-                className="bg-blue-500 hover:bg-blue-600 text-white px-8"
-                onClick={handleParseMenu}
-                disabled={isExtracting || (!pasteText && !uploadedFile && !menuUrl)}
-              >
-                {isExtracting ? (
-                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Reading menu...</>
-                ) : (
-                  'Parse Menu'
-                )}
-              </Button>
-            </div>
-          </div>
-
-          {/* Menu Preview */}
-          <div>
-            <h2 className="text-lg mb-1 mt-6">Menu Preview</h2>
-            <p className="text-gray-500 text-sm mb-4 font-bold">See menu on the preview (You can manually add additional dishes or components in the next step).</p>
-
-            <div className="border border-gray-200 rounded-lg p-6 min-h-[200px] bg-gray-50 text-left whitespace-pre-wrap">
-               {isExtracting ? (
-                   <div className="text-center pt-10 flex flex-col items-center gap-3">
-                     <Loader2 className="w-6 h-6 animate-spin text-[#F2993D]" />
-                     <p className="text-gray-500 text-sm">Reading menu from {uploadedFile ? 'file' : 'URL'}...</p>
-                   </div>
-               ) : menuPreviewText ? (
-                   <p className="text-sm text-[#2A2A2A]">{menuPreviewText}</p>
-               ) : (
-                   <div className="text-center pt-10">
-                        <p className="text-gray-400 font-bold">Your parsed menu will appear here</p>
-                   </div>
-               )}
-            </div>
-            
-            {/* Action Buttons */}
-            <div className="flex flex-col sm:flex-row justify-center gap-3 mt-4">
-                <Button
-                    className="w-full sm:w-auto bg-[#F2993D] hover:bg-[#e88929] text-white"
-                    onClick={handleSkipToExport}
-                    disabled={isCreatingQuote || (!pasteText && !menuPreviewText)}
-                >
-                    {isCreatingQuote ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Building quote...
-                      </>
-                    ) : (
-                      'Skip To Quote'
-                    )}
-                </Button>
-                <Button
-                    className="w-full sm:w-auto bg-[#A5CFDD] hover:bg-[#8db9c9] text-[#2A2A2A]"
-                    onClick={handleContinueToQuoteBuilder}
-                    disabled={isCreatingQuote}
-                >
-                    {isCreatingQuote ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        {['Reading menu…', 'Extracting ingredients…', 'Matching to catalog…', 'Building your quote…', 'Almost there…', 'So close…'][loadingPhase]}
-                      </>
-                    ) : (
-                      'Match Ingredients to Catalog'
-                    )}
-                </Button>
-                <Button
-                    variant="outline"
-                    onClick={() => {
-                      setMenuPreviewText('');
-                      setPasteText('');
-                      setUploadedFile(null);
-                      setMenuUrl('');
-                      setExtractError(null);
-                      if (fileInputRef.current) fileInputRef.current.value = '';
-                    }}
-                    className="w-full sm:w-auto text-sm"
-                >
-                    Clear Results
-                </Button>
-            </div>
-          </div>
-        </div>
       </div>
 
       {/* Add Restaurant Drawer */}
