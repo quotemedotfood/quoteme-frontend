@@ -17,7 +17,8 @@ export function AuthSyncProvider({ children }: AuthSyncProviderProps) {
         fullName: `${user.first_name} ${user.last_name}`,
         email: user.email,
         phoneNumber: user.phone || '',
-        distributorName: user.distributor?.name || 'Your Distributor',
+        distributorName: user.distributor?.name || user.distributor_name || '',
+        distributorLogo: user.distributor?.logo_url || user.rep_settings?.company_logo_url || null,
         isGuest: false,
         plan: 'free', // Backend should provide this
         quotesUsed: 0, // Backend should provide this

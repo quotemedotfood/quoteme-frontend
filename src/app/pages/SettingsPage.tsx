@@ -1,36 +1,85 @@
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
-import { Upload, Download, Trash2, Edit } from 'lucide-react';
+import { Upload, Edit, Camera } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { useUser } from '../contexts/UserContext';
 import { useAuth } from '../contexts/AuthContext';
-import { updateCurrentUser } from '../services/api';
-import settingsImage from '/src/assets/2a44d7cf18f7672c57e1e8cd07027ed5a2b4bf19.png';
+import { updateCurrentUser, getBilling, createCheckoutSession, createPortalSession, sendPasswordReset } from '../services/api';
+import { AuthDrawer } from '../components/AuthDrawer';
 
 export function SettingsPage() {
   const { profile, updateProfile } = useUser();
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [isSaving, setIsSaving] = useState(false);
+  const [isSavingCompany, setIsSavingCompany] = useState(false);
+
+  // Edit mode states
+  const [isEditingAccount, setIsEditingAccount] = useState(false);
+  const [isEditingDistributor, setIsEditingDistributor] = useState(false);
+
+  // Auth drawer state
+  const [authDrawerOpen, setAuthDrawerOpen] = useState(false);
+
+  // Profile photo state
+  const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
+  const profilePhotoInputRef = useRef<HTMLInputElement>(null);
 
   // Local state for editing
   const [fullName, setFullName] = useState(profile.fullName);
   const [email, setEmail] = useState(profile.email);
   const [phoneNumber, setPhoneNumber] = useState(profile.phoneNumber);
-  
+
   const [companyName, setCompanyName] = useState(profile.distributorName);
   const [companyLogo, setCompanyLogo] = useState<string | null>(profile.distributorLogo);
-  const [companyEmail, setCompanyEmail] = useState('yourcompany@email.com');
+  const [companyEmail, setCompanyEmail] = useState('');
   const [websiteUrl, setWebsiteUrl] = useState('');
-  const [companyPhone, setCompanyPhone] = useState('+17888235-4967');
+  const [companyPhone, setCompanyPhone] = useState('');
 
-  const [deliveryDays, setDeliveryDays] = useState('Monday, Wednesday, Friday');
-  const [minimumOrder, setMinimumOrder] = useState('1,250');
+  const [deliveryDays, setDeliveryDays] = useState('');
+  const [minimumOrder, setMinimumOrder] = useState('');
   const [paymentTerms, setPaymentTerms] = useState('');
+
+  // Billing state
+  const [billingData, setBillingData] = useState<any>(null);
+  const [billingLoading, setBillingLoading] = useState(false);
+  const [billingActionLoading, setBillingActionLoading] = useState(false);
+
+  // Track unsaved changes for guest warning
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   const location = useLocation();
   const billingRef = useRef<HTMLDivElement>(null);
+
+  // Snapshot of original values for change detection
+  const originalValues = useRef({
+    fullName: profile.fullName,
+    email: profile.email,
+    phoneNumber: profile.phoneNumber,
+    companyName: profile.distributorName,
+  });
+
+  // Check for unsaved changes
+  useEffect(() => {
+    const changed =
+      fullName !== originalValues.current.fullName ||
+      email !== originalValues.current.email ||
+      phoneNumber !== originalValues.current.phoneNumber ||
+      companyName !== originalValues.current.companyName;
+    setHasUnsavedChanges(changed);
+  }, [fullName, email, phoneNumber, companyName]);
+
+  // beforeunload warning for guests with unsaved changes
+  useEffect(() => {
+    if (!profile.isGuest || !hasUnsavedChanges) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [profile.isGuest, hasUnsavedChanges]);
 
   // Update local state when profile changes (e.g. initial load)
   useEffect(() => {
@@ -39,9 +88,47 @@ export function SettingsPage() {
     setPhoneNumber(profile.phoneNumber);
     setCompanyName(profile.distributorName);
     setCompanyLogo(profile.distributorLogo);
+    originalValues.current = {
+      fullName: profile.fullName,
+      email: profile.email,
+      phoneNumber: profile.phoneNumber,
+      companyName: profile.distributorName,
+    };
   }, [profile]);
 
+  // Load rep_settings and avatar from authenticated user
+  useEffect(() => {
+    if (user) {
+      const s = user.rep_settings || {};
+      if (s.company_email) setCompanyEmail(s.company_email);
+      if (s.company_phone) setCompanyPhone(s.company_phone);
+      if (s.website_url) setWebsiteUrl(s.website_url);
+      if (s.delivery_days) setDeliveryDays(s.delivery_days);
+      if (s.minimum_order) setMinimumOrder(s.minimum_order);
+      if (s.payment_terms) setPaymentTerms(s.payment_terms);
+      if (s.company_logo_url) setCompanyLogo(s.company_logo_url);
+      if (user.avatar_url) setProfilePhoto(user.avatar_url);
+    }
+  }, [user]);
+
+  // Fetch billing data for logged-in users
+  useEffect(() => {
+    if (!profile.isGuest) {
+      setBillingLoading(true);
+      getBilling().then((res) => {
+        if (res.data) {
+          setBillingData(res.data);
+        }
+        setBillingLoading(false);
+      });
+    }
+  }, [profile.isGuest]);
+
   const handleSaveProfile = async () => {
+    if (profile.isGuest) {
+      setAuthDrawerOpen(true);
+      return;
+    }
     setIsSaving(true);
     const nameParts = fullName.trim().split(/\s+/);
     const firstName = nameParts[0] || '';
@@ -52,6 +139,7 @@ export function SettingsPage() {
       last_name: lastName,
       email,
       phone: phoneNumber,
+      avatar_url: profilePhoto || undefined,
     });
 
     if (response.data) {
@@ -60,18 +148,62 @@ export function SettingsPage() {
         email: response.data.email,
         phoneNumber: response.data.phone || phoneNumber,
       });
+      setIsEditingAccount(false);
     } else {
       alert(response.error || 'Failed to save profile');
     }
     setIsSaving(false);
   };
 
-  const handleSaveCompany = () => {
-    updateProfile({
-      distributorName: companyName,
-      distributorLogo: companyLogo,
+  const handleCancelAccountEdit = () => {
+    setFullName(profile.fullName);
+    setEmail(profile.email);
+    setPhoneNumber(profile.phoneNumber);
+    setIsEditingAccount(false);
+  };
+
+  const handleSaveCompany = async () => {
+    if (profile.isGuest) {
+      setAuthDrawerOpen(true);
+      return;
+    }
+    setIsSavingCompany(true);
+    const response = await updateCurrentUser({
+      rep_settings: {
+        company_email: companyEmail,
+        company_phone: companyPhone,
+        website_url: websiteUrl,
+        delivery_days: deliveryDays,
+        minimum_order: minimumOrder,
+        payment_terms: paymentTerms,
+        company_logo_url: companyLogo || undefined,
+      },
     });
-    // Add other company settings saving logic here if needed
+    setIsSavingCompany(false);
+
+    if (response.data) {
+      updateProfile({
+        distributorName: companyName,
+        distributorLogo: companyLogo,
+      });
+      setIsEditingDistributor(false);
+    } else {
+      alert(response.error || 'Failed to save distributor settings');
+    }
+  };
+
+  const handleCancelDistributorEdit = () => {
+    setCompanyName(profile.distributorName);
+    setCompanyLogo(profile.distributorLogo);
+    // Reset to saved values from user
+    const s = user?.rep_settings || {};
+    setCompanyEmail(s.company_email || '');
+    setCompanyPhone(s.company_phone || '');
+    setWebsiteUrl(s.website_url || '');
+    setDeliveryDays(s.delivery_days || '');
+    setMinimumOrder(s.minimum_order || '');
+    setPaymentTerms(s.payment_terms || '');
+    setIsEditingDistributor(false);
   };
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -85,13 +217,45 @@ export function SettingsPage() {
     }
   };
 
-  const handleUpgradePlan = () => {
-    // Simulate successful payment/billing setup
-    updateProfile({
-      hasPaidSubscription: true,
-      plan: 'premium'
-    });
-    alert('Congratulations! You\'ve upgraded to Premium. You now have unlimited quotes!');
+  const handleProfilePhotoClick = () => {
+    profilePhotoInputRef.current?.click();
+  };
+
+  const handleProfilePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setProfilePhoto(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleUpgradePlan = async () => {
+    if (profile.isGuest) {
+      setAuthDrawerOpen(true);
+      return;
+    }
+    setBillingActionLoading(true);
+    const res = await createCheckoutSession();
+    setBillingActionLoading(false);
+    if (res.data?.checkout_url) {
+      window.location.href = res.data.checkout_url;
+    } else {
+      alert(res.error || 'Failed to create checkout session');
+    }
+  };
+
+  const handleManagePlan = async () => {
+    setBillingActionLoading(true);
+    const res = await createPortalSession();
+    setBillingActionLoading(false);
+    if (res.data?.portal_url) {
+      window.location.href = res.data.portal_url;
+    } else {
+      alert(res.error || 'Failed to open billing portal');
+    }
   };
 
   useEffect(() => {
@@ -102,12 +266,37 @@ export function SettingsPage() {
     }
   }, [location.pathname]);
 
+  const isGuest = profile.isGuest;
+  const accountFieldsReadOnly = !isGuest && !isEditingAccount;
+  const distributorFieldsReadOnly = !isEditingDistributor;
+
   return (
     <div className="p-4 md:p-8 bg-[#FFF9F3] min-h-screen">
       <div className="max-w-4xl mx-auto space-y-8">
         {/* Account Info Section */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <h2 className="text-lg text-[#4F4F4F] mb-1">Account Info</h2>
+          <div className="flex justify-between items-center mb-1">
+            <h2 className="text-lg text-[#4F4F4F]">Account Info</h2>
+            {isGuest ? (
+              <Button
+                onClick={() => setAuthDrawerOpen(true)}
+                className="bg-[#F2993D] hover:bg-[#E08A2E] text-white text-sm"
+              >
+                Log In
+              </Button>
+            ) : (
+              !isEditingAccount && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsEditingAccount(true)}
+                >
+                  <Edit className="w-4 h-4 mr-2" />
+                  Edit
+                </Button>
+              )
+            )}
+          </div>
           <p className="text-sm text-[#4F4F4F] mb-6">
             Manage your account information and preferences
           </p>
@@ -115,13 +304,26 @@ export function SettingsPage() {
           <div className="flex flex-col md:flex-row gap-6 mb-6">
             {/* Profile Photo */}
             <div className="flex-shrink-0 flex md:block flex-col items-center">
-              <div className="w-24 h-24 rounded-full bg-gray-200 overflow-hidden">
+              <div
+                className="w-24 h-24 rounded-full bg-gray-200 overflow-hidden cursor-pointer relative group"
+                onClick={handleProfilePhotoClick}
+              >
                 <img
-                  src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&h=200&fit=crop"
+                  src={profilePhoto || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&h=200&fit=crop'}
                   alt="Profile"
                   className="w-full h-full object-cover"
                 />
+                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  <Camera className="w-6 h-6 text-white" />
+                </div>
               </div>
+              <input
+                ref={profilePhotoInputRef}
+                type="file"
+                accept="image/png, image/jpeg"
+                className="hidden"
+                onChange={handleProfilePhotoChange}
+              />
               <p className="text-xs text-center mt-2 text-[#4F4F4F]">{fullName}</p>
               <p className="text-xs text-center text-[#4F4F4F]">{email}</p>
             </div>
@@ -136,6 +338,7 @@ export function SettingsPage() {
                   onChange={(e) => setFullName(e.target.value)}
                   placeholder="Enter your name"
                   className="bg-white"
+                  readOnly={accountFieldsReadOnly}
                 />
               </div>
 
@@ -147,6 +350,7 @@ export function SettingsPage() {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="Your email"
                   className="bg-white"
+                  readOnly={accountFieldsReadOnly}
                 />
               </div>
 
@@ -158,39 +362,82 @@ export function SettingsPage() {
                   onChange={(e) => setPhoneNumber(e.target.value)}
                   placeholder="Enter your phone number"
                   className="bg-white"
+                  readOnly={accountFieldsReadOnly}
                 />
               </div>
 
-              <div className="flex gap-3 pt-2">
-                <Button
-                  onClick={handleSaveProfile}
-                  disabled={isSaving}
-                  className="bg-[#F2993D] hover:bg-[#E08A2E] text-white"
-                >
-                  {isSaving ? 'Saving...' : 'Save Changes'}
-                </Button>
-                <Button variant="outline">Reset Password</Button>
-              </div>
+              {/* Show save/cancel for logged-in editing, or prompt login for guests */}
+              {isGuest ? (
+                <div className="flex gap-3 pt-2">
+                  <Button
+                    onClick={() => setAuthDrawerOpen(true)}
+                    className="bg-[#F2993D] hover:bg-[#E08A2E] text-white"
+                  >
+                    Log In to Save
+                  </Button>
+                </div>
+              ) : isEditingAccount ? (
+                <div className="flex gap-3 pt-2">
+                  <Button
+                    onClick={handleSaveProfile}
+                    disabled={isSaving}
+                    className="bg-[#F2993D] hover:bg-[#E08A2E] text-white"
+                  >
+                    {isSaving ? 'Saving...' : 'Save Changes'}
+                  </Button>
+                  <Button variant="outline" onClick={handleCancelAccountEdit}>
+                    Cancel
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={async () => {
+                      if (!email) return;
+                      const res = await sendPasswordReset(email);
+                      if (res.data) {
+                        alert('Password reset email sent. Check your inbox.');
+                      } else {
+                        alert(res.error || 'Failed to send reset email');
+                      }
+                    }}
+                  >
+                    Reset Password
+                  </Button>
+                </div>
+              ) : null}
             </div>
           </div>
 
-          {/* Log Out */}
-          <div className="border-t border-gray-200 pt-6">
-            <h3 className="text-sm text-[#4F4F4F] mb-1">Log Out</h3>
-            <p className="text-sm text-[#4F4F4F] mb-3">Log out from current session</p>
-            <Button
-              variant="outline"
-              className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
-              onClick={() => { logout(); navigate('/'); }}
-            >
-              Log Out
-            </Button>
-          </div>
+          {/* Log Out - Only for logged-in users */}
+          {!isGuest && (
+            <div className="border-t border-gray-200 pt-6">
+              <h3 className="text-sm text-[#4F4F4F] mb-1">Log Out</h3>
+              <p className="text-sm text-[#4F4F4F] mb-3">Log out from current session</p>
+              <Button
+                variant="outline"
+                className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
+                onClick={() => { logout(); navigate('/'); }}
+              >
+                Log Out
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* Distributor Settings Section */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <h2 className="text-lg text-[#4F4F4F] mb-1">Distributor Settings</h2>
+          <div className="flex justify-between items-center mb-1">
+            <h2 className="text-lg text-[#4F4F4F]">Distributor Settings</h2>
+            {!isEditingDistributor && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsEditingDistributor(true)}
+              >
+                <Edit className="w-4 h-4 mr-2" />
+                Edit
+              </Button>
+            )}
+          </div>
           <p className="text-sm text-[#4F4F4F] mb-6">
             Configure your distributor-specific details and delivery options
           </p>
@@ -210,21 +457,23 @@ export function SettingsPage() {
                       </div>
                     )}
                   </div>
-                  <div>
-                    <label className="cursor-pointer">
-                      <input 
-                        type="file" 
-                        accept="image/png, image/jpeg" 
-                        className="hidden" 
-                        onChange={handleLogoUpload}
-                      />
-                      <div className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-3 mb-1">
-                        <Upload className="w-4 h-4 mr-2" />
-                        Upload Logo
-                      </div>
-                    </label>
-                    <p className="text-xs text-[#4F4F4F]">PNG, JPG (Max 2MB)</p>
-                  </div>
+                  {isEditingDistributor && (
+                    <div>
+                      <label className="cursor-pointer">
+                        <input
+                          type="file"
+                          accept="image/png, image/jpeg"
+                          className="hidden"
+                          onChange={handleLogoUpload}
+                        />
+                        <div className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-3 mb-1">
+                          <Upload className="w-4 h-4 mr-2" />
+                          Upload Logo
+                        </div>
+                      </label>
+                      <p className="text-xs text-[#4F4F4F]">PNG, JPG (Max 2MB)</p>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -239,6 +488,7 @@ export function SettingsPage() {
                   value={companyName}
                   onChange={(e) => setCompanyName(e.target.value)}
                   className="bg-white"
+                  readOnly={distributorFieldsReadOnly}
                 />
               </div>
 
@@ -249,6 +499,7 @@ export function SettingsPage() {
                   value={companyEmail}
                   onChange={(e) => setCompanyEmail(e.target.value)}
                   className="bg-white"
+                  readOnly={distributorFieldsReadOnly}
                 />
               </div>
 
@@ -260,6 +511,7 @@ export function SettingsPage() {
                   onChange={(e) => setWebsiteUrl(e.target.value)}
                   placeholder="https://"
                   className="bg-white"
+                  readOnly={distributorFieldsReadOnly}
                 />
               </div>
 
@@ -270,6 +522,7 @@ export function SettingsPage() {
                   value={companyPhone}
                   onChange={(e) => setCompanyPhone(e.target.value)}
                   className="bg-white"
+                  readOnly={distributorFieldsReadOnly}
                 />
               </div>
             </div>
@@ -288,6 +541,7 @@ export function SettingsPage() {
                   onChange={(e) => setDeliveryDays(e.target.value)}
                   placeholder="e.g., Monday, Wednesday, Friday"
                   className="bg-white"
+                  readOnly={distributorFieldsReadOnly}
                 />
                 <p className="text-xs text-[#4F4F4F] mt-1">
                   e.g., "Mon, Wed, Fri" or "Daily"
@@ -305,6 +559,7 @@ export function SettingsPage() {
                     value={minimumOrder}
                     onChange={(e) => setMinimumOrder(e.target.value)}
                     className="bg-white pl-7"
+                    readOnly={distributorFieldsReadOnly}
                   />
                 </div>
                 <p className="text-xs text-[#4F4F4F] mt-1">e.g., 250 for $250 minimum</p>
@@ -318,6 +573,7 @@ export function SettingsPage() {
                   onChange={(e) => setPaymentTerms(e.target.value)}
                   placeholder="Enter payment terms"
                   className="bg-white"
+                  readOnly={distributorFieldsReadOnly}
                 />
                 <p className="text-xs text-[#4F4F4F] mt-1">
                   e.g., "Net 30" or "COD" or "Credit Card"
@@ -326,15 +582,20 @@ export function SettingsPage() {
             </div>
           </div>
 
-          <div className="flex gap-3 mt-6 pt-6 border-t border-gray-200">
-            <Button 
-              onClick={handleSaveCompany}
-              className="bg-[#F2993D] hover:bg-[#E08A2E] text-white"
-            >
-              Save Settings
-            </Button>
-            <Button variant="outline">Cancel</Button>
-          </div>
+          {isEditingDistributor && (
+            <div className="flex gap-3 mt-6 pt-6 border-t border-gray-200">
+              <Button
+                onClick={handleSaveCompany}
+                disabled={isSavingCompany}
+                className="bg-[#F2993D] hover:bg-[#E08A2E] text-white"
+              >
+                {isSavingCompany ? 'Saving...' : 'Save Settings'}
+              </Button>
+              <Button variant="outline" onClick={handleCancelDistributorEdit}>
+                Cancel
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* Documents Section */}
@@ -344,89 +605,17 @@ export function SettingsPage() {
               <h2 className="text-lg text-[#4F4F4F] mb-1">Documents</h2>
               <p className="text-sm text-[#4F4F4F]">Upload and manage your onboarding documents</p>
             </div>
-            <Button className="bg-[#F2993D] hover:bg-[#E08A2E] text-white">
-              <Upload className="w-4 h-4 mr-2" />
-              Upload
-            </Button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Document 1 */}
-            <div className="border border-gray-200 rounded-lg overflow-hidden">
-              <div className="h-32 bg-gray-100">
-                <img
-                  src="https://images.unsplash.com/photo-1507842217343-583bb7270b66?w=400&h=300&fit=crop"
-                  alt="Document"
-                  className="w-full h-full object-cover"
-                />
-              </div>
-              <div className="p-3">
-                <p className="text-sm text-[#2A2A2A] mb-1">IG-Documents.pdf</p>
-                <p className="text-xs text-[#4F4F4F] mb-3">Uploaded 4 days ago</p>
-                <div className="flex gap-2">
-                  <button className="text-xs text-[#F2993D] hover:underline flex items-center gap-1">
-                    <Download className="w-3 h-3" />
-                    Download
-                  </button>
-                  <button className="text-xs text-red-600 hover:underline flex items-center gap-1">
-                    <Trash2 className="w-3 h-3" />
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Document 2 */}
-            <div className="border border-gray-200 rounded-lg overflow-hidden">
-              <div className="h-32 bg-gray-100">
-                <img
-                  src="https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?w=400&h=300&fit=crop"
-                  alt="Document"
-                  className="w-full h-full object-cover"
-                />
-              </div>
-              <div className="p-3">
-                <p className="text-sm text-[#2A2A2A] mb-1">Proof-of-Address.pdf</p>
-                <p className="text-xs text-[#4F4F4F] mb-3">Uploaded 2 days ago</p>
-                <div className="flex gap-2">
-                  <button className="text-xs text-[#F2993D] hover:underline flex items-center gap-1">
-                    <Download className="w-3 h-3" />
-                    Download
-                  </button>
-                  <button className="text-xs text-red-600 hover:underline flex items-center gap-1">
-                    <Trash2 className="w-3 h-3" />
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Document 3 */}
-            <div className="border border-gray-200 rounded-lg overflow-hidden">
-              <div className="h-32 bg-gray-100">
-                <img
-                  src="https://images.unsplash.com/photo-1554224154-26032ffc0d07?w=400&h=300&fit=crop"
-                  alt="Document"
-                  className="w-full h-full object-cover"
-                />
-              </div>
-              <div className="p-3">
-                <p className="text-sm text-[#2A2A2A] mb-1">Tax-Return-2024.pdf</p>
-                <p className="text-xs text-[#4F4F4F] mb-3">Uploaded 3 weeks ago</p>
-                <div className="flex gap-2">
-                  <button className="text-xs text-[#F2993D] hover:underline flex items-center gap-1">
-                    <Download className="w-3 h-3" />
-                    Download
-                  </button>
-                  <button className="text-xs text-red-600 hover:underline flex items-center gap-1">
-                    <Trash2 className="w-3 h-3" />
-                  </button>
-                </div>
-              </div>
-            </div>
+          <div className="text-center py-8">
+            <Upload className="w-8 h-8 text-gray-300 mx-auto mb-3" />
+            <p className="text-sm text-[#4F4F4F] mb-1">No documents uploaded yet</p>
+            <p className="text-xs text-[#4F4F4F]">Document management coming soon</p>
           </div>
         </div>
 
         {/* Billing Section */}
-        <div 
+        <div
           ref={billingRef}
           className="bg-white rounded-lg shadow-sm border border-gray-200 p-6"
         >
@@ -435,125 +624,143 @@ export function SettingsPage() {
             Manage your subscription and payment details
           </p>
 
-          {/* Trial Status Banner - Only show for non-paid users */}
-          {!profile.hasPaidSubscription && (
-            <div className="bg-[#FFF9F3] border border-[#F2993D] rounded-lg p-4 mb-6">
-              <p className="text-sm text-[#2A2A2A] font-semibold mb-1">Free Trial Active</p>
-              <p className="text-xs text-[#4F4F4F]">
-                You've used {profile.quotesUsed} of {profile.quotesLimit} free quotes. Upgrade to get unlimited quotes and premium features!
-              </p>
+          {isGuest ? (
+            <div className="text-center py-8">
+              <p className="text-sm text-[#4F4F4F] mb-4">Log in to manage billing</p>
+              <Button
+                onClick={() => setAuthDrawerOpen(true)}
+                className="bg-[#F2993D] hover:bg-[#E08A2E] text-white"
+              >
+                Log In
+              </Button>
             </div>
-          )}
-
-          {/* Current Plan */}
-          <div className="mb-6">
-            <div className="flex justify-between items-center mb-3">
-              <div>
-                <h3 className="text-sm text-[#4F4F4F]">Current Plan</h3>
-                <p className="text-lg text-[#2A2A2A]">
-                  {profile.hasPaidSubscription ? 'Premium Plan' : 'Free Trial'}
-                </p>
-              </div>
-              <div className="text-right">
-                <p className="text-2xl text-[#2A2A2A]">
-                  {profile.hasPaidSubscription ? '$29' : '$0'}
-                </p>
-                <p className="text-sm text-[#4F4F4F]">/month</p>
-              </div>
+          ) : billingLoading ? (
+            <div className="text-center py-8">
+              <p className="text-sm text-[#4F4F4F]">Loading billing information...</p>
             </div>
-            <div className="flex gap-2">
-              {!profile.hasPaidSubscription ? (
-                <Button 
-                  onClick={handleUpgradePlan}
-                  className="bg-[#F2993D] hover:bg-[#E08A2E] text-white text-sm"
-                >
-                  Upgrade to Premium
-                </Button>
-              ) : (
-                <>
-                  <Button className="bg-[#F2993D] hover:bg-[#E08A2E] text-white text-sm">
-                    Manage Plan
-                  </Button>
-                  <Button variant="outline" className="text-sm">
-                    Cancel Subscription
-                  </Button>
-                </>
+          ) : (
+            <>
+              {/* Trial Status Banner - Only show for non-paid users */}
+              {!billingData?.has_paid_subscription && !profile.hasPaidSubscription && (
+                <div className="bg-[#FFF9F3] border border-[#F2993D] rounded-lg p-4 mb-6">
+                  <p className="text-sm text-[#2A2A2A] font-semibold mb-1">Free Trial Active</p>
+                  <p className="text-xs text-[#4F4F4F]">
+                    You've used {billingData?.quotes_used ?? profile.quotesUsed} of {billingData?.quotes_limit ?? profile.quotesLimit} free quotes. Upgrade to get unlimited quotes and premium features!
+                  </p>
+                </div>
               )}
-            </div>
-          </div>
 
-          {/* Payment Method - Only show for paid users */}
-          {profile.hasPaidSubscription && (
-            <div className="mb-6 pb-6 border-b border-gray-200">
-              <div className="flex justify-between items-center mb-3">
-                <div>
-                  <h3 className="text-sm text-[#4F4F4F] mb-1">Payment Method</h3>
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-6 bg-gray-200 rounded flex items-center justify-center text-xs">
-                      💳
-                    </div>
+              {/* Current Plan */}
+              <div className="mb-6">
+                <div className="flex justify-between items-center mb-3">
+                  <div>
+                    <h3 className="text-sm text-[#4F4F4F]">Current Plan</h3>
+                    <p className="text-lg text-[#2A2A2A]">
+                      {(billingData?.has_paid_subscription ?? profile.hasPaidSubscription) ? (billingData?.plan_name || 'Premium Plan') : 'Free Trial'}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-2xl text-[#2A2A2A]">
+                      {(billingData?.has_paid_subscription ?? profile.hasPaidSubscription)
+                        ? `$${billingData?.price_dollars ?? 29}`
+                        : '$0'}
+                    </p>
+                    <p className="text-sm text-[#4F4F4F]">/{billingData?.interval || 'month'}</p>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  {!(billingData?.has_paid_subscription ?? profile.hasPaidSubscription) ? (
+                    <Button
+                      onClick={handleUpgradePlan}
+                      disabled={billingActionLoading}
+                      className="bg-[#F2993D] hover:bg-[#E08A2E] text-white text-sm"
+                    >
+                      {billingActionLoading ? 'Loading...' : 'Upgrade to Premium'}
+                    </Button>
+                  ) : (
+                    <Button
+                      onClick={handleManagePlan}
+                      disabled={billingActionLoading}
+                      className="bg-[#F2993D] hover:bg-[#E08A2E] text-white text-sm"
+                    >
+                      {billingActionLoading ? 'Loading...' : 'Manage Plan'}
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              {/* Payment Method - Only show for paid users */}
+              {(billingData?.has_paid_subscription ?? profile.hasPaidSubscription) && billingData?.payment_method && (
+                <div className="mb-6 pb-6 border-b border-gray-200">
+                  <div className="flex justify-between items-center mb-3">
                     <div>
-                      <p className="text-sm text-[#2A2A2A]">Visa ending in 4242</p>
-                      <p className="text-xs text-[#4F4F4F]">Expires 02/26</p>
+                      <h3 className="text-sm text-[#4F4F4F] mb-1">Payment Method</h3>
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-6 bg-gray-200 rounded flex items-center justify-center text-xs">
+                          {billingData.payment_method.brand === 'visa' ? 'VISA' : billingData.payment_method.brand?.toUpperCase() || '****'}
+                        </div>
+                        <div>
+                          <p className="text-sm text-[#2A2A2A]">
+                            {billingData.payment_method.brand ? `${billingData.payment_method.brand.charAt(0).toUpperCase()}${billingData.payment_method.brand.slice(1)}` : 'Card'} ending in {billingData.payment_method.last4 || '****'}
+                          </p>
+                          {billingData.payment_method.exp_month && billingData.payment_method.exp_year && (
+                            <p className="text-xs text-[#4F4F4F]">
+                              Expires {String(billingData.payment_method.exp_month).padStart(2, '0')}/{billingData.payment_method.exp_year}
+                            </p>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
-                <Button variant="outline" size="sm">
-                  <Edit className="w-4 h-4 mr-2" />
-                  Edit
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {/* Billing History - Only show for paid users */}
-          {profile.hasPaidSubscription && (
-            <div>
-              <h3 className="text-sm text-[#4F4F4F] mb-4">Billing History</h3>
-              <div className="space-y-3">
-                <div className="flex justify-between items-center py-2">
-                  <div>
-                    <p className="text-sm text-[#2A2A2A]">January 2025</p>
-                    <p className="text-xs text-[#4F4F4F]">Paid on Jan 1, 2025</p>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <p className="text-sm text-[#2A2A2A]">$29.00</p>
-                    <Button variant="outline" size="sm">
-                      Receipt
+                    <Button variant="outline" size="sm" onClick={handleManagePlan}>
+                      <Edit className="w-4 h-4 mr-2" />
+                      Edit
                     </Button>
                   </div>
                 </div>
+              )}
 
-                <div className="flex justify-between items-center py-2">
-                  <div>
-                    <p className="text-sm text-[#2A2A2A]">December 2024</p>
-                    <p className="text-xs text-[#4F4F4F]">Paid on Dec 1, 2024</p>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <p className="text-sm text-[#2A2A2A]">$29.00</p>
-                    <Button variant="outline" size="sm">
-                      Receipt
-                    </Button>
+              {/* Billing History - Only show for paid users with invoices */}
+              {(billingData?.has_paid_subscription ?? profile.hasPaidSubscription) && billingData?.invoices && billingData.invoices.length > 0 && (
+                <div>
+                  <h3 className="text-sm text-[#4F4F4F] mb-4">Billing History</h3>
+                  <div className="space-y-3">
+                    {billingData.invoices.map((invoice: any) => (
+                      <div key={invoice.id} className="flex justify-between items-center py-2">
+                        <div>
+                          <p className="text-sm text-[#2A2A2A]">{invoice.period || invoice.date}</p>
+                          {invoice.paid_at && (
+                            <p className="text-xs text-[#4F4F4F]">Paid on {invoice.paid_at}</p>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-4">
+                          <p className="text-sm text-[#2A2A2A]">{invoice.amount || invoice.total}</p>
+                          {invoice.receipt_url && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => window.open(invoice.receipt_url, '_blank')}
+                            >
+                              Receipt
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
-
-                <div className="flex justify-between items-center py-2">
-                  <div>
-                    <p className="text-sm text-[#2A2A2A]">November 2024</p>
-                    <p className="text-xs text-[#4F4F4F]">Paid on Nov 1, 2024</p>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <p className="text-sm text-[#2A2A2A]">$29.00</p>
-                    <Button variant="outline" size="sm">
-                      Receipt
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </div>
+              )}
+            </>
           )}
         </div>
       </div>
+
+      {/* Auth Drawer */}
+      <AuthDrawer
+        isOpen={authDrawerOpen}
+        onClose={() => setAuthDrawerOpen(false)}
+        defaultMode="login"
+        onSuccess={() => setAuthDrawerOpen(false)}
+      />
     </div>
   );
 }

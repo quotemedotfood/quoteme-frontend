@@ -10,6 +10,8 @@ import { QuotesPage } from "./pages/QuotesPage";
 import { MapIngredientsPage } from "./pages/MapIngredientsPage";
 import { ExportFinalizePage } from "./pages/ExportFinalizePage";
 import { ErrorPage } from "./pages/ErrorPage";
+import { AuthPage } from "./pages/AuthPage";
+import { ResetPasswordPage } from "./pages/ResetPasswordPage";
 
 export const router = createBrowserRouter([
   {
@@ -17,6 +19,14 @@ export const router = createBrowserRouter([
     Component: RootWrapper,
     errorElement: <ErrorPage />,
     children: [
+      {
+        path: "auth",
+        Component: AuthPage,
+      },
+      {
+        path: "reset-password",
+        Component: ResetPasswordPage,
+      },
       {
         path: "/",
         Component: RootLayout,

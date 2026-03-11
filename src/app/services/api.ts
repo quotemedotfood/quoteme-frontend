@@ -8,6 +8,16 @@ interface ApiResponse<T> {
 }
 
 // Auth Types
+export interface RepSettings {
+  company_email?: string;
+  company_phone?: string;
+  website_url?: string;
+  delivery_days?: string;
+  minimum_order?: string;
+  payment_terms?: string;
+  company_logo_url?: string;
+}
+
 export interface User {
   id: string;
   email: string;
@@ -16,10 +26,14 @@ export interface User {
   role: string;
   status: string;
   phone?: string;
+  avatar_url?: string;
+  distributor_name?: string;
   distributor: {
     id: string;
     name: string;
-  };
+    logo_url?: string;
+  } | null;
+  rep_settings?: RepSettings;
 }
 
 export interface SignUpData {
@@ -27,6 +41,9 @@ export interface SignUpData {
   password: string;
   first_name: string;
   last_name: string;
+  phone?: string;
+  distributor_name?: string;
+  claimed_distributor_id?: string;
 }
 
 export interface LoginData {
@@ -275,6 +292,8 @@ export interface UpdateUserData {
   last_name?: string;
   email?: string;
   phone?: string;
+  avatar_url?: string;
+  rep_settings?: RepSettings;
 }
 
 export async function updateCurrentUser(data: UpdateUserData): Promise<ApiResponse<User>> {
@@ -282,6 +301,70 @@ export async function updateCurrentUser(data: UpdateUserData): Promise<ApiRespon
     method: 'PATCH',
     body: JSON.stringify(data),
   });
+}
+
+// ============= DISTRIBUTOR SEARCH (PUBLIC) =============
+
+export interface DistributorSearchResult {
+  id: string;
+  name: string;
+  logo_url: string | null;
+}
+
+export async function searchDistributors(query: string): Promise<ApiResponse<DistributorSearchResult[]>> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/v1/distributors/search?q=${encodeURIComponent(query)}`, {
+      headers: { 'Content-Type': 'application/json' },
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      return { error: errorData.error || `HTTP ${response.status}` };
+    }
+    const data = await response.json();
+    return { data };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : 'Network error' };
+  }
+}
+
+// ============= PASSWORD RESET =============
+
+export async function sendPasswordReset(email: string): Promise<ApiResponse<{ message: string }>> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/users/password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user: { email } }),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      return { error: data.error || data.errors?.[0] || 'Failed to send reset email' };
+    }
+    return { data };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : 'Network error' };
+  }
+}
+
+export async function resetPassword(params: {
+  reset_password_token: string;
+  password: string;
+  password_confirmation: string;
+}): Promise<ApiResponse<{ message: string }>> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/users/password`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user: params }),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      return { error: data.error || data.errors?.[0] || 'Failed to reset password' };
+    }
+    return { data };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : 'Network error' };
+  }
 }
 
 // ============= GUEST ENDPOINTS =============
@@ -792,5 +875,23 @@ export async function updateContact(restaurantId: string, contactId: string, dat
 export async function deleteContact(restaurantId: string, contactId: string): Promise<ApiResponse<{ message: string }>> {
   return fetchWithAuth(`/api/v1/restaurants/${restaurantId}/contacts/${contactId}`, {
     method: 'DELETE',
+  });
+}
+
+// ============= BILLING ENDPOINTS =============
+
+export async function getBilling(): Promise<ApiResponse<any>> {
+  return fetchWithAuth('/api/v1/billing');
+}
+
+export async function createCheckoutSession(): Promise<ApiResponse<{ checkout_url: string }>> {
+  return fetchWithAuth('/api/v1/billing/checkout', {
+    method: 'POST',
+  });
+}
+
+export async function createPortalSession(): Promise<ApiResponse<{ portal_url: string }>> {
+  return fetchWithAuth('/api/v1/billing/portal', {
+    method: 'POST',
   });
 }

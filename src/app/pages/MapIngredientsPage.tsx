@@ -93,7 +93,7 @@ export function MapIngredientsPage() {
   const [error, setError] = useState<string | null>(null);
 
   // ── Tab / drawer state ──
-  const [selectedTab, setSelectedTab] = useState<'dishes' | 'categories'>('dishes');
+  const [selectedTab, setSelectedTab] = useState<'dishes' | 'categories'>('categories');
   const [mapDrawerOpen, setMapDrawerOpen] = useState(false);
   const [selectedComponent, setSelectedComponent] = useState('');
   const [mappedComponents, setMappedComponents] = useState<Record<string, string[]>>({});
@@ -462,7 +462,7 @@ export function MapIngredientsPage() {
             {/* Main Card with Tabs */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200">
               <div className="flex border-b border-gray-200">
-                {(['dishes', 'categories'] as const).map(tab => (
+                {(['categories', 'dishes'] as const).map(tab => (
                   <button
                     key={tab}
                     onClick={() => setSelectedTab(tab)}
