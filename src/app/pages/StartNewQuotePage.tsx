@@ -243,7 +243,19 @@ export function StartNewQuotePage() {
         }
         const guestQuotePayload = { raw_text: menuText, name: selectedRestaurant?.name || 'New Quote' };
         console.log('createGuestQuote payload:', JSON.stringify(guestQuotePayload, null, 2));
-        const response = await createGuestQuote(guestQuotePayload);
+        let response = await createGuestQuote(guestQuotePayload);
+        // If 401/session expired, clear stale token and retry with a fresh session
+        if (response.error && (response.error.includes('401') || response.error.includes('expired') || response.error.includes('not found') || response.error.includes('Session'))) {
+          console.log('Guest session expired, creating new session...');
+          localStorage.removeItem('quoteme_guest_token');
+          await initGuestSession();
+          if (!localStorage.getItem('quoteme_guest_token')) {
+            alert('Failed to start guest session. Please try again.');
+            setIsCreatingQuote(false);
+            return;
+          }
+          response = await createGuestQuote(guestQuotePayload);
+        }
         if (response.error) {
           console.error('createGuestQuote error:', response.error);
           alert(`Failed to create quote: ${response.error}`);
@@ -296,7 +308,19 @@ export function StartNewQuotePage() {
           setIsCreatingQuote(false);
           return;
         }
-        const response = await createGuestQuote({ raw_text: menuText, name: selectedRestaurant?.name || 'New Quote' });
+        let response = await createGuestQuote({ raw_text: menuText, name: selectedRestaurant?.name || 'New Quote' });
+        // If 401/session expired, clear stale token and retry with a fresh session
+        if (response.error && (response.error.includes('401') || response.error.includes('expired') || response.error.includes('not found') || response.error.includes('Session'))) {
+          console.log('Guest session expired, creating new session...');
+          localStorage.removeItem('quoteme_guest_token');
+          await initGuestSession();
+          if (!localStorage.getItem('quoteme_guest_token')) {
+            alert('Failed to start guest session. Please try again.');
+            setIsCreatingQuote(false);
+            return;
+          }
+          response = await createGuestQuote({ raw_text: menuText, name: selectedRestaurant?.name || 'New Quote' });
+        }
         if (response.error) {
           console.error('createGuestQuote error:', response.error);
           alert(`Failed to create quote: ${response.error}`);
