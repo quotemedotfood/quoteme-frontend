@@ -36,11 +36,19 @@ type AuthView = 'role-select' | 'signup' | 'signin' | 'forgot-password';
 
 export function AuthPage() {
   const navigate = useNavigate();
-  const { signup, login, isAuthenticated } = useAuth();
+  const { signup, login, isAuthenticated, user } = useAuth();
+
+  const routeByRole = (role?: string) => {
+    switch (role) {
+      case 'quoteme_admin': return '/qm-admin/';
+      case 'distributor_admin': return '/distributor-admin/';
+      default: return '/dashboard';
+    }
+  };
 
   useEffect(() => {
-    if (isAuthenticated) navigate('/dashboard');
-  }, [isAuthenticated, navigate]);
+    if (isAuthenticated && user) navigate(routeByRole(user.role));
+  }, [isAuthenticated, user, navigate]);
 
   const [view, setView] = useState<AuthView>('role-select');
 
@@ -134,7 +142,7 @@ export function AuthPage() {
     setIsSubmitting(false);
 
     if (result.success) {
-      navigate('/dashboard');
+      // Role-based routing handled by useEffect when user state updates
     } else {
       setErrors({ form: result.error || 'Registration failed' });
     }
@@ -153,7 +161,7 @@ export function AuthPage() {
     setIsSubmitting(false);
 
     if (result.success) {
-      navigate('/dashboard');
+      // Role-based routing handled by useEffect when user state updates
     } else {
       setErrors({ form: 'Invalid email or password' });
     }
@@ -215,13 +223,13 @@ export function AuthPage() {
         <button
           onClick={() => switchView('signup')}
           className="group flex items-center gap-4 rounded-lg border-2 bg-white px-5 py-4 text-left transition-all hover:shadow-md"
-          style={{ borderColor: '#F2993D' }}
+          style={{ borderColor: '#7FAEC2' }}
         >
           <div
             className="flex size-11 items-center justify-center rounded-full"
-            style={{ backgroundColor: '#FFF0E0' }}
+            style={{ backgroundColor: '#E8F2F7' }}
           >
-            <Users className="size-5" style={{ color: '#F2993D' }} />
+            <Users className="size-5" style={{ color: '#7FAEC2' }} />
           </div>
           <div className="flex-1">
             <p
@@ -246,7 +254,7 @@ export function AuthPage() {
               <p className="font-semibold text-gray-400">I'm a Chef</p>
               <span
                 className="text-xs font-medium"
-                style={{ color: '#F2993D' }}
+                style={{ color: '#7FAEC2' }}
               >
                 Coming Soon
               </span>
@@ -267,7 +275,7 @@ export function AuthPage() {
               <p className="font-semibold text-gray-400">I'm a Brand</p>
               <span
                 className="text-xs font-medium"
-                style={{ color: '#F2993D' }}
+                style={{ color: '#7FAEC2' }}
               >
                 Coming Soon
               </span>
@@ -284,7 +292,7 @@ export function AuthPage() {
         <button
           onClick={() => switchView('signin')}
           className="font-semibold underline-offset-2 hover:underline"
-          style={{ color: '#F2993D' }}
+          style={{ color: '#7FAEC2' }}
         >
           Sign In
         </button>
@@ -557,7 +565,7 @@ export function AuthPage() {
         onClick={handleSignUp}
         disabled={isSubmitting}
         className="w-full text-white"
-        style={{ backgroundColor: '#F2993D' }}
+        style={{ backgroundColor: '#7FAEC2' }}
         size="lg"
       >
         {isSubmitting ? 'Creating Account...' : 'Create Account'}
@@ -568,7 +576,7 @@ export function AuthPage() {
         <button
           onClick={() => switchView('signin')}
           className="font-semibold underline-offset-2 hover:underline"
-          style={{ color: '#F2993D' }}
+          style={{ color: '#7FAEC2' }}
         >
           Sign In
         </button>
@@ -662,7 +670,7 @@ export function AuthPage() {
         onClick={handleSignIn}
         disabled={isSubmitting}
         className="w-full text-white"
-        style={{ backgroundColor: '#F2993D' }}
+        style={{ backgroundColor: '#7FAEC2' }}
         size="lg"
       >
         {isSubmitting ? 'Signing In...' : 'Sign In'}
@@ -674,7 +682,7 @@ export function AuthPage() {
           <button
             onClick={() => switchView('signup')}
             className="font-semibold underline-offset-2 hover:underline"
-            style={{ color: '#F2993D' }}
+            style={{ color: '#7FAEC2' }}
           >
             Sign Up
           </button>
@@ -749,7 +757,7 @@ export function AuthPage() {
             onClick={handleForgotPassword}
             disabled={isSubmitting}
             className="w-full text-white"
-            style={{ backgroundColor: '#F2993D' }}
+            style={{ backgroundColor: '#7FAEC2' }}
             size="lg"
           >
             {isSubmitting ? 'Sending...' : 'Send Reset Link'}
@@ -761,7 +769,7 @@ export function AuthPage() {
         <button
           onClick={() => switchView('signin')}
           className="font-semibold underline-offset-2 hover:underline"
-          style={{ color: '#F2993D' }}
+          style={{ color: '#7FAEC2' }}
         >
           Back to Sign In
         </button>

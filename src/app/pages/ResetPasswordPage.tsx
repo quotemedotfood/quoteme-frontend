@@ -155,7 +155,7 @@ export function ResetPasswordPage() {
             <Button
               onClick={handleSubmit}
               disabled={isSubmitting}
-              className="w-full bg-orange-500 hover:bg-orange-600 text-white font-medium"
+              className="w-full text-white font-medium" style={{ backgroundColor: '#7FAEC2' }}
             >
               {isSubmitting ? 'Resetting...' : 'Reset Password'}
             </Button>
@@ -166,7 +166,7 @@ export function ResetPasswordPage() {
         <div className="mt-6 text-center">
           <button
             onClick={() => navigate('/auth')}
-            className="text-sm text-orange-500 hover:text-orange-600 font-medium"
+            className="text-sm font-medium" style={{ color: '#7FAEC2' }}
           >
             Back to Sign In
           </button>
