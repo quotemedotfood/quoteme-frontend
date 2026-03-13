@@ -335,3 +335,147 @@ export async function createAdminBrand(data: {
 export async function searchDistributors(query: string): Promise<ApiResponse<Array<{ id: string; name: string; logo_url?: string }>>> {
   return fetchWithAuth(`/api/v1/distributors/search?q=${encodeURIComponent(query)}`);
 }
+
+// ============= MATCHING ENGINE =============
+
+export interface MatchingEngineRules {
+  sauce_expansions: Array<{
+    id: string;
+    sauce_name: string;
+    components: string[];
+    default_behavior: string;
+    prepared_sku_blocked: boolean;
+    created_at: string;
+    updated_at: string;
+  }>;
+  protein_families: Array<{
+    family: string;
+    terms: string[];
+    locked_species: string[];
+  }>;
+  cocktail_locks: Array<{
+    term: string;
+    canonical: string;
+    thesaurus_id: string | null;
+  }>;
+  wine_protected: {
+    class_a: Array<{ term: string; notes: string | null; rule_id: string | null }>;
+    class_b: Array<{ term: string }>;
+    class_c: Array<{ term: string }>;
+  };
+  chef_beverage: Array<{
+    term: string;
+    blocked: string[];
+    notes: string | null;
+    rule_id: string | null;
+  }>;
+  format_gates: Array<{
+    id: string;
+    ingredient_pattern: string;
+    format_tag: string;
+    blocked_in_roles: string[];
+    prep_compatibility: string[];
+    created_at: string;
+    updated_at: string;
+  }>;
+  synonym_families: Array<{
+    id: string;
+    canonical_name: string;
+    category: string;
+    synonyms: string[];
+    created_at: string;
+    updated_at: string;
+  }>;
+  identity_locks: Array<{
+    id: string;
+    ingredient_pattern: string;
+    dish_name: string;
+    sensitivity: string;
+    notes: string | null;
+    created_at: string;
+    updated_at: string;
+  }>;
+  match_corrections: Array<{
+    id: string;
+    ingredient_name: string;
+    correction_type: string;
+    original_product: { id: string; name: string; brand: string } | null;
+    corrected_product: { id: string; name: string; brand: string } | null;
+    quote_id: string;
+    user: { id: string; name: string } | null;
+    promoted: boolean;
+    created_at: string;
+  }>;
+}
+
+export interface MatchingEngineLog {
+  id: string;
+  user: { id: string; name: string } | null;
+  message: string;
+  response: string;
+  rules_applied: string[];
+  source: string;
+  created_at: string;
+}
+
+export interface ChatResponse {
+  confirmation: string;
+  rules_applied: string[];
+  timestamp: string;
+}
+
+export async function getMatchingEngineRules(): Promise<ApiResponse<MatchingEngineRules>> {
+  return fetchWithAuth('/api/v1/admin/matching-engine/rules');
+}
+
+export async function updateMatchingEngineRule(
+  type: string,
+  id: string,
+  data: Record<string, unknown>
+): Promise<ApiResponse<{ status: string }>> {
+  return fetchWithAuth(`/api/v1/admin/matching-engine/rules/${type}/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteMatchingEngineRule(
+  type: string,
+  id: string
+): Promise<ApiResponse<{ status: string }>> {
+  return fetchWithAuth(`/api/v1/admin/matching-engine/rules/${type}/${id}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function promoteCorrection(
+  id: string
+): Promise<ApiResponse<{ status: string; rule_id: string }>> {
+  return fetchWithAuth(`/api/v1/admin/matching-engine/promote/${id}`, {
+    method: 'POST',
+  });
+}
+
+export async function sendMatchingEngineChat(
+  message: string
+): Promise<ApiResponse<ChatResponse>> {
+  return fetchWithAuth('/api/v1/admin/matching-engine/chat', {
+    method: 'POST',
+    body: JSON.stringify({ message }),
+  });
+}
+
+export async function getMatchingEngineLogs(params?: {
+  source?: string;
+  limit?: number;
+}): Promise<ApiResponse<MatchingEngineLog[]>> {
+  const searchParams = new URLSearchParams();
+  if (params?.source) searchParams.set('source', params.source);
+  if (params?.limit) searchParams.set('limit', String(params.limit));
+  const qs = searchParams.toString();
+  return fetchWithAuth(`/api/v1/admin/matching-engine/logs${qs ? `?${qs}` : ''}`);
+}
+
+export function getMatchingEngineExportUrl(): string {
+  return `${API_BASE_URL}/api/v1/admin/matching-engine/export`;
+}

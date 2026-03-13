@@ -25,6 +25,7 @@ import { QMAdminRestaurantDetailPage } from "./pages/admin/QMAdminRestaurantDeta
 import { QMAdminConferenceCommand } from "./pages/admin/QMAdminConferenceCommand";
 import { QMAdminUsers } from "./pages/admin/QMAdminUsers";
 import { QMAdminBrands } from "./pages/admin/QMAdminBrands";
+import { QMAdminMatchingEngine } from "./pages/admin/QMAdminMatchingEngine";
 import { isDemoMode } from "./utils/demoMode";
 
 const demo = isDemoMode();
@@ -55,6 +56,7 @@ export const router = createBrowserRouter([
           { path: "unassociated-reps", Component: QMAdminUnassociatedReps },
           { path: "restaurants", Component: QMAdminRestaurants },
           { path: "restaurants/:id", Component: QMAdminRestaurantDetailPage },
+          { path: "matching-engine", Component: QMAdminMatchingEngine },
           { path: "brands", Component: QMAdminBrands },
           { path: "conference-command", Component: QMAdminConferenceCommand },
         ],
