@@ -28,6 +28,7 @@ interface ProductItem {
   basePrice: number;
   currentPrice: number;
   percentChange: number;
+  unmatched?: boolean;
 }
 
 function toTitleCase(str: string): string {
@@ -84,18 +85,20 @@ export function QuoteBuilderPage() {
           if (seenProducts.has(productId)) continue;
           seenProducts.add(productId);
           const priceDollars = (line.unit_price_cents || 0) / 100;
+          const isUnmatched = line.unmatched === true || !line.product;
           productItems.push({
             id: line.id,
             dish: line.component?.source_dish || 'Unknown',
             component: line.component?.name || 'Unknown',
             sku: line.product?.item_number || '',
-            brand: line.product?.brand || '',
-            product: line.product?.product || '',
+            brand: isUnmatched ? '' : (line.product?.brand || ''),
+            product: isUnmatched ? 'No catalog match' : (line.product?.product || ''),
             pack: line.product?.pack_size || '',
             category: line.category || 'Uncategorized',
             basePrice: priceDollars,
             currentPrice: priceDollars,
             percentChange: 0,
+            unmatched: isUnmatched,
           });
         }
         setItems(productItems);
@@ -413,7 +416,7 @@ export function QuoteBuilderPage() {
                 <div className="flex justify-between items-start mb-2">
                   <div>
                     <h3 className="text-sm font-medium text-[#2A2A2A]">{toTitleCase(item.component)}</h3>
-                    <p className="text-sm text-gray-500">{toTitleCase(item.brand)} {toTitleCase(item.product)}</p>
+                    <p className={`text-sm ${item.unmatched ? 'text-red-400 italic' : 'text-gray-500'}`}>{item.unmatched ? 'No catalog match' : `${toTitleCase(item.brand)} ${toTitleCase(item.product)}`}</p>
                   </div>
                   <div className="text-right">
                     {editMode ? (
@@ -565,7 +568,7 @@ export function QuoteBuilderPage() {
                     <td className="px-4 py-3 text-sm text-[#2A2A2A]">{toTitleCase(item.component)}</td>
                     <td className="px-4 py-3 text-sm text-[#2A2A2A]">{item.sku}</td>
                     <td className="px-4 py-3 text-sm text-[#2A2A2A]">{toTitleCase(item.brand)}</td>
-                    <td className="px-4 py-3 text-sm text-[#2A2A2A]">{toTitleCase(item.product)}</td>
+                    <td className={`px-4 py-3 text-sm ${item.unmatched ? 'text-red-400 italic' : 'text-[#2A2A2A]'}`}>{toTitleCase(item.product)}</td>
                     <td className="px-4 py-3 text-sm text-gray-500">{item.pack}</td>
                     <td className="px-4 py-3 text-sm text-gray-500">{toTitleCase(item.category)}</td>
                     {editMode && (
