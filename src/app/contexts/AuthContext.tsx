@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User, signIn, signUp, getCurrentUser, convertGuestToUser, SignUpData, LoginData } from '../services/api';
+import { isDemoMode } from '../utils/demoMode';
 
 interface AuthContextType {
   user: User | null;
@@ -19,8 +20,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const isAuthenticated = !!user;
 
-  // Check for existing token on mount
+  // Check for existing token on mount (skip in demo mode)
   useEffect(() => {
+    if (isDemoMode()) {
+      setIsLoading(false);
+      return;
+    }
     const token = localStorage.getItem('quoteme_token');
     if (token) {
       validateToken();

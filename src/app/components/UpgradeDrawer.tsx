@@ -1,6 +1,7 @@
 import { X, CreditCard, Zap, CheckCircle } from 'lucide-react';
 import { Button } from './ui/button';
 import { useNavigate } from 'react-router';
+import { isDemoMode, PROD_SIGNUP_URL } from '../utils/demoMode';
 
 interface UpgradeDrawerProps {
   isOpen: boolean;
@@ -11,6 +12,10 @@ export function UpgradeDrawer({ isOpen, onClose }: UpgradeDrawerProps) {
   const navigate = useNavigate();
 
   const handleUpgradeClick = () => {
+    if (isDemoMode()) {
+      window.location.href = PROD_SIGNUP_URL;
+      return;
+    }
     onClose();
     navigate('/settings/billing');
   };
@@ -130,10 +135,12 @@ export function UpgradeDrawer({ isOpen, onClose }: UpgradeDrawerProps) {
             className="w-full bg-[#F2993D] hover:bg-[#E08A2E] text-white py-6 text-base font-semibold"
           >
             <CreditCard className="w-5 h-5 mr-2" />
-            Upgrade to Premium
+            {isDemoMode() ? 'Sign Up to Continue' : 'Upgrade to Premium'}
           </Button>
           <p className="text-xs text-center text-[#4F4F4F] mt-3">
-            You'll be redirected to billing settings to complete your upgrade
+            {isDemoMode()
+              ? 'Create a free account to unlock unlimited quotes'
+              : "You'll be redirected to billing settings to complete your upgrade"}
           </p>
         </div>
       </div>

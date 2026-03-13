@@ -23,6 +23,7 @@ import {
 } from '../components/ui/dialog';
 import { getQuote, getGuestQuote, downloadQuotePdf, sendQuote, sendQuoteSms } from '../services/api';
 import type { QuoteResponse, QuoteLineResponse } from '../services/api';
+import { isDemoMode, PROD_SIGNUP_URL } from '../utils/demoMode';
 
 
 function toTitleCase(str: string): string {
@@ -843,6 +844,22 @@ export function ExportFinalizePage() {
           </div>
         </div>
       </div>
+
+      {/* Demo Mode Sign-up CTA */}
+      {isDemoMode() && (
+        <div className="mt-8 bg-gradient-to-r from-[#F2993D] to-[#E08A2E] rounded-xl p-6 text-center text-white">
+          <h3 className="text-lg font-semibold mb-2">Want to save this quote?</h3>
+          <p className="text-sm opacity-90 mb-4">
+            Sign up for a free account to save quotes, manage customers, and access your full catalog.
+          </p>
+          <a
+            href={PROD_SIGNUP_URL}
+            className="inline-block bg-white text-[#F2993D] font-medium px-6 py-2.5 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            Sign up &rarr;
+          </a>
+        </div>
+      )}
 
       {/* Success Drawer */}
       <Drawer open={showSuccessDrawer} onOpenChange={setShowSuccessDrawer} direction="right">

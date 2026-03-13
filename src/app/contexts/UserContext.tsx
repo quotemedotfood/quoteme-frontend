@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { getGuestSession } from '../services/api';
+import { isDemoMode } from '../utils/demoMode';
 
 interface UserProfile {
   fullName: string;
@@ -81,6 +82,42 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem('user_profile', JSON.stringify(profile));
   }, [profile]);
 
+  // Auto-init guest session in demo mode
+  const demoInitRef = useRef(false);
+  useEffect(() => {
+    if (isDemoMode() && !demoInitRef.current) {
+      demoInitRef.current = true;
+      initGuestSessionInternal();
+    }
+  }, []);
+
+  async function initGuestSessionInternal() {
+    const existingToken = localStorage.getItem('quoteme_guest_token');
+    if (existingToken) {
+      const response = await getGuestSession(existingToken);
+      if (response.data) {
+        setProfile(prev => ({
+          ...prev,
+          quotesUsed: response.data!.quote_count || 0,
+          quotesLimit: 5,
+          isGuest: true,
+        }));
+      }
+      return;
+    }
+    const { createGuestSession } = await import('../services/api');
+    const response = await createGuestSession();
+    if (response.data?.token) {
+      localStorage.setItem('quoteme_guest_token', response.data.token);
+      setProfile(prev => ({
+        ...prev,
+        quotesUsed: 0,
+        quotesLimit: 5,
+        isGuest: true,
+      }));
+    }
+  }
+
   const updateProfile = (updates: Partial<UserProfile>) => {
     setProfile(prev => ({ ...prev, ...updates }));
   };
@@ -101,32 +138,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     : Math.max(0, profile.quotesLimit - profile.quotesUsed);
 
   const initGuestSession = async () => {
-    // Check if guest token already exists
-    const existingToken = localStorage.getItem('quoteme_guest_token');
-    if (existingToken) {
-      // Fetch guest session data to get quote count
-      const response = await getGuestSession(existingToken);
-      if (response.data) {
-        updateProfile({
-          quotesUsed: response.data.quote_count || 0,
-          quotesLimit: 5,
-          isGuest: true,
-        });
-      }
-      return;
-    }
-
-    // Create new guest session
-    const { createGuestSession } = await import('../services/api');
-    const response = await createGuestSession();
-    if (response.data?.token) {
-      localStorage.setItem('quoteme_guest_token', response.data.token);
-      updateProfile({
-        quotesUsed: 0,
-        quotesLimit: 5,
-        isGuest: true,
-      });
-    }
+    await initGuestSessionInternal();
   };
 
   const getGuestToken = () => {
