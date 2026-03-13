@@ -39,6 +39,13 @@ export function DemoBanner() {
             </a>
           </div>
         )}
+        <span className="text-gray-300">|</span>
+        <a
+          href={PROD_SIGNUP_URL}
+          className="text-xs text-gray-500 hover:text-[#2A2A2A] transition-colors"
+        >
+          Already have an account? <span className="underline">Sign in &rarr;</span>
+        </a>
       </div>
     </div>
   );
