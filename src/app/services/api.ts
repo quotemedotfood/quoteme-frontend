@@ -197,11 +197,24 @@ async function fetchWithAuth<T>(
     headers['Authorization'] = `Bearer ${token}`;
   }
 
+  // Debug: log what we're sending for auth-critical endpoints
+  if (endpoint.includes('/me') || endpoint.includes('sign_in')) {
+    console.log(`[fetchWithAuth] ${options.method || 'GET'} ${endpoint}`, {
+      hasToken: !!token,
+      tokenPrefix: token?.substring(0, 20),
+      authHeader: headers['Authorization']?.substring(0, 30),
+    });
+  }
+
   try {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       ...options,
       headers,
     });
+
+    if (endpoint.includes('/me')) {
+      console.log(`[fetchWithAuth] /me response status: ${response.status}`);
+    }
 
     // Extract JWT token from response header if present
     const authHeader = response.headers.get('Authorization');

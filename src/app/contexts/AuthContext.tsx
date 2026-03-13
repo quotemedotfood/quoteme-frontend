@@ -28,18 +28,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     const token = localStorage.getItem('quoteme_token');
     if (token) {
-      validateToken();
+      validateToken('mount');
     } else {
       setIsLoading(false);
     }
   }, []);
 
-  async function validateToken() {
+  async function validateToken(context: string = 'unknown') {
+    const storedToken = localStorage.getItem('quoteme_token');
+    console.log(`[validateToken:${context}] Token in localStorage:`, storedToken ? `${storedToken.substring(0, 20)}...` : 'MISSING');
+
     const response = await getCurrentUser();
+    console.log(`[validateToken:${context}] /me response:`, {
+      hasData: !!response.data,
+      error: response.error,
+      userId: response.data?.id,
+    });
+
     if (response.data) {
       setUser(response.data);
     } else {
-      // Token invalid, clear it
+      console.warn(`[validateToken:${context}] /me failed — clearing token. Error: ${response.error}`);
       localStorage.removeItem('quoteme_token');
     }
     setIsLoading(false);
@@ -55,8 +64,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (response.token) {
       localStorage.setItem('quoteme_token', response.token);
-      console.log('[login] Token stored in localStorage');
-      await validateToken();
+      console.log('[login] Token stored:', response.token.substring(0, 30) + '...');
+      await validateToken('login');
       return { success: true };
     }
 
@@ -82,7 +91,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (response.token) {
         localStorage.setItem('quoteme_token', response.token);
         localStorage.removeItem('quoteme_guest_token'); // Clear guest token
-        await validateToken();
+        await validateToken('guest-convert');
         return { success: true };
       }
 
@@ -98,7 +107,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (response.token) {
       localStorage.setItem('quoteme_token', response.token);
-      await validateToken();
+      await validateToken('signup');
       return { success: true };
     }
 
@@ -111,7 +120,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function refreshUser() {
-    await validateToken();
+    await validateToken('refresh');
   }
 
   return (
