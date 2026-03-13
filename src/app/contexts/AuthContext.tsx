@@ -47,18 +47,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function login(credentials: LoginData): Promise<{ success: boolean; error?: string }> {
     const response = await signIn(credentials);
-    
+    console.log('[login] signIn response:', { error: response.error, hasToken: !!response.token, hasData: !!response.data });
+
     if (response.error) {
       return { success: false, error: response.error };
     }
 
     if (response.token) {
       localStorage.setItem('quoteme_token', response.token);
+      console.log('[login] Token stored in localStorage');
       await validateToken();
       return { success: true };
     }
 
-    return { success: false, error: 'No token received' };
+    console.warn('[login] No token in response — login will fail');
+    return { success: false, error: 'No token received. Check browser console for details.' };
   }
 
   async function signup(

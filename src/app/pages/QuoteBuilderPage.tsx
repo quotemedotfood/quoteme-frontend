@@ -3,7 +3,7 @@ import { Input } from '../components/ui/input';
 import { ArrowLeft, Save, Filter, Plus, Minus, Edit, ChevronUp, ChevronDown, ArrowUpDown, ArrowUp, ArrowDown, Loader2, X, Trash2 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router';
 import { useState, useEffect } from 'react';
-import { getQuote, getGuestQuote, updateQuote, updateGuestQuote } from '../services/api';
+import { getQuote, getGuestQuote, updateQuote, updateGuestQuote, addGuestQuoteLine, removeGuestQuoteLine } from '../services/api';
 import { CatalogProductSearch } from '../components/CatalogProductSearch';
 import type { CatalogSearchProduct } from '../services/api';
 import {
@@ -193,28 +193,56 @@ export function QuoteBuilderPage() {
     );
   };
 
-  const handleAddProduct = (product: CatalogSearchProduct) => {
-    const priceDollars = (product.price_cents || 0) / 100;
-    const newItem: ProductItem = {
-      id: product.id,
-      dish: 'Manual Add',
-      component: product.product,
-      sku: product.item_number,
-      brand: product.brand,
-      product: product.product,
-      pack: product.pack_size,
-      category: product.category,
-      basePrice: priceDollars,
-      currentPrice: priceDollars,
-      percentChange: 0,
-    };
-    setItems(prev => [...prev, newItem]);
-    setAddProductDrawerOpen(false);
+  const handleAddProduct = async (product: CatalogSearchProduct) => {
+    if (!quoteId) return;
+    const isGuest = !localStorage.getItem('quoteme_token');
+    try {
+      // TODO: add authenticated add_line endpoint when needed
+      const res = isGuest
+        ? await addGuestQuoteLine(quoteId, product.id)
+        : { data: null, error: 'Not implemented for authenticated users' };
+      if (res.error || !res.data) {
+        console.error('Failed to add line:', res.error);
+        return;
+      }
+      const line = res.data;
+      const priceDollars = (line.unit_price_cents || 0) / 100;
+      const newItem: ProductItem = {
+        id: line.id,
+        dish: 'Manual Add',
+        component: line.product?.product || product.product,
+        sku: line.product?.item_number || product.item_number,
+        brand: line.product?.brand || product.brand,
+        product: line.product?.product || product.product,
+        pack: line.product?.pack_size || product.pack_size,
+        category: line.category || product.category,
+        basePrice: priceDollars,
+        currentPrice: priceDollars,
+        percentChange: 0,
+      };
+      setItems(prev => [...prev, newItem]);
+      setAddProductDrawerOpen(false);
+    } catch (e) {
+      console.error('Error adding product:', e);
+    }
   };
 
-  const handleRemoveItem = (id: string) => {
+  const handleRemoveItem = async (id: string) => {
+    // Optimistic removal
     setItems(prev => prev.filter(item => item.id !== id));
     if (selectedItem?.id === id) setSelectedItem(null);
+    // Persist to backend
+    if (quoteId) {
+      const isGuest = !localStorage.getItem('quoteme_token');
+      try {
+        if (isGuest) {
+          await removeGuestQuoteLine(quoteId, id);
+        }
+        // TODO: add authenticated remove endpoint when needed
+      } catch (e) {
+        console.error('Error removing line:', e);
+      }
+    }
   };
 
   const savePrices = async () => {

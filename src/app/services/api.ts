@@ -270,17 +270,92 @@ async function fetchWithGuest<T>(
 // ============= AUTH ENDPOINTS =============
 
 export async function signIn(credentials: LoginData): Promise<ApiResponse<{ message?: string; user?: any }>> {
-  return fetchWithAuth('/users/sign_in', {
-    method: 'POST',
-    body: JSON.stringify({ user: credentials }),
-  });
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/users/sign_in`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ user: credentials }),
+    });
+
+    // Devise-JWT puts the token in the Authorization header
+    const authHeader = response.headers.get('Authorization');
+    let jwtToken: string | undefined;
+    if (authHeader) {
+      jwtToken = authHeader.replace('Bearer ', '');
+    }
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      return {
+        error: errorData.error || errorData.message || `HTTP ${response.status}`,
+        data: undefined,
+      };
+    }
+
+    const data = await response.json();
+
+    // Fallback: check body for token if header was missing
+    if (!jwtToken && data.token) {
+      jwtToken = data.token;
+    }
+
+    console.log('[signIn] Authorization header:', authHeader ? 'present' : 'missing');
+    console.log('[signIn] JWT token extracted:', jwtToken ? 'yes' : 'no');
+
+    return { data, token: jwtToken };
+  } catch (error) {
+    return {
+      error: error instanceof Error ? error.message : 'Network error',
+      data: undefined,
+    };
+  }
 }
 
 export async function signUp(data: SignUpData): Promise<ApiResponse<{ message: string; user: any }>> {
-  return fetchWithAuth('/users', {
-    method: 'POST',
-    body: JSON.stringify({ user: { ...data, role: 'rep' } }),
-  });
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/users`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ user: { ...data, role: 'rep' } }),
+    });
+
+    const authHeader = response.headers.get('Authorization');
+    let jwtToken: string | undefined;
+    if (authHeader) {
+      jwtToken = authHeader.replace('Bearer ', '');
+    }
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      return {
+        error: errorData.error || errorData.errors?.full_messages?.join(', ') || errorData.message || `HTTP ${response.status}`,
+        data: undefined,
+      };
+    }
+
+    const body = await response.json();
+    if (!jwtToken && body.token) {
+      jwtToken = body.token;
+    }
+
+    console.log('[signUp] Authorization header:', authHeader ? 'present' : 'missing');
+    console.log('[signUp] JWT token extracted:', jwtToken ? 'yes' : 'no');
+
+    return { data: body, token: jwtToken };
+  } catch (error) {
+    return {
+      error: error instanceof Error ? error.message : 'Network error',
+      data: undefined,
+    };
+  }
 }
 
 export async function getCurrentUser(): Promise<ApiResponse<User>> {
@@ -436,6 +511,19 @@ export async function updateGuestQuote(id: string, updates: any): Promise<ApiRes
   return fetchWithGuest(`/api/v1/guest/quotes/${id}`, {
     method: 'PATCH',
     body: JSON.stringify(updates),
+  });
+}
+
+export async function addGuestQuoteLine(quoteId: string, productId: string): Promise<ApiResponse<any>> {
+  return fetchWithGuest(`/api/v1/guest/quotes/${quoteId}/add_line`, {
+    method: 'POST',
+    body: JSON.stringify({ product_id: productId }),
+  });
+}
+
+export async function removeGuestQuoteLine(quoteId: string, lineId: string): Promise<ApiResponse<any>> {
+  return fetchWithGuest(`/api/v1/guest/quotes/${quoteId}/lines/${lineId}`, {
+    method: 'DELETE',
   });
 }
 
