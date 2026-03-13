@@ -25,6 +25,17 @@ import { getQuote, getGuestQuote, downloadQuotePdf, sendQuote, sendQuoteSms } fr
 import type { QuoteResponse, QuoteLineResponse } from '../services/api';
 
 
+function toTitleCase(str: string): string {
+  if (!str) return '';
+  return str.replace(/\b\w+/g, (word) => {
+    const lower = word.toLowerCase();
+    if (['a', 'an', 'the', 'and', 'or', 'of', 'in', 'on', 'at', 'to', 'for', 'with'].includes(lower)) {
+      return lower;
+    }
+    return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+  }).replace(/^./, (c) => c.toUpperCase());
+}
+
 // Mock data for premium onboarding features
 const onboardingDocuments = [
   { id: 'doc1', name: 'New Customer Application (PDF)', type: 'document' },
@@ -578,10 +589,10 @@ export function ExportFinalizePage() {
                           className="grid grid-cols-6 gap-0 text-[0.5rem] border-t border-gray-100"
                           style={{ backgroundColor: i % 2 === 1 ? '#F9FAFB' : 'white' }}
                         >
-                          <div className="px-1.5 py-0.5 truncate text-gray-600">{line.category || '—'}</div>
+                          <div className="px-1.5 py-0.5 truncate text-gray-600">{toTitleCase(line.category || '') || '—'}</div>
                           <div className="px-1.5 py-0.5 truncate text-gray-600">{line.product?.item_number || '—'}</div>
-                          <div className="px-1.5 py-0.5 truncate text-gray-600">{line.product?.brand || '—'}</div>
-                          <div className="px-1.5 py-0.5 truncate text-gray-600 col-span-2">{line.product?.product || '—'}</div>
+                          <div className="px-1.5 py-0.5 truncate text-gray-600">{toTitleCase(line.product?.brand || '') || '—'}</div>
+                          <div className="px-1.5 py-0.5 truncate text-gray-600 col-span-2">{toTitleCase(line.product?.product || '') || '—'}</div>
                           <div className="px-1.5 py-0.5 text-right text-gray-600">{line.unit_price || '—'}</div>
                         </div>
                       ))}

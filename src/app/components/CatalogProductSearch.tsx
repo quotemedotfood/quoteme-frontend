@@ -2,6 +2,17 @@ import { useState, useRef, useEffect } from 'react';
 import { Search, Loader2 } from 'lucide-react';
 import { searchCatalogProducts, CatalogSearchProduct } from '../services/api';
 
+function toTitleCase(str: string): string {
+  if (!str) return '';
+  return str.replace(/\b\w+/g, (word) => {
+    const lower = word.toLowerCase();
+    if (['a', 'an', 'the', 'and', 'or', 'of', 'in', 'on', 'at', 'to', 'for', 'with'].includes(lower)) {
+      return lower;
+    }
+    return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+  }).replace(/^./, (c) => c.toUpperCase());
+}
+
 interface CatalogProductSearchProps {
   quoteId?: string;
   onSelect: (product: CatalogSearchProduct) => void;
@@ -90,13 +101,13 @@ export function CatalogProductSearch({
               <div className="flex items-start justify-between">
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-[#2A2A2A] truncate">
-                    {product.brand} {product.product}
+                    {toTitleCase(product.brand)} {toTitleCase(product.product)}
                   </p>
                   <p className="text-xs text-gray-500 mt-0.5">
-                    Item #{product.item_number} &middot; {product.pack_size}
+                    Item #{product.item_number} &middot; {toTitleCase(product.pack_size)}
                   </p>
                 </div>
-                <span className="text-xs text-gray-400 ml-2 shrink-0">{product.category}</span>
+                <span className="text-xs text-gray-400 ml-2 shrink-0">{toTitleCase(product.category)}</span>
               </div>
             </button>
           ))}

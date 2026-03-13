@@ -1,6 +1,6 @@
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
-import { ArrowLeft, Save, Filter, Plus, Minus, Edit, ChevronUp, ChevronDown, ArrowUpDown, ArrowUp, ArrowDown, Loader2, X } from 'lucide-react';
+import { ArrowLeft, Save, Filter, Plus, Minus, Edit, ChevronUp, ChevronDown, ArrowUpDown, ArrowUp, ArrowDown, Loader2, X, Trash2 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router';
 import { useState, useEffect } from 'react';
 import { getQuote, getGuestQuote, updateQuote, updateGuestQuote } from '../services/api';
@@ -28,6 +28,18 @@ interface ProductItem {
   basePrice: number;
   currentPrice: number;
   percentChange: number;
+}
+
+function toTitleCase(str: string): string {
+  if (!str) return '';
+  return str.replace(/\b\w+/g, (word) => {
+    // Keep short prepositions/articles lowercase unless first word
+    const lower = word.toLowerCase();
+    if (['a', 'an', 'the', 'and', 'or', 'of', 'in', 'on', 'at', 'to', 'for', 'with'].includes(lower)) {
+      return lower;
+    }
+    return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+  }).replace(/^./, (c) => c.toUpperCase()); // Always capitalize first letter
 }
 
 export function QuoteBuilderPage() {
@@ -195,6 +207,11 @@ export function QuoteBuilderPage() {
     };
     setItems(prev => [...prev, newItem]);
     setAddProductDrawerOpen(false);
+  };
+
+  const handleRemoveItem = (id: string) => {
+    setItems(prev => prev.filter(item => item.id !== id));
+    if (selectedItem?.id === id) setSelectedItem(null);
   };
 
   const savePrices = async () => {
@@ -395,8 +412,8 @@ export function QuoteBuilderPage() {
               >
                 <div className="flex justify-between items-start mb-2">
                   <div>
-                    <h3 className="text-sm font-medium text-[#2A2A2A]">{item.component}</h3>
-                    <p className="text-sm text-gray-500">{item.brand} {item.product}</p>
+                    <h3 className="text-sm font-medium text-[#2A2A2A]">{toTitleCase(item.component)}</h3>
+                    <p className="text-sm text-gray-500">{toTitleCase(item.brand)} {toTitleCase(item.product)}</p>
                   </div>
                   <div className="text-right">
                     {editMode ? (
@@ -482,10 +499,23 @@ export function QuoteBuilderPage() {
 
                 <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-gray-600 mt-2">
                    <div><span className="text-gray-400">Item #:</span> {item.sku}</div>
-                   <div><span className="text-gray-400">Category:</span> {item.category}</div>
+                   <div><span className="text-gray-400">Category:</span> {toTitleCase(item.category)}</div>
                    <div><span className="text-gray-400">Pack:</span> {item.pack}</div>
                    <div><span className="text-gray-400">Dish:</span> {item.dish}</div>
                 </div>
+                {editMode && (
+                  <div className="mt-2 flex justify-end">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRemoveItem(item.id);
+                      }}
+                      className="text-gray-400 hover:text-red-500 text-xs flex items-center gap-1"
+                    >
+                      <Trash2 className="w-3 h-3" /> Remove
+                    </button>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -520,6 +550,7 @@ export function QuoteBuilderPage() {
                   <th className="px-4 py-3 text-right text-xs font-medium text-gray-600 cursor-pointer hover:text-gray-900" onClick={() => handleSort('currentPrice')}>
                     Price {getSortIcon('currentPrice')}
                   </th>
+                  {editMode && <th className="px-2 py-3 w-10"></th>}
                 </tr>
               </thead>
               <tbody>
@@ -531,12 +562,12 @@ export function QuoteBuilderPage() {
                       selectedItem?.id === item.id ? 'bg-blue-50' : ''
                     }`}
                   >
-                    <td className="px-4 py-3 text-sm text-[#2A2A2A]">{item.component}</td>
+                    <td className="px-4 py-3 text-sm text-[#2A2A2A]">{toTitleCase(item.component)}</td>
                     <td className="px-4 py-3 text-sm text-[#2A2A2A]">{item.sku}</td>
-                    <td className="px-4 py-3 text-sm text-[#2A2A2A]">{item.brand}</td>
-                    <td className="px-4 py-3 text-sm text-[#2A2A2A]">{item.product}</td>
+                    <td className="px-4 py-3 text-sm text-[#2A2A2A]">{toTitleCase(item.brand)}</td>
+                    <td className="px-4 py-3 text-sm text-[#2A2A2A]">{toTitleCase(item.product)}</td>
                     <td className="px-4 py-3 text-sm text-gray-500">{item.pack}</td>
-                    <td className="px-4 py-3 text-sm text-gray-500">{item.category}</td>
+                    <td className="px-4 py-3 text-sm text-gray-500">{toTitleCase(item.category)}</td>
                     {editMode && (
                       <td className="px-4 py-3 text-center">
                         <div className="flex items-center justify-center gap-1">
@@ -621,6 +652,19 @@ export function QuoteBuilderPage() {
                         `$${item.currentPrice.toFixed(2)}`
                       )}
                     </td>
+                    {editMode && (
+                      <td className="px-2 py-3 text-center">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRemoveItem(item.id);
+                          }}
+                          className="text-gray-400 hover:text-red-500"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>

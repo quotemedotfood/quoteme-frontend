@@ -13,6 +13,17 @@ import { X, Loader2 } from 'lucide-react';
 import { CatalogProductSearch } from './CatalogProductSearch';
 import type { CatalogSearchProduct } from '../services/api';
 
+function toTitleCase(str: string): string {
+  if (!str) return '';
+  return str.replace(/\b\w+/g, (word) => {
+    const lower = word.toLowerCase();
+    if (['a', 'an', 'the', 'and', 'or', 'of', 'in', 'on', 'at', 'to', 'for', 'with'].includes(lower)) {
+      return lower;
+    }
+    return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+  }).replace(/^./, (c) => c.toUpperCase());
+}
+
 interface CandidateProduct {
   id: string;
   item_number: string;
@@ -140,9 +151,9 @@ export function MapComponentDrawer({
                 <div className="flex items-start justify-between mb-2">
                   <div className="flex-1">
                     <h4 className="text-sm font-medium text-[#2A2A2A]">
-                      {bestMatch.product.brand} {bestMatch.product.product}
+                      {toTitleCase(bestMatch.product.brand)} {toTitleCase(bestMatch.product.product)}
                     </h4>
-                    <p className="text-sm text-gray-600 mt-1">{bestMatch.product.pack_size}</p>
+                    <p className="text-sm text-gray-600 mt-1">{toTitleCase(bestMatch.product.pack_size)}</p>
                   </div>
                   <div className="text-right ml-4">
                     <span className="inline-block px-2 py-0.5 text-xs rounded bg-green-100 text-green-700">
@@ -155,7 +166,7 @@ export function MapComponentDrawer({
                     <span className="font-medium">Item #:</span> {bestMatch.product.item_number}
                   </span>
                   <span className="inline-block px-2 py-0.5 bg-gray-100 text-gray-700 rounded">
-                    {bestMatch.product.category}
+                    {toTitleCase(bestMatch.product.category)}
                   </span>
                   {bestMatch.score != null && (
                     <span className={`font-medium ${
@@ -195,9 +206,9 @@ export function MapComponentDrawer({
                         <div className="flex items-start justify-between mb-2">
                           <div className="flex-1">
                             <h4 className="text-sm font-medium text-[#2A2A2A]">
-                              {candidate.product.brand} {candidate.product.product}
+                              {toTitleCase(candidate.product.brand)} {toTitleCase(candidate.product.product)}
                             </h4>
-                            <p className="text-sm text-gray-600 mt-1">{candidate.product.pack_size}</p>
+                            <p className="text-sm text-gray-600 mt-1">{toTitleCase(candidate.product.pack_size)}</p>
                           </div>
                           <div className="text-right ml-4">
                             <span className={`inline-block px-2 py-0.5 text-xs rounded ${tierColor(candidate.position)}`}>
@@ -210,7 +221,7 @@ export function MapComponentDrawer({
                             <span className="font-medium">Item #:</span> {candidate.product.item_number}
                           </span>
                           <span className="inline-block px-2 py-0.5 bg-gray-100 text-gray-700 rounded">
-                            {candidate.product.category}
+                            {toTitleCase(candidate.product.category)}
                           </span>
                           {candidate.score != null && (
                             <span className={`font-medium ${
@@ -261,10 +272,10 @@ export function MapComponentDrawer({
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <h4 className="text-sm font-medium text-[#2A2A2A]">
-                      {manualPick.brand} {manualPick.product}
+                      {toTitleCase(manualPick.brand)} {toTitleCase(manualPick.product)}
                     </h4>
                     <p className="text-xs text-gray-500 mt-1">
-                      Item #{manualPick.item_number} &middot; {manualPick.pack_size}
+                      Item #{manualPick.item_number} &middot; {toTitleCase(manualPick.pack_size)}
                     </p>
                   </div>
                   <button

@@ -16,6 +16,17 @@ import {
   getMoreMatches,
 } from '../services/api';
 
+function toTitleCase(str: string): string {
+  if (!str) return '';
+  return str.replace(/\b\w+/g, (word) => {
+    const lower = word.toLowerCase();
+    if (['a', 'an', 'the', 'and', 'or', 'of', 'in', 'on', 'at', 'to', 'for', 'with'].includes(lower)) {
+      return lower;
+    }
+    return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+  }).replace(/^./, (c) => c.toUpperCase());
+}
+
 // ─── Types (matching backend API responses) ──────────────────────────────────
 
 interface AlignmentCandidate {
@@ -338,13 +349,13 @@ export function MapIngredientsPage() {
         className="flex items-center justify-between gap-4 py-3 border-b border-gray-100 last:border-b-0"
       >
         <div className="flex items-center gap-3 flex-1">
-          <span className="text-sm text-[#2A2A2A]">{component}</span>
+          <span className="text-sm text-[#2A2A2A]">{toTitleCase(component)}</span>
         </div>
 
         <div className="flex-1 text-center">
           {bestMatch ? (
             <div className="text-xs text-gray-500">
-              <div className="font-medium">{bestMatch.brand} {bestMatch.product}</div>
+              <div className="font-medium">{toTitleCase(bestMatch.brand)} {toTitleCase(bestMatch.product)}</div>
               <div className="text-gray-400">
                 {bestMatch.item_number} • {bestMatch.pack_size}
               </div>
@@ -391,7 +402,7 @@ export function MapIngredientsPage() {
           {dishes.map((dish) => (
             <button
               key={dish.id}
-              onClick={() => setSelectedDish(dish)}
+              onClick={() => { setSelectedDish(dish); setSelectedTab('dishes'); }}
               className={`w-full p-4 text-left border-b border-gray-100 hover:bg-gray-50 transition-colors ${
                 selectedDish?.id === dish.id ? 'bg-blue-50 border-l-4 border-l-blue-500' : ''
               }`}
@@ -528,7 +539,7 @@ export function MapIngredientsPage() {
                                     {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                                   </div>
                                   <span className="text-sm font-medium text-[#2A2A2A]">
-                                    {cat} ({mappedCount}/{items.length})
+                                    {toTitleCase(cat)} ({mappedCount}/{items.length})
                                   </span>
                                 </div>
                                 <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
