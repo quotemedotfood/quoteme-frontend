@@ -315,6 +315,41 @@ export async function convertConferenceLead(
   });
 }
 
+export async function ocrConferenceCard(
+  file: File
+): Promise<ApiResponse<{ company_name: string; contact_name: string; contact_email: string; contact_phone: string; contact_title: string }>> {
+  const token = getAuthToken();
+  const headers: Record<string, string> = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const formData = new FormData();
+  formData.append('card_photo', file);
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/v1/admin/conference-leads/ocr`, {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      return { error: errorData.error || `Request failed (${response.status})` };
+    }
+
+    const data = await response.json();
+    return { data };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : 'Network error' };
+  }
+}
+
+export async function deleteConferenceLead(id: string): Promise<ApiResponse<void>> {
+  return fetchWithAuth(`/api/v1/admin/conference-leads/${id}`, {
+    method: 'DELETE',
+  });
+}
+
 // ============= ADMIN BRANDS =============
 
 export async function getAdminBrands(): Promise<ApiResponse<AdminBrand[]>> {
