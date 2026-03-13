@@ -46,6 +46,26 @@ export const router = createBrowserRouter([
           { path: "quote-builder", Component: QuoteBuilderPage },
           { path: "map-ingredients", Component: MapIngredientsPage },
           { path: "export-finalize", Component: ExportFinalizePage },
+          {
+            path: "qm-admin/*",
+            element: (
+              <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-6">
+                <h1 className="text-2xl font-bold text-[#2A2A2A] mb-2">QM Admin</h1>
+                <p className="text-gray-500 mb-6">Welcome, admin. Dashboard coming soon.</p>
+                <a href="/dashboard" className="text-[#7FAEC2] hover:underline font-medium">Go to Rep Dashboard →</a>
+              </div>
+            ),
+          },
+          {
+            path: "distributor-admin/*",
+            element: (
+              <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-6">
+                <h1 className="text-2xl font-bold text-[#2A2A2A] mb-2">Distributor Admin</h1>
+                <p className="text-gray-500 mb-6">Admin dashboard coming soon.</p>
+                <a href="/dashboard" className="text-[#7FAEC2] hover:underline font-medium">Go to Rep Dashboard →</a>
+              </div>
+            ),
+          },
         ],
       },
     ],

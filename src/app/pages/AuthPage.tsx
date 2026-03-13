@@ -604,77 +604,79 @@ export function AuthPage() {
 
       {renderFormError()}
 
-      <div className="flex flex-col gap-4">
-        <div>
-          <label
-            className="mb-1.5 block text-sm font-medium"
-            style={{ color: '#2A2A2A' }}
-          >
-            Email
-          </label>
-          <Input
-            type="email"
-            value={loginEmail}
-            onChange={(e) => {
-              setLoginEmail(e.target.value);
-              setErrors((prev) => {
-                const next = { ...prev };
-                delete next.email;
-                return next;
-              });
-            }}
-            placeholder="jane@yourdistributor.com"
-          />
-          {renderFieldError('email')}
-        </div>
-
-        <div>
-          <label
-            className="mb-1.5 block text-sm font-medium"
-            style={{ color: '#2A2A2A' }}
-          >
-            Password
-          </label>
-          <div className="relative">
+      <form onSubmit={(e) => { e.preventDefault(); handleSignIn(); }} className="flex flex-col gap-6">
+        <div className="flex flex-col gap-4">
+          <div>
+            <label
+              className="mb-1.5 block text-sm font-medium"
+              style={{ color: '#2A2A2A' }}
+            >
+              Email
+            </label>
             <Input
-              type={showLoginPassword ? 'text' : 'password'}
-              value={loginPassword}
+              type="email"
+              value={loginEmail}
               onChange={(e) => {
-                setLoginPassword(e.target.value);
+                setLoginEmail(e.target.value);
                 setErrors((prev) => {
                   const next = { ...prev };
-                  delete next.password;
+                  delete next.email;
                   return next;
                 });
               }}
-              placeholder="Enter your password"
-              className="pr-10"
+              placeholder="jane@yourdistributor.com"
             />
-            <button
-              type="button"
-              onClick={() => setShowLoginPassword(!showLoginPassword)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-            >
-              {showLoginPassword ? (
-                <EyeOff className="size-4" />
-              ) : (
-                <Eye className="size-4" />
-              )}
-            </button>
+            {renderFieldError('email')}
           </div>
-          {renderFieldError('password')}
-        </div>
-      </div>
 
-      <Button
-        onClick={handleSignIn}
-        disabled={isSubmitting}
-        className="w-full text-white"
-        style={{ backgroundColor: '#7FAEC2' }}
-        size="lg"
-      >
-        {isSubmitting ? 'Signing In...' : 'Sign In'}
-      </Button>
+          <div>
+            <label
+              className="mb-1.5 block text-sm font-medium"
+              style={{ color: '#2A2A2A' }}
+            >
+              Password
+            </label>
+            <div className="relative">
+              <Input
+                type={showLoginPassword ? 'text' : 'password'}
+                value={loginPassword}
+                onChange={(e) => {
+                  setLoginPassword(e.target.value);
+                  setErrors((prev) => {
+                    const next = { ...prev };
+                    delete next.password;
+                    return next;
+                  });
+                }}
+                placeholder="Enter your password"
+                className="pr-10"
+              />
+              <button
+                type="button"
+                onClick={() => setShowLoginPassword(!showLoginPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              >
+                {showLoginPassword ? (
+                  <EyeOff className="size-4" />
+                ) : (
+                  <Eye className="size-4" />
+                )}
+              </button>
+            </div>
+            {renderFieldError('password')}
+          </div>
+        </div>
+
+        <Button
+          type="submit"
+          disabled={isSubmitting}
+          className="w-full text-white"
+          style={{ backgroundColor: '#7FAEC2' }}
+          size="lg"
+        >
+          {isSubmitting ? 'Signing In...' : 'Sign In'}
+        </Button>
+      </form>
 
       <div className="flex flex-col items-center gap-2 text-sm">
         <p style={{ color: '#4F4F4F' }}>
