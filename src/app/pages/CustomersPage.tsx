@@ -223,7 +223,7 @@ export function CustomersPage() {
               {isLoggedIn && (
                 <Button
                   size="sm"
-                  className="bg-[#F2993D] hover:bg-[#E08A2E] text-white h-9 px-3"
+                  className="bg-[#7FAEC2] hover:bg-[#6A9AB0] text-white h-9 px-3"
                   onClick={() => setAddCustomerOpen(true)}
                 >
                   + Add
@@ -254,7 +254,7 @@ export function CustomersPage() {
           </div>
           {isLoggedIn && (
             <Button
-              className="bg-[#F2993D] hover:bg-[#E08A2E] text-white"
+              className="bg-[#7FAEC2] hover:bg-[#6A9AB0] text-white"
               onClick={() => setAddCustomerOpen(true)}
             >
               + Add Customer
@@ -369,7 +369,7 @@ export function CustomersPage() {
             </p>
             {!searchQuery && (
               <Button
-                className="bg-[#F2993D] hover:bg-[#E08A2E] text-white mt-2"
+                className="bg-[#7FAEC2] hover:bg-[#6A9AB0] text-white mt-2"
                 onClick={() => setAddCustomerOpen(true)}
               >
                 + Add Your First Customer
@@ -664,7 +664,7 @@ export function CustomersPage() {
             <div className="space-y-2">
               <Button
                 variant={sortColumn === 'name' ? 'default' : 'outline'}
-                className={`w-full justify-start ${sortColumn === 'name' ? 'bg-[#F2993D] hover:bg-[#E08A2E] text-white' : ''}`}
+                className={`w-full justify-start ${sortColumn === 'name' ? 'bg-[#7FAEC2] hover:bg-[#6A9AB0] text-white' : ''}`}
                 onClick={() => {
                   handleSort('name');
                   setFilterSheetOpen(false);
@@ -674,7 +674,7 @@ export function CustomersPage() {
               </Button>
               <Button
                 variant={sortColumn === 'contact_count' ? 'default' : 'outline'}
-                className={`w-full justify-start ${sortColumn === 'contact_count' ? 'bg-[#F2993D] hover:bg-[#E08A2E] text-white' : ''}`}
+                className={`w-full justify-start ${sortColumn === 'contact_count' ? 'bg-[#7FAEC2] hover:bg-[#6A9AB0] text-white' : ''}`}
                 onClick={() => {
                   handleSort('contact_count');
                   setFilterSheetOpen(false);

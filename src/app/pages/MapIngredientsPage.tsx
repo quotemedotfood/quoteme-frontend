@@ -326,7 +326,7 @@ export function MapIngredientsPage() {
           <p className="text-red-500 text-sm">{error}</p>
           <Button
             onClick={() => navigate('/start-new-quote')}
-            className="bg-[#F2993D] hover:bg-[#E08935] text-white"
+            className="bg-[#7FAEC2] hover:bg-[#6A9AB0] text-white"
           >
             Start Over
           </Button>
@@ -419,7 +419,7 @@ export function MapIngredientsPage() {
           <div className="p-4">
             <Button
               onClick={() => setIsAddDishDrawerOpen(true)}
-              className="w-full h-auto py-3 bg-[#F2993D] hover:bg-[#E08935] text-white whitespace-normal text-center"
+              className="w-full h-auto py-3 bg-[#7FAEC2] hover:bg-[#6A9AB0] text-white whitespace-normal text-center"
             >
               <Plus className="w-4 h-4 mr-2 shrink-0" />
               Manually Add A Dish or Ingredient
@@ -446,7 +446,7 @@ export function MapIngredientsPage() {
             </div>
             <Button
               onClick={() => navigate('/quote-builder', { state: { quoteId, isOpenQuote } })}
-              className="bg-[#F2993D] hover:bg-[#e88929] text-white"
+              className="bg-[#7FAEC2] hover:bg-[#6A9AB0] text-white"
             >
               Adjust pricing
             </Button>
@@ -628,7 +628,7 @@ export function MapIngredientsPage() {
               ))}
             </div>
             <div className="p-4 border-t border-gray-100 bg-gray-50">
-              <Button onClick={() => setIsAddDishDrawerOpen(true)} className="w-full bg-[#F2993D] hover:bg-[#E08935] text-white">
+              <Button onClick={() => setIsAddDishDrawerOpen(true)} className="w-full bg-[#7FAEC2] hover:bg-[#6A9AB0] text-white">
                 <Plus className="w-4 h-4 mr-2" /> Manually Add A Dish
               </Button>
             </div>
@@ -672,7 +672,7 @@ export function MapIngredientsPage() {
             <div className="p-4 border-t border-gray-100 bg-gray-50">
               <Button
                 onClick={handleAlignWithCatalog}
-                className="w-full bg-[#F2993D] hover:bg-[#E08935] text-white"
+                className="w-full bg-[#7FAEC2] hover:bg-[#6A9AB0] text-white"
                 disabled={!newDishComponents.trim() || addDishLoading}
               >
                 {addDishLoading ? (
@@ -715,7 +715,7 @@ export function MapIngredientsPage() {
               </Button>
               <Button
                 onClick={handleRetryQuote}
-                className="w-full bg-[#F2993D] hover:bg-[#E08935] text-white"
+                className="w-full bg-[#7FAEC2] hover:bg-[#6A9AB0] text-white"
                 disabled={!feedbackText.trim()}
               >
                 Retry Quote

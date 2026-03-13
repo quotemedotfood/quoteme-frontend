@@ -381,7 +381,7 @@ export function SettingsPage() {
                   <Button
                     onClick={handleSaveProfile}
                     disabled={isSaving}
-                    className="bg-[#F2993D] hover:bg-[#E08A2E] text-white"
+                    className="bg-[#7FAEC2] hover:bg-[#6A9AB0] text-white"
                   >
                     {isSaving ? 'Saving...' : 'Save Changes'}
                   </Button>
@@ -587,7 +587,7 @@ export function SettingsPage() {
               <Button
                 onClick={handleSaveCompany}
                 disabled={isSavingCompany}
-                className="bg-[#F2993D] hover:bg-[#E08A2E] text-white"
+                className="bg-[#7FAEC2] hover:bg-[#6A9AB0] text-white"
               >
                 {isSavingCompany ? 'Saving...' : 'Save Settings'}
               </Button>
@@ -673,7 +673,7 @@ export function SettingsPage() {
                     <Button
                       onClick={handleUpgradePlan}
                       disabled={billingActionLoading}
-                      className="bg-[#F2993D] hover:bg-[#E08A2E] text-white text-sm"
+                      className="bg-[#7FAEC2] hover:bg-[#6A9AB0] text-white text-sm"
                     >
                       {billingActionLoading ? 'Loading...' : 'Upgrade to Premium'}
                     </Button>
@@ -681,7 +681,7 @@ export function SettingsPage() {
                     <Button
                       onClick={handleManagePlan}
                       disabled={billingActionLoading}
-                      className="bg-[#F2993D] hover:bg-[#E08A2E] text-white text-sm"
+                      className="bg-[#7FAEC2] hover:bg-[#6A9AB0] text-white text-sm"
                     >
                       {billingActionLoading ? 'Loading...' : 'Manage Plan'}
                     </Button>

@@ -40,7 +40,7 @@ export function ErrorPage() {
 
         <div className="space-y-3">
           <Button 
-            className="w-full bg-[#F2993D] hover:bg-[#E08A2E] text-white"
+            className="w-full bg-[#7FAEC2] hover:bg-[#6A9AB0] text-white"
             onClick={() => navigate('/')}
           >
             Return to Dashboard

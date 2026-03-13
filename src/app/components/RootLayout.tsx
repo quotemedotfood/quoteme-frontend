@@ -1,11 +1,17 @@
-import { Outlet } from 'react-router';
+import { Outlet, Navigate } from 'react-router';
 import { AppSidebar } from './AppSidebar';
 import { AuthSyncProvider } from './AuthSyncProvider';
 import { DemoBanner } from './DemoBanner';
 import { isDemoMode } from '../utils/demoMode';
+import { useAuth } from '../contexts/AuthContext';
 
 export function RootLayout() {
   const demo = isDemoMode();
+  const { isAuthenticated, isLoading } = useAuth();
+
+  if (!demo && !isAuthenticated && !isLoading) {
+    return <Navigate to="/auth" replace />;
+  }
 
   return (
     <AuthSyncProvider>

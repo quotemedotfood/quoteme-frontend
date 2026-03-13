@@ -198,7 +198,7 @@ export function QuotesPage() {
               </Button>
               <Button
                 size="sm"
-                className="bg-[#F2993D] hover:bg-[#E08A2E] text-white h-9 px-3"
+                className="bg-[#7FAEC2] hover:bg-[#6A9AB0] text-white h-9 px-3"
                 onClick={() => navigate('/start-new-quote')}
               >
                 + New
@@ -228,7 +228,7 @@ export function QuotesPage() {
           </div>
           <Button
             onClick={() => navigate('/start-new-quote')}
-            className="bg-[#F2993D] hover:bg-[#E08A2E] text-white"
+            className="bg-[#7FAEC2] hover:bg-[#6A9AB0] text-white"
           >
             + New Quote
           </Button>
@@ -257,7 +257,7 @@ export function QuotesPage() {
           <div className="flex flex-col items-center justify-center py-16">
             <p className="text-gray-500 mb-4">No quotes yet. Create your first quote to get started.</p>
             <Button
-              className="bg-[#F2993D] hover:bg-[#E08A2E] text-white"
+              className="bg-[#7FAEC2] hover:bg-[#6A9AB0] text-white"
               onClick={() => navigate('/start-new-quote')}
             >
               + New Quote
@@ -501,7 +501,7 @@ export function QuotesPage() {
             <div className="space-y-2">
               <Button
                 variant={sortColumn === 'created_at' ? 'default' : 'outline'}
-                className={`w-full justify-start ${sortColumn === 'created_at' ? 'bg-[#F2993D] hover:bg-[#E08A2E] text-white' : ''}`}
+                className={`w-full justify-start ${sortColumn === 'created_at' ? 'bg-[#7FAEC2] hover:bg-[#6A9AB0] text-white' : ''}`}
                 onClick={() => {
                   handleSort('created_at');
                 }}
@@ -510,7 +510,7 @@ export function QuotesPage() {
               </Button>
               <Button
                 variant={sortColumn === 'total_cents' ? 'default' : 'outline'}
-                className={`w-full justify-start ${sortColumn === 'total_cents' ? 'bg-[#F2993D] hover:bg-[#E08A2E] text-white' : ''}`}
+                className={`w-full justify-start ${sortColumn === 'total_cents' ? 'bg-[#7FAEC2] hover:bg-[#6A9AB0] text-white' : ''}`}
                 onClick={() => {
                   handleSort('total_cents');
                 }}
@@ -519,7 +519,7 @@ export function QuotesPage() {
               </Button>
               <Button
                 variant={sortColumn === 'restaurant' ? 'default' : 'outline'}
-                className={`w-full justify-start ${sortColumn === 'restaurant' ? 'bg-[#F2993D] hover:bg-[#E08A2E] text-white' : ''}`}
+                className={`w-full justify-start ${sortColumn === 'restaurant' ? 'bg-[#7FAEC2] hover:bg-[#6A9AB0] text-white' : ''}`}
                 onClick={() => {
                   handleSort('restaurant');
                 }}
@@ -536,7 +536,7 @@ export function QuotesPage() {
                 <Button
                   key={s}
                   variant={statusFilter === s ? 'default' : 'outline'}
-                  className={`w-full justify-start ${statusFilter === s ? 'bg-[#F2993D] hover:bg-[#E08A2E] text-white' : ''}`}
+                  className={`w-full justify-start ${statusFilter === s ? 'bg-[#7FAEC2] hover:bg-[#6A9AB0] text-white' : ''}`}
                   onClick={() => setStatusFilter(s)}
                 >
                   {s === '' ? 'All' : s.charAt(0).toUpperCase() + s.slice(1)}
@@ -566,7 +566,7 @@ export function QuotesPage() {
           </div>
 
           <Button
-            className="w-full bg-[#F2993D] hover:bg-[#E08A2E] text-white"
+            className="w-full bg-[#7FAEC2] hover:bg-[#6A9AB0] text-white"
             onClick={() => setFilterSheetOpen(false)}
           >
             Apply

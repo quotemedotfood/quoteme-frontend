@@ -323,7 +323,7 @@ export function StartNewQuotePage() {
         }
         if (response.data) {
           incrementQuoteCount();
-          navigate(skipIngredientReview ? '/quote-builder' : '/correction', { state: { quoteId: response.data.quote_id, menuId: response.data.menu_id, isOpenQuote: isQuoteOpened } });
+          navigate(skipIngredientReview ? '/map-ingredients' : '/correction', { state: { quoteId: response.data.quote_id, menuId: response.data.menu_id, isOpenQuote: isQuoteOpened } });
         }
       } else {
         const response = await createMenu({ raw_text: menuText, name: selectedRestaurant?.name || 'New Quote' });
@@ -335,7 +335,7 @@ export function StartNewQuotePage() {
         }
         if (response.data) {
           incrementQuoteCount();
-          navigate(skipIngredientReview ? '/quote-builder' : '/correction', { state: { quoteId: response.data.quote_id, menuId: response.data.menu_id, isOpenQuote: isQuoteOpened } });
+          navigate(skipIngredientReview ? '/map-ingredients' : '/correction', { state: { quoteId: response.data.quote_id, menuId: response.data.menu_id, isOpenQuote: isQuoteOpened } });
         }
       }
     } catch (error) {
@@ -530,7 +530,7 @@ export function StartNewQuotePage() {
               onChange={(e) => setSkipIngredientReview(e.target.checked)}
               className="rounded border-gray-300"
             />
-            <span className="text-sm text-[#4F4F4F]">Skip ingredient review and generate quote immediately</span>
+            <span className="text-sm text-[#4F4F4F]">Skip ingredient review — go straight to matching</span>
           </label>
 
           <div className="flex justify-between items-center text-xs text-gray-500 font-bold">

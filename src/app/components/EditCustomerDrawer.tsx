@@ -644,7 +644,7 @@ export function EditCustomerDrawer({
           <DrawerFooter className="border-t border-gray-200">
             <Button
               type="submit"
-              className="bg-[#F2993D] hover:bg-[#E08A2E] text-white w-full"
+              className="bg-[#7FAEC2] hover:bg-[#6A9AB0] text-white w-full"
               disabled={saving}
             >
               {saving ? (
