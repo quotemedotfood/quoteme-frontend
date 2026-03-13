@@ -1019,9 +1019,10 @@ export async function getBilling(): Promise<ApiResponse<any>> {
   return fetchWithAuth('/api/v1/billing');
 }
 
-export async function createCheckoutSession(): Promise<ApiResponse<{ checkout_url: string }>> {
+export async function createCheckoutSession(plan?: string): Promise<ApiResponse<{ checkout_url: string }>> {
   return fetchWithAuth('/api/v1/billing/checkout', {
     method: 'POST',
+    body: JSON.stringify({ plan: plan || 'solo_rep' }),
   });
 }
 

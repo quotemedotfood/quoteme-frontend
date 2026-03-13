@@ -232,19 +232,12 @@ export function SettingsPage() {
     }
   };
 
-  const handleUpgradePlan = async () => {
+  const handleUpgradePlan = () => {
     if (profile.isGuest) {
       setAuthDrawerOpen(true);
       return;
     }
-    setBillingActionLoading(true);
-    const res = await createCheckoutSession();
-    setBillingActionLoading(false);
-    if (res.data?.checkout_url) {
-      window.location.href = res.data.checkout_url;
-    } else {
-      alert(res.error || 'Failed to create checkout session');
-    }
+    navigate('/upgrade');
   };
 
   const handleManagePlan = async () => {
@@ -624,6 +617,23 @@ export function SettingsPage() {
             Manage your subscription and payment details
           </p>
 
+          {new URLSearchParams(window.location.search).get('success') === 'true' && (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6 flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+                <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-green-800">You're all set!</p>
+                <p className="text-xs text-green-600">Your subscription is active. You now have unlimited quotes.</p>
+              </div>
+            </div>
+          )}
+          {new URLSearchParams(window.location.search).get('canceled') === 'true' && (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
+              <p className="text-sm text-amber-800">Checkout was canceled. No changes were made.</p>
+            </div>
+          )}
+
           {isGuest ? (
             <div className="text-center py-8">
               <p className="text-sm text-[#4F4F4F] mb-4">Log in to manage billing</p>
@@ -668,14 +678,29 @@ export function SettingsPage() {
                     <p className="text-sm text-[#4F4F4F]">/{billingData?.interval || 'month'}</p>
                   </div>
                 </div>
+                {billingData?.has_paid_subscription && billingData?.status && (
+                  <div className="flex items-center gap-3 mb-3">
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                      billingData.status === 'active' ? 'bg-green-50 text-green-600' :
+                      billingData.status === 'past_due' ? 'bg-red-50 text-red-600' :
+                      'bg-gray-100 text-gray-500'
+                    }`}>
+                      {billingData.status === 'active' ? 'Active' : billingData.status === 'past_due' ? 'Past Due' : billingData.status}
+                    </span>
+                    {billingData.current_period_end && (
+                      <span className="text-xs text-[#4F4F4F]">
+                        Next billing: {new Date(billingData.current_period_end).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      </span>
+                    )}
+                  </div>
+                )}
                 <div className="flex gap-2">
                   {!(billingData?.has_paid_subscription ?? profile.hasPaidSubscription) ? (
                     <Button
                       onClick={handleUpgradePlan}
-                      disabled={billingActionLoading}
                       className="bg-[#7FAEC2] hover:bg-[#6A9AB0] text-white text-sm"
                     >
-                      {billingActionLoading ? 'Loading...' : 'Upgrade to Premium'}
+                      Upgrade to Premium
                     </Button>
                   ) : (
                     <Button
@@ -683,7 +708,7 @@ export function SettingsPage() {
                       disabled={billingActionLoading}
                       className="bg-[#7FAEC2] hover:bg-[#6A9AB0] text-white text-sm"
                     >
-                      {billingActionLoading ? 'Loading...' : 'Manage Plan'}
+                      {billingActionLoading ? 'Loading...' : 'Manage Billing'}
                     </Button>
                   )}
                 </div>

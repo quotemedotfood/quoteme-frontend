@@ -26,6 +26,7 @@ import { QMAdminConferenceCommand } from "./pages/admin/QMAdminConferenceCommand
 import { QMAdminUsers } from "./pages/admin/QMAdminUsers";
 import { QMAdminBrands } from "./pages/admin/QMAdminBrands";
 import { QMAdminMatchingEngine } from "./pages/admin/QMAdminMatchingEngine";
+import { PaywallPage } from "./pages/PaywallPage";
 import { isDemoMode } from "./utils/demoMode";
 
 const demo = isDemoMode();
@@ -73,6 +74,7 @@ export const router = createBrowserRouter([
             { path: "settings", Component: SettingsPage },
             { path: "settings/billing", Component: SettingsPage },
           ]),
+          { path: "upgrade", Component: PaywallPage },
           { path: "start-new-quote", Component: StartNewQuotePage },
           { path: "correction", Component: ComponentCorrectionPage },
           { path: "quote-builder", Component: QuoteBuilderPage },

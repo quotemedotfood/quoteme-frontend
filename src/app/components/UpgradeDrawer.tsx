@@ -17,7 +17,7 @@ export function UpgradeDrawer({ isOpen, onClose }: UpgradeDrawerProps) {
       return;
     }
     onClose();
-    navigate('/settings/billing');
+    navigate('/upgrade');
   };
 
   if (!isOpen) return null;
@@ -117,11 +117,11 @@ export function UpgradeDrawer({ isOpen, onClose }: UpgradeDrawerProps) {
           </div>
 
           {/* Pricing */}
-          <div className="bg-[#FFF9F3] border-2 border-[#F2993D] rounded-lg p-6 mb-6">
+          <div className="bg-[#FFF9F3] border-2 border-[#7FAEC2] rounded-lg p-6 mb-6">
             <div className="flex items-baseline justify-between mb-2">
               <div>
-                <p className="text-sm text-[#4F4F4F]">Standard Plan</p>
-                <p className="text-3xl text-[#2A2A2A] font-bold">$29<span className="text-lg text-[#4F4F4F] font-normal">/month</span></p>
+                <p className="text-sm text-[#4F4F4F]">Solo Rep Plan</p>
+                <p className="text-3xl text-[#2A2A2A] font-bold">$50<span className="text-lg text-[#4F4F4F] font-normal">/month</span></p>
               </div>
             </div>
             <p className="text-xs text-[#4F4F4F]">Cancel anytime. No hidden fees.</p>
