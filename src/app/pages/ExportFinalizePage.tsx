@@ -1,5 +1,5 @@
 import { Button } from '../components/ui/button';
-import { ArrowLeft, FileText, Download, Mail, MessageSquare, Check, ThumbsUp, ThumbsDown, Link as LinkIcon, Info, Edit, X, Loader2, Eye } from 'lucide-react';
+import { ArrowLeft, FileText, Download, Mail, MessageSquare, Check, ThumbsUp, ThumbsDown, Link as LinkIcon, Info, Edit, X, Loader2, Eye, RefreshCw } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router';
 import { useState, useEffect, useCallback } from 'react';
 import { Input } from '../components/ui/input';
@@ -159,6 +159,9 @@ export function ExportFinalizePage() {
     }
   }
 
+  // PDF error state
+  const [pdfError, setPdfError] = useState<string | null>(null);
+
   // Open PDF preview modal
   const handleOpenPdfPreview = useCallback(async () => {
     if (!quoteId) return;
@@ -168,17 +171,29 @@ export function ExportFinalizePage() {
       return;
     }
     setLoadingPdfPreview(true);
+    setPdfError(null);
     setShowPdfModal(true);
     try {
       const result = await downloadQuotePdf(quoteId);
       if (result.blob) {
         const url = URL.createObjectURL(result.blob);
         setPdfBlobUrl(url);
+      } else {
+        setPdfError(result.error || 'Failed to generate PDF. Please try again.');
       }
+    } catch {
+      setPdfError('Network error loading PDF.');
     } finally {
       setLoadingPdfPreview(false);
     }
   }, [quoteId, pdfBlobUrl]);
+
+  // Retry PDF preview
+  const handleRetryPdf = useCallback(() => {
+    setPdfBlobUrl(null);
+    setPdfError(null);
+    handleOpenPdfPreview();
+  }, [handleOpenPdfPreview]);
 
   // Cleanup blob URL on unmount
   useEffect(() => {
@@ -334,7 +349,7 @@ export function ExportFinalizePage() {
               Edit Pricing
             </Button>
             <Button
-              className="bg-[#F2993D] hover:bg-[#e88929] text-white"
+              className="bg-[#7FAEC2] hover:bg-[#6A9AB0] text-white"
               onClick={handleDone}
             >
               <Check className="w-4 h-4 mr-2" />
@@ -412,7 +427,7 @@ export function ExportFinalizePage() {
                       </div>
                     ) : (
                       <div className="text-sm text-gray-400 italic bg-gray-50 px-4 py-3 rounded-md border border-dashed border-gray-200">
-                        No contacts selected
+                        {contacts.length === 0 ? 'No contacts on file — add contacts from the Customers page' : 'No contacts selected'}
                       </div>
                     )}
                   </div>
@@ -423,12 +438,6 @@ export function ExportFinalizePage() {
                     <span className="text-sm text-gray-600">Total Products:</span>
                     <span className="text-sm text-[#2A2A2A] font-medium">{quoteData ? deduplicatedLines(quoteData.lines || []).length : '—'}</span>
                   </div>
-                  {quoteData && (
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">Quote Total:</span>
-                      <span className="text-sm text-[#2A2A2A] font-medium">{quoteData.total || '—'}</span>
-                    </div>
-                  )}
                 </div>
               </div>
             </div>
@@ -480,7 +489,7 @@ export function ExportFinalizePage() {
                               setSelectedDocs(selectedDocs.filter(id => id !== doc.id));
                             }
                           }}
-                          className="border-gray-300 data-[state=checked]:bg-[#F2993D] data-[state=checked]:border-[#F2993D]"
+                          className="border-gray-300 data-[state=checked]:bg-[#7FAEC2] data-[state=checked]:border-[#7FAEC2]"
                         />
                         <label
                           htmlFor={doc.id}
@@ -512,7 +521,7 @@ export function ExportFinalizePage() {
                               setSelectedLinks(selectedLinks.filter(id => id !== link.id));
                             }
                           }}
-                          className="border-gray-300 data-[state=checked]:bg-[#F2993D] data-[state=checked]:border-[#F2993D]"
+                          className="border-gray-300 data-[state=checked]:bg-[#7FAEC2] data-[state=checked]:border-[#7FAEC2]"
                         />
                         <label
                           htmlFor={link.id}
@@ -607,12 +616,11 @@ export function ExportFinalizePage() {
                       )}
                     </div>
 
-                    {/* Total */}
+                    {/* Item count */}
                     <div className="flex justify-end items-center gap-2 pt-1 border-t border-gray-200">
                       <span className="text-gray-400 text-[0.6rem]">
-                        Total ({quoteData ? deduplicatedLines(quoteData.lines || []).length : 0} items):
+                        {quoteData ? deduplicatedLines(quoteData.lines || []).length : 0} items
                       </span>
-                      <span className="font-bold text-sm" style={{ color: '#1A1A2E' }}>{quoteData?.total || '$0.00'}</span>
                     </div>
                   </div>
                 </div>
@@ -961,8 +969,15 @@ export function ExportFinalizePage() {
                 </div>
               </object>
             ) : (
-              <div className="flex items-center justify-center h-full">
-                <p className="text-sm text-red-500">Failed to load PDF preview.</p>
+              <div className="flex flex-col items-center justify-center h-full gap-4">
+                <p className="text-sm text-red-500">{pdfError || 'Failed to load PDF preview.'}</p>
+                <Button
+                  variant="outline"
+                  onClick={handleRetryPdf}
+                  className="text-[#7FAEC2]"
+                >
+                  <RefreshCw className="w-4 h-4 mr-2" /> Retry
+                </Button>
               </div>
             )}
           </div>
@@ -1002,13 +1017,19 @@ export function ExportFinalizePage() {
                   </div>
 
                   <div className="space-y-3">
+                    {contacts.length === 0 && (
+                      <div className="text-center py-4 text-gray-400">
+                        <p className="text-sm">No contacts on file.</p>
+                        <p className="text-xs mt-1">Add contacts from the Customers page to include them on quotes.</p>
+                      </div>
+                    )}
                     {contacts.map((contact) => (
                       <div key={contact.id} className="flex items-start space-x-3 bg-white p-3 rounded border border-gray-100 shadow-sm">
                         <Checkbox
                           id={`edit-${contact.id}`}
                           checked={tempContactIds.includes(contact.id)}
                           onCheckedChange={() => handleTempContactToggle(contact.id)}
-                          className="mt-1 border-gray-300 data-[state=checked]:bg-[#F2993D] data-[state=checked]:border-[#F2993D]"
+                          className="mt-1 border-gray-300 data-[state=checked]:bg-[#7FAEC2] data-[state=checked]:border-[#7FAEC2]"
                         />
                         <div className="flex-1">
                           <div className="flex justify-between">
@@ -1051,7 +1072,7 @@ export function ExportFinalizePage() {
               </Button>
               <Button
                 onClick={handleSaveEdit}
-                className="bg-[#F2993D] hover:bg-[#E08A2E] text-white h-11 px-8"
+                className="bg-[#7FAEC2] hover:bg-[#6A9AB0] text-white h-11 px-8"
               >
                 Save Changes
               </Button>

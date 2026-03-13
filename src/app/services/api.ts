@@ -695,6 +695,40 @@ export async function getMenu(id: string): Promise<ApiResponse<any>> {
   return fetchWithAuth(`/api/v1/menus/${id}`);
 }
 
+// Dish Component CRUD (for Component Correction screen)
+export async function updateDishComponent(
+  menuId: string,
+  dishId: string,
+  componentId: string,
+  data: { name?: string; passes_to_alignment?: boolean }
+): Promise<ApiResponse<any>> {
+  return fetchWithAuth(`/api/v1/menus/${menuId}/dishes/${dishId}/components/${componentId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteDishComponent(
+  menuId: string,
+  dishId: string,
+  componentId: string
+): Promise<ApiResponse<any>> {
+  return fetchWithAuth(`/api/v1/menus/${menuId}/dishes/${dishId}/components/${componentId}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function createDishComponent(
+  menuId: string,
+  dishId: string,
+  data: { name: string; category?: string }
+): Promise<ApiResponse<any>> {
+  return fetchWithAuth(`/api/v1/menus/${menuId}/dishes/${dishId}/components`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
 export async function createQuote(menuId: string): Promise<ApiResponse<QuoteCreateResponse>> {
   return fetchWithAuth('/api/v1/quotes', {
     method: 'POST',

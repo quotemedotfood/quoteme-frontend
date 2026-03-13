@@ -10,6 +10,8 @@ import { SettingsPage } from "./pages/SettingsPage";
 import { QuotesPage } from "./pages/QuotesPage";
 import { MapIngredientsPage } from "./pages/MapIngredientsPage";
 import { ExportFinalizePage } from "./pages/ExportFinalizePage";
+import { ComponentCorrectionPage } from "./pages/ComponentCorrectionPage";
+import { QuoteReviewPage } from "./pages/QuoteReviewPage";
 import { ErrorPage } from "./pages/ErrorPage";
 import { AuthPage } from "./pages/AuthPage";
 import { ResetPasswordPage } from "./pages/ResetPasswordPage";
@@ -19,7 +21,10 @@ import { QMAdminDistributors } from "./pages/admin/QMAdminDistributors";
 import { QMAdminDistributorDetailPage } from "./pages/admin/QMAdminDistributorDetail";
 import { QMAdminUnassociatedReps } from "./pages/admin/QMAdminUnassociatedReps";
 import { QMAdminRestaurants } from "./pages/admin/QMAdminRestaurants";
+import { QMAdminRestaurantDetailPage } from "./pages/admin/QMAdminRestaurantDetail";
 import { QMAdminConferenceCommand } from "./pages/admin/QMAdminConferenceCommand";
+import { QMAdminUsers } from "./pages/admin/QMAdminUsers";
+import { QMAdminBrands } from "./pages/admin/QMAdminBrands";
 import { isDemoMode } from "./utils/demoMode";
 
 const demo = isDemoMode();
@@ -44,10 +49,13 @@ export const router = createBrowserRouter([
         children: [
           { index: true, Component: QMAdminDashboard },
           { path: "signups", Component: QMAdminSignups },
+          { path: "users", Component: QMAdminUsers },
           { path: "distributors", Component: QMAdminDistributors },
           { path: "distributors/:id", Component: QMAdminDistributorDetailPage },
           { path: "unassociated-reps", Component: QMAdminUnassociatedReps },
           { path: "restaurants", Component: QMAdminRestaurants },
+          { path: "restaurants/:id", Component: QMAdminRestaurantDetailPage },
+          { path: "brands", Component: QMAdminBrands },
           { path: "conference-command", Component: QMAdminConferenceCommand },
         ],
       },
@@ -64,7 +72,9 @@ export const router = createBrowserRouter([
             { path: "settings/billing", Component: SettingsPage },
           ]),
           { path: "start-new-quote", Component: StartNewQuotePage },
+          { path: "correction", Component: ComponentCorrectionPage },
           { path: "quote-builder", Component: QuoteBuilderPage },
+          { path: "review", Component: QuoteReviewPage },
           { path: "map-ingredients", Component: MapIngredientsPage },
           { path: "export-finalize", Component: ExportFinalizePage },
           {

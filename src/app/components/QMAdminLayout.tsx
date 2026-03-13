@@ -2,10 +2,12 @@ import { Link, Outlet, useLocation, Navigate } from 'react-router';
 import {
   LayoutDashboard,
   UserPlus,
+  Users,
   Building2,
   UserX,
   UtensilsCrossed,
   Radio,
+  Tag,
 } from 'lucide-react';
 import logoSquare from '/src/assets/e549e7d27b183e98e791f43494c715b8cc6ce7e9.png';
 import { useAuth } from '../contexts/AuthContext';
@@ -13,9 +15,11 @@ import { useAuth } from '../contexts/AuthContext';
 const navItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/qm-admin' },
   { icon: UserPlus, label: 'Signups', path: '/qm-admin/signups' },
+  { icon: Users, label: 'Users', path: '/qm-admin/users' },
   { icon: Building2, label: 'Distributors', path: '/qm-admin/distributors' },
   { icon: UserX, label: 'Unassociated', path: '/qm-admin/unassociated-reps' },
   { icon: UtensilsCrossed, label: 'Restaurants', path: '/qm-admin/restaurants' },
+  { icon: Tag, label: 'Brands', path: '/qm-admin/brands' },
   { icon: Radio, label: 'Command', path: '/qm-admin/conference-command' },
 ];
 

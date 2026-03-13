@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Search, ArrowUpDown, ArrowUp, ArrowDown, AlertTriangle } from 'lucide-react';
+import { Search, ArrowUpDown, ArrowUp, ArrowDown, AlertTriangle, Archive, ArchiveRestore } from 'lucide-react';
 import { Input } from '../../components/ui/input';
+import { Button } from '../../components/ui/button';
 import {
   Table,
   TableHeader,
@@ -9,7 +10,7 @@ import {
   TableHead,
   TableCell,
 } from '../../components/ui/table';
-import { getAdminUsers, AdminUser } from '../../services/adminApi';
+import { getAdminUsers, updateAdminUser, AdminUser } from '../../services/adminApi';
 
 type SortField = 'name' | 'email' | 'role' | 'status' | 'created_at';
 type SortDir = 'asc' | 'desc';
@@ -23,6 +24,7 @@ export function QMAdminSignups() {
   const [flaggedFilter, setFlaggedFilter] = useState(false);
   const [sortField, setSortField] = useState<SortField>('created_at');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
+  const [includeArchived, setIncludeArchived] = useState(false);
 
   useEffect(() => {
     // Check URL params
@@ -30,19 +32,33 @@ export function QMAdminSignups() {
     if (params.get('flagged') === 'true') setFlaggedFilter(true);
   }, []);
 
+  async function loadUsers() {
+    setLoading(true);
+    const res = await getAdminUsers({
+      role: roleFilter || undefined,
+      flagged: flaggedFilter || undefined,
+      include_archived: includeArchived || undefined,
+    });
+    if (res.data) setUsers(res.data);
+    else setError(res.error || 'Failed to load users');
+    setLoading(false);
+  }
+
   useEffect(() => {
-    async function load() {
-      setLoading(true);
-      const res = await getAdminUsers({
-        role: roleFilter || undefined,
-        flagged: flaggedFilter || undefined,
-      });
-      if (res.data) setUsers(res.data);
-      else setError(res.error || 'Failed to load users');
-      setLoading(false);
-    }
-    load();
-  }, [roleFilter, flaggedFilter]);
+    loadUsers();
+  }, [roleFilter, flaggedFilter, includeArchived]);
+
+  async function handleArchive(userId: string) {
+    const res = await updateAdminUser(userId, { status: 'archived' });
+    if (res.data) loadUsers();
+    else alert(res.error || 'Failed to archive user');
+  }
+
+  async function handleUnarchive(userId: string) {
+    const res = await updateAdminUser(userId, { status: 'active' });
+    if (res.data) loadUsers();
+    else alert(res.error || 'Failed to unarchive user');
+  }
 
   const toggleSort = (field: SortField) => {
     if (sortField === field) setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
@@ -94,6 +110,21 @@ export function QMAdminSignups() {
 
   const formatDate = (d: string) => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
+  function formatRelativeTime(dateStr: string | null | undefined): string {
+    if (!dateStr) return 'Never';
+    const now = Date.now();
+    const then = new Date(dateStr).getTime();
+    const diff = now - then;
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return 'Just now';
+    if (mins < 60) return `${mins}m ago`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    if (days < 7) return `${days}d ago`;
+    return formatDate(dateStr);
+  }
+
   return (
     <div className="p-6 md:p-10 max-w-7xl">
       <h1
@@ -134,6 +165,15 @@ export function QMAdminSignups() {
           />
           Flagged only
         </label>
+        <label className="flex items-center gap-2 text-sm text-[#4F4F4F] cursor-pointer">
+          <input
+            type="checkbox"
+            checked={includeArchived}
+            onChange={(e) => setIncludeArchived(e.target.checked)}
+            className="rounded border-gray-300"
+          />
+          Include Archived
+        </label>
         <span className="text-xs text-gray-400 ml-auto">{filtered.length} users</span>
       </div>
 
@@ -167,9 +207,11 @@ export function QMAdminSignups() {
                   <TableHead className="cursor-pointer" onClick={() => toggleSort('status')}>
                     <div className="flex items-center gap-1">Status <SortIcon field="status" /></div>
                   </TableHead>
+                  <TableHead>Last Login</TableHead>
                   <TableHead className="cursor-pointer" onClick={() => toggleSort('created_at')}>
                     <div className="flex items-center gap-1">Signed Up <SortIcon field="created_at" /></div>
                   </TableHead>
+                  <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -216,7 +258,27 @@ export function QMAdminSignups() {
                         {u.status}
                       </span>
                     </TableCell>
+                    <TableCell className="text-sm text-gray-500">{formatRelativeTime((u as any).last_login_at)}</TableCell>
                     <TableCell className="text-sm text-gray-500">{formatDate(u.created_at)}</TableCell>
+                    <TableCell>
+                      {u.status === 'archived' ? (
+                        <button
+                          onClick={() => handleUnarchive(u.id)}
+                          className="text-xs text-[#7FAEC2] hover:underline flex items-center gap-1"
+                          title="Unarchive"
+                        >
+                          <ArchiveRestore size={12} /> Unarchive
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleArchive(u.id)}
+                          className="text-xs text-gray-400 hover:text-red-500 flex items-center gap-1"
+                          title="Archive"
+                        >
+                          <Archive size={12} /> Archive
+                        </button>
+                      )}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>

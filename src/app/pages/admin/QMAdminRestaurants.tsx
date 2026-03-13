@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { Link } from 'react-router';
 import { Search, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { Input } from '../../components/ui/input';
 import {
@@ -122,7 +123,11 @@ export function QMAdminRestaurants() {
               <TableBody>
                 {filtered.map((r) => (
                   <TableRow key={r.id} className="hover:bg-gray-50">
-                    <TableCell className="font-medium text-[#2A2A2A]">{r.name}</TableCell>
+                    <TableCell className="font-medium">
+                      <Link to={`/qm-admin/restaurants/${r.id}`} className="text-[#2A2A2A] hover:text-[#7FAEC2] hover:underline">
+                        {r.name}
+                      </Link>
+                    </TableCell>
                     <TableCell className="text-sm">
                       {r.restaurant_group ? (
                         <span className="inline-block px-2 py-0.5 rounded text-xs bg-[#7FAEC2]/10 text-[#7FAEC2] font-medium">

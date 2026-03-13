@@ -326,7 +326,7 @@ export function QuoteBuilderPage() {
               {saving ? 'Saving...' : 'Save Draft'}
             </Button>
             <Button
-              onClick={() => navigate('/export-finalize', { state: { quoteId, isOpenQuote } })}
+              onClick={() => navigate('/review', { state: { quoteId, isOpenQuote } })}
               className="bg-[#A5CFDD] hover:bg-[#8db9c9] text-[#2A2A2A]"
             >
               Finish quote
@@ -373,7 +373,7 @@ export function QuoteBuilderPage() {
             <span className="text-sm text-gray-500">%</span>
             <Button
               onClick={applyBulkAdjustment}
-              className="bg-[#F2993D] hover:bg-[#e88929] text-white px-6"
+              className="bg-[#7FAEC2] hover:bg-[#6A9AB0] text-white px-6"
             >
               Apply
             </Button>

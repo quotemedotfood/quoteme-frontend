@@ -10,6 +10,7 @@ import { useUser } from '../contexts/UserContext';
 import { UpgradeDrawer } from '../components/UpgradeDrawer';
 import { createMenu, createGuestQuote, extractMenuText, getCatalogs, uploadCatalogFile, getRestaurants, getRestaurant } from '../services/api';
 import type { CatalogSummary, RestaurantSummary, RestaurantDetail } from '../services/api';
+import { isDemoMode } from '../utils/demoMode';
 
 export function StartNewQuotePage() {
   const navigate = useNavigate();
@@ -23,7 +24,7 @@ export function StartNewQuotePage() {
   const [menuPreviewText, setMenuPreviewText] = useState('');
   const [pasteText, setPasteText] = useState('');
   const [menuUrl, setMenuUrl] = useState('');
-  const [isQuoteOpened, setIsQuoteOpened] = useState(false);
+  const [isQuoteOpened, setIsQuoteOpened] = useState(isDemoMode());
   const [isUpgradeDrawerOpen, setIsUpgradeDrawerOpen] = useState(false);
   const { hasQuotesRemaining, incrementQuoteCount, quotesRemaining, profile, initGuestSession } = useUser();
   const isGuest = profile.isGuest || localStorage.getItem('quoteme_token') === null;
@@ -46,6 +47,17 @@ export function StartNewQuotePage() {
   const catalogFileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const [hasCamera, setHasCamera] = useState(false);
+  const [catalogUploadExpanded, setCatalogUploadExpanded] = useState(false);
+  const [skipIngredientReview, setSkipIngredientReview] = useState(false);
+
+  function cleanCatalogName(cat: CatalogSummary): string {
+    // Show a clean name instead of raw filename
+    const count = cat.row_count;
+    if (count >= 1000) {
+      return `Product Catalog (${(count / 1000).toFixed(count % 1000 === 0 ? 0 : 1)}k products)`;
+    }
+    return `Product Catalog (${count.toLocaleString()} products)`;
+  }
 
   // Detect touch device with camera
   useEffect(() => {
@@ -158,6 +170,10 @@ export function StartNewQuotePage() {
 
   // Handle file selection (from picker or drop)
   const handleFileSelect = (file: File) => {
+    // If there's already parsed menu content, confirm replacement
+    if (menuPreviewText && !confirm('You have a menu in progress. Replace it with this new file?')) {
+      return;
+    }
     setUploadedFile(file);
     setExtractError(null);
 
@@ -307,7 +323,7 @@ export function StartNewQuotePage() {
         }
         if (response.data) {
           incrementQuoteCount();
-          navigate('/map-ingredients', { state: { quoteId: response.data.quote_id, isOpenQuote: isQuoteOpened } });
+          navigate(skipIngredientReview ? '/quote-builder' : '/correction', { state: { quoteId: response.data.quote_id, menuId: response.data.menu_id, isOpenQuote: isQuoteOpened } });
         }
       } else {
         const response = await createMenu({ raw_text: menuText, name: selectedRestaurant?.name || 'New Quote' });
@@ -319,7 +335,7 @@ export function StartNewQuotePage() {
         }
         if (response.data) {
           incrementQuoteCount();
-          navigate('/map-ingredients', { state: { quoteId: response.data.quote_id, isOpenQuote: isQuoteOpened } });
+          navigate(skipIngredientReview ? '/quote-builder' : '/correction', { state: { quoteId: response.data.quote_id, menuId: response.data.menu_id, isOpenQuote: isQuoteOpened } });
         }
       }
     } catch (error) {
@@ -507,6 +523,16 @@ export function StartNewQuotePage() {
             </div>
           )}
 
+          <label className="flex items-center gap-2 mt-3 mb-1 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={skipIngredientReview}
+              onChange={(e) => setSkipIngredientReview(e.target.checked)}
+              className="rounded border-gray-300"
+            />
+            <span className="text-sm text-[#4F4F4F]">Skip ingredient review and generate quote immediately</span>
+          </label>
+
           <div className="flex justify-between items-center text-xs text-gray-500 font-bold">
             {uploadedFile ? (
               <span className="flex items-center gap-2">
@@ -579,7 +605,7 @@ export function StartNewQuotePage() {
                     onChange={(e) => setMenuUrl(e.target.value)}
                   />
                   <Button
-                    className="bg-[#F2993D] hover:bg-[#e88929] text-white shrink-0"
+                    className="bg-[#7FAEC2] hover:bg-[#6A9AB0] text-white shrink-0"
                     onClick={handleUrlExtract}
                     disabled={!menuUrl.trim() || isExtracting}
                   >
@@ -693,7 +719,7 @@ export function StartNewQuotePage() {
             {/* Action Buttons */}
             <div className="flex flex-col sm:flex-row justify-center gap-3 mt-4">
                 <Button
-                    className="w-full sm:w-auto bg-[#F2993D] hover:bg-[#e88929] text-white"
+                    className="w-full sm:w-auto bg-[#7FAEC2] hover:bg-[#6A9AB0] text-white"
                     onClick={handleSkipToExport}
                     disabled={isCreatingQuote || (!pasteText && !menuPreviewText)}
                 >
@@ -740,22 +766,38 @@ export function StartNewQuotePage() {
 
         {/* Customer Information */}
         <div className="bg-white rounded-lg p-6 mb-6 shadow-sm border border-gray-200">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg">Customer Information</h2>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="text-blue-600 text-sm"
-              onClick={() => setIsQuoteOpened(!isQuoteOpened)}
-            >
-              {isQuoteOpened ? 'Back to Customer Info' : 'Open quote'}
-            </Button>
-          </div>
-          <p className="text-gray-500 text-sm mb-4 font-bold">
-            For customer intake and information
-          </p>
+          {isDemoMode() ? (
+            <div className="flex items-center gap-3 mb-4">
+              <h2 className="text-lg">Customer Information</h2>
+              <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full font-medium">
+                Open Quote — no restaurant selected
+              </span>
+            </div>
+          ) : (
+            <>
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-lg">Customer Information</h2>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-blue-600 text-sm"
+                  onClick={() => setIsQuoteOpened(!isQuoteOpened)}
+                >
+                  {isQuoteOpened ? 'Back to Customer Info' : 'Open quote'}
+                </Button>
+              </div>
+              <p className="text-gray-500 text-sm mb-4 font-bold">
+                For customer intake and information
+              </p>
+            </>
+          )}
+          {isDemoMode() && (
+            <div className="text-center py-6 text-gray-400">
+              <p className="text-sm">Demo mode — quotes are not tied to a customer account.</p>
+            </div>
+          )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+          {!isDemoMode() && (<><div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             <div>
               <Label htmlFor="restaurant" className="text-sm mb-2 block">Customer</Label>
               <div className="relative">
@@ -818,7 +860,7 @@ export function StartNewQuotePage() {
                       id={contact.id}
                       checked={selectedContactIds.includes(contact.id)}
                       onCheckedChange={() => handleContactToggle(contact.id)}
-                      className="mt-1 border-gray-300 data-[state=checked]:bg-[#F2993D] data-[state=checked]:border-[#F2993D]"
+                      className="mt-1 border-gray-300 data-[state=checked]:bg-[#7FAEC2] data-[state=checked]:border-[#7FAEC2]"
                     />
                     <div className="flex-1">
                       <div className="flex justify-between">
@@ -911,18 +953,18 @@ export function StartNewQuotePage() {
               </div>
             )}
           </div>
+          </>)}
         </div>
 
         {/* Upload Catalog */}
         <div className="bg-white rounded-lg p-6 mb-6 shadow-sm border border-gray-200">
-          <h2 className="text-lg mb-1">Upload Catalog</h2>
-          <p className="text-gray-500 text-sm mb-4 font-bold">
-            {isGuest ? 'Upload your catalog or use the demo catalog' : 'Upload your entire catalog or details'}
+          <h2 className="text-lg mb-1">Catalog</h2>
+          <p className="text-gray-500 text-sm mb-4">
+            Upload your distributor's product catalog. Accepted formats: CSV, XLS, XLSX.
           </p>
 
           {/* Active / Recent Catalogs */}
           <div className="mb-4">
-            <h3 className="text-sm mb-2">{isGuest && catalogs.length === 0 ? 'Default Catalog' : 'Your Catalog(s)'}</h3>
             {isGuest && catalogs.length === 0 ? (
               <div className="border border-blue-200 rounded-lg p-4 bg-blue-50">
                 <div className="flex items-center gap-3">
@@ -939,22 +981,25 @@ export function StartNewQuotePage() {
               </div>
             ) : catalogs.length > 0 ? (
               <div className="space-y-2">
-                {catalogs.slice(0, 3).map(cat => (
-                  <div key={cat.id} className="border border-gray-200 rounded-lg p-4 flex items-center justify-between bg-gray-50">
+                {catalogs.filter(c => c.status === 'active').slice(0, 1).map(cat => (
+                  <div key={cat.id} className="border border-green-200 rounded-lg p-4 flex items-center justify-between bg-green-50">
                     <div className="flex items-center gap-3">
-                      <FileText className="w-5 h-5 text-gray-400" />
+                      <span className="text-green-600 text-lg">&#10003;</span>
                       <div>
                         <p className="text-sm font-medium text-[#2A2A2A]">
-                          {cat.status === 'active' ? 'Active Catalog' : `Catalog v${cat.version || '?'}`}
+                          Active Catalog: {cleanCatalogName(cat)}
                         </p>
                         <p className="text-xs text-gray-500">
-                          {cat.row_count.toLocaleString()} products • uploaded {new Date(cat.created_at).toLocaleDateString()}
+                          {cat.row_count.toLocaleString()} products &middot; uploaded {new Date(cat.created_at).toLocaleDateString()}
                         </p>
                       </div>
                     </div>
-                    {cat.status === 'active' && (
-                      <span className="text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded font-medium">Active</span>
-                    )}
+                    <button
+                      onClick={() => setCatalogUploadExpanded(!catalogUploadExpanded)}
+                      className="text-xs text-[#7FAEC2] hover:underline"
+                    >
+                      {catalogUploadExpanded ? 'Hide' : 'Upload New Catalog'}
+                    </button>
                   </div>
                 ))}
               </div>
@@ -963,8 +1008,8 @@ export function StartNewQuotePage() {
             )}
           </div>
 
-          {/* Upload New Catalog */}
-          <div>
+          {/* Upload New Catalog — collapsed if active catalog exists */}
+          <div className={catalogs.some(c => c.status === 'active') && !catalogUploadExpanded ? 'hidden' : ''}>
             <h3 className="text-sm mb-2">Upload {catalogs.length > 0 ? 'New' : 'Your'} Catalog</h3>
             <input
               ref={catalogFileInputRef}
@@ -1251,7 +1296,7 @@ export function StartNewQuotePage() {
                 Cancel
               </Button>
               <Button
-                className="bg-[#F2993D] hover:bg-[#E08935] text-white"
+                className="bg-[#7FAEC2] hover:bg-[#6A9AB0] text-white"
                 onClick={() => {
                   // Handle save logic here
                   setIsAddRestaurantOpen(false);
@@ -1346,7 +1391,7 @@ export function StartNewQuotePage() {
                 Cancel
               </Button>
               <Button
-                className="bg-[#F2993D] hover:bg-[#E08935] text-white"
+                className="bg-[#7FAEC2] hover:bg-[#6A9AB0] text-white"
                 onClick={() => {
                   // Handle save logic here
                   setIsAddContactOpen(false);
@@ -1482,7 +1527,7 @@ export function StartNewQuotePage() {
                 Cancel
               </Button>
               <Button
-                className="bg-[#F2993D] hover:bg-[#E08935] text-white"
+                className="bg-[#7FAEC2] hover:bg-[#6A9AB0] text-white"
                 onClick={() => {
                   // Handle save logic here
                   setIsAddGroupOpen(false);

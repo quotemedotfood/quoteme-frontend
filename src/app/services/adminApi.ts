@@ -56,6 +56,7 @@ export interface AdminUser {
   claimed_distributor_id: string | null;
   flagged_for_review: boolean;
   flag_reason: string | null;
+  last_login_at: string | null;
   created_at: string;
   rep_profile: {
     id: string;
@@ -141,6 +142,13 @@ export interface ConferenceLead {
   captured_by: { id: string; name: string } | null;
 }
 
+export interface AdminBrand {
+  id: string;
+  name: string;
+  status: string;
+  created_at: string;
+}
+
 // ============= ADMIN STATS =============
 
 export async function getAdminStats(): Promise<ApiResponse<AdminStats>> {
@@ -154,14 +162,36 @@ export async function getAdminUsers(params?: {
   flagged?: boolean;
   status?: string;
   since?: string;
+  include_archived?: boolean;
 }): Promise<ApiResponse<AdminUser[]>> {
   const searchParams = new URLSearchParams();
   if (params?.role) searchParams.set('role', params.role);
   if (params?.flagged) searchParams.set('flagged', 'true');
   if (params?.status) searchParams.set('status', params.status);
   if (params?.since) searchParams.set('since', params.since);
+  if (params?.include_archived) searchParams.set('include_archived', 'true');
   const qs = searchParams.toString();
   return fetchWithAuth(`/api/v1/admin/users${qs ? `?${qs}` : ''}`);
+}
+
+export async function updateAdminUser(
+  id: string,
+  data: Partial<Pick<AdminUser, 'status' | 'role'>>
+): Promise<ApiResponse<AdminUser>> {
+  return fetchWithAuth(`/api/v1/admin/users/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function inviteAdminUser(data: {
+  email: string;
+  role: string;
+}): Promise<ApiResponse<AdminUser>> {
+  return fetchWithAuth('/api/v1/admin/users', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
 }
 
 export async function assignDistributor(
@@ -195,10 +225,44 @@ export async function createDistributor(data: {
   });
 }
 
+export interface AdminRestaurantDetail {
+  id: string;
+  name: string;
+  address_line_1: string | null;
+  address_line_2: string | null;
+  city: string | null;
+  state: string | null;
+  zip: string | null;
+  phone: string | null;
+  website: string | null;
+  status: string;
+  created_at: string;
+  restaurant_group: { id: string; name: string } | null;
+  contacts: Array<{
+    id: string;
+    first_name: string;
+    last_name: string;
+    role: string | null;
+    email: string | null;
+    phone: string | null;
+    is_primary: boolean;
+  }>;
+  recent_quotes: Array<{
+    id: string;
+    status: string;
+    working_label: string | null;
+    created_at: string;
+  }>;
+}
+
 // ============= ADMIN RESTAURANTS =============
 
 export async function getAdminRestaurants(): Promise<ApiResponse<AdminRestaurant[]>> {
   return fetchWithAuth('/api/v1/admin/restaurants');
+}
+
+export async function getAdminRestaurant(id: string): Promise<ApiResponse<AdminRestaurantDetail>> {
+  return fetchWithAuth(`/api/v1/admin/restaurants/${id}`);
 }
 
 // ============= CONFERENCE LEADS =============
@@ -248,6 +312,21 @@ export async function convertConferenceLead(
   return fetchWithAuth(`/api/v1/admin/conference-leads/${id}/convert`, {
     method: 'POST',
     body: JSON.stringify({ convert_to: convertTo }),
+  });
+}
+
+// ============= ADMIN BRANDS =============
+
+export async function getAdminBrands(): Promise<ApiResponse<AdminBrand[]>> {
+  return fetchWithAuth('/api/v1/admin/brands');
+}
+
+export async function createAdminBrand(data: {
+  name: string;
+}): Promise<ApiResponse<AdminBrand>> {
+  return fetchWithAuth('/api/v1/admin/brands', {
+    method: 'POST',
+    body: JSON.stringify(data),
   });
 }
 

@@ -61,7 +61,7 @@ export function QMAdminDistributorDetailPage() {
             <Users size={18} className="text-[#7FAEC2]" />
           </div>
           <div>
-            <div className="text-xl font-bold text-[#2A2A2A]">{dist.reps.length}</div>
+            <div className="text-xl font-bold text-[#2A2A2A]">{dist.reps?.length ?? 0}</div>
             <div className="text-xs text-gray-500">Reps</div>
           </div>
         </div>
@@ -79,7 +79,7 @@ export function QMAdminDistributorDetailPage() {
             <UtensilsCrossed size={18} className="text-[#7FAEC2]" />
           </div>
           <div>
-            <div className="text-xl font-bold text-[#2A2A2A]">{dist.restaurants.length}</div>
+            <div className="text-xl font-bold text-[#2A2A2A]">{dist.restaurants?.length ?? 0}</div>
             <div className="text-xs text-gray-500">Restaurants</div>
           </div>
         </div>
@@ -88,7 +88,7 @@ export function QMAdminDistributorDetailPage() {
       {/* Reps */}
       <section className="mb-8">
         <h2 className="text-lg font-semibold text-[#2A2A2A] mb-3" style={{ fontFamily: "'Playfair Display', serif" }}>Reps</h2>
-        {dist.reps.length === 0 ? (
+        {!dist.reps?.length ? (
           <p className="text-sm text-gray-400 py-4">No reps yet</p>
         ) : (
           <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
@@ -103,7 +103,7 @@ export function QMAdminDistributorDetailPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {dist.reps.map((r) => (
+                {(dist.reps || []).map((r) => (
                   <TableRow key={r.id} className="hover:bg-gray-50">
                     <TableCell className="font-medium">{r.name}</TableCell>
                     <TableCell className="text-sm text-gray-500">{r.email}</TableCell>
@@ -125,7 +125,7 @@ export function QMAdminDistributorDetailPage() {
       {/* Restaurants */}
       <section>
         <h2 className="text-lg font-semibold text-[#2A2A2A] mb-3" style={{ fontFamily: "'Playfair Display', serif" }}>Restaurants</h2>
-        {dist.restaurants.length === 0 ? (
+        {!dist.restaurants?.length ? (
           <p className="text-sm text-gray-400 py-4">No restaurants yet</p>
         ) : (
           <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
@@ -138,7 +138,7 @@ export function QMAdminDistributorDetailPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {dist.restaurants.map((r) => (
+                {(dist.restaurants || []).map((r) => (
                   <TableRow key={r.id} className="hover:bg-gray-50">
                     <TableCell className="font-medium">{r.name}</TableCell>
                     <TableCell className="text-sm text-gray-500">{r.city || '—'}</TableCell>
