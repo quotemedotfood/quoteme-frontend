@@ -2,7 +2,7 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
-import { ExternalLink, Upload, Plus, Link as LinkIcon, X, PlusCircle, Loader2, FileText, Camera } from 'lucide-react';
+import { ExternalLink, Upload, Plus, Link as LinkIcon, X, PlusCircle, Loader2, FileText, Camera, RefreshCw } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router';
 import { Checkbox } from '../components/ui/checkbox';
@@ -28,6 +28,8 @@ export function StartNewQuotePage() {
   const { hasQuotesRemaining, incrementQuoteCount, quotesRemaining, profile, initGuestSession } = useUser();
   const isGuest = profile.isGuest || localStorage.getItem('quoteme_token') === null;
   const [isCreatingQuote, setIsCreatingQuote] = useState(false);
+  const [serviceBusy, setServiceBusy] = useState(false);
+  const [lastAction, setLastAction] = useState<'match' | 'skip' | null>(null);
   const [loadingPhase, setLoadingPhase] = useState(0);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [isExtracting, setIsExtracting] = useState(false);
@@ -182,7 +184,11 @@ export function StartNewQuotePage() {
     try {
       const res = await extractMenuText({ file });
       if (res.error) {
-        setExtractError(res.error);
+        if (isServiceBusyError(res.error)) {
+          setExtractError('Our menu analysis service is temporarily busy. Please try again in a few seconds.');
+        } else {
+          setExtractError(res.error);
+        }
       } else if (res.data?.text) {
         setPasteText(res.data.text);
         setMenuPreviewText(stripPrices(res.data.text));
@@ -207,7 +213,11 @@ export function StartNewQuotePage() {
       }
       const res = await extractMenuText({ url });
       if (res.error) {
-        setExtractError(res.error);
+        if (isServiceBusyError(res.error)) {
+          setExtractError('Our menu analysis service is temporarily busy. Please try again in a few seconds.');
+        } else {
+          setExtractError(res.error);
+        }
       } else if (res.data?.text) {
         setPasteText(res.data.text);
         setMenuPreviewText(stripPrices(res.data.text));
@@ -235,6 +245,16 @@ export function StartNewQuotePage() {
     if (file) handleFileSelect(file);
   };
 
+  function isServiceBusyError(errorStr: string | undefined): boolean {
+    return errorStr === 'service_busy' || (errorStr?.includes('service_busy') ?? false);
+  }
+
+  const handleRetry = () => {
+    setServiceBusy(false);
+    if (lastAction === 'match') handleContinueToQuoteBuilder();
+    else if (lastAction === 'skip') handleSkipToExport();
+  };
+
   const handleContinueToQuoteBuilder = async () => {
     const menuText = pasteText || menuPreviewText;
     if (!menuText) {
@@ -250,6 +270,8 @@ export function StartNewQuotePage() {
     console.log('profile:', profile);
 
     setIsCreatingQuote(true);
+    setServiceBusy(false);
+    setLastAction('match');
     try {
       if (profile.isGuest || localStorage.getItem('quoteme_token') === null) {
         // Ensure guest session exists — always try to init if no token
@@ -278,6 +300,7 @@ export function StartNewQuotePage() {
           response = await createGuestQuote(guestQuotePayload);
         }
         if (response.error) {
+          if (isServiceBusyError(response.error)) { setServiceBusy(true); return; }
           console.error('createGuestQuote error:', response.error);
           alert(`Failed to create quote: ${response.error}`);
           return;
@@ -289,6 +312,7 @@ export function StartNewQuotePage() {
       } else {
         const response = await createMenu({ raw_text: menuText, name: selectedRestaurant?.name || 'New Quote' });
         if (response.error) {
+          if (isServiceBusyError(response.error)) { setServiceBusy(true); return; }
           console.error('createMenu error:', response.error);
           alert(`Failed to create quote: ${response.error}`);
           return;
@@ -319,6 +343,8 @@ export function StartNewQuotePage() {
     }
 
     setIsCreatingQuote(true);
+    setServiceBusy(false);
+    setLastAction('skip');
     try {
       if (profile.isGuest || localStorage.getItem('quoteme_token') === null) {
         if (!localStorage.getItem('quoteme_guest_token')) {
@@ -343,6 +369,7 @@ export function StartNewQuotePage() {
           response = await createGuestQuote({ raw_text: menuText, name: selectedRestaurant?.name || 'New Quote' });
         }
         if (response.error) {
+          if (isServiceBusyError(response.error)) { setServiceBusy(true); return; }
           console.error('createGuestQuote error:', response.error);
           alert(`Failed to create quote: ${response.error}`);
           return;
@@ -354,6 +381,7 @@ export function StartNewQuotePage() {
       } else {
         const response = await createMenu({ raw_text: menuText, name: selectedRestaurant?.name || 'New Quote' });
         if (response.error) {
+          if (isServiceBusyError(response.error)) { setServiceBusy(true); return; }
           console.error('createMenu error:', response.error);
           alert(`Failed to create quote: ${response.error}`);
           return;
@@ -645,6 +673,22 @@ export function StartNewQuotePage() {
                    </div>
                )}
             </div>
+
+            {/* Service Busy Banner */}
+            {serviceBusy && (
+              <div className="mt-4 bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-center justify-between">
+                <p className="text-sm text-amber-800">
+                  Our menu analysis service is temporarily busy. This usually resolves in a few seconds — please try again.
+                </p>
+                <Button
+                  onClick={handleRetry}
+                  size="sm"
+                  className="ml-4 bg-[#F2993D] hover:bg-[#E08A2E] text-white flex-shrink-0"
+                >
+                  <RefreshCw size={14} className="mr-1" /> Try Again
+                </Button>
+              </div>
+            )}
 
             {/* Action Buttons */}
             <div className="flex flex-col sm:flex-row justify-center gap-3 mt-4">
