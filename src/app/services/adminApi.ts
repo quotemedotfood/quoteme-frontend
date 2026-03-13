@@ -514,3 +514,50 @@ export async function getMatchingEngineLogs(params?: {
 export function getMatchingEngineExportUrl(): string {
   return `${API_BASE_URL}/api/v1/admin/matching-engine/export`;
 }
+
+// ============= ADMIN STOCK QUOTES =============
+
+export interface AdminStockQuote {
+  id: string;
+  name: string;
+  restaurant_type: string | null;
+  is_system: boolean;
+  status: string;
+  quote_data: Record<string, unknown> | null;
+  dish_count: number;
+  component_count: number;
+  created_by: { id: string; name: string } | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export async function getAdminStockQuotes(): Promise<ApiResponse<AdminStockQuote[]>> {
+  return fetchWithAuth('/api/v1/admin/stock-quotes');
+}
+
+export async function createAdminStockQuote(data: {
+  name: string;
+  restaurant_type: string;
+  quote_data?: Record<string, unknown>;
+}): Promise<ApiResponse<AdminStockQuote>> {
+  return fetchWithAuth('/api/v1/admin/stock-quotes', {
+    method: 'POST',
+    body: JSON.stringify({ stock_quote: data }),
+  });
+}
+
+export async function updateAdminStockQuote(
+  id: string,
+  data: Partial<{ name: string; restaurant_type: string; status: string; quote_data: Record<string, unknown> }>
+): Promise<ApiResponse<AdminStockQuote>> {
+  return fetchWithAuth(`/api/v1/admin/stock-quotes/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ stock_quote: data }),
+  });
+}
+
+export async function deleteAdminStockQuote(id: string): Promise<ApiResponse<void>> {
+  return fetchWithAuth(`/api/v1/admin/stock-quotes/${id}`, {
+    method: 'DELETE',
+  });
+}

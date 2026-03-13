@@ -12,8 +12,12 @@ import {
   deleteMatchingEngineRule,
   promoteCorrection,
   getMatchingEngineExportUrl,
+  getAdminStockQuotes,
+  createAdminStockQuote,
+  deleteAdminStockQuote,
   type MatchingEngineRules,
   type MatchingEngineLog,
+  type AdminStockQuote,
 } from '../../services/adminApi';
 
 type Tab = 'rules' | 'training' | 'changelog';
@@ -276,7 +280,117 @@ function RulesTab({ rules, onRefresh }: { rules: MatchingEngineRules | null; onR
           ))}
         </div>
       </RuleSection>
+
+      {/* Stock Quotes */}
+      <StockQuotesSection />
     </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// Stock Quotes Section (in Rules tab)
+// ═══════════════════════════════════════════════════════════════════════
+function StockQuotesSection() {
+  const [quotes, setQuotes] = useState<AdminStockQuote[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showCreate, setShowCreate] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [newType, setNewType] = useState('');
+
+  useEffect(() => {
+    loadQuotes();
+  }, []);
+
+  async function loadQuotes() {
+    setLoading(true);
+    const res = await getAdminStockQuotes();
+    if (res.data) setQuotes(res.data);
+    setLoading(false);
+  }
+
+  const systemQuotes = quotes.filter(q => q.is_system);
+
+  return (
+    <RuleSection title="Stock Quotes" icon={BookOpen} count={systemQuotes.length}>
+      {loading ? (
+        <p className="text-sm text-gray-400 py-4">Loading...</p>
+      ) : systemQuotes.length === 0 && !showCreate ? (
+        <div className="text-center py-6">
+          <p className="text-sm text-gray-400 mb-3">No stock quote templates yet</p>
+          <Button size="sm" onClick={() => setShowCreate(true)} className="bg-[#7FAEC2] hover:bg-[#6A9AB0] text-white">
+            Create Template
+          </Button>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {systemQuotes.map(sq => (
+            <div key={sq.id} className="border border-gray-200 rounded-lg p-3 flex items-center justify-between">
+              <div>
+                <span className="text-sm font-medium text-[#2A2A2A]">{sq.name}</span>
+                {sq.restaurant_type && (
+                  <span className="ml-2 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">{sq.restaurant_type}</span>
+                )}
+                <div className="text-xs text-gray-400 mt-0.5">
+                  {sq.dish_count} dishes, {sq.component_count} components
+                  {sq.updated_at && <> &middot; Updated <TimeAgo date={sq.updated_at} /></>}
+                </div>
+              </div>
+              <button
+                onClick={async () => {
+                  if (!confirm(`Delete "${sq.name}"?`)) return;
+                  await deleteAdminStockQuote(sq.id);
+                  loadQuotes();
+                }}
+                className="text-gray-400 hover:text-red-500 p-1"
+              >
+                <Trash2 size={14} />
+              </button>
+            </div>
+          ))}
+          {!showCreate && (
+            <Button size="sm" variant="outline" onClick={() => setShowCreate(true)} className="w-full mt-2">
+              + Add Template
+            </Button>
+          )}
+          {showCreate && (
+            <div className="border border-[#7FAEC2] rounded-lg p-4 space-y-3 bg-[#7FAEC2]/5">
+              <Input
+                placeholder="Template name (e.g. Italian Fine Dining)"
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+              />
+              <select
+                value={newType}
+                onChange={(e) => setNewType(e.target.value)}
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
+              >
+                <option value="">Select restaurant type</option>
+                {['Italian', 'Steakhouse', 'Sushi Bar', 'Bar/Grill', 'Spanish', 'Brewery', 'Coffee Shop', 'Mexican', 'Asian Fusion', 'French'].map(t => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
+              </select>
+              <div className="flex gap-2">
+                <Button size="sm" variant="ghost" onClick={() => { setShowCreate(false); setNewName(''); setNewType(''); }}>Cancel</Button>
+                <Button
+                  size="sm"
+                  className="bg-[#7FAEC2] hover:bg-[#6A9AB0] text-white"
+                  disabled={!newName.trim()}
+                  onClick={async () => {
+                    await createAdminStockQuote({ name: newName, restaurant_type: newType });
+                    setShowCreate(false);
+                    setNewName('');
+                    setNewType('');
+                    loadQuotes();
+                  }}
+                >
+                  Create
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </RuleSection>
   );
 }
 

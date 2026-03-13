@@ -9,7 +9,7 @@ import {
   DrawerTitle,
 } from './ui/drawer';
 import { Button } from './ui/button';
-import { X, Loader2 } from 'lucide-react';
+import { X, Loader2, ArrowRightLeft, Plus } from 'lucide-react';
 import { CatalogProductSearch } from './CatalogProductSearch';
 import type { CatalogSearchProduct } from '../services/api';
 
@@ -50,6 +50,8 @@ interface MapComponentDrawerProps {
   onFindMoreMatches?: () => Promise<AlignmentCandidate[]>;
   quoteId?: string;
   onManualSelect?: (componentName: string, product: CatalogSearchProduct) => void;
+  onReplaceMatch?: (componentName: string, productId: string) => void;
+  onAddToQuote?: (componentName: string, productId: string) => void;
 }
 
 function tierLabel(tier: string, position: number): string {
@@ -73,35 +75,56 @@ export function MapComponentDrawer({
   onFindMoreMatches,
   quoteId,
   onManualSelect,
+  onReplaceMatch,
+  onAddToQuote,
 }: MapComponentDrawerProps) {
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [notes, setNotes] = useState('');
   const [extraCandidates, setExtraCandidates] = useState<AlignmentCandidate[]>([]);
   const [loadingMore, setLoadingMore] = useState(false);
   const [manualPick, setManualPick] = useState<CatalogSearchProduct | null>(null);
 
-  const handleToggle = (productId: string) => {
-    setSelectedIds(prev =>
-      prev.includes(productId) ? prev.filter(id => id !== productId) : [...prev, productId]
-    );
-  };
-
-  const handleApply = () => {
-    if (manualPick && onManualSelect) {
-      onManualSelect(componentName, manualPick);
-    } else if (onApplyMapping) {
-      onApplyMapping(componentName, selectedIds);
-    }
-    onOpenChange(false);
-    setSelectedIds([]);
-    setNotes('');
-    setExtraCandidates([]);
+  const handleSelectProduct = (productId: string) => {
+    setSelectedProductId(prev => prev === productId ? null : productId);
     setManualPick(null);
   };
 
-  const handleCancel = () => {
+  const handleSelectManual = (product: CatalogSearchProduct) => {
+    setManualPick(product);
+    setSelectedProductId(null);
+  };
+
+  const handleReplaceMatch = () => {
+    const productId = manualPick?.id || selectedProductId;
+    if (!productId) return;
+
+    if (onReplaceMatch) {
+      onReplaceMatch(componentName, productId);
+    } else if (manualPick && onManualSelect) {
+      onManualSelect(componentName, manualPick);
+    } else if (onApplyMapping) {
+      onApplyMapping(componentName, [productId]);
+    }
+    closeAndReset();
+  };
+
+  const handleAddToQuote = () => {
+    const productId = manualPick?.id || selectedProductId;
+    if (!productId) return;
+
+    if (onAddToQuote) {
+      onAddToQuote(componentName, productId);
+    } else if (manualPick && onManualSelect) {
+      onManualSelect(componentName, manualPick);
+    } else if (onApplyMapping) {
+      onApplyMapping(componentName, [productId]);
+    }
+    closeAndReset();
+  };
+
+  const closeAndReset = () => {
     onOpenChange(false);
-    setSelectedIds([]);
+    setSelectedProductId(null);
     setNotes('');
     setExtraCandidates([]);
     setManualPick(null);
@@ -122,6 +145,7 @@ export function MapComponentDrawer({
 
   const bestMatch = candidates.find(c => c.position === 1);
   const allAlternates = [...candidates.filter(c => c.position > 1), ...extraCandidates];
+  const hasSelection = !!selectedProductId || !!manualPick;
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange} direction="right">
@@ -129,9 +153,9 @@ export function MapComponentDrawer({
         <DrawerHeader className="border-b border-gray-200 flex-shrink-0">
           <div className="flex items-center justify-between">
             <div>
-              <DrawerTitle className="text-lg">Select Match for {componentName}</DrawerTitle>
+              <DrawerTitle className="text-lg">Select Match for {toTitleCase(componentName)}</DrawerTitle>
               <DrawerDescription className="text-sm mt-1">
-                Choose alternate products from your catalog
+                Choose a product, then replace or add to quote
               </DrawerDescription>
             </div>
             <DrawerClose asChild>
@@ -182,6 +206,7 @@ export function MapComponentDrawer({
             </div>
           )}
 
+          {/* Alternate Products — single select */}
           {allAlternates.length === 0 ? (
             <p className="text-sm text-gray-400 italic text-center py-8">No alternate matches found</p>
           ) : (
@@ -189,54 +214,58 @@ export function MapComponentDrawer({
               <h3 className="text-sm font-medium text-[#2A2A2A] mb-3">
                 Alternate Products ({allAlternates.length})
               </h3>
-              <div className="space-y-3">
-                {allAlternates.map((candidate) => (
-                  <div
-                    key={candidate.id}
-                    className="border border-gray-200 rounded-lg p-4 hover:border-gray-300 transition-colors"
-                  >
-                    <div className="flex items-start gap-3">
-                      <input
-                        type="checkbox"
-                        checked={selectedIds.includes(candidate.product.id)}
-                        onChange={() => handleToggle(candidate.product.id)}
-                        className="mt-1 rounded border-gray-300 text-[#A5CFDD] focus:ring-[#A5CFDD]"
-                      />
-                      <div className="flex-1">
-                        <div className="flex items-start justify-between mb-2">
-                          <div className="flex-1">
-                            <h4 className="text-sm font-medium text-[#2A2A2A]">
-                              {toTitleCase(candidate.product.brand)} {toTitleCase(candidate.product.product)}
-                            </h4>
-                            <p className="text-sm text-gray-600 mt-1">{toTitleCase(candidate.product.pack_size)}</p>
-                          </div>
-                          <div className="text-right ml-4">
-                            <span className={`inline-block px-2 py-0.5 text-xs rounded ${tierColor(candidate.position)}`}>
-                              {tierLabel(candidate.tier, candidate.position)}
-                            </span>
-                          </div>
+              <div className="space-y-2">
+                {allAlternates.map((candidate) => {
+                  const isSelected = selectedProductId === candidate.product.id;
+                  return (
+                    <button
+                      key={candidate.id}
+                      type="button"
+                      onClick={() => handleSelectProduct(candidate.product.id)}
+                      className={`w-full text-left border rounded-lg p-4 transition-all ${
+                        isSelected
+                          ? 'border-[#7FAEC2] bg-[#7FAEC2]/5 ring-2 ring-[#7FAEC2]/20'
+                          : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex-1">
+                          <h4 className="text-sm font-medium text-[#2A2A2A]">
+                            {toTitleCase(candidate.product.brand)} {toTitleCase(candidate.product.product)}
+                          </h4>
+                          <p className="text-sm text-gray-600 mt-1">{toTitleCase(candidate.product.pack_size)}</p>
                         </div>
-                        <div className="flex items-center gap-4 text-xs text-gray-500">
-                          <span>
-                            <span className="font-medium">Item #:</span> {candidate.product.item_number}
-                          </span>
-                          <span className="inline-block px-2 py-0.5 bg-gray-100 text-gray-700 rounded">
-                            {toTitleCase(candidate.product.category)}
-                          </span>
-                          {candidate.score != null && (
-                            <span className={`font-medium ${
-                              Math.round(candidate.score * 100) >= 70 ? 'text-green-600' :
-                              Math.round(candidate.score * 100) >= 40 ? 'text-yellow-600' :
-                              'text-red-500'
-                            }`}>
-                              {(candidate.score * 100).toFixed(0)}% match
+                        <div className="text-right ml-4 flex items-center gap-2">
+                          {isSelected && (
+                            <span className="w-5 h-5 rounded-full bg-[#7FAEC2] flex items-center justify-center">
+                              <span className="text-white text-xs">&#10003;</span>
                             </span>
                           )}
+                          <span className={`inline-block px-2 py-0.5 text-xs rounded ${tierColor(candidate.position)}`}>
+                            {tierLabel(candidate.tier, candidate.position)}
+                          </span>
                         </div>
                       </div>
-                    </div>
-                  </div>
-                ))}
+                      <div className="flex items-center gap-4 text-xs text-gray-500">
+                        <span>
+                          <span className="font-medium">Item #:</span> {candidate.product.item_number}
+                        </span>
+                        <span className="inline-block px-2 py-0.5 bg-gray-100 text-gray-700 rounded">
+                          {toTitleCase(candidate.product.category)}
+                        </span>
+                        {candidate.score != null && (
+                          <span className={`font-medium ${
+                            Math.round(candidate.score * 100) >= 70 ? 'text-green-600' :
+                            Math.round(candidate.score * 100) >= 40 ? 'text-yellow-600' :
+                            'text-red-500'
+                          }`}>
+                            {(candidate.score * 100).toFixed(0)}% match
+                          </span>
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -265,10 +294,10 @@ export function MapComponentDrawer({
             <h3 className="text-sm font-medium text-[#2A2A2A] mb-3">Search Catalog Manually</h3>
             <CatalogProductSearch
               quoteId={quoteId}
-              onSelect={(product) => setManualPick(product)}
+              onSelect={handleSelectManual}
             />
             {manualPick && (
-              <div className="mt-3 border-2 border-[#A5CFDD] rounded-lg p-4 bg-blue-50/30">
+              <div className="mt-3 border-2 border-[#7FAEC2] rounded-lg p-4 bg-[#7FAEC2]/5">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <h4 className="text-sm font-medium text-[#2A2A2A]">
@@ -285,7 +314,7 @@ export function MapComponentDrawer({
                     <X className="w-4 h-4" />
                   </button>
                 </div>
-                <span className="inline-block mt-2 px-2 py-0.5 text-xs rounded bg-[#A5CFDD]/30 text-[#2A2A2A]">
+                <span className="inline-block mt-2 px-2 py-0.5 text-xs rounded bg-[#7FAEC2]/20 text-[#2A2A2A]">
                   Manual selection
                 </span>
               </div>
@@ -301,7 +330,7 @@ export function MapComponentDrawer({
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Add chef notes, pack size details, or selling points..."
-              className="w-full min-h-[100px] px-3 py-2 border border-gray-300 rounded-md text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[#A5CFDD] focus:border-transparent"
+              className="w-full min-h-[100px] px-3 py-2 border border-gray-300 rounded-md text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[#7FAEC2] focus:border-transparent"
             />
           </div>
         </div>
@@ -310,18 +339,21 @@ export function MapComponentDrawer({
           <div className="flex gap-3">
             <Button
               type="button"
-              variant="outline"
-              className="flex-1"
-              onClick={handleCancel}
+              onClick={handleReplaceMatch}
+              disabled={!hasSelection}
+              className="flex-1 bg-[#F2993D] hover:bg-[#E08A2E] text-white disabled:opacity-40"
             >
-              Cancel
+              <ArrowRightLeft className="w-4 h-4 mr-2" />
+              Replace Match
             </Button>
             <Button
               type="button"
-              className="flex-1 bg-[#A5CFDD] hover:bg-[#8db9c9] text-[#2A2A2A]"
-              onClick={handleApply}
+              onClick={handleAddToQuote}
+              disabled={!hasSelection}
+              className="flex-1 bg-[#7FAEC2] hover:bg-[#6A9AB0] text-white disabled:opacity-40"
             >
-              {manualPick ? 'Use Selected Product' : `Add to Quote (${selectedIds.length} products)`}
+              <Plus className="w-4 h-4 mr-2" />
+              Add to Quote
             </Button>
           </div>
         </DrawerFooter>

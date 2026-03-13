@@ -115,6 +115,15 @@ export function MapIngredientsPage() {
   const [newDishComponents, setNewDishComponents] = useState('');
   const [addDishLoading, setAddDishLoading] = useState(false);
 
+  // ── Additions tracking (manually added dishes + "Add to Quote" products) ──
+  const [additions, setAdditions] = useState<Array<{
+    id: string;
+    componentName: string;
+    sourceDish: string;
+    product: { id: string; brand: string; product: string; item_number: string; pack_size: string; category: string };
+    type: 'added_dish' | 'add_to_quote';
+  }>>([]);
+
   // ── Feedback state ──
   const [isFeedbackDrawerOpen, setIsFeedbackDrawerOpen] = useState(false);
   const [feedbackText, setFeedbackText] = useState('');
@@ -233,9 +242,27 @@ export function MapIngredientsPage() {
 
       const fullQuote = await fetchQuote(newQId);
       if (fullQuote.error || !fullQuote.data) throw new Error(fullQuote.error);
-      const newDishes = buildDishesFromLines((fullQuote.data as QuoteData).lines || []);
+      const newLines = (fullQuote.data as QuoteData).lines || [];
+      const newDishes = buildDishesFromLines(newLines);
+
+      // Merge new dishes into existing dish list
       setDishes(prev => [...prev, ...newDishes]);
       setSelectedDish(newDishes[0] || selectedDish);
+      setSelectedTab('dishes');
+
+      // Track as additions for sidebar
+      for (const line of newLines) {
+        if (line.product) {
+          setAdditions(prev => [...prev, {
+            id: `add-dish-${line.id}`,
+            componentName: line.component?.name || 'Unknown',
+            sourceDish: newDishName || 'Manual Dish',
+            product: line.product,
+            type: 'added_dish' as const,
+          }]);
+        }
+      }
+
       if (!quoteId) setQuoteId(newQId);
     } catch (e: any) {
       console.error('Add dish error:', e.message);
@@ -288,7 +315,18 @@ export function MapIngredientsPage() {
   const [selectedLine, setSelectedLine] = useState<QuoteLine | null>(null);
 
   const handleMapComponent = (componentName: string) => {
-    const line = selectedDish?.componentLines[componentName] || null;
+    // Check all dishes for the component line, not just selected dish
+    let line: QuoteLine | null = null;
+    if (selectedDish?.componentLines[componentName]) {
+      line = selectedDish.componentLines[componentName];
+    } else {
+      for (const dish of dishes) {
+        if (dish.componentLines[componentName]) {
+          line = dish.componentLines[componentName];
+          break;
+        }
+      }
+    }
     setSelectedComponent(componentName);
     setSelectedLine(line);
     setMapDrawerOpen(true);
@@ -298,6 +336,42 @@ export function MapIngredientsPage() {
     if (skuIds.length > 0) {
       setMappedComponents(prev => ({ ...prev, [componentName]: skuIds }));
     }
+  };
+
+  const handleReplaceMatch = (componentName: string, productId: string) => {
+    // Find the candidate product info from the selected line's candidates
+    const allCandidates = selectedLine?.alignment_candidates || [];
+    const candidate = allCandidates.find(c => c.product.id === productId);
+    if (candidate) {
+      // Update the dish's component line with the new product
+      setDishes(prev => prev.map(dish => {
+        if (dish.componentLines[componentName]) {
+          const updatedLine = { ...dish.componentLines[componentName], product: candidate.product };
+          return {
+            ...dish,
+            componentLines: { ...dish.componentLines, [componentName]: updatedLine },
+          };
+        }
+        return dish;
+      }));
+    }
+    setMappedComponents(prev => ({ ...prev, [componentName]: [productId] }));
+  };
+
+  const handleAddToQuote = (componentName: string, productId: string) => {
+    // Find the product from candidates or extra candidates
+    const allCandidates = selectedLine?.alignment_candidates || [];
+    const candidate = allCandidates.find(c => c.product.id === productId);
+    if (candidate) {
+      setAdditions(prev => [...prev, {
+        id: `atq-${Date.now()}-${productId}`,
+        componentName,
+        sourceDish: selectedDish?.name || 'Unknown Dish',
+        product: candidate.product,
+        type: 'add_to_quote' as const,
+      }]);
+    }
+    setMappedComponents(prev => ({ ...prev, [componentName]: [...(prev[componentName] || []), productId] }));
   };
 
   const toggleCategory = (id: string) => {
@@ -416,6 +490,38 @@ export function MapIngredientsPage() {
               </div>
             </button>
           ))}
+          {/* Additions Section */}
+          {additions.length > 0 && (
+            <div className="border-t border-gray-200">
+              <div className="p-4 pb-2">
+                <h3 className="text-sm font-medium text-gray-500">ADDITIONS ({additions.length})</h3>
+              </div>
+              <div className="px-4 pb-2 space-y-1">
+                {additions.map((addition) => (
+                  <div
+                    key={addition.id}
+                    className="flex items-center justify-between py-2 px-2 rounded-md bg-green-50 border border-green-100"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium text-[#2A2A2A] truncate">
+                        {toTitleCase(addition.product.brand)} {toTitleCase(addition.product.product)}
+                      </p>
+                      <p className="text-xs text-gray-500 truncate">
+                        {addition.type === 'add_to_quote' ? `+ ${toTitleCase(addition.componentName)}` : toTitleCase(addition.sourceDish)}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setAdditions(prev => prev.filter(a => a.id !== addition.id))}
+                      className="ml-2 text-gray-400 hover:text-red-500 shrink-0"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="p-4">
             <Button
               onClick={() => setIsAddDishDrawerOpen(true)}
@@ -602,6 +708,8 @@ export function MapIngredientsPage() {
         onManualSelect={(componentName, product) => {
           setMappedComponents(prev => ({ ...prev, [componentName]: [product.id] }));
         }}
+        onReplaceMatch={handleReplaceMatch}
+        onAddToQuote={handleAddToQuote}
       />
 
       {/* Mobile Dish List Drawer */}

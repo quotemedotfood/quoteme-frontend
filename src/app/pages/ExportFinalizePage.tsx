@@ -797,8 +797,19 @@ export function ExportFinalizePage() {
                       placeholder="(555) 555-5555"
                       className="bg-white border-gray-300"
                       value={manualPhone}
-                      onChange={(e) => setManualPhone(e.target.value)}
+                      onChange={(e) => {
+                        // Auto-format US phone: (XXX) XXX-XXXX
+                        const digits = e.target.value.replace(/\D/g, '').slice(0, 10);
+                        let formatted = '';
+                        if (digits.length > 0) formatted += '(' + digits.slice(0, 3);
+                        if (digits.length >= 3) formatted += ') ' + digits.slice(3, 6);
+                        if (digits.length >= 6) formatted += '-' + digits.slice(6, 10);
+                        setManualPhone(formatted || '');
+                      }}
                     />
+                    {manualPhone && manualPhone.replace(/\D/g, '').length > 0 && manualPhone.replace(/\D/g, '').length < 10 && (
+                      <p className="text-xs text-red-500 mt-1">Enter a 10-digit phone number</p>
+                    )}
                   </div>
                 </div>
               )}
@@ -833,19 +844,27 @@ export function ExportFinalizePage() {
                   ) : (
                     <MessageSquare className="w-4 h-4 mr-3" />
                   )}
-                  {smsSent ? 'Text sent' : contactPhone ? `Text to ${contactPhone}` : 'Enter a phone above'}
+                  {smsSent ? `Text sent to ${contactPhone}` : contactPhone ? `Text to ${contactPhone}` : 'Enter a phone above'}
                 </Button>
 
                 {effectiveOpenQuote && (
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start border-gray-300 text-[#2A2A2A] h-12"
-                    disabled={!isFinalized || sendingEmail}
-                    onClick={handleSendEmail}
-                  >
-                    <Mail className="w-4 h-4 mr-3" />
-                    Send to myself
-                  </Button>
+                  isDemoMode() ? (
+                    <div className="w-full border border-dashed border-gray-300 rounded-lg px-4 py-3 text-center">
+                      <p className="text-sm text-gray-500">
+                        <a href={PROD_SIGNUP_URL} className="text-[#7FAEC2] font-medium hover:underline">Sign up</a> to send quotes to yourself
+                      </p>
+                    </div>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start border-gray-300 text-[#2A2A2A] h-12"
+                      disabled={!isFinalized || sendingEmail}
+                      onClick={handleSendEmail}
+                    >
+                      <Mail className="w-4 h-4 mr-3" />
+                      Send to myself
+                    </Button>
+                  )
                 )}
               </div>
             </div>

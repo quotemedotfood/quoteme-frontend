@@ -8,8 +8,8 @@ import { useNavigate } from 'react-router';
 import { Checkbox } from '../components/ui/checkbox';
 import { useUser } from '../contexts/UserContext';
 import { UpgradeDrawer } from '../components/UpgradeDrawer';
-import { createMenu, createGuestQuote, extractMenuText, getCatalogs, uploadCatalogFile, getRestaurants, getRestaurant } from '../services/api';
-import type { CatalogSummary, RestaurantSummary, RestaurantDetail } from '../services/api';
+import { createMenu, createGuestQuote, extractMenuText, getCatalogs, uploadCatalogFile, getRestaurants, getRestaurant, getStockQuotes, generateFromStockQuote } from '../services/api';
+import type { CatalogSummary, RestaurantSummary, RestaurantDetail, StockQuoteResponse } from '../services/api';
 import { isDemoMode } from '../utils/demoMode';
 
 export function StartNewQuotePage() {
@@ -49,6 +49,11 @@ export function StartNewQuotePage() {
   const [hasCamera, setHasCamera] = useState(false);
   const [catalogUploadExpanded, setCatalogUploadExpanded] = useState(false);
   const [skipIngredientReview, setSkipIngredientReview] = useState(false);
+
+  // Stock quotes state
+  const [stockQuotes, setStockQuotes] = useState<StockQuoteResponse[]>([]);
+  const [selectedStockType, setSelectedStockType] = useState('');
+  const [generatingStock, setGeneratingStock] = useState(false);
 
   function cleanCatalogName(cat: CatalogSummary): string {
     // Show a clean name instead of raw filename
@@ -105,6 +110,10 @@ export function StartNewQuotePage() {
     getRestaurants().then(res => {
       if (res.data) setRestaurants(res.data);
       setRestaurantsLoading(false);
+    });
+    // Load stock quotes
+    getStockQuotes().then(res => {
+      if (res.data) setStockQuotes(res.data);
     });
   }, []);
 
@@ -523,15 +532,17 @@ export function StartNewQuotePage() {
             </div>
           )}
 
-          <label className="flex items-center gap-2 mt-3 mb-1 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={skipIngredientReview}
-              onChange={(e) => setSkipIngredientReview(e.target.checked)}
-              className="rounded border-gray-300"
-            />
-            <span className="text-sm text-[#4F4F4F]">Skip ingredient review — go straight to matching</span>
-          </label>
+          <button
+            type="button"
+            onClick={() => setSkipIngredientReview(!skipIngredientReview)}
+            className={`flex items-center gap-2 mt-3 mb-1 px-4 py-2.5 rounded-lg text-sm font-medium transition-all w-full justify-center ${
+              skipIngredientReview
+                ? 'bg-[#F2993D] text-white shadow-sm'
+                : 'bg-[#F2993D]/10 text-[#F2993D] border-2 border-[#F2993D] hover:bg-[#F2993D]/20'
+            }`}
+          >
+            {skipIngredientReview ? '✓ ' : ''}Skip ingredient review — go straight to matching
+          </button>
 
           <div className="flex justify-between items-center text-xs text-gray-500 font-bold">
             {uploadedFile ? (
@@ -572,18 +583,37 @@ export function StartNewQuotePage() {
                     Select a restaurant type to auto-populate the quote with relevant
                     catalog items
                   </p>
-                  <select className="w-48 px-3 py-1.5 border border-blue-200 rounded-md bg-white text-xs">
-                    <option>Select restaurant type</option>
-                    <option>Bar/Grill</option>
-                    <option>Spanish</option>
-                    <option>Italian</option>
-                    <option>Brewery</option>
-                    <option>Coffee shop</option>
+                  <select
+                    className="w-48 px-3 py-1.5 border border-blue-200 rounded-md bg-white text-xs"
+                    value={selectedStockType}
+                    onChange={(e) => setSelectedStockType(e.target.value)}
+                  >
+                    <option value="">Select restaurant type</option>
+                    {(() => {
+                      const types = [...new Set(stockQuotes.map(sq => sq.restaurant_type).filter(Boolean))];
+                      return types.length > 0
+                        ? types.map(t => <option key={t} value={t!}>{t}</option>)
+                        : ['Bar/Grill', 'Spanish', 'Italian', 'Brewery', 'Coffee Shop'].map(t =>
+                            <option key={t} value={t}>{t}</option>
+                          );
+                    })()}
                   </select>
                   <Button
                     size="sm"
                     className="ml-2 bg-blue-600 hover:bg-blue-700 text-white text-xs"
+                    disabled={!selectedStockType || generatingStock}
+                    onClick={async () => {
+                      const match = stockQuotes.find(sq => sq.restaurant_type === selectedStockType);
+                      if (!match) return;
+                      setGeneratingStock(true);
+                      const res = await generateFromStockQuote(match.id);
+                      setGeneratingStock(false);
+                      if (res.data) {
+                        navigate('/map-ingredients', { state: { menuId: res.data.menu_id, isOpenQuote: isQuoteOpened } });
+                      }
+                    }}
                   >
+                    {generatingStock ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : null}
                     Make Stock Quote
                   </Button>
                 </div>

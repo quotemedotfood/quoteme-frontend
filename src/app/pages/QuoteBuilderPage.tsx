@@ -3,9 +3,10 @@ import { Input } from '../components/ui/input';
 import { ArrowLeft, Save, Filter, Plus, Minus, Edit, ChevronUp, ChevronDown, ArrowUpDown, ArrowUp, ArrowDown, Loader2, X, Trash2 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router';
 import { useState, useEffect } from 'react';
-import { getQuote, getGuestQuote, updateQuote, updateGuestQuote, addGuestQuoteLine, removeGuestQuoteLine } from '../services/api';
+import { getQuote, getGuestQuote, updateQuote, updateGuestQuote, addGuestQuoteLine, removeGuestQuoteLine, createStockQuote } from '../services/api';
 import { CatalogProductSearch } from '../components/CatalogProductSearch';
 import type { CatalogSearchProduct } from '../services/api';
+import { Label } from '../components/ui/label';
 import {
   Drawer,
   DrawerClose,
@@ -61,6 +62,10 @@ export function QuoteBuilderPage() {
   const [addProductDrawerOpen, setAddProductDrawerOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [stockQuoteDrawerOpen, setStockQuoteDrawerOpen] = useState(false);
+  const [stockQuoteName, setStockQuoteName] = useState('');
+  const [stockQuoteType, setStockQuoteType] = useState('');
+  const [savingStockQuote, setSavingStockQuote] = useState(false);
 
   const isGuest = !localStorage.getItem('quoteme_token');
   const fetchQuote = (id: string) => isGuest ? getGuestQuote(id) : getQuote(id);
@@ -325,6 +330,16 @@ export function QuoteBuilderPage() {
               {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
               {saving ? 'Saving...' : 'Save Draft'}
             </Button>
+            {!isGuest && (
+              <Button
+                variant="outline"
+                className="border-gray-300 text-[#2A2A2A]"
+                onClick={() => setStockQuoteDrawerOpen(true)}
+              >
+                <Save className="w-4 h-4 mr-2" />
+                Save as Stock Quote
+              </Button>
+            )}
             <Button
               onClick={() => navigate('/review', { state: { quoteId, isOpenQuote } })}
               className="bg-[#A5CFDD] hover:bg-[#8db9c9] text-[#2A2A2A]"
@@ -734,6 +749,92 @@ export function QuoteBuilderPage() {
               Select a product to add it to the quote
             </p>
           </div>
+        </DrawerContent>
+      </Drawer>
+
+      {/* Save as Stock Quote Drawer */}
+      <Drawer open={stockQuoteDrawerOpen} onOpenChange={setStockQuoteDrawerOpen} direction="right">
+        <DrawerContent className="w-full sm:max-w-md h-full flex flex-col">
+          <DrawerHeader className="border-b border-gray-200 flex-shrink-0">
+            <div className="flex items-center justify-between">
+              <div>
+                <DrawerTitle className="text-lg">Save as Stock Quote</DrawerTitle>
+                <DrawerDescription className="text-sm mt-1">
+                  Save this quote as a reusable template
+                </DrawerDescription>
+              </div>
+              <DrawerClose asChild>
+                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                  <X className="h-4 w-4" />
+                </Button>
+              </DrawerClose>
+            </div>
+          </DrawerHeader>
+          <div className="flex-1 overflow-y-auto p-6 space-y-4">
+            <div>
+              <Label className="text-sm mb-1.5 block">Template Name *</Label>
+              <Input
+                value={stockQuoteName}
+                onChange={(e) => setStockQuoteName(e.target.value)}
+                placeholder="e.g. Italian Fine Dining"
+              />
+            </div>
+            <div>
+              <Label className="text-sm mb-1.5 block">Restaurant Type</Label>
+              <select
+                value={stockQuoteType}
+                onChange={(e) => setStockQuoteType(e.target.value)}
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
+              >
+                <option value="">Select type</option>
+                {['Italian', 'Steakhouse', 'Sushi Bar', 'Bar/Grill', 'Spanish', 'Brewery', 'Coffee Shop', 'Mexican', 'Asian Fusion', 'French', 'American Casual'].map(t => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
+              </select>
+            </div>
+            <div className="bg-gray-50 rounded-lg p-4 text-sm text-gray-600">
+              <p className="font-medium text-[#2A2A2A] mb-1">What gets saved:</p>
+              <ul className="text-xs space-y-1 text-gray-500">
+                <li>{items.length} line items with current pricing</li>
+                <li>All product matches and quantities</li>
+              </ul>
+            </div>
+          </div>
+          <DrawerFooter className="border-t border-gray-200 flex-shrink-0">
+            <Button
+              onClick={async () => {
+                if (!stockQuoteName.trim()) return;
+                setSavingStockQuote(true);
+                const quoteData = {
+                  dishes: items.map(i => ({
+                    name: i.dish,
+                    components: [i.component],
+                  })),
+                  items: items.map(i => ({
+                    product_id: i.id,
+                    name: i.product,
+                    brand: i.brand,
+                    pack_size: i.pack,
+                    quantity: 1,
+                    unit_price_cents: Math.round(i.currentPrice * 100),
+                  })),
+                };
+                await createStockQuote({
+                  name: stockQuoteName,
+                  restaurant_type: stockQuoteType,
+                  quote_data: quoteData,
+                });
+                setSavingStockQuote(false);
+                setStockQuoteDrawerOpen(false);
+                setStockQuoteName('');
+                setStockQuoteType('');
+              }}
+              disabled={!stockQuoteName.trim() || savingStockQuote}
+              className="w-full bg-[#7FAEC2] hover:bg-[#6A9AB0] text-white"
+            >
+              {savingStockQuote ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving...</> : 'Save Template'}
+            </Button>
+          </DrawerFooter>
         </DrawerContent>
       </Drawer>
     </div>

@@ -77,6 +77,33 @@ export function QuoteReviewPage() {
   const matchedLines = lines.filter((l) => l.product);
   const totalCents = matchedLines.reduce((sum, l) => sum + (l.unit_price_cents || 0) * (l.quantity || 1), 0);
 
+  // Summary card data — Restaurant, Distributor, Rep, Line Items (no Total)
+  const summaryCards = [
+    {
+      label: 'Restaurant',
+      value: isOpenQuote ? 'Open Quote' : (quote.restaurant || '—'),
+      clickable: true,
+      onClick: () => {/* future: open restaurant edit */},
+    },
+    {
+      label: 'Distributor',
+      value: (quote as any).distributor || '—',
+      clickable: false,
+    },
+    {
+      label: 'Rep',
+      value: quote.rep || '—',
+      clickable: true,
+      onClick: () => {/* future: open rep edit */},
+    },
+    {
+      label: 'Line Items',
+      value: String(totalItems),
+      clickable: true,
+      onClick: () => navigate('/quote-builder', { state: { quoteId, isOpenQuote } }),
+    },
+  ];
+
   return (
     <div className="flex flex-col h-[calc(100vh-4rem)] overflow-hidden">
       {/* Header */}
@@ -98,26 +125,27 @@ export function QuoteReviewPage() {
         <div className="max-w-4xl mx-auto space-y-6">
           {/* Summary Cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-white border border-gray-200 rounded-xl p-4">
-              <p className="text-xs text-gray-400 uppercase tracking-wide">Restaurant</p>
-              <p className="text-sm font-semibold text-[#2A2A2A] mt-1">
-                {isOpenQuote ? 'Open Quote' : (quote.restaurant || '—')}
-              </p>
-            </div>
-            <div className="bg-white border border-gray-200 rounded-xl p-4">
-              <p className="text-xs text-gray-400 uppercase tracking-wide">Rep</p>
-              <p className="text-sm font-semibold text-[#2A2A2A] mt-1">{quote.rep || '—'}</p>
-            </div>
-            <div className="bg-white border border-gray-200 rounded-xl p-4">
-              <p className="text-xs text-gray-400 uppercase tracking-wide">Line Items</p>
-              <p className="text-sm font-semibold text-[#2A2A2A] mt-1">{totalItems}</p>
-            </div>
-            <div className="bg-white border border-gray-200 rounded-xl p-4">
-              <p className="text-xs text-gray-400 uppercase tracking-wide">Total</p>
-              <p className="text-sm font-semibold text-[#2A2A2A] mt-1">
-                ${(totalCents / 100).toFixed(2)}
-              </p>
-            </div>
+            {summaryCards.map((card) => (
+              <button
+                key={card.label}
+                type="button"
+                onClick={card.clickable ? card.onClick : undefined}
+                disabled={!card.clickable}
+                className={`bg-white border border-gray-200 rounded-xl p-4 text-left transition-all ${
+                  card.clickable
+                    ? 'hover:border-[#7FAEC2] hover:shadow-sm cursor-pointer'
+                    : 'cursor-default'
+                }`}
+              >
+                <p className="text-xs text-gray-400 uppercase tracking-wide">{card.label}</p>
+                <p className="text-sm font-semibold text-[#2A2A2A] mt-1 truncate">{card.value}</p>
+                {card.clickable && (
+                  <p className="text-[10px] text-[#7FAEC2] mt-1">
+                    {card.label === 'Line Items' ? 'Edit pricing' : 'Edit'}
+                  </p>
+                )}
+              </button>
+            ))}
           </div>
 
           {/* Flagged Items Warning */}

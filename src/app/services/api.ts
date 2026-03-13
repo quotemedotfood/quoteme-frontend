@@ -1031,3 +1031,40 @@ export async function createPortalSession(): Promise<ApiResponse<{ portal_url: s
     method: 'POST',
   });
 }
+
+// ============= STOCK QUOTES =============
+
+export interface StockQuoteResponse {
+  id: string;
+  name: string;
+  restaurant_type: string | null;
+  is_system: boolean;
+  status: string;
+  quote_data: Record<string, unknown> | null;
+  dish_count: number;
+  component_count: number;
+  created_by: { id: string; name: string } | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export async function getStockQuotes(): Promise<ApiResponse<StockQuoteResponse[]>> {
+  return fetchWithAuth('/api/v1/stock-quotes');
+}
+
+export async function createStockQuote(data: {
+  name: string;
+  restaurant_type: string;
+  quote_data?: Record<string, unknown>;
+}): Promise<ApiResponse<StockQuoteResponse>> {
+  return fetchWithAuth('/api/v1/stock-quotes', {
+    method: 'POST',
+    body: JSON.stringify({ stock_quote: data }),
+  });
+}
+
+export async function generateFromStockQuote(id: string): Promise<ApiResponse<{ menu_id: string; stock_quote_id: string }>> {
+  return fetchWithAuth(`/api/v1/stock-quotes/${id}/generate`, {
+    method: 'POST',
+  });
+}
