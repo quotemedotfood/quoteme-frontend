@@ -27,6 +27,10 @@ import { QMAdminUsers } from "./pages/admin/QMAdminUsers";
 import { QMAdminBrands } from "./pages/admin/QMAdminBrands";
 import { QMAdminMatchingEngine } from "./pages/admin/QMAdminMatchingEngine";
 import { PaywallPage } from "./pages/PaywallPage";
+import { OnboardingConfirmPage } from "./pages/OnboardingConfirmPage";
+import { DistributorHomePage } from "./pages/DistributorHomePage";
+import { CatalogConfirmationPage } from "./pages/CatalogConfirmationPage";
+import { RepInvitePage } from "./pages/RepInvitePage";
 import { isDemoMode } from "./utils/demoMode";
 
 const demo = isDemoMode();
@@ -81,16 +85,10 @@ export const router = createBrowserRouter([
           { path: "review", Component: QuoteReviewPage },
           { path: "map-ingredients", Component: MapIngredientsPage },
           { path: "export-finalize", Component: ExportFinalizePage },
-          {
-            path: "distributor-admin/*",
-            element: (
-              <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-6">
-                <h1 className="text-2xl font-bold text-[#2A2A2A] mb-2">Distributor Admin</h1>
-                <p className="text-gray-500 mb-6">Admin dashboard coming soon.</p>
-                <a href="/dashboard" className="text-[#7FAEC2] hover:underline font-medium">Go to Rep Dashboard →</a>
-              </div>
-            ),
-          },
+          { path: "onboarding/confirm", Component: OnboardingConfirmPage },
+          { path: "catalog/confirmation", Component: CatalogConfirmationPage },
+          { path: "distributor-admin/invite", Component: RepInvitePage },
+          { path: "distributor-admin", Component: DistributorHomePage },
         ],
       },
     ],

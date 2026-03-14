@@ -55,7 +55,7 @@ export function UpgradeDrawer({ isOpen, onClose }: UpgradeDrawerProps) {
               <div>
                 <h3 className="text-lg font-semibold">You've used all 5 free quotes!</h3>
                 <p className="text-sm text-white/90 mt-1">
-                  Upgrade now to unlock unlimited quotes and premium features
+                  Sign up to keep building quotes
                 </p>
               </div>
             </div>
@@ -63,7 +63,7 @@ export function UpgradeDrawer({ isOpen, onClose }: UpgradeDrawerProps) {
 
           {/* Features List */}
           <div className="space-y-4 mb-6">
-            <h3 className="text-base text-[#2A2A2A] font-semibold">Premium Features Include:</h3>
+            <h3 className="text-base text-[#2A2A2A] font-semibold">What you get:</h3>
             
             <div className="space-y-3">
               <div className="flex items-start gap-3">
@@ -139,7 +139,7 @@ export function UpgradeDrawer({ isOpen, onClose }: UpgradeDrawerProps) {
           </Button>
           <p className="text-xs text-center text-[#4F4F4F] mt-3">
             {isDemoMode()
-              ? 'Create a free account to unlock unlimited quotes'
+              ? 'Create a free account to keep building quotes'
               : "You'll be redirected to billing settings to complete your upgrade"}
           </p>
         </div>

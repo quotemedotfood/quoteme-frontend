@@ -351,7 +351,7 @@ export function QuoteBuilderPage() {
 
         {/* Pricing Controls */}
         <div className="bg-white rounded-lg p-6 mb-6 shadow-sm">
-          <h2 className="text-lg text-[#2A2A2A] mb-1">Pricing Controls</h2>
+          <h2 className="text-lg text-[#2A2A2A] mb-1">Adjust Pricing</h2>
           <p className="text-gray-500 text-sm mb-6">
             Adjust pricing for all items or edit individual prices
           </p>
@@ -453,7 +453,7 @@ export function QuoteBuilderPage() {
                 key={item.id}
                 onClick={() => setSelectedItem(item)}
                 className={`p-4 border-b border-gray-200 last:border-b-0 cursor-pointer transition-colors ${
-                  selectedItem?.id === item.id ? 'bg-blue-50' : 'hover:bg-gray-50'
+                  selectedItem?.id === item.id ? 'bg-[#A5CFDD]/10' : 'hover:bg-gray-50'
                 }`}
               >
                 <div className="flex justify-between items-start mb-2">
@@ -497,7 +497,7 @@ export function QuoteBuilderPage() {
                                   e.target.value = `$${item.currentPrice.toFixed(2)}`;
                                 }
                               }}
-                              className="w-20 text-center border border-gray-300 rounded px-1 py-1 text-sm text-[#2A2A2A] focus:outline-none focus:border-blue-500"
+                              className="w-20 text-center border border-gray-300 rounded px-1 py-1 text-sm text-[#2A2A2A] focus:outline-none focus:border-[#A5CFDD]"
                             />
                             <button
                               onClick={(e) => {
@@ -605,7 +605,7 @@ export function QuoteBuilderPage() {
                     key={item.id}
                     onClick={() => setSelectedItem(item)}
                     className={`border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors ${
-                      selectedItem?.id === item.id ? 'bg-blue-50' : ''
+                      selectedItem?.id === item.id ? 'bg-[#A5CFDD]/10' : ''
                     }`}
                   >
                     <td className="px-4 py-3 text-sm text-[#2A2A2A]">{toTitleCase(item.component)}</td>
@@ -682,7 +682,7 @@ export function QuoteBuilderPage() {
                                 e.target.value = `$${item.currentPrice.toFixed(2)}`;
                               }
                             }}
-                            className="w-20 text-center border border-gray-300 rounded px-1 py-1 text-sm text-[#2A2A2A] focus:outline-none focus:border-blue-500"
+                            className="w-20 text-center border border-gray-300 rounded px-1 py-1 text-sm text-[#2A2A2A] focus:outline-none focus:border-[#A5CFDD]"
                           />
                           <button
                             onClick={(e) => {

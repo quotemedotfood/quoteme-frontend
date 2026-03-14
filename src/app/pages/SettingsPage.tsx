@@ -655,7 +655,7 @@ export function SettingsPage() {
                 <div className="bg-[#FFF9F3] border border-[#F2993D] rounded-lg p-4 mb-6">
                   <p className="text-sm text-[#2A2A2A] font-semibold mb-1">Free Trial Active</p>
                   <p className="text-xs text-[#4F4F4F]">
-                    You've used {billingData?.quotes_used ?? profile.quotesUsed} of {billingData?.quotes_limit ?? profile.quotesLimit} free quotes. Upgrade to get unlimited quotes and premium features!
+                    You've used {billingData?.quotes_used ?? profile.quotesUsed} of {billingData?.quotes_limit ?? profile.quotesLimit} free quotes. Sign up to keep building quotes.
                   </p>
                 </div>
               )}

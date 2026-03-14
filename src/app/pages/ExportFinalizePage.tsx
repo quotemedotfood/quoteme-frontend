@@ -179,7 +179,7 @@ export function ExportFinalizePage() {
         const url = URL.createObjectURL(result.blob);
         setPdfBlobUrl(url);
       } else {
-        setPdfError(result.error || 'Failed to generate PDF. Please try again.');
+        setPdfError(result.error || 'Failed to build PDF. Please try again.');
       }
     } catch {
       setPdfError('Network error loading PDF.');
@@ -327,7 +327,7 @@ export function ExportFinalizePage() {
               <ArrowLeft className="w-5 h-5" />
             </button>
             <div>
-              <h1 className="text-xl text-[#4F4F4F]">Export & Finalize</h1>
+              <h1 className="text-xl text-[#4F4F4F]">Review & Send</h1>
               <p className="text-sm text-gray-500">Step 4 of 4</p>
             </div>
           </div>
@@ -358,6 +358,17 @@ export function ExportFinalizePage() {
           </div>
         </div>
 
+        {/* Source Confidence Strip */}
+        {quoteData && (
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-600 border-b border-gray-200 pb-3 mb-6" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+            <span>Catalog: {(quoteData as any).catalog_source || 'own'}</span>
+            <span className="text-gray-300">|</span>
+            <span>Menu: {(quoteData as any).menu_reviewed ? 'reviewed' : 'unreviewed'}</span>
+            <span className="text-gray-300">|</span>
+            <span>Status: {(quoteData as any).quote_status_label || quoteData.status}</span>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Left Column */}
           <div className="space-y-6">
@@ -371,7 +382,7 @@ export function ExportFinalizePage() {
                 {!effectiveOpenQuote && <Button
                   variant="outline"
                   size="sm"
-                  className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                  className="text-[#A5CFDD] border-[#A5CFDD]/30 hover:bg-[#A5CFDD]/10"
                   onClick={openEditDrawer}
                 >
                   <Edit className="w-3.5 h-3.5 mr-1.5" />
@@ -443,7 +454,7 @@ export function ExportFinalizePage() {
             </div>
 
             {/* Premium: Append Onboarding Documents and Links */}
-            <div className="bg-blue-50 rounded-lg p-6 shadow-sm border border-blue-500 relative overflow-hidden">
+            <div className="bg-[#A5CFDD]/10 rounded-lg p-6 shadow-sm border border-[#A5CFDD] relative overflow-hidden">
               <div className="absolute top-0 right-0 bg-[#F2993D] text-white text-xs font-bold px-3 py-1 rounded-bl-lg">
                 PREMIUM
               </div>
@@ -463,7 +474,7 @@ export function ExportFinalizePage() {
                       Select the documents or links you'd like to include. Documents will be appended to the PDF, and links will be listed at the bottom under <strong>"Click Here To Start Your Account Setup"</strong>.
                     </p>
                     <p className="text-xs text-gray-500 italic">
-                      Note: These additions will not populate inside of a CSV export.
+                      Note: These additions will not appear inside of a CSV export.
                     </p>
                   </div>
                 </div>
@@ -633,10 +644,10 @@ export function ExportFinalizePage() {
             {/* Finalize and Sign Up */}
             <div className={`bg-white rounded-lg p-6 shadow-sm border-2 ${isFinalized ? 'border-green-500 bg-green-50' : 'border-[#A5CFDD]'}`}>
               <div className="flex items-center justify-between mb-1">
-                <h2 className="text-lg text-[#2A2A2A]">Sign up to finalize</h2>
+                <h2 className="text-lg text-[#2A2A2A]">Sign up to keep building quotes</h2>
                 {isFinalized && <Check className="w-5 h-5 text-green-600" />}
               </div>
-              <p className="text-gray-500 text-sm mb-6">Create your account to finalize and save this quote</p>
+              <p className="text-gray-500 text-sm mb-6">Create your account to save and send this quote</p>
               
               {!isFinalized ? (
                 <div className="space-y-4">
@@ -705,7 +716,7 @@ export function ExportFinalizePage() {
                     onClick={() => setIsFinalized(true)}
                   >
                     <Check className="w-4 h-4 mr-2" />
-                    Finalize and Sign up
+                    Save and Sign up
                   </Button>
 
                   <p className="text-xs text-gray-500 text-center mt-3">
@@ -714,9 +725,9 @@ export function ExportFinalizePage() {
                 </div>
               ) : (
                 <div className="bg-green-100 text-green-800 p-4 rounded text-sm text-center">
-                  <p className="font-medium mb-2">Account created and quote finalized! You can now download or send your quote.</p>
+                  <p className="font-medium mb-2">You're in! You can now download or send your quote.</p>
                   <p className="text-xs text-green-700 border-t border-green-200 pt-2 mt-1">
-                    You have 4 more free quotes to use. To unlock unlimited quotes and premium features <a href="#" onClick={(e) => { e.preventDefault(); navigate('/settings/billing'); }} className="underline font-semibold hover:text-green-900">click here to view plan options</a>.
+                    You have 4 more free quotes. <a href="#" onClick={(e) => { e.preventDefault(); navigate('/settings/billing'); }} className="underline font-semibold hover:text-green-900">View plan options</a> for unlimited.
                   </p>
                 </div>
               )}
@@ -726,7 +737,7 @@ export function ExportFinalizePage() {
             <div className={`bg-white rounded-lg p-6 shadow-sm transition-opacity ${!isFinalized ? 'opacity-50 pointer-events-none' : ''}`}>
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-lg text-[#2A2A2A]">Download Quote</h2>
-                {!isFinalized && <div className="text-xs bg-gray-100 px-2 py-1 rounded text-gray-500">Sign Up to Unlock</div>}
+                {!isFinalized && <div className="text-xs bg-gray-100 px-2 py-1 rounded text-gray-500">Sign up first</div>}
               </div>
               
               <div className="space-y-3">
@@ -763,7 +774,7 @@ export function ExportFinalizePage() {
             <div className={`bg-white rounded-lg p-6 shadow-sm transition-opacity ${!isFinalized ? 'opacity-50 pointer-events-none' : ''}`}>
               <div className="flex items-center justify-between mb-1">
                 <h2 className="text-lg text-[#2A2A2A]">Send to Customer</h2>
-                {!isFinalized && <div className="text-xs bg-gray-100 px-2 py-1 rounded text-gray-500">Sign Up to Unlock</div>}
+                {!isFinalized && <div className="text-xs bg-gray-100 px-2 py-1 rounded text-gray-500">Sign up first</div>}
               </div>
               <p className="text-gray-500 text-sm mb-6">
                 Emails will be sent via Quotes@Quote-me.com with your email CC'd
@@ -1072,9 +1083,9 @@ export function ExportFinalizePage() {
                   </div>
                 </div>
 
-                <div className="bg-blue-50 p-4 rounded-md border border-blue-100 flex gap-3">
-                  <Info className="w-5 h-5 text-blue-500 shrink-0" />
-                  <p className="text-sm text-blue-700">
+                <div className="bg-[#A5CFDD]/10 p-4 rounded-md border border-[#A5CFDD]/20 flex gap-3">
+                  <Info className="w-5 h-5 text-[#A5CFDD] shrink-0" />
+                  <p className="text-sm text-[#2A5F6F]">
                     Changing the customer or contacts will only affect this quote. Your existing catalog selections and pricing will remain saved.
                   </p>
                 </div>

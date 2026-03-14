@@ -35,7 +35,7 @@ export function DemoBanner() {
               href={PROD_SIGNUP_URL}
               className="text-xs text-[#F2993D] hover:underline"
             >
-              Sign up for unlimited
+              Sign up to keep building quotes
             </a>
           </div>
         )}

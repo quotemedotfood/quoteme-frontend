@@ -57,7 +57,7 @@ export function SwipeableCard({ children, onEdit, onDelete, className = '' }: Sw
               onEdit();
               setSwipeOffset(0);
             }}
-            className="w-16 bg-blue-500 flex items-center justify-center text-white transition-colors hover:bg-blue-600"
+            className="w-16 bg-[#A5CFDD] flex items-center justify-center text-white transition-colors hover:bg-[#7FAEC2]"
           >
             <Edit size={20} />
           </button>

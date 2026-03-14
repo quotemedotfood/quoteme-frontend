@@ -110,6 +110,7 @@ export function MapIngredientsPage() {
   const [mappedComponents, setMappedComponents] = useState<Record<string, string[]>>({});
   const [expandedCategories, setExpandedCategories] = useState<string[]>([]);
   const [isDishListDrawerOpen, setIsDishListDrawerOpen] = useState(false);
+  const [expandedAlternates, setExpandedAlternates] = useState<Set<string>>(new Set());
   const [isAddDishDrawerOpen, setIsAddDishDrawerOpen] = useState(false);
   const [newDishName, setNewDishName] = useState('');
   const [newDishComponents, setNewDishComponents] = useState('');
@@ -417,48 +418,75 @@ export function MapIngredientsPage() {
     const confidence = bestCandidate?.score != null ? Math.round(bestCandidate.score * 100) : null;
     const isMapped = mappedComponents[component]?.length > 0;
 
+    const alternates = line?.alignment_candidates?.filter(c => c.position > 1) || [];
+
     return (
-      <div
-        key={component}
-        className="flex items-center justify-between gap-4 py-3 border-b border-gray-100 last:border-b-0"
-      >
-        <div className="flex items-center gap-3 flex-1">
-          <span className="text-sm text-[#2A2A2A]">{toTitleCase(component)}</span>
-        </div>
+      <div key={component}>
+        <div className="flex items-center justify-between gap-4 py-3 border-b border-gray-100 last:border-b-0">
+          <div className="flex items-center gap-3 flex-1">
+            <span className="text-sm text-[#2A2A2A]">{toTitleCase(component)}</span>
+          </div>
 
-        <div className="flex-1 text-center">
-          {bestMatch ? (
-            <div className="text-xs text-gray-500">
-              <div className="font-medium">{toTitleCase(bestMatch.brand)} {toTitleCase(bestMatch.product)}</div>
-              <div className="text-gray-400">
-                {bestMatch.item_number} • {bestMatch.pack_size}
-              </div>
-              {confidence != null && (
-                <div className="mt-1">
-                  <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${
-                    confidence >= 70 ? 'bg-green-100 text-green-700' :
-                    confidence >= 40 ? 'bg-yellow-100 text-yellow-700' :
-                    'bg-red-100 text-red-700'
-                  }`}>
-                    {confidence}% match
-                  </span>
+          <div className="flex-1 text-center">
+            {bestMatch ? (
+              <div className="text-xs text-gray-500">
+                <div className="font-medium">{toTitleCase(bestMatch.brand)} {toTitleCase(bestMatch.product)}</div>
+                <div className="text-gray-400">
+                  {bestMatch.item_number} • {bestMatch.pack_size}
                 </div>
-              )}
-            </div>
-          ) : (
-            <span className="text-xs text-gray-400 italic">No match found</span>
-          )}
-        </div>
+                {confidence != null && (() => {
+                  const label = confidence >= 90 ? { text: 'Strong Match', cls: 'bg-green-100 text-green-700' }
+                    : confidence >= 70 ? { text: 'Good Match', cls: 'bg-[#A5CFDD]/20 text-[#2A5F6F]' }
+                    : confidence >= 50 ? { text: 'Review Suggested', cls: 'bg-amber-100 text-amber-700' }
+                    : { text: 'Needs Your Pick', cls: 'bg-red-100 text-red-700' };
+                  return (
+                    <div className="mt-1">
+                      <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${label.cls}`}>
+                        {label.text}
+                      </span>
+                    </div>
+                  );
+                })()}
+              </div>
+            ) : (
+              <span className="text-xs text-gray-400 italic">No match found</span>
+            )}
+          </div>
 
-        <div className="flex-shrink-0">
-          <Button
-            size="sm"
-            className={`text-xs px-3 py-1 ${isMapped ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-[#A5CFDD] hover:bg-[#8db9c9] text-[#2A2A2A]'}`}
-            onClick={() => handleMapComponent(component)}
-          >
-            {isMapped ? 'Mapped ✓' : 'Add Match'}
-          </Button>
+          <div className="flex-shrink-0 flex items-center gap-1">
+            <Button
+              size="sm"
+              className={`text-xs px-3 py-1 ${isMapped ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-[#A5CFDD] hover:bg-[#8db9c9] text-[#2A2A2A]'}`}
+              onClick={() => handleMapComponent(component)}
+            >
+              {isMapped ? 'Mapped ✓' : 'Add Match'}
+            </Button>
+            {alternates.length > 0 && (
+              <button
+                onClick={(e) => { e.stopPropagation(); setExpandedAlternates(prev => { const next = new Set(prev); next.has(component) ? next.delete(component) : next.add(component); return next; }); }}
+                className="text-xs text-[#A5CFDD] hover:text-[#7FAEC2] ml-2"
+              >
+                Options {expandedAlternates.has(component) ? '\u25B2' : '\u25BC'}
+              </button>
+            )}
+          </div>
         </div>
+        {expandedAlternates.has(component) && alternates.map(alt => (
+          <div key={alt.id} className="flex items-center justify-between py-2 px-4 bg-gray-50 border-b border-gray-100 ml-6">
+            <div className="flex-1 text-xs text-gray-600">
+              <span className="font-medium">{toTitleCase(alt.product.brand)} {toTitleCase(alt.product.product)}</span>
+              <span className="text-gray-400 ml-2">{alt.product.item_number} • {alt.product.pack_size}</span>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              className="text-xs px-2 py-1 h-auto border-[#A5CFDD] text-[#A5CFDD] hover:bg-[#A5CFDD]/10"
+              onClick={() => handleReplaceMatch(component, alt.product.id)}
+            >
+              Use This Instead
+            </Button>
+          </div>
+        ))}
       </div>
     );
   };
@@ -478,7 +506,7 @@ export function MapIngredientsPage() {
               key={dish.id}
               onClick={() => { setSelectedDish(dish); setSelectedTab('dishes'); }}
               className={`w-full p-4 text-left border-b border-gray-100 hover:bg-gray-50 transition-colors ${
-                selectedDish?.id === dish.id ? 'bg-blue-50 border-l-4 border-l-blue-500' : ''
+                selectedDish?.id === dish.id ? 'bg-[#A5CFDD]/10 border-l-4 border-l-[#A5CFDD]' : ''
               }`}
             >
               <div className="flex items-start gap-2">
@@ -585,7 +613,7 @@ export function MapIngredientsPage() {
                     onClick={() => setSelectedTab(tab)}
                     className={`px-6 py-3 text-sm font-medium transition-colors border-b-2 capitalize ${
                       selectedTab === tab
-                        ? 'border-blue-500 text-blue-600'
+                        ? 'border-[#A5CFDD] text-[#A5CFDD]'
                         : 'border-transparent text-gray-600 hover:text-gray-900'
                     }`}
                   >
@@ -728,7 +756,7 @@ export function MapIngredientsPage() {
                 <button
                   key={dish.id}
                   onClick={() => { setSelectedDish(dish); setIsDishListDrawerOpen(false); }}
-                  className={`w-full p-4 text-left border-b border-gray-100 hover:bg-gray-50 ${selectedDish?.id === dish.id ? 'bg-blue-50 border-l-4 border-l-blue-500' : ''}`}
+                  className={`w-full p-4 text-left border-b border-gray-100 hover:bg-gray-50 ${selectedDish?.id === dish.id ? 'bg-[#A5CFDD]/10 border-l-4 border-l-[#A5CFDD]' : ''}`}
                 >
                   <p className="text-sm font-medium text-[#2A2A2A]">{dish.name}</p>
                   <p className="text-xs text-gray-500 mt-1">{dish.components.length} ingredients</p>

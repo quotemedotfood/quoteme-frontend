@@ -44,6 +44,7 @@ export interface SignUpData {
   phone?: string;
   distributor_name?: string;
   claimed_distributor_id?: string;
+  company_name?: string;
 }
 
 export interface LoginData {
@@ -328,7 +329,7 @@ export async function signIn(credentials: LoginData): Promise<ApiResponse<{ mess
   }
 }
 
-export async function signUp(data: SignUpData): Promise<ApiResponse<{ message: string; user: any }>> {
+export async function signUp(data: SignUpData): Promise<ApiResponse<{ message: string; user: any; distributor_matches?: Array<{ id: string; name: string }> }>> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   };
@@ -1066,5 +1067,58 @@ export async function createStockQuote(data: {
 export async function generateFromStockQuote(id: string): Promise<ApiResponse<{ menu_id: string; stock_quote_id: string }>> {
   return fetchWithAuth(`/api/v1/stock-quotes/${id}/generate`, {
     method: 'POST',
+  });
+}
+
+// ============= DISTRIBUTOR ONBOARDING =============
+
+export async function confirmDistributor(): Promise<ApiResponse<{ confirmed: boolean }>> {
+  return fetchWithAuth('/api/v1/distributor/confirm', { method: 'POST' });
+}
+
+export async function updateDistributorName(name: string): Promise<ApiResponse<{ name: string }>> {
+  return fetchWithAuth('/api/v1/distributor/update_name', {
+    method: 'PATCH',
+    body: JSON.stringify({ name }),
+  });
+}
+
+export interface DistributorHomeData {
+  distributor_name: string;
+  has_catalog: boolean;
+  catalog_product_count: number;
+  rep_count: number;
+  quote_count: number;
+}
+
+export async function getDistributorHome(): Promise<ApiResponse<DistributorHomeData>> {
+  return fetchWithAuth('/api/v1/distributor/home');
+}
+
+// Catalog confirmation
+export interface CatalogConfirmation {
+  total_processed: number;
+  excluded_count: number;
+  excluded_reasons: string[];
+  net_usable: number;
+  category_breakdown: Record<string, number>;
+}
+
+export async function getCatalogConfirmation(catalogId: string): Promise<ApiResponse<CatalogConfirmation>> {
+  return fetchWithAuth(`/api/v1/catalogs/${catalogId}/confirmation`);
+}
+
+export async function flagCatalogCategory(catalogId: string, message: string): Promise<ApiResponse<{ success: boolean }>> {
+  return fetchWithAuth(`/api/v1/catalogs/${catalogId}/flag_category`, {
+    method: 'POST',
+    body: JSON.stringify({ message }),
+  });
+}
+
+// Rep invite
+export async function inviteRep(data: { name: string; email: string; territory?: string }): Promise<ApiResponse<{ message: string }>> {
+  return fetchWithAuth('/api/v1/distributor_admin/reps/invite', {
+    method: 'POST',
+    body: JSON.stringify(data),
   });
 }

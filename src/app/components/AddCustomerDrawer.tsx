@@ -364,7 +364,7 @@ export function AddCustomerDrawer({ open, onOpenChange, onSuccess }: AddCustomer
                               isPrimary: c.id === contact.id,
                             })));
                           }}
-                          className="text-xs text-blue-600"
+                          className="text-xs text-[#A5CFDD]"
                         >
                           Set as Primary
                         </Button>

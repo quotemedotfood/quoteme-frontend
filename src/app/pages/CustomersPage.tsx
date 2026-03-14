@@ -289,7 +289,7 @@ export function CustomersPage() {
         {/* Guest State */}
         {!isLoggedIn && !loading && (
           <>
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-6 text-center">
+            <div className="bg-[#A5CFDD]/10 border border-[#A5CFDD]/30 rounded-lg p-6 mb-6 text-center">
               <p className="text-[#2A2A2A] font-medium mb-1">Sign up to manage your customers</p>
               <p className="text-gray-500 text-sm">Create an account to add restaurants, contacts, and track quote history.</p>
             </div>
@@ -441,7 +441,7 @@ export function CustomersPage() {
                         {expandedContacts === restaurant.id && primaryContact && (
                           <>
                             <div className="text-[#2A2A2A]">{primaryContact.first_name} {primaryContact.last_name}</div>
-                            {primaryContact.email && <div className="text-blue-600 truncate">{primaryContact.email}</div>}
+                            {primaryContact.email && <div className="text-[#A5CFDD] truncate">{primaryContact.email}</div>}
                             {primaryContact.phone && <div className="text-[#2A2A2A]">{primaryContact.phone}</div>}
                           </>
                         )}
@@ -514,7 +514,7 @@ export function CustomersPage() {
                                 </div>
                                 {contact.role && <p className="text-xs text-gray-500 mb-2 font-medium">{contact.role}</p>}
                                 <div className="text-xs space-y-1">
-                                  {contact.email && <div className="text-blue-600">{contact.email}</div>}
+                                  {contact.email && <div className="text-[#A5CFDD]">{contact.email}</div>}
                                   {contact.phone && <div className="text-gray-600">{contact.phone}</div>}
                                 </div>
                               </div>
@@ -621,7 +621,7 @@ export function CustomersPage() {
                                       )}
                                     </div>
                                     <div className="text-gray-600">{contact.role || '--'}</div>
-                                    <div className="text-blue-600 text-sm">{contact.email || '--'}</div>
+                                    <div className="text-[#A5CFDD] text-sm">{contact.email || '--'}</div>
                                     <div className="text-gray-600 text-sm">{contact.phone || '--'}</div>
                                   </div>
                                   <div className="flex-shrink-0">

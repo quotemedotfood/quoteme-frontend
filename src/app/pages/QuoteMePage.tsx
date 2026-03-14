@@ -8,7 +8,7 @@ import { getQuotes, getRestaurants, QuoteListItem, RestaurantIndexItem } from '.
 const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   draft: { bg: 'bg-gray-100', text: 'text-gray-600' },
   pending: { bg: 'bg-yellow-100', text: 'text-yellow-700' },
-  assigned: { bg: 'bg-blue-100', text: 'text-blue-700' },
+  assigned: { bg: 'bg-[#A5CFDD]/20', text: 'text-[#2A5F6F]' },
   sent: { bg: 'bg-green-100', text: 'text-green-700' },
   won: { bg: 'bg-emerald-100', text: 'text-emerald-700' },
   lost: { bg: 'bg-red-100', text: 'text-red-700' },

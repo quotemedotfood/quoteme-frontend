@@ -62,7 +62,7 @@ function tierLabel(tier: string, position: number): string {
 
 function tierColor(position: number): string {
   if (position === 1) return 'bg-green-100 text-green-700';
-  if (position === 2) return 'bg-blue-100 text-blue-700';
+  if (position === 2) return 'bg-[#A5CFDD]/20 text-[#2A5F6F]';
   return 'bg-gray-100 text-gray-600';
 }
 
@@ -192,15 +192,14 @@ export function MapComponentDrawer({
                   <span className="inline-block px-2 py-0.5 bg-gray-100 text-gray-700 rounded">
                     {toTitleCase(bestMatch.product.category)}
                   </span>
-                  {bestMatch.score != null && (
-                    <span className={`font-medium ${
-                      Math.round(bestMatch.score * 100) >= 70 ? 'text-green-600' :
-                      Math.round(bestMatch.score * 100) >= 40 ? 'text-yellow-600' :
-                      'text-red-500'
-                    }`}>
-                      {(bestMatch.score * 100).toFixed(0)}% match
-                    </span>
-                  )}
+                  {bestMatch.score != null && (() => {
+                    const s = Math.round(bestMatch.score * 100);
+                    const label = s >= 90 ? { text: 'Strong Match', cls: 'text-green-600' }
+                      : s >= 70 ? { text: 'Good Match', cls: 'text-[#2A5F6F]' }
+                      : s >= 50 ? { text: 'Review Suggested', cls: 'text-amber-600' }
+                      : { text: 'Needs Your Pick', cls: 'text-red-500' };
+                    return <span className={`font-medium ${label.cls}`}>{label.text}</span>;
+                  })()}
                 </div>
               </div>
             </div>
@@ -253,15 +252,14 @@ export function MapComponentDrawer({
                         <span className="inline-block px-2 py-0.5 bg-gray-100 text-gray-700 rounded">
                           {toTitleCase(candidate.product.category)}
                         </span>
-                        {candidate.score != null && (
-                          <span className={`font-medium ${
-                            Math.round(candidate.score * 100) >= 70 ? 'text-green-600' :
-                            Math.round(candidate.score * 100) >= 40 ? 'text-yellow-600' :
-                            'text-red-500'
-                          }`}>
-                            {(candidate.score * 100).toFixed(0)}% match
-                          </span>
-                        )}
+                        {candidate.score != null && (() => {
+                          const s = Math.round(candidate.score * 100);
+                          const label = s >= 90 ? { text: 'Strong Match', cls: 'text-green-600' }
+                            : s >= 70 ? { text: 'Good Match', cls: 'text-[#2A5F6F]' }
+                            : s >= 50 ? { text: 'Review Suggested', cls: 'text-amber-600' }
+                            : { text: 'Needs Your Pick', cls: 'text-red-500' };
+                          return <span className={`font-medium ${label.cls}`}>{label.text}</span>;
+                        })()}
                       </div>
                     </button>
                   );

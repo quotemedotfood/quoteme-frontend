@@ -622,7 +622,7 @@ export function EditCustomerDrawer({
                                   isPrimary: c.id === ec.id,
                                 })));
                               }}
-                              className="text-xs text-blue-600"
+                              className="text-xs text-[#A5CFDD]"
                             >
                               Set as Primary
                             </Button>
