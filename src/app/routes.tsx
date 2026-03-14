@@ -89,6 +89,8 @@ export const router = createBrowserRouter([
           { path: "catalog/confirmation", Component: CatalogConfirmationPage },
           { path: "distributor-admin/invite", Component: RepInvitePage },
           { path: "distributor-admin", Component: DistributorHomePage },
+          { path: "liquor", Component: StartNewQuotePage },
+          { path: "liquor/*", Component: StartNewQuotePage },
         ],
       },
     ],

@@ -510,10 +510,23 @@ export async function getGuestSession(token: string): Promise<ApiResponse<GuestS
   }
 }
 
-export async function createGuestQuote(quoteData: GuestQuote): Promise<ApiResponse<GuestQuoteCreateResponse>> {
+export async function getDemoDistributor(type: 'food' | 'liquor' = 'food'): Promise<ApiResponse<{ distributor_id: string; distributor_name: string; has_catalog: boolean; product_count: number }>> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/v1/guest/sessions/demo-distributor?type=${type}`);
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      return { error: errorData.error || `HTTP ${response.status}`, data: undefined };
+    }
+    return { data: await response.json() };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : 'Network error', data: undefined };
+  }
+}
+
+export async function createGuestQuote(quoteData: GuestQuote, distributorId?: string): Promise<ApiResponse<GuestQuoteCreateResponse>> {
   return fetchWithGuest('/api/v1/guest/quotes', {
     method: 'POST',
-    body: JSON.stringify({ ...quoteData, distributor_id: '88c1038d-6b3b-4cc0-ba35-32c32f435f91' }),
+    body: JSON.stringify({ ...quoteData, distributor_id: distributorId || '88c1038d-6b3b-4cc0-ba35-32c32f435f91' }),
   });
 }
 

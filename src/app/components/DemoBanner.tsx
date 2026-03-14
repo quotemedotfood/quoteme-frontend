@@ -1,16 +1,17 @@
 import { useUser } from '../contexts/UserContext';
-import { PROD_SIGNUP_URL } from '../utils/demoMode';
+import { PROD_SIGNUP_URL, isLiquorDemo } from '../utils/demoMode';
 import logoSquare from '/src/assets/e549e7d27b183e98e791f43494c715b8cc6ce7e9.png';
 
 export function DemoBanner() {
   const { quotesRemaining, profile } = useUser();
   const exhausted = quotesRemaining <= 0;
+  const liquor = isLiquorDemo();
 
   return (
     <div className="bg-white border-b border-gray-200 px-4 py-2 flex items-center justify-between shrink-0">
       <div className="flex items-center gap-3">
         <img src={logoSquare} alt="QuoteMe" className="w-8 h-8 object-contain" />
-        <span className="text-sm font-medium text-[#2A2A2A]">QuoteMe Demo</span>
+        <span className="text-sm font-medium text-[#2A2A2A]">{liquor ? 'QuoteMe Demo — Beverage' : 'QuoteMe Demo'}</span>
       </div>
       <div className="flex items-center gap-4">
         {exhausted ? (

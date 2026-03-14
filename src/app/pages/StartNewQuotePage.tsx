@@ -8,9 +8,9 @@ import { useNavigate } from 'react-router';
 import { Checkbox } from '../components/ui/checkbox';
 import { useUser } from '../contexts/UserContext';
 import { UpgradeDrawer } from '../components/UpgradeDrawer';
-import { createMenu, createGuestQuote, extractMenuText, getCatalogs, uploadCatalogFile, getRestaurants, getRestaurant, getStockQuotes, generateFromStockQuote } from '../services/api';
+import { createMenu, createGuestQuote, extractMenuText, getCatalogs, uploadCatalogFile, getRestaurants, getRestaurant, getStockQuotes, generateFromStockQuote, getDemoDistributor } from '../services/api';
 import type { CatalogSummary, RestaurantSummary, RestaurantDetail, StockQuoteResponse } from '../services/api';
-import { isDemoMode } from '../utils/demoMode';
+import { isDemoMode, isLiquorDemo, demoType } from '../utils/demoMode';
 
 // --- Types for ingredient editing ---
 interface ParsedIngredient {
@@ -137,6 +137,19 @@ export function StartNewQuotePage() {
   const [newIngredientName, setNewIngredientName] = useState('');
   const [isExtractingPreview, setIsExtractingPreview] = useState(false);
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
+
+  // Liquor demo state
+  const liquorDemo = isLiquorDemo();
+  const [demoDistributorId, setDemoDistributorId] = useState<string | null>(null);
+
+  // Resolve liquor demo distributor on mount
+  useEffect(() => {
+    if (liquorDemo) {
+      getDemoDistributor('liquor').then(res => {
+        if (res.data) setDemoDistributorId(res.data.distributor_id);
+      });
+    }
+  }, [liquorDemo]);
 
   // Load Google Fonts
   useEffect(() => {
@@ -406,7 +419,8 @@ export function StartNewQuotePage() {
           return;
         }
         const payload = { raw_text: menuText, name: selectedRestaurant?.name || 'New Quote' };
-        let response = await createGuestQuote(payload);
+        const distId = demoDistributorId || undefined;
+        let response = await createGuestQuote(payload, distId);
         if (response.error && (response.error.includes('401') || response.error.includes('expired') || response.error.includes('not found') || response.error.includes('Session'))) {
           localStorage.removeItem('quoteme_guest_token');
           await initGuestSession();
@@ -415,7 +429,7 @@ export function StartNewQuotePage() {
             setIsCreatingQuote(false);
             return;
           }
-          response = await createGuestQuote(payload);
+          response = await createGuestQuote(payload, distId);
         }
         if (response.error) {
           if (isServiceBusyError(response.error)) { setServiceBusy(true); return; }
@@ -465,7 +479,8 @@ export function StartNewQuotePage() {
           setIsCreatingQuote(false);
           return;
         }
-        let response = await createGuestQuote({ raw_text: menuText, name: selectedRestaurant?.name || 'New Quote' });
+        const skipDistId = demoDistributorId || undefined;
+        let response = await createGuestQuote({ raw_text: menuText, name: selectedRestaurant?.name || 'New Quote' }, skipDistId);
         if (response.error && (response.error.includes('401') || response.error.includes('expired') || response.error.includes('not found') || response.error.includes('Session'))) {
           localStorage.removeItem('quoteme_guest_token');
           await initGuestSession();
@@ -474,7 +489,7 @@ export function StartNewQuotePage() {
             setIsCreatingQuote(false);
             return;
           }
-          response = await createGuestQuote({ raw_text: menuText, name: selectedRestaurant?.name || 'New Quote' });
+          response = await createGuestQuote({ raw_text: menuText, name: selectedRestaurant?.name || 'New Quote' }, skipDistId);
         }
         if (response.error) {
           if (isServiceBusyError(response.error)) { setServiceBusy(true); return; }
@@ -567,10 +582,10 @@ export function StartNewQuotePage() {
             className="text-3xl md:text-4xl mb-2"
             style={{ fontFamily: "'Playfair Display', serif", color: '#A5CFDD' }}
           >
-            Start New Quote
+            {liquorDemo ? 'Start New Beverage Quote' : 'Start New Quote'}
           </h1>
           <p className="text-gray-600" style={{ fontFamily: "'DM Sans', sans-serif" }}>
-            Paste a menu, upload a photo, or type ingredients.
+            {liquorDemo ? 'Paste a drink menu, upload a photo, or type your list.' : 'Paste a menu, upload a photo, or type ingredients.'}
           </p>
 
           {/* Five-step guide — demo flow */}
@@ -690,9 +705,12 @@ export function StartNewQuotePage() {
                   <option value="">Select restaurant type</option>
                   {(() => {
                     const types = [...new Set(stockQuotes.map(sq => sq.restaurant_type).filter(Boolean))];
+                    const fallbackTypes = liquorDemo
+                      ? ['Cocktail Bar', 'Wine Bar', 'Hotel Bar', 'Restaurant Bar Program', 'Nightclub']
+                      : ['Bar/Grill', 'Spanish', 'Italian', 'Brewery', 'Coffee Shop'];
                     return types.length > 0
                       ? types.map(t => <option key={t} value={t!}>{t}</option>)
-                      : ['Bar/Grill', 'Spanish', 'Italian', 'Brewery', 'Coffee Shop'].map(t =>
+                      : fallbackTypes.map(t =>
                           <option key={t} value={t}>{t}</option>
                         );
                   })()}
