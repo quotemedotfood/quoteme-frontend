@@ -11,7 +11,7 @@ export function DemoBanner() {
     <div className="bg-white border-b border-gray-200 px-4 py-2 flex items-center justify-between shrink-0">
       <div className="flex items-center gap-3">
         <img src={logoSquare} alt="QuoteMe" className="w-8 h-8 object-contain" />
-        <span className="text-sm font-medium text-[#2A2A2A]">{liquor ? 'QuoteMe Demo — Beverage' : 'QuoteMe Demo'}</span>
+        <span className="text-sm font-medium text-[#2A2A2A]">{liquor ? 'QuoteMe Beverage Demo' : 'QuoteMe Demo'}</span>
       </div>
       <div className="flex items-center gap-4">
         {exhausted ? (
