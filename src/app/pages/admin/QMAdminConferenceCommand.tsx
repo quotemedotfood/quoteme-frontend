@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Plus, Phone, Mail, Building2, ChefHat, Tag, Radio, User, X, Camera, Mic, MicOff,
   Upload, Loader2, CheckCircle, ArrowRight, Trash2, Clock, TrendingUp, Users, Zap,
-  CreditCard, Eye
+  CreditCard, Eye, Pencil, Save
 } from 'lucide-react';
 import { Input } from '../../components/ui/input';
 import { Button } from '../../components/ui/button';
@@ -132,6 +132,14 @@ export function QMAdminConferenceCommand() {
     await deleteConferenceLead(lead.id);
     if (selectedLead?.id === lead.id) setSelectedLead(null);
     loadLeads();
+  }
+
+  async function handleUpdate(lead: ConferenceLead, data: Partial<ConferenceLead>) {
+    const res = await updateConferenceLead(lead.id, data);
+    if (res.data) {
+      setSelectedLead(res.data);
+      loadLeads();
+    }
   }
 
   function dismissBanner() {
@@ -296,6 +304,7 @@ export function QMAdminConferenceCommand() {
                 onStatusChange={handleStatusChange}
                 onConvert={handleConvert}
                 onDelete={handleDelete}
+                onUpdate={handleUpdate}
                 onClose={() => setSelectedLead(null)}
               />
             ) : (
@@ -336,6 +345,7 @@ export function QMAdminConferenceCommand() {
               onStatusChange={handleStatusChange}
               onConvert={handleConvert}
               onDelete={handleDelete}
+              onUpdate={handleUpdate}
               onClose={() => setSelectedLead(null)}
               mobile
             />
@@ -353,6 +363,7 @@ function LeadDetailPanel({
   onStatusChange,
   onConvert,
   onDelete,
+  onUpdate,
   onClose,
   mobile,
 }: {
@@ -360,11 +371,46 @@ function LeadDetailPanel({
   onStatusChange: (lead: ConferenceLead, status: string) => void;
   onConvert: (lead: ConferenceLead, convertTo: string) => void;
   onDelete: (lead: ConferenceLead) => void;
+  onUpdate: (lead: ConferenceLead, data: Partial<ConferenceLead>) => Promise<void> | void;
   onClose: () => void;
   mobile?: boolean;
 }) {
   const typeStyle = LEAD_TYPE_COLORS[lead.lead_type] || LEAD_TYPE_COLORS.other;
   const TypeIcon = typeStyle.icon;
+  const [editing, setEditing] = useState(false);
+  const [editData, setEditData] = useState({
+    company_name: lead.company_name || '',
+    contact_name: lead.contact_name || '',
+    contact_email: lead.contact_email || '',
+    contact_phone: lead.contact_phone || '',
+    contact_title: lead.contact_title || '',
+    lead_type: lead.lead_type || 'other',
+    conference_name: lead.conference_name || '',
+    notes: lead.notes || '',
+  });
+  const [saving, setSaving] = useState(false);
+
+  // Reset edit data when lead changes
+  useEffect(() => {
+    setEditData({
+      company_name: lead.company_name || '',
+      contact_name: lead.contact_name || '',
+      contact_email: lead.contact_email || '',
+      contact_phone: lead.contact_phone || '',
+      contact_title: lead.contact_title || '',
+      lead_type: lead.lead_type || 'other',
+      conference_name: lead.conference_name || '',
+      notes: lead.notes || '',
+    });
+    setEditing(false);
+  }, [lead.id]);
+
+  async function handleSave() {
+    setSaving(true);
+    await onUpdate(lead, editData);
+    setSaving(false);
+    setEditing(false);
+  }
 
   return (
     <div className={mobile ? 'p-5' : 'w-96 flex-shrink-0 bg-white border border-gray-200 rounded-xl p-5 sticky top-4 self-start hidden lg:block'}>
@@ -383,6 +429,13 @@ function LeadDetailPanel({
         </div>
         <div className="flex items-center gap-1">
           <button
+            onClick={() => setEditing(!editing)}
+            className={`p-1.5 rounded-lg transition-colors ${editing ? 'bg-[#7FAEC2]/10 text-[#7FAEC2]' : 'text-gray-400 hover:bg-gray-100 hover:text-[#7FAEC2]'}`}
+            title="Edit lead"
+          >
+            <Pencil size={14} />
+          </button>
+          <button
             onClick={() => onDelete(lead)}
             className="p-1.5 hover:bg-red-50 rounded-lg transition-colors text-gray-400 hover:text-red-500"
             title="Delete lead"
@@ -397,7 +450,66 @@ function LeadDetailPanel({
         </div>
       </div>
 
-      {/* Contact Info */}
+      {/* Edit Form */}
+      {editing ? (
+        <div className="space-y-3 text-sm mb-5">
+          <div>
+            <label className="text-[10px] text-gray-400 uppercase tracking-wider block mb-1">Company</label>
+            <Input value={editData.company_name} onChange={(e) => setEditData({ ...editData, company_name: e.target.value })} className="h-8 text-sm" />
+          </div>
+          <div>
+            <label className="text-[10px] text-gray-400 uppercase tracking-wider block mb-1">Contact Name</label>
+            <Input value={editData.contact_name} onChange={(e) => setEditData({ ...editData, contact_name: e.target.value })} className="h-8 text-sm" />
+          </div>
+          <div>
+            <label className="text-[10px] text-gray-400 uppercase tracking-wider block mb-1">Title</label>
+            <Input value={editData.contact_title} onChange={(e) => setEditData({ ...editData, contact_title: e.target.value })} className="h-8 text-sm" />
+          </div>
+          <div>
+            <label className="text-[10px] text-gray-400 uppercase tracking-wider block mb-1">Email</label>
+            <Input type="email" value={editData.contact_email} onChange={(e) => setEditData({ ...editData, contact_email: e.target.value })} className="h-8 text-sm" />
+          </div>
+          <div>
+            <label className="text-[10px] text-gray-400 uppercase tracking-wider block mb-1">Phone</label>
+            <Input type="tel" value={editData.contact_phone} onChange={(e) => setEditData({ ...editData, contact_phone: e.target.value })} className="h-8 text-sm" />
+          </div>
+          <div>
+            <label className="text-[10px] text-gray-400 uppercase tracking-wider block mb-1">Lead Type</label>
+            <select
+              value={editData.lead_type}
+              onChange={(e) => setEditData({ ...editData, lead_type: e.target.value })}
+              className="w-full h-8 text-sm border border-gray-200 rounded-md px-2 bg-white"
+            >
+              <option value="distributor">Distributor</option>
+              <option value="brand">Brand</option>
+              <option value="chef">Chef</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          <div>
+            <label className="text-[10px] text-gray-400 uppercase tracking-wider block mb-1">Conference</label>
+            <Input value={editData.conference_name} onChange={(e) => setEditData({ ...editData, conference_name: e.target.value })} className="h-8 text-sm" />
+          </div>
+          <div>
+            <label className="text-[10px] text-gray-400 uppercase tracking-wider block mb-1">Notes</label>
+            <textarea
+              value={editData.notes}
+              onChange={(e) => setEditData({ ...editData, notes: e.target.value })}
+              className="w-full border border-gray-200 rounded-md px-2 py-1.5 text-sm min-h-[60px] resize-y"
+            />
+          </div>
+          <div className="flex gap-2 pt-1">
+            <Button size="sm" variant="ghost" onClick={() => setEditing(false)} className="flex-1 text-xs">
+              Cancel
+            </Button>
+            <Button size="sm" onClick={handleSave} disabled={saving} className="flex-1 text-xs bg-[#7FAEC2] hover:bg-[#6A9AB0] text-white">
+              <Save size={12} className="mr-1" />
+              {saving ? 'Saving...' : 'Save'}
+            </Button>
+          </div>
+        </div>
+      ) : (
+      /* Contact Info */
       <div className="space-y-3 text-sm mb-5">
         {lead.contact_name && (
           <div>
@@ -434,6 +546,7 @@ function LeadDetailPanel({
           </div>
         )}
       </div>
+      )}
 
       {/* Voice Transcript */}
       {lead.voice_note_transcript && (
