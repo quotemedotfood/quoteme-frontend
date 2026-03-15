@@ -146,7 +146,7 @@ export function QMAdminConferenceCommand() {
         <div className="bg-gradient-to-r from-[#1e3a5f] to-[#2d5a8e] text-white px-4 md:px-6 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-            <span className="text-sm font-medium">NRA Show 2026 — Live</span>
+            <span className="text-sm font-medium">SENA 2026 — Live</span>
             <span className="text-xs text-white/70 hidden sm:inline">
               {todayCount} leads captured today
             </span>
@@ -551,7 +551,7 @@ function CaptureLeadDrawer({
   onCaptured: () => void;
 }) {
   const [data, setData] = useState({
-    conference_name: 'NRA Show 2026',
+    conference_name: 'SENA 2026',
     company_name: '',
     contact_name: '',
     contact_email: '',
@@ -803,7 +803,7 @@ function CaptureLeadDrawer({
             <Input
               value={data.conference_name}
               onChange={(e) => setData({ ...data, conference_name: e.target.value })}
-              placeholder="NRA Show 2026"
+              placeholder="SENA 2026"
             />
           </div>
 
