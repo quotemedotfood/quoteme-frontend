@@ -111,7 +111,7 @@ export function StartNewQuotePage() {
   const [extractError, setExtractError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
-  const [skipIngredientReview, setSkipIngredientReview] = useState(false);
+  const [skipIngredientReview, setSkipIngredientReview] = useState(true);
 
   // Catalog state
   const [catalogs, setCatalogs] = useState<CatalogSummary[]>([]);
@@ -438,7 +438,7 @@ export function StartNewQuotePage() {
         }
         if (response.data) {
           incrementQuoteCount();
-          navigate(skipIngredientReview ? '/map-ingredients' : '/correction', {
+          navigate('/map-ingredients', {
             state: { quoteId: response.data.quote_id, menuId: response.data.menu_id, isOpenQuote: isQuoteOpened }
           });
         }
@@ -451,7 +451,7 @@ export function StartNewQuotePage() {
         }
         if (response.data) {
           incrementQuoteCount();
-          navigate(skipIngredientReview ? '/map-ingredients' : '/correction', {
+          navigate('/map-ingredients', {
             state: { quoteId: response.data.quote_id, menuId: response.data.menu_id, isOpenQuote: isQuoteOpened }
           });
         }
@@ -671,22 +671,7 @@ export function StartNewQuotePage() {
           )}
         </div>
 
-        {/* ── Skip Toggle ── */}
-        <div className="flex items-center gap-3 mb-6 px-1">
-          <span className="text-sm text-gray-600" style={{ fontFamily: "'DM Sans', sans-serif" }}>
-            Skip review, match now
-          </span>
-          <button
-            onClick={() => setSkipIngredientReview(!skipIngredientReview)}
-            className={`relative w-11 h-6 rounded-full transition-colors ${
-              skipIngredientReview ? 'bg-[#A5CFDD]' : 'bg-gray-300'
-            }`}
-          >
-            <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
-              skipIngredientReview ? 'translate-x-5' : 'translate-x-0'
-            }`} />
-          </button>
-        </div>
+        {/* Review happens inline above — no separate correction page needed */}
 
         {/* ── Restaurant Type + URL Row ── */}
         <div className="bg-white rounded-xl p-6 mb-6 shadow-sm border border-gray-100">
