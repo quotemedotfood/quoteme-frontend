@@ -317,6 +317,8 @@ export function QMAdminConferenceCommand() {
           onCaptured={() => {
             setShowCapture(false);
             loadLeads();
+            // Re-fetch after 3s to pick up async OCR/transcription results
+            setTimeout(loadLeads, 3000);
           }}
         />
       )}
