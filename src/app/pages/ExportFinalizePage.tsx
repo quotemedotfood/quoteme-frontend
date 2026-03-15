@@ -801,26 +801,8 @@ export function ExportFinalizePage() {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="manual-phone" className="text-sm mb-1.5 block text-gray-600">Phone</Label>
-                    <Input
-                      id="manual-phone"
-                      type="tel"
-                      placeholder="(555) 555-5555"
-                      className="bg-white border-gray-300"
-                      value={manualPhone}
-                      onChange={(e) => {
-                        // Auto-format US phone: (XXX) XXX-XXXX
-                        const digits = e.target.value.replace(/\D/g, '').slice(0, 10);
-                        let formatted = '';
-                        if (digits.length > 0) formatted += '(' + digits.slice(0, 3);
-                        if (digits.length >= 3) formatted += ') ' + digits.slice(3, 6);
-                        if (digits.length >= 6) formatted += '-' + digits.slice(6, 10);
-                        setManualPhone(formatted || '');
-                      }}
-                    />
-                    {manualPhone && manualPhone.replace(/\D/g, '').length > 0 && manualPhone.replace(/\D/g, '').length < 10 && (
-                      <p className="text-xs text-red-500 mt-1">Enter a 10-digit phone number</p>
-                    )}
+                    <Label htmlFor="manual-phone" className="text-sm mb-1.5 block text-gray-400">Phone</Label>
+                    <p className="text-gray-400 text-sm">Text message delivery: Coming Soon</p>
                   </div>
                 </div>
               )}
@@ -842,21 +824,10 @@ export function ExportFinalizePage() {
                   {emailSent ? 'Email sent' : contactEmail ? `Email to ${contactEmail}` : 'Enter an email above'}
                 </Button>
 
-                <Button
-                  variant="outline"
-                  className={`w-full justify-start border-gray-300 text-[#2A2A2A] h-12 ${smsSent ? 'bg-green-50 border-green-300 text-green-700' : ''}`}
-                  disabled={!isFinalized || sendingSms || !contactPhone}
-                  onClick={handleSendSms}
-                >
-                  {sendingSms ? (
-                    <Loader2 className="w-4 h-4 mr-3 animate-spin" />
-                  ) : smsSent ? (
-                    <Check className="w-4 h-4 mr-3" />
-                  ) : (
-                    <MessageSquare className="w-4 h-4 mr-3" />
-                  )}
-                  {smsSent ? `Text sent to ${contactPhone}` : contactPhone ? `Text to ${contactPhone}` : 'Enter a phone above'}
-                </Button>
+                <div className="w-full flex items-center border border-gray-200 rounded-lg h-12 px-4">
+                  <MessageSquare className="w-4 h-4 mr-3 text-gray-300" />
+                  <span className="text-gray-400 text-sm">Text message delivery: Coming Soon</span>
+                </div>
 
                 {effectiveOpenQuote && (
                   isDemoMode() ? (
