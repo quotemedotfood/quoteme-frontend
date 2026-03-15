@@ -32,7 +32,7 @@ const STATUS_COLORS: Record<string, { bg: string; text: string; dot: string }> =
   dismissed: { bg: 'bg-gray-50', text: 'text-gray-500', dot: 'bg-gray-400' },
 };
 
-const POLL_INTERVAL = 30_000;
+const POLL_INTERVAL = 180_000; // 3 minutes
 const BANNER_STORAGE_KEY = 'qm_conference_banner_dismissed';
 
 // ─── Helpers ─────────────────────────────────────────────────────
@@ -85,8 +85,20 @@ export function QMAdminConferenceCommand() {
 
   useEffect(() => {
     loadLeads();
-    const interval = setInterval(loadLeads, POLL_INTERVAL);
-    return () => clearInterval(interval);
+    const interval = setInterval(() => {
+      if (!document.hidden) loadLeads();
+    }, POLL_INTERVAL);
+
+    // Resume polling immediately when tab becomes visible
+    const handleVisibility = () => {
+      if (!document.hidden) loadLeads();
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
   }, [loadLeads]);
 
   const filteredLeads = leads.filter((l) => {
