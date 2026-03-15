@@ -10,7 +10,6 @@ import { SettingsPage } from "./pages/SettingsPage";
 import { QuotesPage } from "./pages/QuotesPage";
 import { MapIngredientsPage } from "./pages/MapIngredientsPage";
 import { ExportFinalizePage } from "./pages/ExportFinalizePage";
-import { ComponentCorrectionPage } from "./pages/ComponentCorrectionPage";
 import { QuoteReviewPage } from "./pages/QuoteReviewPage";
 import { ErrorPage } from "./pages/ErrorPage";
 import { AuthPage } from "./pages/AuthPage";
@@ -80,7 +79,6 @@ export const router = createBrowserRouter([
           ]),
           { path: "upgrade", Component: PaywallPage },
           { path: "start-new-quote", Component: StartNewQuotePage },
-          { path: "correction", Component: ComponentCorrectionPage },
           { path: "quote-builder", Component: QuoteBuilderPage },
           { path: "review", Component: QuoteReviewPage },
           { path: "map-ingredients", Component: MapIngredientsPage },

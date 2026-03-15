@@ -671,7 +671,6 @@ export function StartNewQuotePage() {
           )}
         </div>
 
-        {/* Review happens inline above — no separate correction page needed */}
 
         {/* ── Restaurant Type + URL Row ── */}
         <div className="bg-white rounded-xl p-6 mb-6 shadow-sm border border-gray-100">
