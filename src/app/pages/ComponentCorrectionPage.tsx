@@ -5,6 +5,7 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import {
   getMenu,
+  getGuestMenu,
   updateDishComponent,
   deleteDishComponent,
   createDishComponent,
@@ -65,11 +66,12 @@ export function ComponentCorrectionPage() {
   const [newIngredient, setNewIngredient] = useState('');
   const [saving, setSaving] = useState(false);
   const [selectedDish, setSelectedDish] = useState<string | null>(null);
+  const isGuest = !localStorage.getItem('quoteme_token');
 
   const loadMenu = useCallback(async () => {
-    if (!menuId) return;
+    if (!menuId && !quoteId) return;
     setLoading(true);
-    const res = await getMenu(menuId);
+    const res = isGuest && quoteId ? await getGuestMenu(quoteId) : await getMenu(menuId);
     if (res.data) {
       setMenu(res.data);
       // Select first dish
@@ -79,13 +81,13 @@ export function ComponentCorrectionPage() {
       setError(res.error || 'Failed to load menu');
     }
     setLoading(false);
-  }, [menuId]);
+  }, [menuId, quoteId, isGuest]);
 
   useEffect(() => {
     loadMenu();
   }, [loadMenu]);
 
-  if (!menuId) {
+  if (!menuId && !quoteId) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <p className="text-gray-400">No menu data. Please start a new quote.</p>

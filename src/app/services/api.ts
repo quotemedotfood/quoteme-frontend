@@ -709,6 +709,10 @@ export async function getMenu(id: string): Promise<ApiResponse<any>> {
   return fetchWithAuth(`/api/v1/menus/${id}`);
 }
 
+export async function getGuestMenu(quoteId: string): Promise<ApiResponse<any>> {
+  return fetchWithGuest(`/api/v1/guest/quotes/${quoteId}/menu`);
+}
+
 // Dish Component CRUD (for Component Correction screen)
 export async function updateDishComponent(
   menuId: string,
