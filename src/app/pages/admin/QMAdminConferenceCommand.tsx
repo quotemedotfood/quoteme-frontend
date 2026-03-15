@@ -612,26 +612,47 @@ function CaptureLeadDrawer({
   async function startRecording() {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
+      // Pick a supported MIME type
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+        ? 'audio/webm;codecs=opus'
+        : MediaRecorder.isTypeSupported('audio/webm')
+        ? 'audio/webm'
+        : MediaRecorder.isTypeSupported('audio/mp4')
+        ? 'audio/mp4'
+        : '';
+      const options = mimeType ? { mimeType } : undefined;
+      console.log('[VoiceMemo] Starting recording, mimeType:', mimeType || 'browser default');
+      const mediaRecorder = new MediaRecorder(stream, options);
       mediaRecorderRef.current = mediaRecorder;
       chunksRef.current = [];
 
       mediaRecorder.ondataavailable = (e) => {
+        console.log('[VoiceMemo] ondataavailable, size:', e.data.size);
         if (e.data.size > 0) chunksRef.current.push(e.data);
       };
 
       mediaRecorder.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
-        const file = new File([blob], 'voice_note.webm', { type: 'audio/webm' });
+        const actualMime = mediaRecorder.mimeType || mimeType || 'audio/webm';
+        const ext = actualMime.includes('mp4') ? 'mp4' : 'webm';
+        console.log('[VoiceMemo] onstop, chunks:', chunksRef.current.length, 'mime:', actualMime);
+        const blob = new Blob(chunksRef.current, { type: actualMime });
+        console.log('[VoiceMemo] blob size:', blob.size);
+        if (blob.size === 0) {
+          console.error('[VoiceMemo] Recording produced empty blob');
+          return;
+        }
+        const file = new File([blob], `voice_note.${ext}`, { type: actualMime });
         setVoiceFile(file);
         stream.getTracks().forEach((t) => t.stop());
       };
 
-      mediaRecorder.start();
+      // Request data every second so chunks accumulate during recording
+      mediaRecorder.start(1000);
       setRecording(true);
       setRecordingTime(0);
       timerRef.current = setInterval(() => setRecordingTime((t) => t + 1), 1000);
-    } catch {
+    } catch (err) {
+      console.error('[VoiceMemo] startRecording error:', err);
       alert('Microphone access denied. Please allow microphone access to record voice notes.');
     }
   }
@@ -659,14 +680,27 @@ function CaptureLeadDrawer({
     });
     if (cardFile) formData.append('card_photo', cardFile);
     if (boothFile) formData.append('booth_photo', boothFile);
-    if (voiceFile) formData.append('voice_note', voiceFile);
-
-    const res = await createConferenceLead(formData);
-    setSubmitting(false);
-    if (res.data) {
-      onCaptured();
+    if (voiceFile) {
+      console.log('[VoiceMemo] Attaching voice file to FormData:', voiceFile.name, 'size:', voiceFile.size, 'type:', voiceFile.type);
+      formData.append('voice_note', voiceFile);
     } else {
-      alert(res.error || 'Failed to capture lead');
+      console.log('[VoiceMemo] No voice file to attach');
+    }
+
+    try {
+      const res = await createConferenceLead(formData);
+      setSubmitting(false);
+      if (res.data) {
+        console.log('[VoiceMemo] Lead created, voice_note_url:', res.data.voice_note_url);
+        onCaptured();
+      } else {
+        console.error('[VoiceMemo] Create failed:', res.error);
+        alert(res.error || 'Failed to capture lead');
+      }
+    } catch (err) {
+      console.error('[VoiceMemo] Submit error:', err);
+      setSubmitting(false);
+      alert('Failed to capture lead');
     }
   }
 
