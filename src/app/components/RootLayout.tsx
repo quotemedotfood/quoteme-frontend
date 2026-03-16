@@ -19,7 +19,7 @@ export function RootLayout() {
         {!demo && <AppSidebar />}
         <div className="flex-1 flex flex-col overflow-hidden">
           {demo && <DemoBanner />}
-          <main className="flex-1 overflow-auto pb-20 md:pb-0">
+          <main className="flex-1 overflow-auto pb-24 md:pb-0">
             <Outlet />
           </main>
         </div>

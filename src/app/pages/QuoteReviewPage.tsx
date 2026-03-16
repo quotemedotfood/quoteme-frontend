@@ -7,6 +7,7 @@ import { Label } from '../components/ui/label';
 import { getQuote, getGuestQuote, sendQuote, sendQuoteSms, downloadQuotePdf } from '../services/api';
 import type { QuoteResponse, QuoteLineResponse } from '../services/api';
 import { isDemoMode, PROD_SIGNUP_URL } from '../utils/demoMode';
+import { useUser } from '../contexts/UserContext';
 
 function toTitleCase(str: string): string {
   if (!str) return '';
@@ -45,6 +46,16 @@ export function QuoteReviewPage() {
   const [sendingText, setSendingText] = useState(false);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [sendSuccess, setSendSuccess] = useState<string | null>(null);
+
+  const { quotesRemaining } = useUser();
+
+  // Editable summary cards
+  const [editingCard, setEditingCard] = useState<string | null>(null);
+  const [editCardValue, setEditCardValue] = useState('');
+
+  // Filters
+  const [filterCategory, setFilterCategory] = useState('all');
+  const [filterQuality, setFilterQuality] = useState('all');
 
   const isGuest = !localStorage.getItem('quoteme_token');
   const demo = isDemoMode();
@@ -135,6 +146,8 @@ export function QuoteReviewPage() {
     { label: 'Line Items', value: String(totalItems) },
   ];
 
+  const categories = ['all', ...new Set(lines.map(l => l.category).filter(Boolean))];
+
   // Send handlers
   const handleSendEmail = async () => {
     if (!quoteId || !sendEmail.trim()) return;
@@ -186,6 +199,19 @@ export function QuoteReviewPage() {
     }
   };
 
+  const filteredLines = lines.filter(l => {
+    if (filterCategory !== 'all' && l.category !== filterCategory) return false;
+    if (filterQuality !== 'all') {
+      const bestCandidate = l.alignment_candidates?.find(c => c.position === 1);
+      const score = bestCandidate?.score ?? 0;
+      if (filterQuality === 'strong' && score < 0.9) return false;
+      if (filterQuality === 'good' && (score < 0.7 || score >= 0.9)) return false;
+      if (filterQuality === 'review' && (score < 0.5 || score >= 0.7)) return false;
+      if (filterQuality === 'needs' && score >= 0.5) return false;
+    }
+    return true;
+  });
+
   return (
     <div className="flex flex-col h-[calc(100vh-4rem)] overflow-hidden">
       {/* Header */}
@@ -207,19 +233,36 @@ export function QuoteReviewPage() {
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-4 md:p-6">
+      <div className="flex-1 overflow-y-auto p-4 md:p-6 pb-24">
         <div className="max-w-5xl mx-auto space-y-6">
 
           {/* Summary Cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {summaryCards.map((card) => (
-              <div
+              <button
                 key={card.label}
-                className="bg-white border border-gray-200 rounded-xl p-4"
+                className="bg-white border border-gray-200 rounded-xl p-4 text-left active:bg-gray-50 transition-colors min-h-[48px]"
+                onClick={() => {
+                  if (card.label === 'Line Items') return; // not editable
+                  setEditingCard(card.label);
+                  setEditCardValue(card.value);
+                }}
               >
                 <p className="text-xs text-gray-400 uppercase tracking-wide">{card.label}</p>
-                <p className="text-sm font-semibold text-[#2A2A2A] mt-1 truncate">{card.value}</p>
-              </div>
+                {editingCard === card.label ? (
+                  <input
+                    type="text"
+                    value={editCardValue}
+                    onChange={(e) => setEditCardValue(e.target.value)}
+                    onBlur={() => setEditingCard(null)}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === 'Escape') setEditingCard(null); }}
+                    autoFocus
+                    className="text-sm font-semibold text-[#2A2A2A] mt-1 w-full border-b border-[#A5CFDD] outline-none bg-transparent"
+                  />
+                ) : (
+                  <p className="text-sm font-semibold text-[#2A2A2A] mt-1 truncate">{card.value}</p>
+                )}
+              </button>
             ))}
           </div>
 
@@ -240,8 +283,68 @@ export function QuoteReviewPage() {
             </div>
           )}
 
-          {/* Line Items Table */}
+          {/* Filter Bar */}
+          <div className="flex flex-wrap gap-2">
+            <select
+              value={filterCategory}
+              onChange={(e) => setFilterCategory(e.target.value)}
+              className="px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white text-[#2A2A2A] min-h-[48px]"
+            >
+              {categories.map(cat => (
+                <option key={cat} value={cat}>{cat === 'all' ? 'All Categories' : toTitleCase(cat)}</option>
+              ))}
+            </select>
+            <select
+              value={filterQuality}
+              onChange={(e) => setFilterQuality(e.target.value)}
+              className="px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white text-[#2A2A2A] min-h-[48px]"
+            >
+              <option value="all">All Quality</option>
+              <option value="strong">Strong Match</option>
+              <option value="good">Good Match</option>
+              <option value="review">Review Suggested</option>
+              <option value="needs">Needs Your Pick</option>
+            </select>
+          </div>
+
+          {/* Line Items */}
           <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+            {/* Mobile cards */}
+            <div className="md:hidden space-y-3 p-4">
+              {filteredLines.map((line) => {
+                const isUnmatched = !line.product;
+                const bestCandidate = line.alignment_candidates?.find(c => c.position === 1);
+                const score = bestCandidate?.score;
+                const label = score != null ? matchLabel(score) : null;
+
+                return (
+                  <div key={line.id} className={`bg-white rounded-xl border p-4 ${isUnmatched ? 'border-amber-200 bg-amber-50/50' : 'border-gray-200'}`}>
+                    <div className="flex justify-between items-start mb-2">
+                      <p className="text-sm font-semibold text-[#2A2A2A]">{toTitleCase(line.component?.name || '--')}</p>
+                      {label && <span className={`px-2 py-0.5 rounded text-[10px] font-medium ${label.cls}`}>{label.text}</span>}
+                    </div>
+                    {isUnmatched ? (
+                      <p className="text-xs text-amber-600 flex items-center gap-1"><AlertTriangle size={12} /> No catalog match</p>
+                    ) : (
+                      <>
+                        <p className="text-sm text-[#2A2A2A]">{toTitleCase(line.product.product)}</p>
+                        <p className="text-xs text-gray-500">{toTitleCase(line.product.brand)} · {line.product.pack_size}</p>
+                      </>
+                    )}
+                    <div className="flex justify-between items-center mt-3 pt-2 border-t border-gray-100">
+                      <span className="text-xs text-gray-400">{toTitleCase(line.category || '')}</span>
+                      <span className="text-sm font-semibold text-[#2A2A2A]">
+                        {isUnmatched ? '--' : `$${((line.unit_price_cents || 0) / 100).toFixed(2)}`}
+                        <span className="text-xs text-gray-400 ml-1">×{line.quantity || 1}</span>
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Desktop table */}
+            <div className="hidden md:block">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
@@ -255,7 +358,7 @@ export function QuoteReviewPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {lines.map((line) => {
+                  {filteredLines.map((line) => {
                     const isUnmatched = !line.product;
                     const bestCandidate = line.alignment_candidates?.find(c => c.position === 1);
                     const score = bestCandidate?.score;
@@ -321,17 +424,25 @@ export function QuoteReviewPage() {
                 </tfoot>
               </table>
             </div>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Bottom Bar */}
-      <div className="bg-white border-t border-gray-200 px-6 py-4">
-        <div className="max-w-5xl mx-auto flex items-center justify-between">
+      <div className="fixed bottom-0 left-0 right-0 md:left-64 bg-white border-t border-gray-200 px-6 py-4 z-40">
+        {demo && (
+          <p className="text-center text-xs text-gray-500 mb-2 md:hidden">
+            {quotesRemaining > 0
+              ? `${quotesRemaining} free quote${quotesRemaining !== 1 ? 's' : ''} left`
+              : 'No free quotes left'}
+          </p>
+        )}
+        <div className="max-w-5xl mx-auto flex flex-col md:flex-row items-center justify-between gap-3">
           <Button
             variant="outline"
             onClick={() => navigate('/quote-builder', { state: { quoteId, isOpenQuote } })}
-            className="text-gray-600 border-gray-300 hover:bg-gray-50"
+            className="hidden md:flex text-gray-600 border-gray-300 hover:bg-gray-50"
           >
             <ArrowLeft size={16} className="mr-2" /> Back to Builder
           </Button>
@@ -339,14 +450,14 @@ export function QuoteReviewPage() {
           {demo ? (
             <a
               href={PROD_SIGNUP_URL || 'https://prod.quoteme.food/auth'}
-              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-md text-white font-medium bg-[#F9A64B] hover:bg-[#E8953A] transition-colors"
+              className="inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-md text-white font-medium bg-[#F9A64B] hover:bg-[#E8953A] transition-colors w-full md:w-auto min-h-[48px]"
             >
               <Send size={16} /> Sign up to send quotes
             </a>
           ) : (
             <Button
               onClick={() => setSendDrawerOpen(true)}
-              className="bg-[#F9A64B] hover:bg-[#E8953A] text-white px-6"
+              className="bg-[#F9A64B] hover:bg-[#E8953A] text-white px-6 w-full md:w-auto min-h-[48px]"
             >
               <Send size={16} className="mr-2" /> Send Quote
             </Button>

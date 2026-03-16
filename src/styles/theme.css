@@ -226,11 +226,51 @@
     *::-webkit-scrollbar {
       display: none;
     }
-    
+
     /* Hide scrollbar for IE, Edge and Firefox */
     * {
       -ms-overflow-style: none;  /* IE and Edge */
       scrollbar-width: none;  /* Firefox */
+    }
+
+    /* Allow screenshots & text selection */
+    body {
+      user-select: auto;
+      -webkit-touch-callout: default;
+    }
+
+    /* Minimum font sizes */
+    body,
+    p,
+    span,
+    div,
+    a,
+    li,
+    td,
+    th {
+      font-size: max(14px, inherit);
+    }
+
+    label,
+    .text-xs {
+      font-size: max(12px, inherit);
+    }
+
+    /* 48px minimum touch targets */
+    button,
+    a,
+    [role="button"],
+    input[type="checkbox"],
+    input[type="radio"],
+    select {
+      min-height: 48px;
+      min-width: 48px;
+    }
+
+    /* 16px screen-edge padding */
+    main > * {
+      padding-left: max(16px, var(--tw-px, 0px));
+      padding-right: max(16px, var(--tw-px, 0px));
     }
   }
 }

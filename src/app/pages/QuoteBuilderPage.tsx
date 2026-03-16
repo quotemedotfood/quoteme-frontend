@@ -3,6 +3,8 @@ import { Input } from '../components/ui/input';
 import { ArrowLeft, Save, Filter, Plus, Minus, Edit, ChevronUp, ChevronDown, ArrowUpDown, ArrowUp, ArrowDown, Loader2, X, Trash2 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router';
 import { useState, useEffect } from 'react';
+import { useUser } from '../contexts/UserContext';
+import { isDemoMode } from '../utils/demoMode';
 import { getQuote, getGuestQuote, updateQuote, updateGuestQuote, addGuestQuoteLine, removeGuestQuoteLine, createStockQuote } from '../services/api';
 import { CatalogProductSearch } from '../components/CatalogProductSearch';
 import type { CatalogSearchProduct } from '../services/api';
@@ -47,6 +49,8 @@ function toTitleCase(str: string): string {
 export function QuoteBuilderPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { quotesRemaining } = useUser();
+  const demo = isDemoMode();
   const quoteId: string | undefined = (location.state as any)?.quoteId;
   const isOpenQuote: boolean = (location.state as any)?.isOpenQuote || false;
 
@@ -304,7 +308,7 @@ export function QuoteBuilderPage() {
   }
 
   return (
-    <div className="p-4 md:p-8 bg-[#FFF9F3] min-h-screen">
+    <div className="p-4 md:p-8 pb-24 bg-[#FFF9F3] min-h-screen">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
@@ -342,7 +346,7 @@ export function QuoteBuilderPage() {
             )}
             <Button
               onClick={() => navigate('/review', { state: { quoteId, isOpenQuote } })}
-              className="bg-[#A5CFDD] hover:bg-[#8db9c9] text-[#2A2A2A]"
+              className="hidden md:flex bg-[#F9A64B] hover:bg-[#E8953A] text-white"
             >
               Finish quote
             </Button>
@@ -447,118 +451,126 @@ export function QuoteBuilderPage() {
           </div>
 
           {/* Mobile Card View */}
-          <div className="md:hidden">
+          <div className="md:hidden px-4 py-3">
             {sortedItems.map((item) => (
               <div
                 key={item.id}
                 onClick={() => setSelectedItem(item)}
-                className={`p-4 border-b border-gray-200 last:border-b-0 cursor-pointer transition-colors ${
-                  selectedItem?.id === item.id ? 'bg-[#A5CFDD]/10' : 'hover:bg-gray-50'
+                className={`bg-white rounded-xl border border-gray-200 shadow-sm p-4 mb-3 cursor-pointer transition-colors ${
+                  selectedItem?.id === item.id ? 'border-[#A5CFDD] bg-[#A5CFDD]/5' : ''
                 }`}
               >
-                <div className="flex justify-between items-start mb-2">
-                  <div>
-                    <h3 className="text-sm font-medium text-[#2A2A2A]">{toTitleCase(item.component)}</h3>
-                    <p className={`text-sm ${item.unmatched ? 'text-red-400 italic' : 'text-gray-500'}`}>{item.unmatched ? 'No catalog match' : `${toTitleCase(item.brand)} ${toTitleCase(item.product)}`}</p>
-                  </div>
-                  <div className="text-right">
-                    {editMode ? (
-                      <div className="flex flex-col items-end gap-2">
-                         <div className="flex items-center gap-1">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                adjustPrice(item.id, -1);
-                              }}
-                              className="text-gray-400 hover:text-gray-600 p-1"
-                            >
-                              <Minus className="w-4 h-4" />
-                            </button>
-                            <input
-                              type="text"
-                              inputMode="decimal"
-                              value={`$${item.currentPrice.toFixed(2)}`}
-                              onClick={(e) => e.stopPropagation()}
-                              onFocus={(e) => { e.target.value = item.currentPrice.toFixed(2); e.target.select(); }}
-                              onBlur={(e) => {
-                                const val = parseFloat(e.target.value.replace(/[^0-9.]/g, ''));
-                                if (!isNaN(val)) {
-                                  setItems((prevItems) =>
-                                    prevItems.map((i) => {
-                                      if (i.id === item.id) {
-                                        const newPrice = Math.max(0, Math.round(val * 100) / 100);
-                                        const percentChange = ((newPrice - i.basePrice) / i.basePrice) * 100;
-                                        return { ...i, currentPrice: newPrice, percentChange };
-                                      }
-                                      return i;
-                                    })
-                                  );
-                                } else {
-                                  e.target.value = `$${item.currentPrice.toFixed(2)}`;
-                                }
-                              }}
-                              className="w-20 text-center border border-gray-300 rounded px-1 py-1 text-sm text-[#2A2A2A] focus:outline-none focus:border-[#A5CFDD]"
-                            />
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                adjustPrice(item.id, 1);
-                              }}
-                              className="text-gray-400 hover:text-gray-600 p-1"
-                            >
-                              <Plus className="w-4 h-4" />
-                            </button>
-                         </div>
-                         <div className="flex items-center gap-1">
-                             <button
-                               onClick={(e) => {
-                                 e.stopPropagation();
-                                 adjustPercentage(item.id, 1);
-                               }}
-                               className="text-gray-400 hover:text-gray-600"
-                             >
-                               <ChevronUp className="w-3 h-3" />
-                             </button>
-                             <button
-                               onClick={(e) => {
-                                 e.stopPropagation();
-                                 adjustPercentage(item.id, -1);
-                               }}
-                               className="text-gray-400 hover:text-gray-600"
-                             >
-                               <ChevronDown className="w-3 h-3" />
-                             </button>
-                            <span className={`text-xs ${
-                              item.percentChange > 0 ? 'text-green-600' :
-                              item.percentChange < 0 ? 'text-red-600' :
-                              'text-gray-500'
-                            }`}>
-                              {item.percentChange > 0 ? '+' : ''}{item.percentChange.toFixed(1)}%
-                            </span>
-                         </div>
-                      </div>
-                    ) : (
-                      <span className="font-medium text-[#2A2A2A]">${item.currentPrice.toFixed(2)}</span>
-                    )}
-                  </div>
-                </div>
+                {/* Header: Ingredient name */}
+                <h3 className="text-base font-semibold text-[#2A2A2A] mb-1">{toTitleCase(item.component)}</h3>
+                {/* Body: Product + brand */}
+                <p className={`text-sm mb-1 ${item.unmatched ? 'text-red-400 italic' : 'text-gray-500'}`}>
+                  {item.unmatched ? 'No catalog match' : `${toTitleCase(item.brand)} - ${toTitleCase(item.product)}`}
+                </p>
 
-                <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-gray-600 mt-2">
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-gray-600 mt-2 mb-3">
                    <div><span className="text-gray-400">Item #:</span> {item.sku}</div>
                    <div><span className="text-gray-400">Category:</span> {toTitleCase(item.category)}</div>
                    <div><span className="text-gray-400">Pack:</span> {item.pack}</div>
                    <div><span className="text-gray-400">Dish:</span> {item.dish}</div>
                 </div>
+
+                {/* Price controls at bottom */}
+                {editMode ? (
+                  <div className="flex gap-3 items-center mt-2">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            adjustPrice(item.id, -1);
+                          }}
+                          className="text-gray-400 hover:text-gray-600 min-h-[48px] min-w-[48px] flex items-center justify-center rounded-lg border border-gray-200"
+                        >
+                          <Minus className="w-5 h-5" />
+                        </button>
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          value={`$${item.currentPrice.toFixed(2)}`}
+                          onClick={(e) => e.stopPropagation()}
+                          onFocus={(e) => { e.target.value = item.currentPrice.toFixed(2); e.target.select(); }}
+                          onBlur={(e) => {
+                            const val = parseFloat(e.target.value.replace(/[^0-9.]/g, ''));
+                            if (!isNaN(val)) {
+                              setItems((prevItems) =>
+                                prevItems.map((i) => {
+                                  if (i.id === item.id) {
+                                    const newPrice = Math.max(0, Math.round(val * 100) / 100);
+                                    const percentChange = ((newPrice - i.basePrice) / i.basePrice) * 100;
+                                    return { ...i, currentPrice: newPrice, percentChange };
+                                  }
+                                  return i;
+                                })
+                              );
+                            } else {
+                              e.target.value = `$${item.currentPrice.toFixed(2)}`;
+                            }
+                          }}
+                          className="flex-1 text-center border border-gray-300 rounded-lg px-2 py-2 text-sm text-[#2A2A2A] min-h-[48px] focus:outline-none focus:border-[#A5CFDD]"
+                        />
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            adjustPrice(item.id, 1);
+                          }}
+                          className="text-gray-400 hover:text-gray-600 min-h-[48px] min-w-[48px] flex items-center justify-center rounded-lg border border-gray-200"
+                        >
+                          <Plus className="w-5 h-5" />
+                        </button>
+                      </div>
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            adjustPercentage(item.id, -1);
+                          }}
+                          className="text-gray-400 hover:text-gray-600 min-h-[48px] min-w-[48px] flex items-center justify-center rounded-lg border border-gray-200"
+                        >
+                          <ChevronDown className="w-5 h-5" />
+                        </button>
+                        <span className={`flex-1 text-center text-sm min-h-[48px] flex items-center justify-center border border-gray-200 rounded-lg ${
+                          item.percentChange > 0 ? 'text-green-600' :
+                          item.percentChange < 0 ? 'text-red-600' :
+                          'text-gray-500'
+                        }`}>
+                          {item.percentChange > 0 ? '+' : ''}{item.percentChange.toFixed(1)}%
+                        </span>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            adjustPercentage(item.id, 1);
+                          }}
+                          className="text-gray-400 hover:text-gray-600 min-h-[48px] min-w-[48px] flex items-center justify-center rounded-lg border border-gray-200"
+                        >
+                          <ChevronUp className="w-5 h-5" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex justify-between items-center mt-2 pt-2 border-t border-gray-100">
+                    <span className="text-xs text-gray-400">Price</span>
+                    <span className="font-semibold text-[#2A2A2A] text-base">${item.currentPrice.toFixed(2)}</span>
+                  </div>
+                )}
+
                 {editMode && (
-                  <div className="mt-2 flex justify-end">
+                  <div className="mt-3 flex justify-end">
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
                         handleRemoveItem(item.id);
                       }}
-                      className="text-gray-400 hover:text-red-500 text-xs flex items-center gap-1"
+                      className="text-gray-400 hover:text-red-500 text-xs flex items-center gap-1 min-h-[48px] px-3"
                     >
-                      <Trash2 className="w-3 h-3" /> Remove
+                      <Trash2 className="w-4 h-4" /> Remove
                     </button>
                   </div>
                 )}
@@ -719,6 +731,23 @@ export function QuoteBuilderPage() {
         </div>
 
 
+      </div>
+
+      {/* Sticky bottom CTA */}
+      <div className="fixed bottom-0 left-0 right-0 md:left-64 bg-white border-t border-gray-200 p-4 z-40">
+        {demo && (
+          <p className="text-center text-xs text-gray-500 mb-2 md:hidden">
+            {quotesRemaining > 0
+              ? `${quotesRemaining} free quote${quotesRemaining !== 1 ? 's' : ''} left`
+              : 'No free quotes left'}
+          </p>
+        )}
+        <button
+          onClick={() => navigate('/review', { state: { quoteId, isOpenQuote } })}
+          className="w-full md:w-auto md:min-w-[200px] md:mx-auto md:block bg-[#F9A64B] hover:bg-[#E8953A] text-white font-medium py-3 px-6 rounded-lg text-base min-h-[48px]"
+        >
+          Finish Quote
+        </button>
       </div>
 
       {/* Add Product Drawer */}

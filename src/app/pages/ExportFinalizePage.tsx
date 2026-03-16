@@ -58,6 +58,7 @@ export function ExportFinalizePage() {
   const [isFinalized, setIsFinalized] = useState(false);
   const [showSuccessDrawer, setShowSuccessDrawer] = useState(false);
   const [showEditDrawer, setShowEditDrawer] = useState(false);
+  const [showEmailDrawer, setShowEmailDrawer] = useState(false);
   const [rating, setRating] = useState<'up' | 'down' | null>(null);
   const [feedback, setFeedback] = useState('');
   const [hasInteracted, setHasInteracted] = useState(false);
@@ -315,7 +316,7 @@ export function ExportFinalizePage() {
   const currentContacts = contacts.filter(c => selectedContactIds.includes(c.id));
 
   return (
-    <div className="p-4 md:p-8 bg-[#FFF9F3] min-h-screen">
+    <div className="p-4 md:p-8 bg-[#FFF9F3] min-h-screen pb-24">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
@@ -331,7 +332,7 @@ export function ExportFinalizePage() {
               <p className="text-sm text-gray-500">Step 4 of 4</p>
             </div>
           </div>
-          <div className="flex gap-2">
+          <div className="hidden md:flex gap-2">
             <Button
               variant="outline"
               className="text-[#2A2A2A] border-gray-300"
@@ -561,6 +562,30 @@ export function ExportFinalizePage() {
                 </button>
               </div>
               <p className="text-gray-500 text-sm mb-4">Click to preview the exact PDF that will be exported</p>
+
+              {/* Mobile quote preview - card based */}
+              <div className="md:hidden space-y-3 mb-4">
+                {quoteData && deduplicatedLines(quoteData.lines || []).map((line) => (
+                  <div key={line.id} className="bg-gray-50 rounded-lg p-3 border border-gray-100">
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-[#2A2A2A] truncate">
+                          {toTitleCase(line.product?.product || line.component?.name || 'Unknown')}
+                        </p>
+                        <p className="text-xs text-gray-500 truncate">
+                          {toTitleCase(line.product?.brand || '')} {line.product?.pack_size ? `· ${line.product.pack_size}` : ''}
+                        </p>
+                        <p className="text-xs text-gray-400">{toTitleCase(line.category || '')}</p>
+                      </div>
+                      <div className="text-right ml-3 shrink-0">
+                        <p className="text-sm font-semibold text-[#2A2A2A]">{line.unit_price || '—'}</p>
+                        <p className="text-xs text-gray-400">×{line.quantity}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {!quoteData && <p className="text-sm text-gray-400 text-center py-4">Loading...</p>}
+              </div>
 
               <button
                 onClick={handleOpenPdfPreview}
@@ -810,24 +835,22 @@ export function ExportFinalizePage() {
               <div className="space-y-3">
                 <Button
                   variant="outline"
-                  className={`w-full justify-start border-gray-300 text-[#2A2A2A] h-12 ${emailSent ? 'bg-green-50 border-green-300 text-green-700' : ''}`}
-                  disabled={!isFinalized || sendingEmail || !contactEmail}
-                  onClick={handleSendEmail}
+                  className="w-full justify-start border-[#A5CFDD] text-[#A5CFDD] h-12"
+                  disabled={!isFinalized}
+                  onClick={() => setShowEmailDrawer(true)}
                 >
-                  {sendingEmail ? (
-                    <Loader2 className="w-4 h-4 mr-3 animate-spin" />
-                  ) : emailSent ? (
-                    <Check className="w-4 h-4 mr-3" />
-                  ) : (
-                    <Mail className="w-4 h-4 mr-3" />
-                  )}
-                  {emailSent ? 'Email sent' : contactEmail ? `Email to ${contactEmail}` : 'Enter an email above'}
+                  <Mail className="w-4 h-4 mr-3" />
+                  Email Quote to Chef
                 </Button>
 
-                <div className="w-full flex items-center border border-gray-200 rounded-lg h-12 px-4">
-                  <MessageSquare className="w-4 h-4 mr-3 text-gray-300" />
-                  <span className="text-gray-400 text-sm">Text message delivery: Coming Soon</span>
-                </div>
+                <Button
+                  variant="outline"
+                  className="w-full justify-start border-gray-300 text-gray-400 h-12 cursor-not-allowed"
+                  disabled
+                >
+                  <MessageSquare className="w-4 h-4 mr-3" />
+                  Text Quote to Chef — Coming Soon
+                </Button>
 
                 {effectiveOpenQuote && (
                   isDemoMode() ? (
@@ -854,19 +877,27 @@ export function ExportFinalizePage() {
         </div>
       </div>
 
-      {/* Demo Mode Sign-up CTA */}
+      {/* Demo Mode: Sticky floating sign-up button */}
       {isDemoMode() && (
-        <div className="mt-8 bg-gradient-to-r from-[#F2993D] to-[#E08A2E] rounded-xl p-6 text-center text-white">
-          <h3 className="text-lg font-semibold mb-2">Want to save this quote?</h3>
-          <p className="text-sm opacity-90 mb-4">
-            Sign up for a free account to save quotes, manage customers, and access your full catalog.
-          </p>
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 z-40">
           <a
             href={PROD_SIGNUP_URL}
-            className="inline-block bg-white text-[#F2993D] font-medium px-6 py-2.5 rounded-lg hover:bg-gray-50 transition-colors"
+            className="block w-full md:w-auto md:min-w-[300px] md:mx-auto text-center bg-[#F9A64B] hover:bg-[#E8953A] text-white font-medium py-3 px-6 rounded-lg text-base min-h-[48px] leading-[48px]"
           >
-            Sign up &rarr;
+            Sign up to send quote
           </a>
+        </div>
+      )}
+
+      {/* Authenticated mode: Sticky floating Send Quote button */}
+      {!isDemoMode() && (
+        <div className="fixed bottom-0 left-0 right-0 md:left-64 bg-white border-t border-gray-200 p-4 z-40">
+          <button
+            onClick={handleDone}
+            className="w-full md:w-auto md:min-w-[200px] md:mx-auto md:block bg-[#F9A64B] hover:bg-[#E8953A] text-white font-medium py-3 px-6 rounded-lg text-base min-h-[48px]"
+          >
+            Send Quote
+          </button>
         </div>
       )}
 
@@ -984,6 +1015,62 @@ export function ExportFinalizePage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Email Quote Drawer */}
+      <Drawer open={showEmailDrawer} onOpenChange={setShowEmailDrawer} direction="right">
+        <DrawerContent className="w-full sm:w-[500px]">
+          <div className="w-full h-full flex flex-col">
+            <DrawerHeader className="border-b border-gray-200">
+              <DrawerTitle>Email Quote to Chef</DrawerTitle>
+              <DrawerDescription>Send the quote PDF via email</DrawerDescription>
+            </DrawerHeader>
+            <div className="flex-1 p-6 space-y-4">
+              <div>
+                <Label className="text-sm font-medium text-gray-700 mb-1.5 block">To</Label>
+                <Input
+                  type="email"
+                  placeholder="chef@restaurant.com"
+                  value={effectiveOpenQuote ? manualEmail : (contactEmail || '')}
+                  onChange={(e) => effectiveOpenQuote && setManualEmail(e.target.value)}
+                  readOnly={!effectiveOpenQuote}
+                  className="border-gray-300"
+                />
+              </div>
+              <div>
+                <Label className="text-sm font-medium text-gray-700 mb-1.5 block">Subject</Label>
+                <Input
+                  type="text"
+                  value={`Your quote from ${quoteData?.rep || 'us'}`}
+                  readOnly
+                  className="border-gray-300 bg-gray-50"
+                />
+              </div>
+              <div>
+                <Label className="text-sm font-medium text-gray-700 mb-1.5 block">Note (optional)</Label>
+                <Textarea
+                  placeholder="Add a personal note..."
+                  className="border-gray-300 min-h-[100px]"
+                />
+              </div>
+              {sendError && (
+                <div className="text-sm text-red-500 bg-red-50 border border-red-200 rounded-md p-3">
+                  {sendError}
+                </div>
+              )}
+            </div>
+            <DrawerFooter className="border-t border-gray-200">
+              <Button
+                onClick={() => { handleSendEmail(); setShowEmailDrawer(false); }}
+                disabled={sendingEmail || (!contactEmail && !manualEmail)}
+                className="w-full bg-[#A5CFDD] hover:bg-[#8db9c9] text-white min-h-[48px]"
+              >
+                {sendingEmail ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Mail className="w-4 h-4 mr-2" />}
+                {emailSent ? 'Email Sent!' : 'Send Email'}
+              </Button>
+            </DrawerFooter>
+          </div>
+        </DrawerContent>
+      </Drawer>
 
       {/* Edit Quote Details Drawer */}
       <Drawer open={showEditDrawer} onOpenChange={setShowEditDrawer} direction="right">

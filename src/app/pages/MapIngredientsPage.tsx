@@ -5,6 +5,8 @@ import { Input } from '../components/ui/input';
 import { ArrowLeft, ChevronRight, ChevronDown, Plus, X, ThumbsUp, ThumbsDown, Loader2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router';
+import { useUser } from '../contexts/UserContext';
+import { isDemoMode } from '../utils/demoMode';
 import { MapComponentDrawer } from '../components/MapComponentDrawer';
 import {
   createMenu,
@@ -88,6 +90,8 @@ interface Dish {
 export function MapIngredientsPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { quotesRemaining } = useUser();
+  const demo = isDemoMode();
 
   // Router state passed from StartNewQuotePage
   const routerMenuId: string | undefined = (location.state as any)?.menuId;
@@ -464,9 +468,9 @@ export function MapIngredientsPage() {
             {alternates.length > 0 && (
               <button
                 onClick={(e) => { e.stopPropagation(); setExpandedAlternates(prev => { const next = new Set(prev); next.has(component) ? next.delete(component) : next.add(component); return next; }); }}
-                className="text-xs text-[#A5CFDD] hover:text-[#7FAEC2] ml-2"
+                className="text-xs text-[#A5CFDD] hover:text-[#7FAEC2] ml-2 min-h-[48px] min-w-[48px] md:min-h-0 md:min-w-0 flex items-center justify-center"
               >
-                Options {expandedAlternates.has(component) ? '\u25B2' : '\u25BC'}
+                <span className="hidden md:inline">Options </span>{expandedAlternates.has(component) ? '\u25B2' : '\u25BC'}
               </button>
             )}
           </div>
@@ -580,7 +584,7 @@ export function MapIngredientsPage() {
             </div>
             <Button
               onClick={() => navigate('/quote-builder', { state: { quoteId, isOpenQuote } })}
-              className="bg-[#7FAEC2] hover:bg-[#6A9AB0] text-white"
+              className="hidden md:flex bg-[#F9A64B] hover:bg-[#E8953A] text-white"
             >
               Adjust pricing
             </Button>
@@ -819,6 +823,23 @@ export function MapIngredientsPage() {
           </div>
         </div>
       )}
+
+      {/* Sticky bottom CTA - mobile and desktop */}
+      <div className="fixed bottom-0 left-0 right-0 md:left-64 bg-white border-t border-gray-200 p-4 z-40">
+        {demo && (
+          <p className="text-center text-xs text-gray-500 mb-2 md:hidden">
+            {quotesRemaining > 0
+              ? `${quotesRemaining} free quote${quotesRemaining !== 1 ? 's' : ''} left`
+              : 'No free quotes left'}
+          </p>
+        )}
+        <button
+          onClick={() => navigate('/quote-builder', { state: { quoteId, isOpenQuote } })}
+          className="w-full md:w-auto md:min-w-[200px] md:mx-auto md:block bg-[#F9A64B] hover:bg-[#E8953A] text-white font-medium py-3 px-6 rounded-lg text-base min-h-[48px]"
+        >
+          Adjust Pricing
+        </button>
+      </div>
 
       {/* Feedback Drawer */}
       {isFeedbackDrawerOpen && (
