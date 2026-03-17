@@ -826,8 +826,15 @@ export function ExportFinalizePage() {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="manual-phone" className="text-sm mb-1.5 block text-gray-400">Phone</Label>
-                    <p className="text-gray-400 text-sm">Text message delivery: Coming Soon</p>
+                    <Label htmlFor="manual-phone" className="text-sm mb-1.5 block text-gray-600">Phone</Label>
+                    <Input
+                      id="manual-phone"
+                      type="tel"
+                      placeholder="+1 (555) 000-0000"
+                      className="bg-white border-gray-300"
+                      value={manualPhone}
+                      onChange={(e) => setManualPhone(e.target.value)}
+                    />
                   </div>
                 </div>
               )}
@@ -845,11 +852,12 @@ export function ExportFinalizePage() {
 
                 <Button
                   variant="outline"
-                  className="w-full justify-start border-gray-300 text-gray-400 h-12 cursor-not-allowed"
-                  disabled
+                  className="w-full justify-start border-[#A5CFDD] text-[#A5CFDD] h-12"
+                  disabled={!isFinalized || sendingSms}
+                  onClick={handleSendSms}
                 >
                   <MessageSquare className="w-4 h-4 mr-3" />
-                  Text Quote to Chef — Coming Soon
+                  {sendingSms ? 'Sending...' : smsSent ? 'Text Sent!' : 'Text Quote to Chef'}
                 </Button>
 
                 {effectiveOpenQuote && (
