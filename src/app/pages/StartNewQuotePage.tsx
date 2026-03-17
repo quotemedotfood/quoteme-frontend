@@ -118,6 +118,7 @@ export function StartNewQuotePage() {
   const [catalogLoading, setCatalogLoading] = useState(false);
   const [catalogUploading, setCatalogUploading] = useState(false);
   const [catalogUploadResult, setCatalogUploadResult] = useState<{ message: string; isError: boolean } | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [isDraggingCatalog, setIsDraggingCatalog] = useState(false);
   const catalogFileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -404,17 +405,18 @@ export function StartNewQuotePage() {
   // Quote creation
   const handleContinueToQuoteBuilder = async () => {
     const menuText = parsedDishes.length > 0 ? reconstructText(parsedDishes) : (pasteText || menuPreviewText);
-    if (!menuText) { alert('Please paste or parse menu text before continuing.'); return; }
+    if (!menuText) { setError('Please paste or parse menu text before continuing.'); return; }
     if (!hasQuotesRemaining()) { setIsUpgradeDrawerOpen(true); return; }
 
     setIsCreatingQuote(true);
     setServiceBusy(false);
     setLastAction('match');
+    setError(null);
     try {
       if (profile.isGuest || localStorage.getItem('quoteme_token') === null) {
         if (!localStorage.getItem('quoteme_guest_token')) await initGuestSession();
         if (!localStorage.getItem('quoteme_guest_token')) {
-          alert('Failed to start guest session. Please try again.');
+          setError('Failed to start guest session. Please try again.');
           setIsCreatingQuote(false);
           return;
         }
@@ -425,7 +427,7 @@ export function StartNewQuotePage() {
           localStorage.removeItem('quoteme_guest_token');
           await initGuestSession();
           if (!localStorage.getItem('quoteme_guest_token')) {
-            alert('Failed to start guest session. Please try again.');
+            setError('Failed to start guest session. Please try again.');
             setIsCreatingQuote(false);
             return;
           }
@@ -433,7 +435,7 @@ export function StartNewQuotePage() {
         }
         if (response.error) {
           if (isServiceBusyError(response.error)) { setServiceBusy(true); return; }
-          alert(`Failed to create quote: ${response.error}`);
+          setError(`Failed to create quote: ${response.error}`);
           return;
         }
         if (response.data) {
@@ -446,7 +448,7 @@ export function StartNewQuotePage() {
         const response = await createMenu({ raw_text: menuText, name: selectedRestaurant?.name || 'New Quote' });
         if (response.error) {
           if (isServiceBusyError(response.error)) { setServiceBusy(true); return; }
-          alert(`Failed to create quote: ${response.error}`);
+          setError(`Failed to create quote: ${response.error}`);
           return;
         }
         if (response.data) {
@@ -457,7 +459,7 @@ export function StartNewQuotePage() {
         }
       }
     } catch (error) {
-      alert('Failed to create quote. Please try again.');
+      setError('Failed to create quote. Please try again.');
     } finally {
       setIsCreatingQuote(false);
     }
@@ -465,17 +467,18 @@ export function StartNewQuotePage() {
 
   const handleSkipToExport = async () => {
     const menuText = parsedDishes.length > 0 ? reconstructText(parsedDishes) : (pasteText || menuPreviewText);
-    if (!menuText) { alert('Please paste or parse menu text before skipping.'); return; }
+    if (!menuText) { setError('Please paste or parse menu text before skipping.'); return; }
     if (!hasQuotesRemaining()) { setIsUpgradeDrawerOpen(true); return; }
 
     setIsCreatingQuote(true);
     setServiceBusy(false);
     setLastAction('skip');
+    setError(null);
     try {
       if (profile.isGuest || localStorage.getItem('quoteme_token') === null) {
         if (!localStorage.getItem('quoteme_guest_token')) await initGuestSession();
         if (!localStorage.getItem('quoteme_guest_token')) {
-          alert('Failed to start guest session. Please try again.');
+          setError('Failed to start guest session. Please try again.');
           setIsCreatingQuote(false);
           return;
         }
@@ -485,7 +488,7 @@ export function StartNewQuotePage() {
           localStorage.removeItem('quoteme_guest_token');
           await initGuestSession();
           if (!localStorage.getItem('quoteme_guest_token')) {
-            alert('Failed to start guest session. Please try again.');
+            setError('Failed to start guest session. Please try again.');
             setIsCreatingQuote(false);
             return;
           }
@@ -493,7 +496,7 @@ export function StartNewQuotePage() {
         }
         if (response.error) {
           if (isServiceBusyError(response.error)) { setServiceBusy(true); return; }
-          alert(`Failed to create quote: ${response.error}`);
+          setError(`Failed to create quote: ${response.error}`);
           return;
         }
         if (response.data) {
@@ -504,7 +507,7 @@ export function StartNewQuotePage() {
         const response = await createMenu({ raw_text: menuText, name: selectedRestaurant?.name || 'New Quote' });
         if (response.error) {
           if (isServiceBusyError(response.error)) { setServiceBusy(true); return; }
-          alert(`Failed to create quote: ${response.error}`);
+          setError(`Failed to create quote: ${response.error}`);
           return;
         }
         if (response.data) {
@@ -513,7 +516,7 @@ export function StartNewQuotePage() {
         }
       }
     } catch (error) {
-      alert('Failed to create quote. Please try again.');
+      setError('Failed to create quote. Please try again.');
     } finally {
       setIsCreatingQuote(false);
     }
@@ -575,6 +578,15 @@ export function StartNewQuotePage() {
   return (
     <div className="p-4 md:p-8">
       <div className="max-w-5xl mx-auto">
+
+        {error && (
+          <div className="mx-0 mt-0 mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600 flex items-center justify-between">
+            <span>{error}</span>
+            <button onClick={() => setError(null)} className="text-red-400 hover:text-red-600 ml-2">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
 
         {/* ── Header ── */}
         <div className="mb-8">

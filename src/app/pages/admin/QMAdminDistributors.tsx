@@ -96,7 +96,7 @@ export function QMAdminDistributors() {
       setNewRegion('');
       loadDistributors();
     } else {
-      alert(res.error || 'Failed to create');
+      setError(res.error || 'Failed to create distributor');
     }
   }
 

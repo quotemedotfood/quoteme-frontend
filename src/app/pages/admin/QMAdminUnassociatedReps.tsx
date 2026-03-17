@@ -112,7 +112,7 @@ export function QMAdminUnassociatedReps() {
       setDistQuery('');
       loadUsers();
     } else {
-      alert(res.error || 'Failed to assign');
+      setError(res.error || 'Failed to assign distributor');
     }
   }
 

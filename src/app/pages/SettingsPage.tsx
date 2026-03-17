@@ -1,6 +1,6 @@
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
-import { Upload, Edit, Camera } from 'lucide-react';
+import { Upload, Edit, Camera, X } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { useUser } from '../contexts/UserContext';
@@ -45,6 +45,8 @@ export function SettingsPage() {
   const [billingData, setBillingData] = useState<any>(null);
   const [billingLoading, setBillingLoading] = useState(false);
   const [billingActionLoading, setBillingActionLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   // Track unsaved changes for guest warning
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
@@ -130,6 +132,7 @@ export function SettingsPage() {
       return;
     }
     setIsSaving(true);
+    setError(null);
     const nameParts = fullName.trim().split(/\s+/);
     const firstName = nameParts[0] || '';
     const lastName = nameParts.slice(1).join(' ') || '';
@@ -150,7 +153,7 @@ export function SettingsPage() {
       });
       setIsEditingAccount(false);
     } else {
-      alert(response.error || 'Failed to save profile');
+      setError(response.error || 'Failed to save profile');
     }
     setIsSaving(false);
   };
@@ -188,7 +191,7 @@ export function SettingsPage() {
       });
       setIsEditingDistributor(false);
     } else {
-      alert(response.error || 'Failed to save distributor settings');
+      setError(response.error || 'Failed to save distributor settings');
     }
   };
 
@@ -247,7 +250,7 @@ export function SettingsPage() {
     if (res.data?.portal_url) {
       window.location.href = res.data.portal_url;
     } else {
-      alert(res.error || 'Failed to open billing portal');
+      setError(res.error || 'Failed to open billing portal');
     }
   };
 
@@ -266,6 +269,22 @@ export function SettingsPage() {
   return (
     <div className="p-4 md:p-8 bg-[#FFF9F3] min-h-screen">
       <div className="max-w-4xl mx-auto space-y-8">
+        {error && (
+          <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600 flex items-center justify-between">
+            <span>{error}</span>
+            <button onClick={() => setError(null)} className="text-red-400 hover:text-red-600 ml-2">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+        {successMessage && (
+          <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-600 flex items-center justify-between">
+            <span>{successMessage}</span>
+            <button onClick={() => setSuccessMessage(null)} className="text-green-400 hover:text-green-600 ml-2">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
         {/* Account Info Section */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <div className="flex justify-between items-center mb-1">
@@ -385,11 +404,13 @@ export function SettingsPage() {
                     variant="outline"
                     onClick={async () => {
                       if (!email) return;
+                      setError(null);
+                      setSuccessMessage(null);
                       const res = await sendPasswordReset(email);
                       if (res.data) {
-                        alert('Password reset email sent. Check your inbox.');
+                        setSuccessMessage('Password reset email sent. Check your inbox.');
                       } else {
-                        alert(res.error || 'Failed to send reset email');
+                        setError(res.error || 'Failed to send reset email');
                       }
                     }}
                   >

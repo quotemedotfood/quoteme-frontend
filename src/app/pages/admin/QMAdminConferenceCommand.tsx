@@ -68,6 +68,7 @@ export function QMAdminConferenceCommand() {
   const [bannerDismissed, setBannerDismissed] = useState(
     () => localStorage.getItem(BANNER_STORAGE_KEY) === 'true'
   );
+  const [error, setError] = useState<string | null>(null);
 
   // Load leads + polling
   const loadLeads = useCallback(async () => {
@@ -135,7 +136,7 @@ export function QMAdminConferenceCommand() {
     if (res.data) {
       loadLeads();
     } else {
-      alert(res.error || 'Conversion failed');
+      setError(res.error || 'Conversion failed');
     }
   }
 
@@ -161,6 +162,14 @@ export function QMAdminConferenceCommand() {
 
   return (
     <div className="flex flex-col h-full min-h-0">
+      {error && (
+        <div className="mx-4 mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600 flex items-center justify-between">
+          <span>{error}</span>
+          <button onClick={() => setError(null)} className="text-red-400 hover:text-red-600 ml-2">
+            <X size={14} />
+          </button>
+        </div>
+      )}
       {/* Conference Banner */}
       {!bannerDismissed && (
         <div className="bg-gradient-to-r from-[#1e3a5f] to-[#2d5a8e] text-white px-4 md:px-6 py-3 flex items-center justify-between">
@@ -693,6 +702,7 @@ function CaptureLeadDrawer({
   const [voiceFile, setVoiceFile] = useState<File | null>(null);
   const [ocrLoading, setOcrLoading] = useState(false);
   const [ocrDone, setOcrDone] = useState(false);
+  const [captureError, setCaptureError] = useState<string | null>(null);
 
   // Voice recording
   const [recording, setRecording] = useState(false);
@@ -778,7 +788,7 @@ function CaptureLeadDrawer({
       timerRef.current = setInterval(() => setRecordingTime((t) => t + 1), 1000);
     } catch (err) {
       console.error('[VoiceMemo] startRecording error:', err);
-      alert('Microphone access denied. Please allow microphone access to record voice notes.');
+      setCaptureError('Microphone access denied. Please allow microphone access to record voice notes.');
     }
   }
 
@@ -799,6 +809,7 @@ function CaptureLeadDrawer({
 
   async function handleSubmit() {
     setSubmitting(true);
+    setCaptureError(null);
     const formData = new FormData();
     Object.entries(data).forEach(([k, v]) => {
       if (v) formData.append(`conference_lead[${k}]`, v);
@@ -820,12 +831,12 @@ function CaptureLeadDrawer({
         onCaptured();
       } else {
         console.error('[VoiceMemo] Create failed:', res.error);
-        alert(res.error || 'Failed to capture lead');
+        setCaptureError(res.error || 'Failed to capture lead');
       }
     } catch (err) {
       console.error('[VoiceMemo] Submit error:', err);
       setSubmitting(false);
-      alert('Failed to capture lead');
+      setCaptureError('Failed to capture lead');
     }
   }
 
@@ -846,6 +857,14 @@ function CaptureLeadDrawer({
             <X size={18} className="text-gray-500" />
           </button>
         </div>
+        {captureError && (
+          <div className="mx-5 mt-3 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600 flex items-center justify-between">
+            <span>{captureError}</span>
+            <button onClick={() => setCaptureError(null)} className="text-red-400 hover:text-red-600 ml-2">
+              <X size={14} />
+            </button>
+          </div>
+        )}
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">

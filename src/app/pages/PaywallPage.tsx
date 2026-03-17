@@ -1,24 +1,26 @@
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router';
 import { Button } from '../components/ui/button';
-import { Check, ArrowLeft } from 'lucide-react';
+import { Check, ArrowLeft, X } from 'lucide-react';
 import { createCheckoutSession } from '../services/api';
 
 export function PaywallPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const success = new URLSearchParams(window.location.search).get('success');
 
   const handleStartSolo = async () => {
     setLoading(true);
+    setError(null);
     const res = await createCheckoutSession('solo_rep');
     setLoading(false);
     if (res.data?.checkout_url) {
       window.location.href = res.data.checkout_url;
     } else {
-      alert(res.error || 'Failed to create checkout session');
+      setError(res.error || 'Failed to create checkout session');
     }
   };
 
@@ -48,6 +50,15 @@ export function PaywallPage() {
           <ArrowLeft size={16} />
           Back
         </button>
+
+        {error && (
+          <div className="mb-6 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600 flex items-center justify-between">
+            <span>{error}</span>
+            <button onClick={() => setError(null)} className="text-red-400 hover:text-red-600 ml-2">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
 
         <div className="text-center mb-10">
           <h1 className="text-3xl font-bold text-[#2A2A2A] mb-3" style={{ fontFamily: "'Playfair Display', serif" }}>

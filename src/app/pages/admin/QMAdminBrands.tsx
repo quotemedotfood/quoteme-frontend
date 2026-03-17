@@ -79,7 +79,7 @@ export function QMAdminBrands() {
       setNewName('');
       loadBrands();
     } else {
-      alert(res.error || 'Failed to create');
+      setError(res.error || 'Failed to create brand');
     }
   }
 

@@ -51,13 +51,13 @@ export function QMAdminSignups() {
   async function handleArchive(userId: string) {
     const res = await updateAdminUser(userId, { status: 'archived' });
     if (res.data) loadUsers();
-    else alert(res.error || 'Failed to archive user');
+    else setError(res.error || 'Failed to archive user');
   }
 
   async function handleUnarchive(userId: string) {
     const res = await updateAdminUser(userId, { status: 'active' });
     if (res.data) loadUsers();
-    else alert(res.error || 'Failed to unarchive user');
+    else setError(res.error || 'Failed to unarchive user');
   }
 
   const toggleSort = (field: SortField) => {

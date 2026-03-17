@@ -72,7 +72,7 @@ export function QuotesPage() {
     const response = await requoteQuote(quoteId);
     setRequotingId(null);
     if (response.error) {
-      alert(`Requote failed: ${response.error}`);
+      setError(`Requote failed: ${response.error}`);
       return;
     }
     if (response.data) {
@@ -83,7 +83,7 @@ export function QuotesPage() {
   const handleDownloadPdf = async (quoteId: string) => {
     const result = await downloadQuotePdf(quoteId);
     if (result.error) {
-      alert(`Download failed: ${result.error}`);
+      setError(`Download failed: ${result.error}`);
       return;
     }
     if (result.blob) {
