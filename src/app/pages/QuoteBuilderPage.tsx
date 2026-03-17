@@ -308,23 +308,23 @@ export function QuoteBuilderPage() {
   }
 
   return (
-    <div className="p-4 md:p-8 pb-24 bg-[#FFF9F3] min-h-screen">
-      <div className="max-w-7xl mx-auto">
+    <div className="p-4 md:p-8 pb-24 bg-[#FFF9F3] min-h-screen overflow-x-hidden">
+      <div className="max-w-7xl mx-auto w-full box-border">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+          <div className="flex items-center gap-4 min-w-0">
             <button
               onClick={() => navigate('/map-ingredients', { state: { quoteId, isOpenQuote } })}
-              className="text-gray-400 hover:text-gray-600"
+              className="text-gray-400 hover:text-gray-600 flex-shrink-0"
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
-            <div>
+            <div className="min-w-0">
               <h1 className="text-xl text-[#4F4F4F]">Quote Builder</h1>
-              <p className="text-sm text-gray-500">Step 3 of 4 - Total Components: {items.length}</p>
+              <p className="text-sm text-gray-500 truncate">Step 3 of 4 - Total Components: {items.length}</p>
             </div>
           </div>
-          <div className="flex gap-3">
+          <div className="flex flex-wrap gap-2">
             <Button
               variant="outline"
               className="border-gray-300 text-[#2A2A2A]"
@@ -354,13 +354,13 @@ export function QuoteBuilderPage() {
         </div>
 
         {/* Pricing Controls */}
-        <div className="bg-white rounded-lg p-6 mb-6 shadow-sm">
+        <div className="bg-white rounded-lg p-4 md:p-6 mb-6 shadow-sm overflow-hidden">
           <h2 className="text-lg text-[#2A2A2A] mb-1">Adjust Pricing</h2>
-          <p className="text-gray-500 text-sm mb-6">
+          <p className="text-gray-500 text-sm mb-4 md:mb-6">
             Adjust pricing for all items or edit individual prices
           </p>
 
-          <div className="flex items-center justify-center gap-4">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
             <label className="text-sm text-[#2A2A2A] font-medium">% Adjustment</label>
             <div className="flex items-center gap-2">
               <button
@@ -368,7 +368,7 @@ export function QuoteBuilderPage() {
                   const current = parseFloat(bulkAdjustment) || 0;
                   setBulkAdjustment(String(current - 1));
                 }}
-                className="text-[#2A2A2A] hover:text-[#4F4F4F] p-1"
+                className="text-[#2A2A2A] hover:text-[#4F4F4F] p-1 flex-shrink-0"
               >
                 <Minus className="w-4 h-4" />
               </button>
@@ -376,7 +376,7 @@ export function QuoteBuilderPage() {
                 type="number"
                 value={bulkAdjustment}
                 onChange={(e) => setBulkAdjustment(e.target.value)}
-                className="w-32 h-9 text-center border-gray-300 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                className="w-24 sm:w-32 h-9 text-center border-gray-300 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                 placeholder="0"
               />
               <button
@@ -384,15 +384,15 @@ export function QuoteBuilderPage() {
                   const current = parseFloat(bulkAdjustment) || 0;
                   setBulkAdjustment(String(current + 1));
                 }}
-                className="text-[#2A2A2A] hover:text-[#4F4F4F] p-1"
+                className="text-[#2A2A2A] hover:text-[#4F4F4F] p-1 flex-shrink-0"
               >
                 <Plus className="w-4 h-4" />
               </button>
+              <span className="text-sm text-gray-500">%</span>
             </div>
-            <span className="text-sm text-gray-500">%</span>
             <Button
               onClick={applyBulkAdjustment}
-              className="bg-[#7FAEC2] hover:bg-[#6A9AB0] text-white px-6"
+              className="w-full sm:w-auto bg-[#7FAEC2] hover:bg-[#6A9AB0] text-white px-6"
             >
               Apply
             </Button>
@@ -406,7 +406,7 @@ export function QuoteBuilderPage() {
         )}
 
         {/* Products Table/Cards */}
-        <div className="bg-white rounded-lg shadow-sm">
+        <div className="bg-white rounded-lg shadow-sm overflow-hidden">
           <div className="p-4 border-b border-gray-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 w-full md:w-auto">
               <Filter className="w-4 h-4 text-gray-400 hidden sm:block" />
@@ -451,7 +451,7 @@ export function QuoteBuilderPage() {
           </div>
 
           {/* Mobile Card View */}
-          <div className="md:hidden px-4 py-3">
+          <div className="md:hidden px-4 py-3 overflow-hidden">
             {sortedItems.map((item) => (
               <div
                 key={item.id}
@@ -467,24 +467,25 @@ export function QuoteBuilderPage() {
                   {item.unmatched ? 'No catalog match' : `${toTitleCase(item.brand)} - ${toTitleCase(item.product)}`}
                 </p>
 
-                <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-gray-600 mt-2 mb-3">
-                   <div><span className="text-gray-400">Item #:</span> {item.sku}</div>
-                   <div><span className="text-gray-400">Category:</span> {toTitleCase(item.category)}</div>
-                   <div><span className="text-gray-400">Pack:</span> {item.pack}</div>
-                   <div><span className="text-gray-400">Dish:</span> {item.dish}</div>
+                <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-gray-600 mt-2 mb-3">
+                   <div className="truncate"><span className="text-gray-400">Item #:</span> {item.sku}</div>
+                   <div className="truncate"><span className="text-gray-400">Category:</span> {toTitleCase(item.category)}</div>
+                   <div className="truncate"><span className="text-gray-400">Pack:</span> {item.pack}</div>
+                   <div className="truncate"><span className="text-gray-400">Dish:</span> {item.dish}</div>
                 </div>
 
                 {/* Price controls at bottom */}
                 {editMode ? (
-                  <div className="flex gap-3 items-center mt-2">
-                    <div className="flex-1">
+                  <div className="flex flex-col gap-2 mt-2 w-full">
+                    <div className="w-full">
+                      <span className="text-xs text-gray-400 mb-1 block">Price</span>
                       <div className="flex items-center gap-1">
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
                             adjustPrice(item.id, -1);
                           }}
-                          className="text-gray-400 hover:text-gray-600 min-h-[48px] min-w-[48px] flex items-center justify-center rounded-lg border border-gray-200"
+                          className="text-gray-400 hover:text-gray-600 min-h-[44px] min-w-[44px] flex-shrink-0 flex items-center justify-center rounded-lg border border-gray-200"
                         >
                           <Minus className="w-5 h-5" />
                         </button>
@@ -511,31 +512,32 @@ export function QuoteBuilderPage() {
                               e.target.value = `$${item.currentPrice.toFixed(2)}`;
                             }
                           }}
-                          className="flex-1 text-center border border-gray-300 rounded-lg px-2 py-2 text-sm text-[#2A2A2A] min-h-[48px] focus:outline-none focus:border-[#A5CFDD]"
+                          className="min-w-0 flex-1 text-center border border-gray-300 rounded-lg px-2 py-2 text-sm text-[#2A2A2A] min-h-[44px] focus:outline-none focus:border-[#A5CFDD]"
                         />
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
                             adjustPrice(item.id, 1);
                           }}
-                          className="text-gray-400 hover:text-gray-600 min-h-[48px] min-w-[48px] flex items-center justify-center rounded-lg border border-gray-200"
+                          className="text-gray-400 hover:text-gray-600 min-h-[44px] min-w-[44px] flex-shrink-0 flex items-center justify-center rounded-lg border border-gray-200"
                         >
                           <Plus className="w-5 h-5" />
                         </button>
                       </div>
                     </div>
-                    <div className="flex-1">
+                    <div className="w-full">
+                      <span className="text-xs text-gray-400 mb-1 block">% Adjustment</span>
                       <div className="flex items-center gap-1">
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
                             adjustPercentage(item.id, -1);
                           }}
-                          className="text-gray-400 hover:text-gray-600 min-h-[48px] min-w-[48px] flex items-center justify-center rounded-lg border border-gray-200"
+                          className="text-gray-400 hover:text-gray-600 min-h-[44px] min-w-[44px] flex-shrink-0 flex items-center justify-center rounded-lg border border-gray-200"
                         >
                           <ChevronDown className="w-5 h-5" />
                         </button>
-                        <span className={`flex-1 text-center text-sm min-h-[48px] flex items-center justify-center border border-gray-200 rounded-lg ${
+                        <span className={`min-w-0 flex-1 text-center text-sm min-h-[44px] flex items-center justify-center border border-gray-200 rounded-lg ${
                           item.percentChange > 0 ? 'text-green-600' :
                           item.percentChange < 0 ? 'text-red-600' :
                           'text-gray-500'
@@ -547,7 +549,7 @@ export function QuoteBuilderPage() {
                             e.stopPropagation();
                             adjustPercentage(item.id, 1);
                           }}
-                          className="text-gray-400 hover:text-gray-600 min-h-[48px] min-w-[48px] flex items-center justify-center rounded-lg border border-gray-200"
+                          className="text-gray-400 hover:text-gray-600 min-h-[44px] min-w-[44px] flex-shrink-0 flex items-center justify-center rounded-lg border border-gray-200"
                         >
                           <ChevronUp className="w-5 h-5" />
                         </button>
