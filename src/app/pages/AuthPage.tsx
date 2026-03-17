@@ -68,6 +68,7 @@ export function AuthPage() {
   const [verifyPassword, setVerifyPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showVerifyPassword, setShowVerifyPassword] = useState(false);
+  const [agreeToTerms, setAgreeToTerms] = useState(false);
 
   // Sign In state
   const [loginEmail, setLoginEmail] = useState('');
@@ -125,6 +126,9 @@ export function AuthPage() {
       newErrors.verifyPassword = 'Please verify your password';
     else if (signupPassword !== verifyPassword)
       newErrors.verifyPassword = 'Passwords do not match';
+
+    if (!agreeToTerms)
+      newErrors.terms = 'Please agree to the Terms of Service and Privacy Policy to continue.';
 
     setErrors(newErrors);
     if (Object.keys(newErrors).length > 0) return;
@@ -561,9 +565,40 @@ export function AuthPage() {
         </div>
       </div>
 
+      <div>
+        <label className="flex items-start gap-2 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={agreeToTerms}
+            onChange={(e) => {
+              setAgreeToTerms(e.target.checked);
+              if (e.target.checked) {
+                setErrors((prev) => {
+                  const next = { ...prev };
+                  delete next.terms;
+                  return next;
+                });
+              }
+            }}
+            className="mt-1 rounded border-gray-300 text-[#7FAEC2] focus:ring-[#7FAEC2]"
+          />
+          <span className="text-sm" style={{ color: '#4F4F4F', fontFamily: 'DM Sans, sans-serif' }}>
+            I agree to the{' '}
+            <a href="/terms" target="_blank" rel="noopener noreferrer" className="underline hover:opacity-80" style={{ color: '#7FAEC2' }}>
+              Terms of Service
+            </a>{' '}
+            and{' '}
+            <a href="/privacy" target="_blank" rel="noopener noreferrer" className="underline hover:opacity-80" style={{ color: '#7FAEC2' }}>
+              Privacy Policy
+            </a>
+          </span>
+        </label>
+        {renderFieldError('terms')}
+      </div>
+
       <Button
         onClick={handleSignUp}
-        disabled={isSubmitting}
+        disabled={isSubmitting || !agreeToTerms}
         className="w-full text-white"
         style={{ backgroundColor: '#7FAEC2' }}
         size="lg"

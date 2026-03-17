@@ -29,6 +29,7 @@ export function AuthDrawer({ isOpen, onClose, defaultMode = 'login', onSuccess }
   const [signupPassword, setSignupPassword] = useState('');
   const [signupFirstName, setSignupFirstName] = useState('');
   const [signupLastName, setSignupLastName] = useState('');
+  const [agreeToTerms, setAgreeToTerms] = useState(false);
 
   const resetForms = () => {
     setLoginEmail('');
@@ -37,6 +38,7 @@ export function AuthDrawer({ isOpen, onClose, defaultMode = 'login', onSuccess }
     setSignupPassword('');
     setSignupFirstName('');
     setSignupLastName('');
+    setAgreeToTerms(false);
     setError(null);
   };
 
@@ -65,6 +67,10 @@ export function AuthDrawer({ isOpen, onClose, defaultMode = 'login', onSuccess }
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!agreeToTerms) {
+      setError('Please agree to the Terms of Service and Privacy Policy to continue.');
+      return;
+    }
     setError(null);
     setIsLoading(true);
 
@@ -214,10 +220,29 @@ export function AuthDrawer({ isOpen, onClose, defaultMode = 'login', onSuccess }
                 <p className="text-xs text-gray-500 mt-1">Minimum 6 characters</p>
               </div>
 
+              <label className="flex items-start gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={agreeToTerms}
+                  onChange={(e) => setAgreeToTerms(e.target.checked)}
+                  className="mt-1 rounded border-gray-300 text-[#F2993D] focus:ring-[#F2993D]"
+                />
+                <span className="text-sm text-gray-600" style={{ fontFamily: 'DM Sans, sans-serif' }}>
+                  I agree to the{' '}
+                  <a href="/terms" target="_blank" rel="noopener noreferrer" className="underline hover:opacity-80" style={{ color: '#7FAEC2' }}>
+                    Terms of Service
+                  </a>{' '}
+                  and{' '}
+                  <a href="/privacy" target="_blank" rel="noopener noreferrer" className="underline hover:opacity-80" style={{ color: '#7FAEC2' }}>
+                    Privacy Policy
+                  </a>
+                </span>
+              </label>
+
               <Button
                 type="submit"
                 className="w-full bg-[#F2993D] hover:bg-[#E08A2E] text-white"
-                disabled={isLoading}
+                disabled={isLoading || !agreeToTerms}
               >
                 <UserPlus className="w-4 h-4 mr-2" />
                 {isLoading ? 'Creating account...' : 'Create Account'}
