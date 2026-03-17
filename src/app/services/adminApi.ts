@@ -138,6 +138,9 @@ export interface ConferenceLead {
   converted_to_id: string | null;
   booth_photo_url: string | null;
   card_photo_url: string | null;
+  email_sent_at: string | null;
+  email_sent_by_user_id: string | null;
+  email_send_count: number;
   created_at: string;
   captured_by: { id: string; name: string } | null;
 }
@@ -347,6 +350,38 @@ export async function ocrConferenceCard(
 export async function deleteConferenceLead(id: string): Promise<ApiResponse<void>> {
   return fetchWithAuth(`/api/v1/admin/conference-leads/${id}`, {
     method: 'DELETE',
+  });
+}
+
+// ============= CONFERENCE EMAIL =============
+
+export interface ConferenceEmailTemplate {
+  id?: string;
+  conference_name: string;
+  subject_line: string;
+  greeting: string;
+  body_text: string;
+  sign_off: string;
+}
+
+export async function getConferenceEmailTemplate(conferenceName: string): Promise<ApiResponse<ConferenceEmailTemplate>> {
+  return fetchWithAuth(`/api/v1/admin/conference-leads/email_template?conference_name=${encodeURIComponent(conferenceName)}`);
+}
+
+export async function saveConferenceEmailTemplate(template: ConferenceEmailTemplate): Promise<ApiResponse<ConferenceEmailTemplate>> {
+  return fetchWithAuth('/api/v1/admin/conference-leads/save_email_template', {
+    method: 'POST',
+    body: JSON.stringify({ template }),
+  });
+}
+
+export async function sendConferenceLeadEmail(
+  leadId: string,
+  email: { to: string; subject_line: string; greeting: string; body_text: string; sign_off: string }
+): Promise<ApiResponse<ConferenceLead>> {
+  return fetchWithAuth(`/api/v1/admin/conference-leads/${leadId}/send_email`, {
+    method: 'POST',
+    body: JSON.stringify({ email }),
   });
 }
 

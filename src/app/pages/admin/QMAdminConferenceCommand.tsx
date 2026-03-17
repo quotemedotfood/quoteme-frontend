@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Plus, Phone, Mail, Building2, ChefHat, Tag, Radio, User, X, Camera, Mic, MicOff,
   Upload, Loader2, CheckCircle, ArrowRight, Trash2, Clock, TrendingUp, Users, Zap,
-  CreditCard, Eye, Pencil, Save
+  CreditCard, Eye, Pencil, Save, Send
 } from 'lucide-react';
 import { Input } from '../../components/ui/input';
 import { Button } from '../../components/ui/button';
@@ -13,7 +13,10 @@ import {
   convertConferenceLead,
   deleteConferenceLead,
   ocrConferenceCard,
+  getConferenceEmailTemplate,
+  sendConferenceLeadEmail,
   ConferenceLead,
+  ConferenceEmailTemplate,
 } from '../../services/adminApi';
 
 // ─── Constants ───────────────────────────────────────────────────
@@ -69,6 +72,7 @@ export function QMAdminConferenceCommand() {
     () => localStorage.getItem(BANNER_STORAGE_KEY) === 'true'
   );
   const [error, setError] = useState<string | null>(null);
+  const [emailComposerLead, setEmailComposerLead] = useState<ConferenceLead | null>(null);
 
   // Load leads + polling
   const loadLeads = useCallback(async () => {
@@ -309,6 +313,12 @@ export function QMAdminConferenceCommand() {
                               <span className={`w-1.5 h-1.5 rounded-full ${statusStyle.dot}`} />
                               {lead.status}
                             </span>
+                            {lead.email_sent_at && (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-green-50 text-green-700">
+                                <Mail size={10} />
+                                Sent
+                              </span>
+                            )}
                           </div>
                         </div>
                       </button>
@@ -327,6 +337,7 @@ export function QMAdminConferenceCommand() {
                 onDelete={handleDelete}
                 onUpdate={handleUpdate}
                 onClose={() => setSelectedLead(null)}
+                onOpenEmailComposer={(lead) => setEmailComposerLead(lead)}
               />
             ) : (
               <div className="hidden lg:flex w-96 flex-shrink-0 bg-white border border-gray-200 rounded-xl items-center justify-center text-gray-400 text-sm p-8">
@@ -368,10 +379,23 @@ export function QMAdminConferenceCommand() {
               onDelete={handleDelete}
               onUpdate={handleUpdate}
               onClose={() => setSelectedLead(null)}
+              onOpenEmailComposer={(lead) => setEmailComposerLead(lead)}
               mobile
             />
           </div>
         </div>
+      )}
+
+      {/* Email Composer Drawer */}
+      {emailComposerLead && (
+        <EmailComposerDrawer
+          lead={emailComposerLead}
+          onClose={() => setEmailComposerLead(null)}
+          onSent={() => {
+            setEmailComposerLead(null);
+            loadLeads();
+          }}
+        />
       )}
     </div>
   );
@@ -386,6 +410,7 @@ function LeadDetailPanel({
   onDelete,
   onUpdate,
   onClose,
+  onOpenEmailComposer,
   mobile,
 }: {
   lead: ConferenceLead;
@@ -394,6 +419,7 @@ function LeadDetailPanel({
   onDelete: (lead: ConferenceLead) => void;
   onUpdate: (lead: ConferenceLead, data: Partial<ConferenceLead>) => Promise<void> | void;
   onClose: () => void;
+  onOpenEmailComposer: (lead: ConferenceLead) => void;
   mobile?: boolean;
 }) {
   const typeStyle = LEAD_TYPE_COLORS[lead.lead_type] || LEAD_TYPE_COLORS.other;
@@ -671,6 +697,27 @@ function LeadDetailPanel({
           </div>
         </div>
       )}
+
+      {/* Send Email */}
+      <div className="border-t border-gray-100 pt-4 mt-4">
+        <Button
+          onClick={() => onOpenEmailComposer(lead)}
+          disabled={!lead.contact_email}
+          className="w-full bg-[#1e3a5f] hover:bg-[#162d4a] text-white text-sm"
+          title={!lead.contact_email ? 'No email on file' : undefined}
+        >
+          <Mail size={14} className="mr-2" />
+          {lead.email_sent_at ? 'Send Another Email' : 'Send Email'}
+        </Button>
+        {!lead.contact_email && (
+          <p className="text-[10px] text-gray-400 mt-1 text-center">No email on file</p>
+        )}
+        {lead.email_sent_at && (
+          <p className="text-[10px] text-green-600 mt-1 text-center">
+            Sent {lead.email_send_count}x — last {formatRelativeTime(lead.email_sent_at)}
+          </p>
+        )}
+      </div>
     </div>
   );
 }
@@ -1081,6 +1128,203 @@ function CaptureLeadDrawer({
                 </>
               ) : (
                 'Capture Lead'
+              )}
+            </Button>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+// ─── Email Composer Drawer ──────────────────────────────────────
+
+function EmailComposerDrawer({
+  lead,
+  onClose,
+  onSent,
+}: {
+  lead: ConferenceLead;
+  onClose: () => void;
+  onSent: () => void;
+}) {
+  const [loading, setLoading] = useState(true);
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+  const [email, setEmail] = useState({
+    to: lead.contact_email || '',
+    subject_line: '',
+    greeting: '',
+    body_text: '',
+    sign_off: '',
+  });
+
+  // Load template on mount
+  useEffect(() => {
+    async function loadTemplate() {
+      const conferenceName = lead.conference_name || 'SENA 2026';
+      const res = await getConferenceEmailTemplate(conferenceName);
+      if (res.data) {
+        const t = res.data;
+        // Interpolate lead name/company into template
+        const contactFirst = lead.contact_name?.split(' ')[0] || '';
+        setEmail((prev) => ({
+          ...prev,
+          subject_line: t.subject_line || prev.subject_line,
+          greeting: (t.greeting || '').replace('{{name}}', contactFirst).replace('{{company}}', lead.company_name || ''),
+          body_text: (t.body_text || '').replace('{{name}}', contactFirst).replace('{{company}}', lead.company_name || ''),
+          sign_off: t.sign_off || prev.sign_off,
+        }));
+      }
+      setLoading(false);
+    }
+    loadTemplate();
+  }, [lead]);
+
+  async function handleSend() {
+    setError(null);
+    setSending(true);
+    const res = await sendConferenceLeadEmail(lead.id, email);
+    setSending(false);
+    if (res.data) {
+      setSuccess(true);
+      setTimeout(onSent, 1500);
+    } else {
+      setError(res.error || 'Failed to send email');
+    }
+  }
+
+  return (
+    <>
+      {/* Overlay */}
+      <div className="fixed inset-0 bg-black/30 z-50" onClick={onClose} />
+
+      {/* Drawer — bottom sheet on mobile, right drawer on desktop */}
+      <div className="fixed md:top-0 md:right-0 md:h-full md:w-[480px] bottom-0 left-0 right-0 md:left-auto max-h-[90vh] md:max-h-full bg-white shadow-2xl z-[51] flex flex-col rounded-t-2xl md:rounded-none">
+        {/* Mobile drag handle */}
+        <div className="md:hidden w-10 h-1 bg-gray-300 rounded-full mx-auto mt-3 mb-1" />
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 bg-gradient-to-r from-[#f8fbfc] to-white">
+          <div>
+            <h2 className="text-lg font-semibold text-[#2A2A2A]">Send Email</h2>
+            <p className="text-xs text-gray-500 mt-0.5">
+              To {lead.company_name || lead.contact_name || 'Lead'}
+            </p>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg">
+            <X size={18} className="text-gray-500" />
+          </button>
+        </div>
+
+        {/* Error */}
+        {error && (
+          <div className="mx-5 mt-3 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600 flex items-center justify-between">
+            <span>{error}</span>
+            <button onClick={() => setError(null)} className="text-red-400 hover:text-red-600 ml-2">
+              <X size={14} />
+            </button>
+          </div>
+        )}
+
+        {/* Success */}
+        {success && (
+          <div className="mx-5 mt-3 p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700 flex items-center gap-2">
+            <CheckCircle size={16} />
+            <span>Email sent successfully!</span>
+          </div>
+        )}
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 size={24} className="animate-spin text-[#7FAEC2]" />
+            </div>
+          ) : (
+            <>
+              {/* To */}
+              <div>
+                <label className="text-xs text-gray-500 mb-1 block font-medium">To</label>
+                <Input
+                  type="email"
+                  value={email.to}
+                  onChange={(e) => setEmail({ ...email, to: e.target.value })}
+                  placeholder="recipient@company.com"
+                />
+              </div>
+
+              {/* Subject */}
+              <div>
+                <label className="text-xs text-gray-500 mb-1 block font-medium">Subject</label>
+                <Input
+                  value={email.subject_line}
+                  onChange={(e) => setEmail({ ...email, subject_line: e.target.value })}
+                  placeholder="Subject line"
+                />
+              </div>
+
+              {/* Greeting */}
+              <div>
+                <label className="text-xs text-gray-500 mb-1 block font-medium">Greeting</label>
+                <Input
+                  value={email.greeting}
+                  onChange={(e) => setEmail({ ...email, greeting: e.target.value })}
+                  placeholder="Hi {{name}},"
+                />
+              </div>
+
+              {/* Body */}
+              <div>
+                <label className="text-xs text-gray-500 mb-1 block font-medium">Body</label>
+                <textarea
+                  value={email.body_text}
+                  onChange={(e) => setEmail({ ...email, body_text: e.target.value })}
+                  placeholder="Email body text..."
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm min-h-[160px] resize-y"
+                />
+              </div>
+
+              {/* Sign-off */}
+              <div>
+                <label className="text-xs text-gray-500 mb-1 block font-medium">Sign-off</label>
+                <Input
+                  value={email.sign_off}
+                  onChange={(e) => setEmail({ ...email, sign_off: e.target.value })}
+                  placeholder="Best regards, ..."
+                />
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="px-5 py-4 border-t border-gray-200 bg-white">
+          <div className="flex gap-3">
+            <Button variant="ghost" onClick={onClose} className="flex-1">
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSend}
+              disabled={sending || !email.to || !email.subject_line || !email.body_text || success}
+              className="flex-1 bg-[#E87C3E] hover:bg-[#D16B2F] text-white"
+            >
+              {sending ? (
+                <>
+                  <Loader2 size={14} className="animate-spin mr-1" />
+                  Sending...
+                </>
+              ) : success ? (
+                <>
+                  <CheckCircle size={14} className="mr-1" />
+                  Sent!
+                </>
+              ) : (
+                <>
+                  <Send size={14} className="mr-1" />
+                  Send Email
+                </>
               )}
             </Button>
           </div>
