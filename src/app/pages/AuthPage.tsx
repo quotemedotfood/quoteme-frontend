@@ -58,6 +58,9 @@ export function AuthPage() {
 
   const inviteDistributorId = searchParams.get('distributor_id');
   const inviteLocationId = searchParams.get('location_id');
+  const inviteEmail = searchParams.get('email');
+  const inviteFirstName = searchParams.get('first_name');
+  const inviteLastName = searchParams.get('last_name');
   const [inviteDistributor, setInviteDistributor] = useState<DistributorSearchResult | null>(null);
 
   const [view, setView] = useState<AuthView>(inviteDistributorId || inviteLocationId ? 'signup' : 'role-select');
@@ -83,13 +86,13 @@ export function AuthPage() {
   const [selectedDistributor, setSelectedDistributor] =
     useState<DistributorSearchResult | null>(null);
   const [showDistributorDropdown, setShowDistributorDropdown] = useState(false);
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
+  const [firstName, setFirstName] = useState(inviteFirstName || '');
+  const [lastName, setLastName] = useState(inviteLastName || '');
   // Restaurant signup fields
   const [restaurantName, setRestaurantName] = useState('');
   const [restaurantCity, setRestaurantCity] = useState('');
   const [restaurantState, setRestaurantState] = useState('');
-  const [signupEmail, setSignupEmail] = useState('');
+  const [signupEmail, setSignupEmail] = useState(inviteEmail || '');
   const [phone, setPhone] = useState('');
   const [signupPassword, setSignupPassword] = useState('');
   const [verifyPassword, setVerifyPassword] = useState('');
@@ -617,6 +620,7 @@ export function AuthPage() {
             type="email"
             value={signupEmail}
             onChange={(e) => {
+              if (inviteEmail) return;
               setSignupEmail(e.target.value);
               setErrors((prev) => {
                 const next = { ...prev };
@@ -624,6 +628,8 @@ export function AuthPage() {
                 return next;
               });
             }}
+            readOnly={!!inviteEmail}
+            className={inviteEmail ? 'bg-gray-50 text-gray-500' : ''}
             placeholder={isBuyerRole ? 'jane@example.com' : 'jane@yourdistributor.com'}
           />
           {renderFieldError('email')}
