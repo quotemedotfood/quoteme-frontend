@@ -4,11 +4,7 @@
   "framework": "vite",
   "rewrites": [
     {
-      "source": "/assets/(.*)",
-      "destination": "/assets/$1"
-    },
-    {
-      "source": "/(.*)",
+      "source": "/((?!assets/|favicon|apple-touch|.*\\.js$|.*\\.css$|.*\\.svg$|.*\\.png$|.*\\.jpg$|.*\\.woff2?$|.*\\.ico$).*)",
       "destination": "/index.html"
     }
   ]
