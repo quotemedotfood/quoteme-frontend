@@ -63,8 +63,9 @@ export function DistributorRepsPage() {
     setSending(false);
   };
 
-  const activeReps = reps.filter(r => r.is_active);
-  const inactiveReps = reps.filter(r => !r.is_active);
+  const activeReps = reps.filter(r => r.status === 'active');
+  const invitedReps = reps.filter(r => r.status === 'invited');
+  const inactiveReps = reps.filter(r => r.status === 'deactivated');
 
   return (
     <div className="p-6 md:p-10 max-w-5xl mx-auto">
@@ -195,6 +196,32 @@ export function DistributorRepsPage() {
                   <td className="px-6 py-4">
                     <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
                       Active
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 hidden lg:table-cell">
+                    <p className="text-sm text-gray-500">
+                      {new Date(rep.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </p>
+                  </td>
+                </tr>
+              ))}
+              {invitedReps.map(rep => (
+                <tr key={rep.id} className="border-b border-gray-50">
+                  <td className="px-6 py-4">
+                    <p className="text-sm font-medium text-[#2A2A2A]" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+                      {rep.first_name || '—'}
+                    </p>
+                    <p className="text-xs text-gray-400 sm:hidden">{rep.email}</p>
+                  </td>
+                  <td className="px-6 py-4 hidden sm:table-cell">
+                    <p className="text-sm text-gray-600">{rep.email}</p>
+                  </td>
+                  <td className="px-6 py-4 hidden md:table-cell">
+                    <p className="text-sm text-gray-500">{rep.territory || '—'}</p>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700">
+                      Invited
                     </span>
                   </td>
                   <td className="px-6 py-4 hidden lg:table-cell">
