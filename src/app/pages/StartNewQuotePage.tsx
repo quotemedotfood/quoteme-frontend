@@ -846,7 +846,7 @@ export function StartNewQuotePage() {
                   ))}
                 </div>
               ) : parsedDishes.length > 0 ? (
-                <div className="space-y-5 max-h-[400px] overflow-y-auto pr-1">
+                <div className="space-y-5">
                   {parsedDishes.map(dish => (
                     <div key={dish.id}>
                       <div className="flex items-center gap-2 mb-2">
