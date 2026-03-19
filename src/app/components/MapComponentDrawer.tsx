@@ -175,7 +175,7 @@ export function MapComponentDrawer({
                 <div className="flex items-start justify-between mb-2">
                   <div className="flex-1">
                     <h4 className="text-sm font-medium text-[#2A2A2A]">
-                      {toTitleCase(bestMatch.product.brand)} {toTitleCase(bestMatch.product.product)}
+                      {toTitleCase(bestMatch.product.product?.toLowerCase().startsWith(bestMatch.product.brand?.toLowerCase()) ? bestMatch.product.product : `${bestMatch.product.brand} ${bestMatch.product.product}`)}
                     </h4>
                     <p className="text-sm text-gray-600 mt-1">{toTitleCase(bestMatch.product.pack_size)}</p>
                   </div>
@@ -230,7 +230,7 @@ export function MapComponentDrawer({
                       <div className="flex items-start justify-between mb-2">
                         <div className="flex-1">
                           <h4 className="text-sm font-medium text-[#2A2A2A]">
-                            {toTitleCase(candidate.product.brand)} {toTitleCase(candidate.product.product)}
+                            {toTitleCase(candidate.product.product?.toLowerCase().startsWith(candidate.product.brand?.toLowerCase()) ? candidate.product.product : `${candidate.product.brand} ${candidate.product.product}`)}
                           </h4>
                           <p className="text-sm text-gray-600 mt-1">{toTitleCase(candidate.product.pack_size)}</p>
                         </div>
@@ -299,7 +299,7 @@ export function MapComponentDrawer({
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <h4 className="text-sm font-medium text-[#2A2A2A]">
-                      {toTitleCase(manualPick.brand)} {toTitleCase(manualPick.product)}
+                      {toTitleCase(manualPick.product?.toLowerCase().startsWith(manualPick.brand?.toLowerCase()) ? manualPick.product : `${manualPick.brand} ${manualPick.product}`)}
                     </h4>
                     <p className="text-xs text-gray-500 mt-1">
                       Item #{manualPick.item_number} &middot; {toTitleCase(manualPick.pack_size)}

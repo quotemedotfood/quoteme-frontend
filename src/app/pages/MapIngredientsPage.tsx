@@ -435,7 +435,7 @@ export function MapIngredientsPage() {
           <div className="flex-1 text-center">
             {bestMatch ? (
               <div className="text-xs text-gray-500">
-                <div className="font-medium">{toTitleCase(bestMatch.brand)} {toTitleCase(bestMatch.product)}</div>
+                <div className="font-medium">{toTitleCase(bestMatch.product?.toLowerCase().startsWith(bestMatch.brand?.toLowerCase()) ? bestMatch.product : `${bestMatch.brand} ${bestMatch.product}`)}</div>
                 <div className="text-gray-400">
                   {bestMatch.item_number} • {bestMatch.pack_size}
                 </div>
@@ -479,7 +479,7 @@ export function MapIngredientsPage() {
         {expandedAlternates.has(component) && alternates.map(alt => (
           <div key={alt.id} className="flex items-center justify-between py-2 px-4 bg-gray-50 border-b border-gray-100 ml-6">
             <div className="flex-1 text-xs text-gray-600">
-              <span className="font-medium">{toTitleCase(alt.product.brand)} {toTitleCase(alt.product.product)}</span>
+              <span className="font-medium">{toTitleCase(alt.product.product?.toLowerCase().startsWith(alt.product.brand?.toLowerCase()) ? alt.product.product : `${alt.product.brand} ${alt.product.product}`)}</span>
               <span className="text-gray-400 ml-2">{alt.product.item_number} • {alt.product.pack_size}</span>
             </div>
             <Button

@@ -101,7 +101,7 @@ export function CatalogProductSearch({
               <div className="flex items-start justify-between">
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-[#2A2A2A] truncate">
-                    {toTitleCase(product.brand)} {toTitleCase(product.product)}
+                    {toTitleCase(product.product?.toLowerCase().startsWith(product.brand?.toLowerCase()) ? product.product : `${product.brand} ${product.product}`)}
                   </p>
                   <p className="text-xs text-gray-500 mt-0.5">
                     Item #{product.item_number} &middot; {toTitleCase(product.pack_size)}
