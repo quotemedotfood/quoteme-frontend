@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { getGuestSession } from '../services/api';
 import { isDemoMode } from '../utils/demoMode';
 
@@ -118,9 +118,16 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  const updateProfile = (updates: Partial<UserProfile>) => {
-    setProfile(prev => ({ ...prev, ...updates }));
-  };
+  const updateProfile = useCallback((updates: Partial<UserProfile>) => {
+    setProfile(prev => {
+      // Bail out if nothing actually changed to prevent unnecessary re-renders
+      const hasChange = Object.entries(updates).some(
+        ([key, value]) => prev[key as keyof UserProfile] !== value
+      );
+      if (!hasChange) return prev;
+      return { ...prev, ...updates };
+    });
+  }, []);
 
   const incrementQuoteCount = () => {
     setProfile(prev => ({
