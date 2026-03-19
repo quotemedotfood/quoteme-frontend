@@ -4,7 +4,7 @@ import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
 import { Upload, Link as LinkIcon, X, Loader2, FileText, Camera, RefreshCw, Pencil, ChevronDown, ChevronUp } from 'lucide-react';
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate, useLocation } from 'react-router';
 import { Checkbox } from '../components/ui/checkbox';
 import { useUser } from '../contexts/UserContext';
 import { UpgradeDrawer } from '../components/UpgradeDrawer';
@@ -88,6 +88,7 @@ let nextIngId = 1000;
 
 export function StartNewQuotePage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [isAddRestaurantOpen, setIsAddRestaurantOpen] = useState(false);
   const [isAddContactOpen, setIsAddContactOpen] = useState(false);
   const [isAddGroupOpen, setIsAddGroupOpen] = useState(false);
@@ -123,7 +124,9 @@ export function StartNewQuotePage() {
   const catalogFileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const [hasCamera, setHasCamera] = useState(false);
-  const [catalogUploadExpanded, setCatalogUploadExpanded] = useState(false);
+  const [catalogUploadExpanded, setCatalogUploadExpanded] = useState(
+    !!(location.state as any)?.expandCatalog
+  );
 
   // Stock quotes
   const [stockQuotes, setStockQuotes] = useState<StockQuoteResponse[]>([]);

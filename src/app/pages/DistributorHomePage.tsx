@@ -75,7 +75,7 @@ export function DistributorHomePage() {
                   : 'Import your product catalog to start quoting'}
               </p>
               <Button
-                onClick={() => navigate('/start-new-quote')}
+                onClick={() => navigate('/start-new-quote', { state: { expandCatalog: true } })}
                 className="w-full bg-[#A5CFDD] hover:bg-[#7FAEC2] text-white"
               >
                 {hasCatalog ? 'Update Catalog' : 'Upload Catalog'}
@@ -124,7 +124,10 @@ export function DistributorHomePage() {
                 <p className="text-2xl font-semibold text-[#2A2A2A]">{homeData.quote_count}</p>
                 <p className="text-xs text-gray-500">Quotes</p>
               </div>
-              <div className="bg-white rounded-lg border border-gray-200 p-4 text-center">
+              <div
+                className="bg-white rounded-lg border border-gray-200 p-4 text-center cursor-pointer hover:border-[#A5CFDD] transition-colors"
+                onClick={() => navigate('/distributor-admin/reps')}
+              >
                 <p className="text-2xl font-semibold text-[#2A2A2A]">{homeData.rep_count}</p>
                 <p className="text-xs text-gray-500">Reps</p>
               </div>

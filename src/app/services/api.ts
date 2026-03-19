@@ -1133,7 +1133,23 @@ export async function flagCatalogCategory(catalogId: string, message: string): P
   });
 }
 
-// Rep invite
+// Rep management
+export interface DistributorRep {
+  id: string;
+  user_id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone: string | null;
+  territory: string | null;
+  is_active: boolean;
+  created_at: string;
+}
+
+export async function getDistributorReps(): Promise<ApiResponse<DistributorRep[]>> {
+  return fetchWithAuth('/api/v1/distributor_admin/reps');
+}
+
 export async function inviteRep(data: { name: string; email: string; territory?: string }): Promise<ApiResponse<{ message: string }>> {
   return fetchWithAuth('/api/v1/distributor_admin/reps/invite', {
     method: 'POST',
