@@ -401,6 +401,22 @@ export interface DistributorSearchResult {
   logo_url: string | null;
 }
 
+export async function getDistributorById(id: string): Promise<ApiResponse<DistributorSearchResult>> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/v1/distributors/${id}`, {
+      headers: { 'Content-Type': 'application/json' },
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      return { error: errorData.error || `HTTP ${response.status}` };
+    }
+    const data = await response.json();
+    return { data };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : 'Network error' };
+  }
+}
+
 export async function searchDistributors(query: string): Promise<ApiResponse<DistributorSearchResult[]>> {
   try {
     const response = await fetch(`${API_BASE_URL}/api/v1/distributors/search?q=${encodeURIComponent(query)}`, {

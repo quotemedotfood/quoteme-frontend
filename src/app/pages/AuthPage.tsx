@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import {
   searchDistributors,
+  getDistributorById,
   sendPasswordReset,
   DistributorSearchResult,
 } from '../services/api';
@@ -37,6 +38,7 @@ type AuthView = 'role-select' | 'signup' | 'signin' | 'forgot-password';
 
 export function AuthPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { signup, login, isAuthenticated, user } = useAuth();
 
   const routeByRole = (role?: string) => {
@@ -51,8 +53,23 @@ export function AuthPage() {
     if (isAuthenticated && user) navigate(routeByRole(user.role));
   }, [isAuthenticated, user, navigate]);
 
-  const [view, setView] = useState<AuthView>('role-select');
+  const inviteDistributorId = searchParams.get('distributor_id');
+  const [inviteDistributor, setInviteDistributor] = useState<DistributorSearchResult | null>(null);
+
+  const [view, setView] = useState<AuthView>(inviteDistributorId ? 'signup' : 'role-select');
   const [selectedRole, setSelectedRole] = useState<'rep' | 'distributor_admin'>('rep');
+
+  // Fetch invite distributor info
+  useEffect(() => {
+    if (!inviteDistributorId) return;
+    getDistributorById(inviteDistributorId).then((res) => {
+      if (res.data) {
+        setInviteDistributor(res.data);
+        setDistributorName(res.data.name);
+        setSelectedDistributor(res.data);
+      }
+    });
+  }, [inviteDistributorId]);
 
   // Sign Up state
   const [distributorName, setDistributorName] = useState('');
@@ -112,7 +129,7 @@ export function AuthPage() {
   const handleSignUp = async () => {
     const newErrors: Record<string, string> = {};
 
-    if (!distributorName.trim())
+    if (!inviteDistributorId && !distributorName.trim())
       newErrors.distributor = 'Distributor name is required';
     if (!firstName.trim()) newErrors.firstName = 'First name is required';
     if (!lastName.trim()) newErrors.lastName = 'Last name is required';
@@ -136,14 +153,15 @@ export function AuthPage() {
     if (Object.keys(newErrors).length > 0) return;
 
     setIsSubmitting(true);
+    const claimedId = inviteDistributorId || selectedDistributor?.id;
     const result = await signup({
       first_name: firstName,
       last_name: lastName,
       email: signupEmail,
       password: signupPassword,
       phone: phone || undefined,
-      distributor_name: selectedDistributor ? undefined : distributorName,
-      claimed_distributor_id: selectedDistributor?.id,
+      distributor_name: claimedId ? undefined : distributorName,
+      claimed_distributor_id: claimedId,
       role: selectedRole,
     });
     setIsSubmitting(false);
@@ -336,24 +354,46 @@ export function AuthPage() {
   const renderSignUp = () => (
     <div className="flex flex-col gap-6">
       <div className="flex items-center gap-3">
-        <button
-          onClick={() => switchView('role-select')}
-          className="flex size-8 items-center justify-center rounded-full transition-colors hover:bg-gray-100"
-        >
-          <ArrowLeft className="size-4" style={{ color: '#2A2A2A' }} />
-        </button>
+        {!inviteDistributorId && (
+          <button
+            onClick={() => switchView('role-select')}
+            className="flex size-8 items-center justify-center rounded-full transition-colors hover:bg-gray-100"
+          >
+            <ArrowLeft className="size-4" style={{ color: '#2A2A2A' }} />
+          </button>
+        )}
         <h2
           className="text-xl font-bold"
           style={{ color: '#2A2A2A' }}
         >
-          Create your account
+          {inviteDistributorId ? 'Join your team' : 'Create your account'}
         </h2>
       </div>
 
       {renderFormError()}
 
       <div className="flex flex-col gap-4">
+        {/* Invite banner */}
+        {inviteDistributor && (
+          <div className="flex items-center gap-3 rounded-lg border border-green-200 bg-green-50 px-4 py-3">
+            {inviteDistributor.logo_url ? (
+              <img src={inviteDistributor.logo_url} alt="" className="size-8 rounded object-contain" />
+            ) : (
+              <div className="flex size-8 items-center justify-center rounded bg-green-100">
+                <Building2 className="size-4 text-green-600" />
+              </div>
+            )}
+            <div>
+              <p className="text-sm font-medium text-green-800">
+                You've been invited to join {inviteDistributor.name}
+              </p>
+              <p className="text-xs text-green-600">Create your account to get started</p>
+            </div>
+          </div>
+        )}
+
         {/* Distributor name with autocomplete */}
+        {!inviteDistributorId ? (
         <div className="relative">
           <label
             className="mb-1.5 block text-sm font-medium"
@@ -428,6 +468,7 @@ export function AuthPage() {
             )}
           {renderFieldError('distributor')}
         </div>
+        ) : null}
 
         {/* First / Last name row */}
         <div className="grid grid-cols-2 gap-3">
