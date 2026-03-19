@@ -1,7 +1,8 @@
 import { Link, useLocation } from 'react-router';
-import { LayoutDashboard, Users, FileText, Plus, Settings } from 'lucide-react';
+import { LayoutDashboard, Users, FileText, Plus, Settings, UserPlus } from 'lucide-react';
 import logoSquare from '/src/assets/e549e7d27b183e98e791f43494c715b8cc6ce7e9.png';
 import { useUser } from '../contexts/UserContext';
+import { useAuth } from '../contexts/AuthContext';
 
 interface NavItemProps {
   icon: React.ReactNode;
@@ -49,13 +50,22 @@ export function AppSidebar() {
   const location = useLocation();
   const pathname = location.pathname;
   const { quotesRemaining, profile } = useUser();
+  const { user } = useAuth();
+  const isDistributorAdmin = user?.role === 'distributor_admin';
 
-  const navItems = [
-     { icon: <Plus size={20} />, label: "New Quote", path: "/", highlight: true },
-     { icon: <LayoutDashboard size={20} />, label: "Dashboard", path: "/dashboard" },
-     { icon: <Users size={20} />, label: "Customers", path: "/customers" },
-     { icon: <FileText size={20} />, label: "Quotes", path: "/quotes" },
-  ];
+  const navItems = isDistributorAdmin
+    ? [
+        { icon: <LayoutDashboard size={20} />, label: "Home", path: "/distributor-admin" },
+        { icon: <Plus size={20} />, label: "New Quote", path: "/start-new-quote", highlight: true },
+        { icon: <FileText size={20} />, label: "Quotes", path: "/quotes" },
+        { icon: <UserPlus size={20} />, label: "Reps", path: "/distributor-admin/reps" },
+      ]
+    : [
+        { icon: <Plus size={20} />, label: "New Quote", path: "/", highlight: true },
+        { icon: <LayoutDashboard size={20} />, label: "Dashboard", path: "/dashboard" },
+        { icon: <Users size={20} />, label: "Customers", path: "/customers" },
+        { icon: <FileText size={20} />, label: "Quotes", path: "/quotes" },
+      ];
 
   return (
     <>
