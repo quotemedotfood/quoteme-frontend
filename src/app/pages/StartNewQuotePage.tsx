@@ -530,10 +530,19 @@ export function StartNewQuotePage() {
       setIsAddRestaurantOpen(true);
       e.target.value = '';
     } else if (e.target.value) {
-      setSelectedContactIds([]);
       const res = await getRestaurant(e.target.value);
-      if (res.data) setSelectedRestaurant(res.data);
-      else setSelectedRestaurant(null);
+      if (res.data) {
+        setSelectedRestaurant(res.data);
+        // Auto-select the contact when there's only one
+        if (res.data.contacts.length === 1) {
+          setSelectedContactIds([res.data.contacts[0].id]);
+        } else {
+          setSelectedContactIds([]);
+        }
+      } else {
+        setSelectedRestaurant(null);
+        setSelectedContactIds([]);
+      }
     } else {
       setSelectedRestaurant(null);
       setSelectedContactIds([]);
