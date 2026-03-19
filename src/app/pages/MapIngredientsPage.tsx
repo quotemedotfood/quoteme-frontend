@@ -7,6 +7,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router';
 import { useUser } from '../contexts/UserContext';
 import { isDemoMode } from '../utils/demoMode';
+import { toTitleCase, formatProductName } from '../utils/format';
 import { MapComponentDrawer } from '../components/MapComponentDrawer';
 import {
   createMenu,
@@ -17,17 +18,6 @@ import {
   submitQuoteFeedback,
   getMoreMatches,
 } from '../services/api';
-
-function toTitleCase(str: string): string {
-  if (!str) return '';
-  return str.replace(/\b\w+/g, (word) => {
-    const lower = word.toLowerCase();
-    if (['a', 'an', 'the', 'and', 'or', 'of', 'in', 'on', 'at', 'to', 'for', 'with'].includes(lower)) {
-      return lower;
-    }
-    return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
-  }).replace(/^./, (c) => c.toUpperCase());
-}
 
 // ─── Types (matching backend API responses) ──────────────────────────────────
 
@@ -439,7 +429,7 @@ export function MapIngredientsPage() {
         <div className="min-w-0">
           {bestMatch ? (
             <div className="text-xs text-gray-500">
-              <p className="font-medium truncate">{toTitleCase(bestMatch.product?.toLowerCase().startsWith(bestMatch.brand?.toLowerCase()) ? bestMatch.product : `${bestMatch.brand} ${bestMatch.product}`)}</p>
+              <p className="font-medium truncate">{formatProductName(bestMatch.product, bestMatch.brand)}</p>
               <p className="text-gray-400 truncate">{bestMatch.item_number} &middot; {bestMatch.pack_size}</p>
               {badge && (
                 <span className={`mt-1 inline-block rounded px-2 py-0.5 text-xs font-medium ${badge.cls}`}>

@@ -12,17 +12,7 @@ import { Button } from './ui/button';
 import { X, Loader2, ArrowRightLeft, Plus } from 'lucide-react';
 import { CatalogProductSearch } from './CatalogProductSearch';
 import type { CatalogSearchProduct } from '../services/api';
-
-function toTitleCase(str: string): string {
-  if (!str) return '';
-  return str.replace(/\b\w+/g, (word) => {
-    const lower = word.toLowerCase();
-    if (['a', 'an', 'the', 'and', 'or', 'of', 'in', 'on', 'at', 'to', 'for', 'with'].includes(lower)) {
-      return lower;
-    }
-    return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
-  }).replace(/^./, (c) => c.toUpperCase());
-}
+import { toTitleCase, formatProductName } from '../utils/format';
 
 interface CandidateProduct {
   id: string;
@@ -175,7 +165,7 @@ export function MapComponentDrawer({
                 <div className="flex items-start justify-between mb-2">
                   <div className="flex-1">
                     <h4 className="text-sm font-medium text-[#2A2A2A]">
-                      {toTitleCase(bestMatch.product.product?.toLowerCase().startsWith(bestMatch.product.brand?.toLowerCase()) ? bestMatch.product.product : `${bestMatch.product.brand} ${bestMatch.product.product}`)}
+                      {formatProductName(bestMatch.product.product, bestMatch.product.brand)}
                     </h4>
                     <p className="text-sm text-gray-600 mt-1">{toTitleCase(bestMatch.product.pack_size)}</p>
                   </div>
@@ -230,7 +220,7 @@ export function MapComponentDrawer({
                       <div className="flex items-start justify-between mb-2">
                         <div className="flex-1">
                           <h4 className="text-sm font-medium text-[#2A2A2A]">
-                            {toTitleCase(candidate.product.product?.toLowerCase().startsWith(candidate.product.brand?.toLowerCase()) ? candidate.product.product : `${candidate.product.brand} ${candidate.product.product}`)}
+                            {formatProductName(candidate.product.product, candidate.product.brand)}
                           </h4>
                           <p className="text-sm text-gray-600 mt-1">{toTitleCase(candidate.product.pack_size)}</p>
                         </div>
@@ -299,7 +289,7 @@ export function MapComponentDrawer({
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <h4 className="text-sm font-medium text-[#2A2A2A]">
-                      {toTitleCase(manualPick.product?.toLowerCase().startsWith(manualPick.brand?.toLowerCase()) ? manualPick.product : `${manualPick.brand} ${manualPick.product}`)}
+                      {formatProductName(manualPick.product, manualPick.brand)}
                     </h4>
                     <p className="text-xs text-gray-500 mt-1">
                       Item #{manualPick.item_number} &middot; {toTitleCase(manualPick.pack_size)}

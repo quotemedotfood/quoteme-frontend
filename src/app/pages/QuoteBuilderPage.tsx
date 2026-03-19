@@ -5,6 +5,7 @@ import { useNavigate, useLocation } from 'react-router';
 import { useState, useEffect } from 'react';
 import { useUser } from '../contexts/UserContext';
 import { isDemoMode } from '../utils/demoMode';
+import { formatProductName } from '../utils/format';
 import { getQuote, getGuestQuote, updateQuote, updateGuestQuote, addGuestQuoteLine, removeGuestQuoteLine, createStockQuote } from '../services/api';
 import { CatalogProductSearch } from '../components/CatalogProductSearch';
 import type { CatalogSearchProduct } from '../services/api';
@@ -464,7 +465,7 @@ export function QuoteBuilderPage() {
                 <h3 className="text-base font-semibold text-[#2A2A2A] mb-1">{toTitleCase(item.component)}</h3>
                 {/* Body: Product + brand */}
                 <p className={`text-sm mb-1 ${item.unmatched ? 'text-red-400 italic' : 'text-gray-500'}`}>
-                  {item.unmatched ? 'No catalog match' : `${toTitleCase(item.brand)} - ${toTitleCase(item.product)}`}
+                  {item.unmatched ? 'No catalog match' : formatProductName(item.product, item.brand)}
                 </p>
 
                 <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-gray-600 mt-2 mb-3">
