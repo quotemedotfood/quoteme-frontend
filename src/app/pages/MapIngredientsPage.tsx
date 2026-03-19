@@ -295,15 +295,15 @@ export function MapIngredientsPage() {
     }
   };
 
-  const handleReplaceMatch = (componentName: string, productId: string) => {
-    // Find the candidate product info from the selected line's candidates
+  const handleReplaceMatch = (componentName: string, productId: string, product?: { id: string; item_number: string; brand: string; product: string; pack_size: string; category: string }) => {
+    // Find product info from candidates or use the passed product data
     const allCandidates = selectedLine?.alignment_candidates || [];
-    const candidate = allCandidates.find(c => c.product.id === productId);
-    if (candidate) {
+    const candidateProduct = allCandidates.find(c => c.product.id === productId)?.product || product;
+    if (candidateProduct) {
       // Update the dish's component line with the new product
       setDishes(prev => prev.map(dish => {
         if (dish.componentLines[componentName]) {
-          const updatedLine = { ...dish.componentLines[componentName], product: candidate.product };
+          const updatedLine = { ...dish.componentLines[componentName], product: candidateProduct };
           return {
             ...dish,
             componentLines: { ...dish.componentLines, [componentName]: updatedLine },
@@ -315,16 +315,16 @@ export function MapIngredientsPage() {
     setMappedComponents(prev => ({ ...prev, [componentName]: [productId] }));
   };
 
-  const handleAddToQuote = (componentName: string, productId: string) => {
-    // Find the product from candidates or extra candidates
+  const handleAddToQuote = (componentName: string, productId: string, product?: { id: string; item_number: string; brand: string; product: string; pack_size: string; category: string }) => {
+    // Find the product from candidates or use the passed product data
     const allCandidates = selectedLine?.alignment_candidates || [];
-    const candidate = allCandidates.find(c => c.product.id === productId);
-    if (candidate) {
+    const candidateProduct = allCandidates.find(c => c.product.id === productId)?.product || product;
+    if (candidateProduct) {
       setAdditions(prev => [...prev, {
         id: `atq-${Date.now()}-${productId}`,
         componentName,
         sourceDish: selectedDish?.name || 'Unknown Dish',
-        product: candidate.product,
+        product: candidateProduct,
         type: 'add_to_quote' as const,
       }]);
     }

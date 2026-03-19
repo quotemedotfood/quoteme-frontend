@@ -40,8 +40,8 @@ interface MapComponentDrawerProps {
   onFindMoreMatches?: () => Promise<AlignmentCandidate[]>;
   quoteId?: string;
   onManualSelect?: (componentName: string, product: CatalogSearchProduct) => void;
-  onReplaceMatch?: (componentName: string, productId: string) => void;
-  onAddToQuote?: (componentName: string, productId: string) => void;
+  onReplaceMatch?: (componentName: string, productId: string, product?: CandidateProduct) => void;
+  onAddToQuote?: (componentName: string, productId: string, product?: CandidateProduct) => void;
 }
 
 function tierLabel(tier: string, position: number): string {
@@ -88,8 +88,13 @@ export function MapComponentDrawer({
     const productId = manualPick?.id || selectedProductId;
     if (!productId) return;
 
+    // Build product info from manual pick or from candidates
+    const productInfo: CandidateProduct | undefined = manualPick
+      ? { id: manualPick.id, item_number: manualPick.item_number, brand: manualPick.brand, product: manualPick.product, pack_size: manualPick.pack_size, category: manualPick.category }
+      : [...candidates, ...extraCandidates].find(c => c.product.id === productId)?.product;
+
     if (onReplaceMatch) {
-      onReplaceMatch(componentName, productId);
+      onReplaceMatch(componentName, productId, productInfo);
     } else if (manualPick && onManualSelect) {
       onManualSelect(componentName, manualPick);
     } else if (onApplyMapping) {
@@ -102,8 +107,12 @@ export function MapComponentDrawer({
     const productId = manualPick?.id || selectedProductId;
     if (!productId) return;
 
+    const productInfo: CandidateProduct | undefined = manualPick
+      ? { id: manualPick.id, item_number: manualPick.item_number, brand: manualPick.brand, product: manualPick.product, pack_size: manualPick.pack_size, category: manualPick.category }
+      : [...candidates, ...extraCandidates].find(c => c.product.id === productId)?.product;
+
     if (onAddToQuote) {
-      onAddToQuote(componentName, productId);
+      onAddToQuote(componentName, productId, productInfo);
     } else if (manualPick && onManualSelect) {
       onManualSelect(componentName, manualPick);
     } else if (onApplyMapping) {
