@@ -2,7 +2,7 @@ import { Button } from '../components/ui/button';
 import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
 import { Input } from '../components/ui/input';
-import { ArrowLeft, ChevronRight, ChevronDown, Plus, X, ThumbsUp, ThumbsDown, Loader2 } from 'lucide-react';
+import { ArrowLeft, ChevronRight, ChevronDown, Plus, X, Loader2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router';
 import { useUser } from '../contexts/UserContext';
@@ -15,7 +15,6 @@ import {
   createQuote,
   getQuote,
   getGuestQuote,
-  submitQuoteFeedback,
   getMoreMatches,
 } from '../services/api';
 
@@ -120,10 +119,6 @@ export function MapIngredientsPage() {
     type: 'added_dish' | 'add_to_quote';
   }>>([]);
 
-  // ── Feedback state ──
-  const [isFeedbackDrawerOpen, setIsFeedbackDrawerOpen] = useState(false);
-  const [feedbackText, setFeedbackText] = useState('');
-  const [thumbsUpActive, setThumbsUpActive] = useState(false);
 
   // ─── Build dish list from quote lines ─────────────────────────────────────
 
@@ -271,40 +266,6 @@ export function MapIngredientsPage() {
     }
   }
 
-  // ─── Feedback ─────────────────────────────────────────────────────────────
-
-  async function handleThumbsUp() {
-    setThumbsUpActive(!thumbsUpActive);
-    if (quoteId) {
-      await submitQuoteFeedback(quoteId, { rating: 'thumbs_up' });
-    }
-  }
-
-  async function handleSubmitFeedback() {
-    if (quoteId) {
-      await submitQuoteFeedback(quoteId, { rating: 'thumbs_down', notes: feedbackText });
-    }
-    setIsFeedbackDrawerOpen(false);
-    setFeedbackText('');
-  }
-
-  async function handleRetryQuote() {
-    if (quoteId) {
-      await submitQuoteFeedback(quoteId, { rating: 'thumbs_down', notes: feedbackText });
-    }
-    setIsFeedbackDrawerOpen(false);
-    setFeedbackText('');
-    // Reload
-    setLoading(true);
-    setLoadingStatus('Rebuilding quote with your feedback…');
-    const res = await fetchQuote(quoteId!);
-    if (!res.error && res.data) {
-      const built = buildDishesFromLines((res.data as QuoteData).lines || []);
-      setDishes(built);
-      setSelectedDish(built[0] || null);
-    }
-    setLoading(false);
-  }
 
   // ─── Helpers ──────────────────────────────────────────────────────────────
 
@@ -541,12 +502,7 @@ export function MapIngredientsPage() {
                 <p className="text-sm text-gray-500">Select product matches for each ingredient</p>
               </div>
             </div>
-            <Button
-              onClick={() => navigate('/quote-builder', { state: { quoteId, isOpenQuote } })}
-              className="hidden md:flex bg-[#F9A64B] hover:bg-[#E8953A] text-white"
-            >
-              Adjust pricing
-            </Button>
+            {/* Single Adjust Pricing button is in the sticky footer */}
           </div>
         </div>
 
@@ -761,26 +717,6 @@ export function MapIngredientsPage() {
               </div>
             </div>
 
-            {/* Rate This Quote */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mt-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-[#2A2A2A]">Rate this quote</h3>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={handleThumbsUp}
-                    className={`p-2 rounded-lg hover:bg-[#A5CFDD]/20 transition-colors border border-gray-200 ${thumbsUpActive ? 'bg-[#A5CFDD]' : ''}`}
-                  >
-                    <ThumbsUp className={`w-5 h-5 ${thumbsUpActive ? 'text-[#F2993D]' : 'text-[#4F4F4F]'}`} />
-                  </button>
-                  <button
-                    onClick={() => setIsFeedbackDrawerOpen(true)}
-                    className="p-2 rounded-lg hover:bg-[#F2993D]/20 transition-colors border border-gray-200"
-                  >
-                    <ThumbsDown className="w-5 h-5 text-[#4F4F4F]" />
-                  </button>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       </div>
@@ -901,46 +837,6 @@ export function MapIngredientsPage() {
         </button>
       </div>
 
-      {/* Feedback Drawer */}
-      {isFeedbackDrawerOpen && (
-        <div className="fixed inset-0 z-50 flex justify-end">
-          <div className="fixed inset-0 bg-black/20" onClick={() => setIsFeedbackDrawerOpen(false)} />
-          <div className="relative w-full max-w-md bg-white h-full shadow-xl flex flex-col animate-in slide-in-from-right duration-300">
-            <div className="flex items-center justify-between p-4 border-b border-gray-100">
-              <h2 className="text-lg font-semibold text-[#2A2A2A]">Provide Feedback</h2>
-              <button onClick={() => setIsFeedbackDrawerOpen(false)} className="p-2 hover:bg-gray-100 rounded-full">
-                <X className="w-5 h-5 text-gray-500" />
-              </button>
-            </div>
-            <div className="flex-1 overflow-y-auto p-6">
-              <Label htmlFor="feedback-text">What could be improved?</Label>
-              <Textarea
-                id="feedback-text"
-                placeholder="e.g. Wrong brand for olive oil, prefer organic options…"
-                className="min-h-[200px] mt-2"
-                value={feedbackText}
-                onChange={(e) => setFeedbackText(e.target.value)}
-              />
-            </div>
-            <div className="p-4 border-t border-gray-100 bg-gray-50 space-y-3">
-              <Button
-                onClick={handleSubmitFeedback}
-                className="w-full bg-[#A5CFDD] hover:bg-[#8db9c9] text-[#2A2A2A]"
-                disabled={!feedbackText.trim()}
-              >
-                Submit
-              </Button>
-              <Button
-                onClick={handleRetryQuote}
-                className="w-full bg-[#7FAEC2] hover:bg-[#6A9AB0] text-white"
-                disabled={!feedbackText.trim()}
-              >
-                Retry Quote
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
