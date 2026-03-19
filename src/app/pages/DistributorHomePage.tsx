@@ -5,12 +5,14 @@ import { Upload, FileText, Loader2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { getDistributorHome } from '../services/api';
 import type { DistributorHomeData } from '../services/api';
+import { CatalogUploadDrawer } from '../components/CatalogUploadDrawer';
 
 export function DistributorHomePage() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [homeData, setHomeData] = useState<DistributorHomeData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [catalogDrawerOpen, setCatalogDrawerOpen] = useState(false);
 
   const firstName = user?.first_name || '';
 
@@ -25,15 +27,14 @@ export function DistributorHomePage() {
     }
   }, []);
 
-  useEffect(() => {
-    async function load() {
-      setLoading(true);
-      const res = await getDistributorHome();
-      if (res.data) setHomeData(res.data);
-      setLoading(false);
-    }
-    load();
-  }, []);
+  async function loadHome() {
+    setLoading(true);
+    const res = await getDistributorHome();
+    if (res.data) setHomeData(res.data);
+    setLoading(false);
+  }
+
+  useEffect(() => { loadHome(); }, []);
 
   const hasCatalog = homeData?.has_catalog ?? false;
 
@@ -75,7 +76,7 @@ export function DistributorHomePage() {
                   : 'Import your product catalog to start quoting'}
               </p>
               <Button
-                onClick={() => navigate('/start-new-quote', { state: { expandCatalog: true } })}
+                onClick={() => setCatalogDrawerOpen(true)}
                 className="w-full bg-[#A5CFDD] hover:bg-[#7FAEC2] text-white"
               >
                 {hasCatalog ? 'Update Catalog' : 'Upload Catalog'}
@@ -135,6 +136,12 @@ export function DistributorHomePage() {
           )}
         </>
       )}
+
+      <CatalogUploadDrawer
+        open={catalogDrawerOpen}
+        onOpenChange={setCatalogDrawerOpen}
+        onUploadComplete={() => loadHome()}
+      />
     </div>
   );
 }

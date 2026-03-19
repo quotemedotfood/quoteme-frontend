@@ -55,9 +55,10 @@ export function AppSidebar() {
 
   const navItems = isDistributorAdmin
     ? [
-        { icon: <LayoutDashboard size={20} />, label: "Home", path: "/distributor-admin" },
+        { icon: <LayoutDashboard size={20} />, label: "Dashboard", path: "/distributor-admin" },
         { icon: <Plus size={20} />, label: "New Quote", path: "/start-new-quote", highlight: true },
         { icon: <FileText size={20} />, label: "Quotes", path: "/quotes" },
+        { icon: <Users size={20} />, label: "Customers", path: "/customers" },
         { icon: <UserPlus size={20} />, label: "Reps", path: "/distributor-admin/reps" },
       ]
     : [
