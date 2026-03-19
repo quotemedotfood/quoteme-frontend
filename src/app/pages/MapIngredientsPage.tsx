@@ -108,7 +108,8 @@ export function MapIngredientsPage() {
   const [error, setError] = useState<string | null>(null);
 
   // ── Tab / drawer state ──
-  const [selectedTab, setSelectedTab] = useState<'dishes' | 'categories'>('categories');
+  const [selectedTab, setSelectedTab] = useState<'dishes' | 'categories' | 'match-strength'>('categories');
+  const [strengthFilters, setStrengthFilters] = useState<Set<string>>(new Set(['no-match', 'needs-review']));
   const [mapDrawerOpen, setMapDrawerOpen] = useState(false);
   const [selectedComponent, setSelectedComponent] = useState('');
   const [mappedComponents, setMappedComponents] = useState<Record<string, string[]>>({});
@@ -611,17 +612,21 @@ export function MapIngredientsPage() {
             {/* Main Card with Tabs */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200">
               <div className="flex border-b border-gray-200">
-                {(['categories', 'dishes'] as const).map(tab => (
+                {([
+                  { key: 'categories', label: 'Categories' },
+                  { key: 'dishes', label: 'Dishes' },
+                  { key: 'match-strength', label: 'Match Strength' },
+                ] as const).map(tab => (
                   <button
-                    key={tab}
-                    onClick={() => setSelectedTab(tab)}
-                    className={`px-6 py-3 text-sm font-medium transition-colors border-b-2 capitalize ${
-                      selectedTab === tab
+                    key={tab.key}
+                    onClick={() => setSelectedTab(tab.key)}
+                    className={`px-6 py-3 text-sm font-medium transition-colors border-b-2 ${
+                      selectedTab === tab.key
                         ? 'border-[#A5CFDD] text-[#A5CFDD]'
                         : 'border-transparent text-gray-600 hover:text-gray-900'
                     }`}
                   >
-                    {tab}
+                    {tab.label}
                   </button>
                 ))}
               </div>
@@ -639,6 +644,103 @@ export function MapIngredientsPage() {
                       {(selectedDish?.components || []).map(component =>
                         renderComponentRow(component, selectedDish?.componentLines[component])
                       )}
+                    </div>
+                  </div>
+                ) : selectedTab === 'match-strength' ? (
+                  /* Match Strength — group by match quality */
+                  <div>
+                    <h2 className="text-lg font-medium text-[#4F4F4F] mb-2">By Match Strength</h2>
+                    <p className="text-sm text-gray-500 mb-4">Focus on ingredients that need the most attention</p>
+
+                    <div className="flex flex-wrap gap-2 mb-6">
+                      {([
+                        { key: 'no-match', label: 'No Match', cls: 'bg-gray-100 text-gray-700 border-gray-300' },
+                        { key: 'needs-review', label: 'Needs Review', cls: 'bg-amber-50 text-amber-700 border-amber-300' },
+                        { key: 'good-match', label: 'Good Match', cls: 'bg-[#A5CFDD]/10 text-[#2A5F6F] border-[#A5CFDD]' },
+                        { key: 'strong-match', label: 'Strong Match', cls: 'bg-green-50 text-green-700 border-green-300' },
+                      ] as const).map(filter => {
+                        const active = strengthFilters.has(filter.key);
+                        return (
+                          <button
+                            key={filter.key}
+                            onClick={() => setStrengthFilters(prev => {
+                              const next = new Set(prev);
+                              next.has(filter.key) ? next.delete(filter.key) : next.add(filter.key);
+                              return next;
+                            })}
+                            className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
+                              active ? filter.cls : 'bg-white text-gray-400 border-gray-200'
+                            }`}
+                          >
+                            {filter.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    <div className="space-y-2">
+                      {(() => {
+                        type StrengthGroup = { key: string; label: string; badgeCls: string; items: { component: string; line: QuoteLine }[] };
+                        const groups: StrengthGroup[] = [
+                          { key: 'no-match', label: 'No Match', badgeCls: 'bg-gray-100 text-gray-600', items: [] },
+                          { key: 'needs-review', label: 'Needs Review', badgeCls: 'bg-amber-100 text-amber-700', items: [] },
+                          { key: 'good-match', label: 'Good Match', badgeCls: 'bg-[#A5CFDD]/20 text-[#2A5F6F]', items: [] },
+                          { key: 'strong-match', label: 'Strong Match', badgeCls: 'bg-green-100 text-green-700', items: [] },
+                        ];
+
+                        const seenProducts = new Set<string>();
+                        for (const dish of dishes) {
+                          for (const comp of dish.components) {
+                            const line = dish.componentLines[comp];
+                            const productKey = line?.product?.id || comp;
+                            if (seenProducts.has(productKey)) continue;
+                            seenProducts.add(productKey);
+
+                            const bestCandidate = line?.alignment_candidates?.find(c => c.position === 1);
+                            const score = bestCandidate?.score != null ? Math.round(bestCandidate.score * 100) : null;
+
+                            if (!line?.product || score === null || score < 50) {
+                              groups[0].items.push({ component: comp, line });
+                            } else if (score < 70) {
+                              groups[1].items.push({ component: comp, line });
+                            } else if (score < 90) {
+                              groups[2].items.push({ component: comp, line });
+                            } else {
+                              groups[3].items.push({ component: comp, line });
+                            }
+                          }
+                        }
+
+                        const filtered = groups.filter(g => strengthFilters.has(g.key) && g.items.length > 0);
+
+                        if (filtered.length === 0) {
+                          return (
+                            <p className="text-sm text-gray-400 text-center py-8">
+                              No ingredients match the selected filters
+                            </p>
+                          );
+                        }
+
+                        return filtered.map(group => (
+                          <div key={group.key} className="border border-gray-200 rounded-lg overflow-hidden">
+                            <div className="flex items-center justify-between p-4 bg-gray-50">
+                              <div className="flex items-center gap-3">
+                                <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${group.badgeCls}`}>
+                                  {group.label}
+                                </span>
+                                <span className="text-sm text-gray-500">{group.items.length} ingredient{group.items.length !== 1 ? 's' : ''}</span>
+                              </div>
+                            </div>
+                            <div className="border-t border-gray-200">
+                              {group.items.map(({ component, line }) => (
+                                <div key={component} className="pl-4">
+                                  {renderComponentRow(component, line)}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ));
+                      })()}
                     </div>
                   </div>
                 ) : (
