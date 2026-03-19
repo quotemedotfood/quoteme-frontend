@@ -12,6 +12,7 @@ import {
   Users,
   ChefHat,
   Building2,
+  Shield,
   ArrowLeft,
   Eye,
   EyeOff,
@@ -51,6 +52,7 @@ export function AuthPage() {
   }, [isAuthenticated, user, navigate]);
 
   const [view, setView] = useState<AuthView>('role-select');
+  const [selectedRole, setSelectedRole] = useState<'rep' | 'distributor_admin'>('rep');
 
   // Sign Up state
   const [distributorName, setDistributorName] = useState('');
@@ -142,6 +144,7 @@ export function AuthPage() {
       phone: phone || undefined,
       distributor_name: selectedDistributor ? undefined : distributorName,
       claimed_distributor_id: selectedDistributor?.id,
+      role: selectedRole,
     });
     setIsSubmitting(false);
 
@@ -225,7 +228,7 @@ export function AuthPage() {
       <div className="flex w-full flex-col gap-3">
         {/* Rep - active */}
         <button
-          onClick={() => switchView('signup')}
+          onClick={() => { setSelectedRole('rep'); switchView('signup'); }}
           className="group flex items-center gap-4 rounded-lg border-2 bg-white px-5 py-4 text-left transition-all hover:shadow-md"
           style={{ borderColor: '#7FAEC2' }}
         >
@@ -244,6 +247,31 @@ export function AuthPage() {
             </p>
             <p className="text-sm" style={{ color: '#4F4F4F' }}>
               Create and manage quotes for your customers
+            </p>
+          </div>
+        </button>
+
+        {/* Distributor Admin - active */}
+        <button
+          onClick={() => { setSelectedRole('distributor_admin'); switchView('signup'); }}
+          className="group flex items-center gap-4 rounded-lg border-2 bg-white px-5 py-4 text-left transition-all hover:shadow-md"
+          style={{ borderColor: '#7FAEC2' }}
+        >
+          <div
+            className="flex size-11 items-center justify-center rounded-full"
+            style={{ backgroundColor: '#E8F2F7' }}
+          >
+            <Shield className="size-5" style={{ color: '#7FAEC2' }} />
+          </div>
+          <div className="flex-1">
+            <p
+              className="font-semibold"
+              style={{ color: '#2A2A2A' }}
+            >
+              I'm a Distributor Admin
+            </p>
+            <p className="text-sm" style={{ color: '#4F4F4F' }}>
+              Manage multiple reps and incoming quotes
             </p>
           </div>
         </button>

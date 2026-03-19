@@ -45,6 +45,7 @@ export interface SignUpData {
   distributor_name?: string;
   claimed_distributor_id?: string;
   company_name?: string;
+  role?: string;
 }
 
 export interface LoginData {
@@ -338,7 +339,7 @@ export async function signUp(data: SignUpData): Promise<ApiResponse<{ message: s
     const response = await fetch(`${API_BASE_URL}/users`, {
       method: 'POST',
       headers,
-      body: JSON.stringify({ user: { ...data, role: 'rep' } }),
+      body: JSON.stringify({ user: { ...data, role: data.role || 'rep' } }),
     });
 
     const authHeader = response.headers.get('Authorization');
