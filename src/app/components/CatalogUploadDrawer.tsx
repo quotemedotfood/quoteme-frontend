@@ -22,7 +22,7 @@ export function CatalogUploadDrawer({ open, onOpenChange, onUploadComplete }: Ca
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [uploadResult, setUploadResult] = useState<{ message: string; isError: boolean } | null>(null);
+  const [uploadResult, setUploadResult] = useState<{ message: string; isError: boolean; debug?: any } | null>(null);
   const [uploadedCatalog, setUploadedCatalog] = useState<{ id: string; item_count: number } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -70,10 +70,18 @@ export function CatalogUploadDrawer({ open, onOpenChange, onUploadComplete }: Ca
     const res = await uploadCatalogFile(selectedFile);
 
     if (res.error) {
-      setUploadResult({ message: res.error, isError: true });
+      setUploadResult({ message: res.error, isError: true, debug: (res as any).data?.debug });
     } else if (res.data) {
-      setUploadResult({ message: res.data.message || `${res.data.item_count} products imported`, isError: false });
-      setUploadedCatalog({ id: res.data.id, item_count: res.data.item_count });
+      const data = res.data as any;
+      const isZero = data.item_count === 0;
+      setUploadResult({
+        message: data.message || `${data.item_count} products imported`,
+        isError: isZero,
+        debug: data.debug,
+      });
+      if (!isZero) {
+        setUploadedCatalog({ id: data.id, item_count: data.item_count });
+      }
     }
 
     setUploading(false);
@@ -183,17 +191,42 @@ export function CatalogUploadDrawer({ open, onOpenChange, onUploadComplete }: Ca
 
           {/* Upload result */}
           {uploadResult && (
-            <div className={`rounded-lg p-4 flex items-start gap-3 ${
+            <div className={`rounded-lg p-4 flex flex-col gap-2 ${
               uploadResult.isError ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'
             }`}>
-              {uploadResult.isError ? (
-                <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
-              ) : (
-                <Check className="w-5 h-5 flex-shrink-0 mt-0.5" />
+              <div className="flex items-start gap-3">
+                {uploadResult.isError ? (
+                  <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                ) : (
+                  <Check className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                )}
+                <p className="text-sm" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+                  {uploadResult.message}
+                </p>
+              </div>
+              {uploadResult.debug && (
+                <details className="text-xs mt-2">
+                  <summary className="cursor-pointer font-medium">Debug info</summary>
+                  <div className="mt-2 space-y-2 bg-white/50 rounded p-3 text-gray-700">
+                    <div>
+                      <p className="font-medium">Detected headers:</p>
+                      <p className="text-[11px] break-all">{uploadResult.debug.headers?.join(', ')}</p>
+                    </div>
+                    <div>
+                      <p className="font-medium">Column mapping:</p>
+                      <pre className="text-[11px] whitespace-pre-wrap">{JSON.stringify(uploadResult.debug.column_mapping, null, 2)}</pre>
+                    </div>
+                    {uploadResult.debug.sample_row && (
+                      <div>
+                        <p className="font-medium">First row (raw):</p>
+                        <p className="text-[11px] break-all">{uploadResult.debug.sample_row.raw?.join(' | ')}</p>
+                        <p className="font-medium mt-1">First row (parsed):</p>
+                        <pre className="text-[11px] whitespace-pre-wrap">{JSON.stringify(uploadResult.debug.sample_row.parsed, null, 2)}</pre>
+                      </div>
+                    )}
+                  </div>
+                </details>
               )}
-              <p className="text-sm" style={{ fontFamily: "'DM Sans', sans-serif" }}>
-                {uploadResult.message}
-              </p>
             </div>
           )}
 

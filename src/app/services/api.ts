@@ -651,7 +651,7 @@ export async function uploadCatalogFile(file: File): Promise<ApiResponse<Catalog
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      return { error: errorData.error || `HTTP ${response.status}` };
+      return { error: errorData.error || `HTTP ${response.status}`, data: errorData } as any;
     }
 
     const data = await response.json();
