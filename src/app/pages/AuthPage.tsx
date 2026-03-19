@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/ui/button';
@@ -20,6 +20,7 @@ import {
   AlertCircle,
   Check,
 } from 'lucide-react';
+import { useGooglePlaces } from '../hooks/useGooglePlaces';
 
 const BLOCKED_DOMAINS = [
   'gmail.com',
@@ -92,6 +93,11 @@ export function AuthPage() {
   const [restaurantName, setRestaurantName] = useState('');
   const [restaurantCity, setRestaurantCity] = useState('');
   const [restaurantState, setRestaurantState] = useState('');
+  const restaurantCityRef = useRef<HTMLInputElement>(null);
+  useGooglePlaces(restaurantCityRef, (addr) => {
+    setRestaurantCity(addr.city);
+    setRestaurantState(addr.state);
+  }, { types: ['(cities)'] });
   const [signupEmail, setSignupEmail] = useState(inviteEmail || '');
   const [phone, setPhone] = useState('');
   const [signupPassword, setSignupPassword] = useState('');
@@ -449,9 +455,10 @@ export function AuthPage() {
                   City <span className="font-normal text-gray-400">(optional)</span>
                 </label>
                 <Input
+                  ref={restaurantCityRef}
                   value={restaurantCity}
                   onChange={(e) => setRestaurantCity(e.target.value)}
-                  placeholder="City"
+                  placeholder="Start typing a city…"
                 />
               </div>
               <div>

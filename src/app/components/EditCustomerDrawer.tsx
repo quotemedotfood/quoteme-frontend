@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   Drawer,
   DrawerClose,
@@ -20,6 +20,7 @@ import {
   type RestaurantDetail,
   type RestaurantContact,
 } from '../services/api';
+import { useGooglePlaces } from '../hooks/useGooglePlaces';
 
 interface EditCustomerDrawerProps {
   open: boolean;
@@ -82,6 +83,18 @@ export function EditCustomerDrawer({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [deletingContactId, setDeletingContactId] = useState<string | null>(null);
+
+  const addressInputRef = useRef<HTMLInputElement>(null);
+  useGooglePlaces(addressInputRef, (addr) => {
+    setFormData(prev => ({
+      ...prev,
+      addressLine1: addr.addressLine1,
+      addressLine2: addr.addressLine2 || prev.addressLine2,
+      city: addr.city,
+      state: addr.state,
+      zip: addr.zip,
+    }));
+  });
 
   const isContactMode = !!contact;
 
@@ -502,10 +515,11 @@ export function EditCustomerDrawer({
                 <div>
                   <Label className="text-sm mb-2 block">Address</Label>
                   <Input
+                    ref={addressInputRef}
                     type="text"
                     value={formData.addressLine1}
                     onChange={(e) => setFormData({ ...formData, addressLine1: e.target.value })}
-                    placeholder="Street address"
+                    placeholder="Start typing an address…"
                     className="bg-gray-50 mb-2"
                   />
                   <Input
