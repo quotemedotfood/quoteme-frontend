@@ -1110,7 +1110,7 @@ export interface DistributorHomeData {
 }
 
 export async function getDistributorHome(): Promise<ApiResponse<DistributorHomeData>> {
-  return fetchWithAuth('/api/v1/distributor/home');
+  return fetchWithAuth('/api/v1/distributor_admin/home');
 }
 
 // Catalog confirmation
