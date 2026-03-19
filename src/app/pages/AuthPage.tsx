@@ -608,7 +608,7 @@ export function AuthPage() {
                 });
               }
             }}
-            className="mt-1 rounded border-gray-300 text-[#7FAEC2] focus:ring-[#7FAEC2]"
+            className="mt-0.5 w-4 h-4 shrink-0 rounded border-gray-300 text-[#7FAEC2] focus:ring-[#7FAEC2]"
           />
           <span className="text-sm" style={{ color: '#4F4F4F', fontFamily: 'DM Sans, sans-serif' }}>
             I agree to the{' '}
