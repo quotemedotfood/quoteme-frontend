@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import {
   Drawer,
   DrawerClose,
@@ -11,8 +11,10 @@ import {
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
-import { X, Plus, Trash2, Loader2 } from 'lucide-react';
+import { X, Plus, Trash2, Loader2, MapPin } from 'lucide-react';
 import { createRestaurant, createContact } from '../services/api';
+import { useGooglePlaces } from '../hooks/useGooglePlaces';
+import type { ParsedAddress } from '../hooks/useGooglePlaces';
 
 interface AddCustomerDrawerProps {
   open: boolean;
@@ -46,6 +48,21 @@ export function AddCustomerDrawer({ open, onOpenChange, onSuccess }: AddCustomer
     state: '',
     zip: '',
   });
+  const [addressDisplay, setAddressDisplay] = useState('');
+
+  const addressInputRef = useRef<HTMLInputElement>(null);
+  const handlePlaceSelect = useCallback((address: ParsedAddress) => {
+    setFormData(prev => ({
+      ...prev,
+      addressLine1: address.addressLine1,
+      addressLine2: address.addressLine2,
+      city: address.city,
+      state: address.state,
+      zip: address.zip,
+    }));
+    setAddressDisplay(address.formatted);
+  }, []);
+  const { ready: placesReady, error: placesError } = useGooglePlaces(addressInputRef, handlePlaceSelect);
 
   const [contacts, setContacts] = useState<ChefContact[]>([]);
   const [showNewPositionInput, setShowNewPositionInput] = useState<Record<string, boolean>>({});
@@ -89,6 +106,7 @@ export function AddCustomerDrawer({ open, onOpenChange, onSuccess }: AddCustomer
       state: '',
       zip: '',
     });
+    setAddressDisplay('');
     setContacts([]);
     setShowNewPositionInput({});
     setError(null);
@@ -195,59 +213,38 @@ export function AddCustomerDrawer({ open, onOpenChange, onSuccess }: AddCustomer
               />
             </div>
 
-            {/* Address */}
+            {/* Address — Google Places Autocomplete */}
             <div>
-              <Label htmlFor="address-line-1" className="text-sm mb-2 block">
+              <Label htmlFor="address-autocomplete" className="text-sm mb-2 block">
                 Address
               </Label>
-              <Input
-                id="address-line-1"
-                type="text"
-                value={formData.addressLine1}
-                onChange={(e) =>
-                  setFormData({ ...formData, addressLine1: e.target.value })
-                }
-                placeholder="Street address"
-                className="bg-gray-50 mb-2"
-              />
-              <Input
-                type="text"
-                value={formData.addressLine2}
-                onChange={(e) =>
-                  setFormData({ ...formData, addressLine2: e.target.value })
-                }
-                placeholder="Suite, unit, etc. (optional)"
-                className="bg-gray-50 mb-2"
-              />
-              <div className="grid grid-cols-3 gap-2">
-                <Input
+              <div className="relative">
+                <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                <input
+                  ref={addressInputRef}
+                  id="address-autocomplete"
                   type="text"
-                  value={formData.city}
-                  onChange={(e) =>
-                    setFormData({ ...formData, city: e.target.value })
-                  }
-                  placeholder="City"
-                  className="bg-gray-50"
-                />
-                <Input
-                  type="text"
-                  value={formData.state}
-                  onChange={(e) =>
-                    setFormData({ ...formData, state: e.target.value })
-                  }
-                  placeholder="State"
-                  className="bg-gray-50"
-                />
-                <Input
-                  type="text"
-                  value={formData.zip}
-                  onChange={(e) =>
-                    setFormData({ ...formData, zip: e.target.value })
-                  }
-                  placeholder="ZIP"
-                  className="bg-gray-50"
+                  defaultValue={addressDisplay}
+                  placeholder={placesReady ? 'Start typing an address...' : 'Loading address search...'}
+                  className="w-full pl-10 pr-3 py-2 border border-gray-200 rounded-md bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-[#7FAEC2] focus:border-transparent"
+                  autoComplete="off"
                 />
               </div>
+              {placesError && (
+                <p className="text-xs text-amber-600 mt-1">{placesError}</p>
+              )}
+              {formData.addressLine1 && (
+                <div className="mt-2 bg-green-50 border border-green-200 rounded-md px-3 py-2">
+                  <p className="text-xs text-green-700 font-medium">Address selected:</p>
+                  <p className="text-xs text-green-600">
+                    {formData.addressLine1}
+                    {formData.addressLine2 ? `, ${formData.addressLine2}` : ''}
+                    {formData.city ? `, ${formData.city}` : ''}
+                    {formData.state ? `, ${formData.state}` : ''}
+                    {formData.zip ? ` ${formData.zip}` : ''}
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Contacts */}
