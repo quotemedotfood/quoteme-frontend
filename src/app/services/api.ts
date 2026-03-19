@@ -623,10 +623,19 @@ export interface CatalogSummary {
   created_at: string;
 }
 
+export interface CatalogColumnInfo {
+  headers: string[];
+  column_mapping: Record<string, string>;
+  mapped_fields: string[];
+  missing_required: string[];
+  sample_row?: { raw: string[]; parsed: Record<string, string> };
+}
+
 export interface CatalogUploadResponse {
   id: string;
   item_count: number;
   message: string;
+  column_info?: CatalogColumnInfo;
 }
 
 export async function getCatalogs(): Promise<ApiResponse<CatalogSummary[]>> {
@@ -908,6 +917,10 @@ export interface RequoteResponse {
   matches_same: number;
 }
 
+export async function deleteQuote(quoteId: string): Promise<ApiResponse<{ status: string }>> {
+  return fetchWithAuth(`/api/v1/quotes/${quoteId}`, { method: 'DELETE' });
+}
+
 export async function requoteQuote(id: string): Promise<ApiResponse<RequoteResponse>> {
   return fetchWithAuth(`/api/v1/quotes/${id}/requote`, {
     method: 'POST',
@@ -1176,4 +1189,68 @@ export async function inviteRep(data: { name: string; email: string; territory?:
     method: 'POST',
     body: JSON.stringify(data),
   });
+}
+
+// ============= ONBOARDING DOCS =============
+
+export interface OnboardingDoc {
+  id: string;
+  title: string;
+  doc_type: 'pdf' | 'link';
+  url: string | null;
+  is_active: boolean;
+  position: number;
+  file_url: string | null;
+  file_name: string | null;
+  created_at: string;
+}
+
+export async function getOnboardingDocs(): Promise<ApiResponse<OnboardingDoc[]>> {
+  return fetchWithAuth('/api/v1/distributor_admin/onboarding_docs');
+}
+
+export async function createOnboardingDoc(data: FormData): Promise<ApiResponse<OnboardingDoc>> {
+  const authToken = getAuthToken();
+  const headers: Record<string, string> = {};
+  if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/v1/distributor_admin/onboarding_docs`, {
+      method: 'POST',
+      headers,
+      body: data,
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      return { error: errorData.error || `HTTP ${response.status}` };
+    }
+    return { data: await response.json() };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : 'Network error' };
+  }
+}
+
+export async function updateOnboardingDoc(id: string, data: FormData): Promise<ApiResponse<OnboardingDoc>> {
+  const authToken = getAuthToken();
+  const headers: Record<string, string> = {};
+  if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/v1/distributor_admin/onboarding_docs/${id}`, {
+      method: 'PATCH',
+      headers,
+      body: data,
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      return { error: errorData.error || `HTTP ${response.status}` };
+    }
+    return { data: await response.json() };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : 'Network error' };
+  }
+}
+
+export async function deleteOnboardingDoc(id: string): Promise<ApiResponse<{ status: string }>> {
+  return fetchWithAuth(`/api/v1/distributor_admin/onboarding_docs/${id}`, { method: 'DELETE' });
 }

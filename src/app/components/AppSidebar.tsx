@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router';
-import { LayoutDashboard, Users, FileText, Plus, Settings, UserPlus } from 'lucide-react';
+import { LayoutDashboard, Users, FileText, Plus, Settings, UserPlus, ClipboardList } from 'lucide-react';
 import logoSquare from '/src/assets/e549e7d27b183e98e791f43494c715b8cc6ce7e9.png';
 import { useUser } from '../contexts/UserContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -60,6 +60,7 @@ export function AppSidebar() {
         { icon: <FileText size={20} />, label: "Quotes", path: "/quotes" },
         { icon: <Users size={20} />, label: "Customers", path: "/customers" },
         { icon: <UserPlus size={20} />, label: "Reps", path: "/distributor-admin/reps" },
+        { icon: <ClipboardList size={20} />, label: "Onboarding", path: "/distributor-admin/onboarding-docs" },
       ]
     : [
         { icon: <Plus size={20} />, label: "New Quote", path: "/", highlight: true },

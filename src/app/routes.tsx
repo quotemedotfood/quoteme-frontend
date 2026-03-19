@@ -31,6 +31,7 @@ import { DistributorHomePage } from "./pages/DistributorHomePage";
 import { CatalogConfirmationPage } from "./pages/CatalogConfirmationPage";
 import { RepInvitePage } from "./pages/RepInvitePage";
 import { DistributorRepsPage } from "./pages/DistributorRepsPage";
+import { OnboardingDocsPage } from "./pages/OnboardingDocsPage";
 import { isDemoMode } from "./utils/demoMode";
 
 const demo = isDemoMode();
@@ -87,6 +88,7 @@ export const router = createBrowserRouter([
           { path: "catalog/confirmation", Component: CatalogConfirmationPage },
           { path: "distributor-admin/invite", Component: RepInvitePage },
           { path: "distributor-admin/reps", Component: DistributorRepsPage },
+          { path: "distributor-admin/onboarding-docs", Component: OnboardingDocsPage },
           { path: "distributor-admin", Component: DistributorHomePage },
           { path: "liquor", Component: StartNewQuotePage },
           { path: "liquor/*", Component: StartNewQuotePage },

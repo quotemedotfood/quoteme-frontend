@@ -9,8 +9,9 @@ import {
   DrawerTitle,
 } from './ui/drawer';
 import { Button } from './ui/button';
-import { X, Loader2, Upload, FileUp, Check, AlertCircle } from 'lucide-react';
+import { X, Loader2, Upload, FileUp, Check, AlertCircle, CheckCircle2, XCircle } from 'lucide-react';
 import { uploadCatalogFile } from '../services/api';
+import type { CatalogColumnInfo } from '../services/api';
 
 interface CatalogUploadDrawerProps {
   open: boolean;
@@ -22,8 +23,9 @@ export function CatalogUploadDrawer({ open, onOpenChange, onUploadComplete }: Ca
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [uploadResult, setUploadResult] = useState<{ message: string; isError: boolean; debug?: any } | null>(null);
+  const [uploadResult, setUploadResult] = useState<{ message: string; isError: boolean } | null>(null);
   const [uploadedCatalog, setUploadedCatalog] = useState<{ id: string; item_count: number } | null>(null);
+  const [columnInfo, setColumnInfo] = useState<CatalogColumnInfo | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileSelect = (file: File) => {
@@ -43,6 +45,7 @@ export function CatalogUploadDrawer({ open, onOpenChange, onUploadComplete }: Ca
     setSelectedFile(file);
     setUploadResult(null);
     setUploadedCatalog(null);
+    setColumnInfo(null);
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -70,14 +73,16 @@ export function CatalogUploadDrawer({ open, onOpenChange, onUploadComplete }: Ca
     const res = await uploadCatalogFile(selectedFile);
 
     if (res.error) {
-      setUploadResult({ message: res.error, isError: true, debug: (res as any).data?.debug });
+      const errorData = (res as any).data;
+      setColumnInfo(errorData?.column_info || null);
+      setUploadResult({ message: res.error, isError: true });
     } else if (res.data) {
       const data = res.data as any;
       const isZero = data.item_count === 0;
+      setColumnInfo(data.column_info || null);
       setUploadResult({
         message: data.message || `${data.item_count} products imported`,
         isError: isZero,
-        debug: data.debug,
       });
       if (!isZero) {
         setUploadedCatalog({ id: data.id, item_count: data.item_count });
@@ -95,6 +100,7 @@ export function CatalogUploadDrawer({ open, onOpenChange, onUploadComplete }: Ca
     setSelectedFile(null);
     setUploadResult(null);
     setUploadedCatalog(null);
+    setColumnInfo(null);
     onOpenChange(false);
   };
 
@@ -166,6 +172,7 @@ export function CatalogUploadDrawer({ open, onOpenChange, onUploadComplete }: Ca
                     setSelectedFile(null);
                     setUploadResult(null);
                     setUploadedCatalog(null);
+                    setColumnInfo(null);
                   }}
                 >
                   Choose a different file
@@ -204,62 +211,105 @@ export function CatalogUploadDrawer({ open, onOpenChange, onUploadComplete }: Ca
                   {uploadResult.message}
                 </p>
               </div>
-              {uploadResult.debug && (
-                <details className="text-xs mt-2">
-                  <summary className="cursor-pointer font-medium">Debug info</summary>
-                  <div className="mt-2 space-y-2 bg-white/50 rounded p-3 text-gray-700">
-                    <div>
-                      <p className="font-medium">Detected headers:</p>
-                      <p className="text-[11px] break-all">{uploadResult.debug.headers?.join(', ')}</p>
-                    </div>
-                    <div>
-                      <p className="font-medium">Column mapping:</p>
-                      <pre className="text-[11px] whitespace-pre-wrap">{JSON.stringify(uploadResult.debug.column_mapping, null, 2)}</pre>
-                    </div>
-                    {uploadResult.debug.sample_row && (
-                      <div>
-                        <p className="font-medium">First row (raw):</p>
-                        <p className="text-[11px] break-all">{uploadResult.debug.sample_row.raw?.join(' | ')}</p>
-                        <p className="font-medium mt-1">First row (parsed):</p>
-                        <pre className="text-[11px] whitespace-pre-wrap">{JSON.stringify(uploadResult.debug.sample_row.parsed, null, 2)}</pre>
-                      </div>
-                    )}
-                  </div>
-                </details>
-              )}
             </div>
           )}
 
-          {/* Required columns info */}
+          {/* Column mapping results / Required columns info */}
           <div className="bg-gray-50 rounded-lg p-4">
             <h3 className="text-sm font-medium text-[#2A2A2A] mb-3" style={{ fontFamily: "'DM Sans', sans-serif" }}>
-              Required Columns
+              {columnInfo ? 'Column Mapping' : 'Required Columns'}
             </h3>
-            <div className="space-y-2">
-              {[
-                { field: 'Item Number', desc: 'SKU or product code', required: true },
-                { field: 'Product Name', desc: 'Product description', required: true },
-                { field: 'Brand', desc: 'Manufacturer or brand name', required: true },
-                { field: 'Pack Size', desc: 'e.g. 6/10#, 4/1 GAL', required: true },
-                { field: 'Category', desc: 'Product category', required: false },
-                { field: 'Price', desc: 'Unit price', required: false },
-              ].map((col) => (
-                <div key={col.field} className="flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[#2A2A2A] font-medium">{col.field}</span>
-                    {col.required && (
-                      <span className="text-[10px] bg-[#F2993D]/10 text-[#F2993D] px-1.5 py-0.5 rounded font-medium">
-                        Required
-                      </span>
-                    )}
+            {columnInfo ? (
+              <>
+                {columnInfo.missing_required.length > 0 && (
+                  <div className="mb-3 p-2.5 rounded-md bg-amber-50 border border-amber-200">
+                    <p className="text-xs font-medium text-amber-700 flex items-center gap-1.5">
+                      <AlertCircle className="w-3.5 h-3.5" />
+                      Missing required columns: {columnInfo.missing_required.map(f => {
+                        const labels: Record<string, string> = { item_number: 'Item Number', product_name: 'Product Name', brand: 'Brand', pack_size: 'Pack Size' };
+                        return labels[f] || f;
+                      }).join(', ')}
+                    </p>
+                    <p className="text-[10px] text-amber-600 mt-1">
+                      Products may not display correctly without these columns.
+                    </p>
                   </div>
-                  <span className="text-gray-400">{col.desc}</span>
+                )}
+                <div className="space-y-1.5">
+                  {[
+                    { key: 'item_number', label: 'Item Number', required: true },
+                    { key: 'product_name', label: 'Product Name', required: true },
+                    { key: 'brand', label: 'Brand', required: true },
+                    { key: 'pack_size', label: 'Pack Size', required: true },
+                    { key: 'category', label: 'Category', required: false },
+                    { key: 'price_cents', label: 'Price', required: false },
+                  ].map((col) => {
+                    const isMapped = columnInfo.mapped_fields.includes(col.key);
+                    const mappedHeader = Object.entries(columnInfo.column_mapping)
+                      .find(([, v]) => v === col.key)?.[0];
+                    return (
+                      <div key={col.key} className="flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-2">
+                          {isMapped ? (
+                            <CheckCircle2 className="w-3.5 h-3.5 text-green-500 flex-shrink-0" />
+                          ) : (
+                            <XCircle className={`w-3.5 h-3.5 flex-shrink-0 ${col.required ? 'text-red-400' : 'text-gray-300'}`} />
+                          )}
+                          <span className={`font-medium ${isMapped ? 'text-[#2A2A2A]' : col.required ? 'text-red-500' : 'text-gray-400'}`}>
+                            {col.label}
+                          </span>
+                          {col.required && !isMapped && (
+                            <span className="text-[10px] bg-red-50 text-red-500 px-1.5 py-0.5 rounded font-medium">
+                              Missing
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-gray-400 text-[11px] truncate max-w-[180px]">
+                          {isMapped ? `← "${mappedHeader}"` : '—'}
+                        </span>
+                      </div>
+                    );
+                  })}
                 </div>
-              ))}
-            </div>
-            <p className="text-[10px] text-gray-400 mt-3">
-              Column headers are auto-mapped — exact names not required
-            </p>
+                {/* Detected headers */}
+                <details className="mt-3 text-xs">
+                  <summary className="cursor-pointer text-gray-400 hover:text-gray-600">
+                    File headers detected ({columnInfo.headers.length})
+                  </summary>
+                  <p className="mt-1.5 text-[11px] text-gray-500 break-all">
+                    {columnInfo.headers.filter(Boolean).join(', ')}
+                  </p>
+                </details>
+              </>
+            ) : (
+              <>
+                <div className="space-y-2">
+                  {[
+                    { field: 'Item Number', desc: 'SKU or product code', required: true },
+                    { field: 'Product Name', desc: 'Product description', required: true },
+                    { field: 'Brand', desc: 'Manufacturer or brand name', required: true },
+                    { field: 'Pack Size', desc: 'e.g. 6/10#, 4/1 GAL', required: true },
+                    { field: 'Category', desc: 'Product category', required: false },
+                    { field: 'Price', desc: 'Unit price', required: false },
+                  ].map((col) => (
+                    <div key={col.field} className="flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[#2A2A2A] font-medium">{col.field}</span>
+                        {col.required && (
+                          <span className="text-[10px] bg-[#F2993D]/10 text-[#F2993D] px-1.5 py-0.5 rounded font-medium">
+                            Required
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-gray-400">{col.desc}</span>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-[10px] text-gray-400 mt-3">
+                  Column headers are auto-mapped — exact names not required
+                </p>
+              </>
+            )}
           </div>
         </div>
 

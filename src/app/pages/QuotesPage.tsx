@@ -1,13 +1,13 @@
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
-import { Search, Eye, Download, ArrowUpDown, ArrowUp, ArrowDown, SlidersHorizontal, RefreshCw, Loader2 } from 'lucide-react';
+import { Search, Eye, Download, ArrowUpDown, ArrowUp, ArrowDown, SlidersHorizontal, RefreshCw, Loader2, Trash2, Pencil } from 'lucide-react';
 import { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { SwipeableCard } from '../components/SwipeableCard';
 import { BottomSheet } from '../components/BottomSheet';
 import { MobilePullToRefresh } from '../components/MobilePullToRefresh';
 import { SwipeHint } from '../components/SwipeHint';
-import { getQuotes, requoteQuote, downloadQuotePdf, type QuoteListItem, type GetQuotesParams } from '../services/api';
+import { getQuotes, requoteQuote, downloadQuotePdf, deleteQuote, type QuoteListItem, type GetQuotesParams } from '../services/api';
 
 export function QuotesPage() {
   const navigate = useNavigate();
@@ -22,6 +22,7 @@ export function QuotesPage() {
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const [requotingId, setRequotingId] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const fetchQuotes = useCallback(async () => {
     setLoading(true);
@@ -98,6 +99,20 @@ export function QuotesPage() {
 
   const handleViewQuote = (quoteId: string) => {
     navigate('/export-finalize', { state: { quoteId, isOpenQuote: false } });
+  };
+
+  const handleEditQuote = (quoteId: string) => {
+    navigate('/quote-builder', { state: { quoteId, isOpenQuote: false } });
+  };
+
+  const handleDeleteQuote = async (quoteId: string) => {
+    const response = await deleteQuote(quoteId);
+    if (response.error) {
+      setError(`Delete failed: ${response.error}`);
+    } else {
+      setQuotes(prev => prev.filter(q => q.id !== quoteId));
+    }
+    setConfirmDeleteId(null);
   };
 
   const formatCurrency = (cents: number) => {
@@ -279,7 +294,8 @@ export function QuotesPage() {
               {sortedQuotes.map((quote) => (
                 <SwipeableCard
                   key={quote.id}
-                  onEdit={() => handleViewQuote(quote.id)}
+                  onEdit={() => handleEditQuote(quote.id)}
+                  onDelete={() => setConfirmDeleteId(quote.id)}
                   className="rounded-lg border border-gray-200 shadow-sm p-4"
                 >
                   <div className="flex justify-between items-start mb-2">
@@ -307,29 +323,38 @@ export function QuotesPage() {
                     </div>
                   </div>
 
-                  <div className="flex justify-end gap-3 mt-4 pt-3 border-t border-gray-50">
-                     <button
-                       className="flex items-center gap-1.5 text-xs text-gray-600 hover:text-[#F2993D] transition-colors"
-                       onClick={() => handleViewQuote(quote.id)}
-                     >
+                  <div className="flex justify-between items-center mt-4 pt-3 border-t border-gray-50">
+                    <button
+                      className="flex items-center gap-1.5 text-xs font-medium text-[#7FAEC2] hover:text-[#6A9AB0] transition-colors"
+                      onClick={() => handleEditQuote(quote.id)}
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                      Edit Quote
+                    </button>
+                    <div className="flex gap-3">
+                      <button
+                        className="flex items-center gap-1.5 text-xs text-gray-600 hover:text-[#F2993D] transition-colors"
+                        onClick={() => handleViewQuote(quote.id)}
+                      >
                         <Eye className="w-3.5 h-3.5" />
                         View
-                     </button>
-                     <button
-                       className="flex items-center gap-1.5 text-xs text-gray-600 hover:text-[#F2993D] transition-colors"
-                       onClick={() => handleDownloadPdf(quote.id)}
-                     >
+                      </button>
+                      <button
+                        className="flex items-center gap-1.5 text-xs text-gray-600 hover:text-[#F2993D] transition-colors"
+                        onClick={() => handleDownloadPdf(quote.id)}
+                      >
                         <Download className="w-3.5 h-3.5" />
                         PDF
-                     </button>
-                     <button
-                       className="flex items-center gap-1.5 text-xs text-gray-600 hover:text-[#F2993D] transition-colors disabled:opacity-50"
-                       onClick={() => handleRequote(quote.id)}
-                       disabled={requotingId === quote.id}
-                     >
+                      </button>
+                      <button
+                        className="flex items-center gap-1.5 text-xs text-gray-600 hover:text-[#F2993D] transition-colors disabled:opacity-50"
+                        onClick={() => handleRequote(quote.id)}
+                        disabled={requotingId === quote.id}
+                      >
                         <RefreshCw className={`w-3.5 h-3.5 ${requotingId === quote.id ? 'animate-spin' : ''}`} />
                         Requote
-                     </button>
+                      </button>
+                    </div>
                   </div>
                 </SwipeableCard>
               ))}
@@ -451,6 +476,13 @@ export function QuotesPage() {
                         <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                           <button
                             className="p-1 hover:bg-gray-100 rounded transition-colors"
+                            title="Edit"
+                            onClick={() => handleEditQuote(quote.id)}
+                          >
+                            <Pencil className="w-4 h-4 text-gray-600" />
+                          </button>
+                          <button
+                            className="p-1 hover:bg-gray-100 rounded transition-colors"
                             title="View"
                             onClick={() => handleViewQuote(quote.id)}
                           >
@@ -471,6 +503,15 @@ export function QuotesPage() {
                           >
                             <RefreshCw className={`w-4 h-4 text-gray-600 ${requotingId === quote.id ? 'animate-spin' : ''}`} />
                           </button>
+                          {quote.status === 'draft' && (
+                            <button
+                              className="p-1 hover:bg-red-50 rounded transition-colors"
+                              title="Delete"
+                              onClick={() => setConfirmDeleteId(quote.id)}
+                            >
+                              <Trash2 className="w-4 h-4 text-red-400" />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -576,6 +617,26 @@ export function QuotesPage() {
 
       {/* Swipe Hint for Mobile Users */}
       <SwipeHint />
+
+      {/* Delete Confirmation */}
+      {confirmDeleteId && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg p-6 max-w-sm w-full shadow-xl">
+            <h3 className="text-lg font-medium text-[#2A2A2A] mb-2">Delete Quote?</h3>
+            <p className="text-sm text-gray-500 mb-6">This action cannot be undone. The quote and all its line items will be permanently deleted.</p>
+            <div className="flex gap-3 justify-end">
+              <Button variant="outline" onClick={() => setConfirmDeleteId(null)}>Cancel</Button>
+              <Button
+                className="bg-red-500 hover:bg-red-600 text-white"
+                onClick={() => handleDeleteQuote(confirmDeleteId)}
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Delete
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

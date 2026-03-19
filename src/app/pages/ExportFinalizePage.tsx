@@ -55,7 +55,8 @@ export function ExportFinalizePage() {
   const quoteId: string | undefined = (location.state as any)?.quoteId;
   const isOpenQuote: boolean = (location.state as any)?.isOpenQuote || false;
 
-  const [isFinalized, setIsFinalized] = useState(false);
+  const isAuthenticated = !!localStorage.getItem('quoteme_token');
+  const [isFinalized, setIsFinalized] = useState(isAuthenticated);
   const [showSuccessDrawer, setShowSuccessDrawer] = useState(false);
   const [showEditDrawer, setShowEditDrawer] = useState(false);
   const [showEmailDrawer, setShowEmailDrawer] = useState(false);
@@ -78,7 +79,7 @@ export function ExportFinalizePage() {
   const [loadingPdfPreview, setLoadingPdfPreview] = useState(false);
 
   // Load quote data
-  const isGuest = !localStorage.getItem('quoteme_token');
+  const isGuest = !isAuthenticated;
   const fetchQuote = (id: string) => isGuest ? getGuestQuote(id) : getQuote(id);
 
   useEffect(() => {
@@ -329,7 +330,6 @@ export function ExportFinalizePage() {
             </button>
             <div>
               <h1 className="text-xl text-[#4F4F4F]">Review & Send</h1>
-              <p className="text-sm text-gray-500">Step 4 of 4</p>
             </div>
           </div>
           <div className="hidden md:flex gap-2">
@@ -348,13 +348,6 @@ export function ExportFinalizePage() {
             >
               <Edit className="w-4 h-4 mr-2" />
               Edit Pricing
-            </Button>
-            <Button
-              className="bg-[#7FAEC2] hover:bg-[#6A9AB0] text-white"
-              onClick={handleDone}
-            >
-              <Check className="w-4 h-4 mr-2" />
-              Done
             </Button>
           </div>
         </div>
@@ -667,13 +660,14 @@ export function ExportFinalizePage() {
           {/* Right Column */}
           <div className="space-y-6">
             {/* Finalize and Sign Up */}
+            {isGuest && (
             <div className={`bg-white rounded-lg p-6 shadow-sm border-2 ${isFinalized ? 'border-green-500 bg-green-50' : 'border-[#A5CFDD]'}`}>
               <div className="flex items-center justify-between mb-1">
                 <h2 className="text-lg text-[#2A2A2A]">Sign up to keep building quotes</h2>
                 {isFinalized && <Check className="w-5 h-5 text-green-600" />}
               </div>
               <p className="text-gray-500 text-sm mb-6">Create your account to save and send this quote</p>
-              
+
               {!isFinalized ? (
                 <div className="space-y-4">
                   <div>
@@ -736,7 +730,7 @@ export function ExportFinalizePage() {
                     />
                   </div>
 
-                  <Button 
+                  <Button
                     className="w-full bg-[#F2993D] hover:bg-[#E08A2E] text-white h-12 mt-4"
                     onClick={() => setIsFinalized(true)}
                   >
@@ -757,12 +751,13 @@ export function ExportFinalizePage() {
                 </div>
               )}
             </div>
+            )}
 
             {/* Download Quote */}
             <div className={`bg-white rounded-lg p-6 shadow-sm transition-opacity ${!isFinalized ? 'opacity-50 pointer-events-none' : ''}`}>
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-lg text-[#2A2A2A]">Download Quote</h2>
-                {!isFinalized && <div className="text-xs bg-gray-100 px-2 py-1 rounded text-gray-500">Sign up first</div>}
+                {!isFinalized && isGuest && <div className="text-xs bg-gray-100 px-2 py-1 rounded text-gray-500">Sign up first</div>}
               </div>
               
               <div className="space-y-3">
@@ -799,7 +794,7 @@ export function ExportFinalizePage() {
             <div className={`bg-white rounded-lg p-6 shadow-sm transition-opacity ${!isFinalized ? 'opacity-50 pointer-events-none' : ''}`}>
               <div className="flex items-center justify-between mb-1">
                 <h2 className="text-lg text-[#2A2A2A]">Send to Customer</h2>
-                {!isFinalized && <div className="text-xs bg-gray-100 px-2 py-1 rounded text-gray-500">Sign up first</div>}
+                {!isFinalized && isGuest && <div className="text-xs bg-gray-100 px-2 py-1 rounded text-gray-500">Sign up first</div>}
               </div>
               <p className="text-gray-500 text-sm mb-6">
                 Emails will be sent via Quotes@Quote-me.com with your email CC'd
@@ -901,8 +896,8 @@ export function ExportFinalizePage() {
       {!isDemoMode() && (
         <div className="fixed bottom-0 left-0 right-0 md:left-64 bg-white border-t border-gray-200 p-4 z-40">
           <button
-            onClick={handleDone}
-            className="w-full md:w-auto md:min-w-[200px] md:mx-auto md:block bg-[#F9A64B] hover:bg-[#E8953A] text-white font-medium py-3 px-6 rounded-lg text-base min-h-[48px]"
+            onClick={() => setShowEmailDrawer(true)}
+            className="w-full md:w-auto md:min-w-[200px] md:mx-auto md:block bg-[#F9A64B] hover:bg-[#E8953A] text-white font-medium py-2.5 px-5 rounded-lg text-sm"
           >
             Send Quote
           </button>
