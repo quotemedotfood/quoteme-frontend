@@ -46,6 +46,10 @@ export interface SignUpData {
   claimed_distributor_id?: string;
   company_name?: string;
   role?: string;
+  restaurant_name?: string;
+  city?: string;
+  state?: string;
+  location_id?: string;
 }
 
 export interface LoginData {

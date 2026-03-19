@@ -35,6 +35,7 @@ const BLOCKED_DOMAINS = [
 ];
 
 type AuthView = 'role-select' | 'signup' | 'signin' | 'forgot-password';
+type SelectedRole = 'rep' | 'distributor_admin' | 'buyer';
 
 export function AuthPage() {
   const navigate = useNavigate();
@@ -45,6 +46,8 @@ export function AuthPage() {
     switch (role) {
       case 'quoteme_admin': return '/qm-admin/';
       case 'distributor_admin': return '/distributor-admin/';
+      case 'buyer': return '/dashboard';
+      case 'group_admin': return '/dashboard';
       default: return '/dashboard';
     }
   };
@@ -54,10 +57,11 @@ export function AuthPage() {
   }, [isAuthenticated, user, navigate]);
 
   const inviteDistributorId = searchParams.get('distributor_id');
+  const inviteLocationId = searchParams.get('location_id');
   const [inviteDistributor, setInviteDistributor] = useState<DistributorSearchResult | null>(null);
 
-  const [view, setView] = useState<AuthView>(inviteDistributorId ? 'signup' : 'role-select');
-  const [selectedRole, setSelectedRole] = useState<'rep' | 'distributor_admin'>('rep');
+  const [view, setView] = useState<AuthView>(inviteDistributorId || inviteLocationId ? 'signup' : 'role-select');
+  const [selectedRole, setSelectedRole] = useState<SelectedRole>(inviteLocationId ? 'buyer' : 'rep');
 
   // Fetch invite distributor info
   useEffect(() => {
@@ -81,6 +85,10 @@ export function AuthPage() {
   const [showDistributorDropdown, setShowDistributorDropdown] = useState(false);
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
+  // Restaurant signup fields
+  const [restaurantName, setRestaurantName] = useState('');
+  const [restaurantCity, setRestaurantCity] = useState('');
+  const [restaurantState, setRestaurantState] = useState('');
   const [signupEmail, setSignupEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [signupPassword, setSignupPassword] = useState('');
@@ -118,23 +126,28 @@ export function AuthPage() {
     return () => clearTimeout(timeout);
   }, [distributorName, selectedDistributor]);
 
-  const validateWorkEmail = (email: string): string | null => {
+  const isBuyerRole = selectedRole === 'buyer' || !!inviteLocationId;
+
+  const validateEmail = (email: string): string | null => {
     if (!email) return 'Email is required';
     const domain = email.split('@')[1]?.toLowerCase();
     if (!domain) return 'Please enter a valid email';
-    if (BLOCKED_DOMAINS.includes(domain)) return 'Please use your work email';
+    // Buyers can use personal email
+    if (!isBuyerRole && BLOCKED_DOMAINS.includes(domain)) return 'Please use your work email';
     return null;
   };
 
   const handleSignUp = async () => {
     const newErrors: Record<string, string> = {};
 
-    if (!inviteDistributorId && !distributorName.trim())
+    if (!isBuyerRole && !inviteDistributorId && !inviteLocationId && !distributorName.trim())
       newErrors.distributor = 'Distributor name is required';
+    if (isBuyerRole && !inviteLocationId && !restaurantName.trim())
+      newErrors.restaurantName = 'Restaurant name is required';
     if (!firstName.trim()) newErrors.firstName = 'First name is required';
     if (!lastName.trim()) newErrors.lastName = 'Last name is required';
 
-    const emailError = validateWorkEmail(signupEmail);
+    const emailError = validateEmail(signupEmail);
     if (emailError) newErrors.email = emailError;
 
     if (!signupPassword) newErrors.password = 'Password is required';
@@ -154,16 +167,30 @@ export function AuthPage() {
 
     setIsSubmitting(true);
     const claimedId = inviteDistributorId || selectedDistributor?.id;
-    const result = await signup({
+
+    const signupData: Record<string, unknown> = {
       first_name: firstName,
       last_name: lastName,
       email: signupEmail,
       password: signupPassword,
       phone: phone || undefined,
-      distributor_name: claimedId ? undefined : distributorName,
-      claimed_distributor_id: claimedId,
       role: selectedRole,
-    });
+    };
+
+    if (isBuyerRole) {
+      if (inviteLocationId) {
+        signupData.location_id = inviteLocationId;
+      } else {
+        signupData.restaurant_name = restaurantName;
+        signupData.city = restaurantCity || undefined;
+        signupData.state = restaurantState || undefined;
+      }
+    } else {
+      signupData.distributor_name = claimedId ? undefined : distributorName;
+      signupData.claimed_distributor_id = claimedId;
+    }
+
+    const result = await signup(signupData as Parameters<typeof signup>[0]);
     setIsSubmitting(false);
 
     if (result.success) {
@@ -294,26 +321,30 @@ export function AuthPage() {
           </div>
         </button>
 
-        {/* Chef - coming soon */}
-        <div className="flex cursor-not-allowed items-center gap-4 rounded-lg border-2 border-gray-200 bg-gray-50 px-5 py-4 opacity-60">
-          <div className="flex size-11 items-center justify-center rounded-full bg-gray-100">
-            <ChefHat className="size-5 text-gray-400" />
+        {/* Restaurant / Chef */}
+        <button
+          onClick={() => { setSelectedRole('buyer'); switchView('signup'); }}
+          className="group flex items-center gap-4 rounded-lg border-2 bg-white px-5 py-4 text-left transition-all hover:shadow-md"
+          style={{ borderColor: '#7FAEC2' }}
+        >
+          <div
+            className="flex size-11 items-center justify-center rounded-full"
+            style={{ backgroundColor: '#E8F2F7' }}
+          >
+            <ChefHat className="size-5" style={{ color: '#7FAEC2' }} />
           </div>
           <div className="flex-1">
-            <div className="flex items-center gap-2">
-              <p className="font-semibold text-gray-400">I'm a Chef</p>
-              <span
-                className="text-xs font-medium"
-                style={{ color: '#7FAEC2' }}
-              >
-                Coming Soon
-              </span>
-            </div>
-            <p className="text-sm text-gray-400">
+            <p
+              className="font-semibold"
+              style={{ color: '#2A2A2A' }}
+            >
+              I'm a Restaurant
+            </p>
+            <p className="text-sm" style={{ color: '#4F4F4F' }}>
               Request and compare quotes from distributors
             </p>
           </div>
-        </div>
+        </button>
 
         {/* Brand - coming soon */}
         <div className="flex cursor-not-allowed items-center gap-4 rounded-lg border-2 border-gray-200 bg-gray-50 px-5 py-4 opacity-60">
@@ -354,7 +385,7 @@ export function AuthPage() {
   const renderSignUp = () => (
     <div className="flex flex-col gap-6">
       <div className="flex items-center gap-3">
-        {!inviteDistributorId && (
+        {!inviteDistributorId && !inviteLocationId && (
           <button
             onClick={() => switchView('role-select')}
             className="flex size-8 items-center justify-center rounded-full transition-colors hover:bg-gray-100"
@@ -366,7 +397,7 @@ export function AuthPage() {
           className="text-xl font-bold"
           style={{ color: '#2A2A2A' }}
         >
-          {inviteDistributorId ? 'Join your team' : 'Create your account'}
+          {inviteDistributorId || inviteLocationId ? 'Join your team' : 'Create your account'}
         </h2>
       </div>
 
@@ -392,8 +423,66 @@ export function AuthPage() {
           </div>
         )}
 
+        {/* Restaurant fields for buyer signup */}
+        {isBuyerRole && !inviteLocationId ? (
+          <>
+            <div>
+              <label className="mb-1.5 block text-sm font-medium" style={{ color: '#2A2A2A' }}>
+                Restaurant Name
+              </label>
+              <Input
+                value={restaurantName}
+                onChange={(e) => {
+                  setRestaurantName(e.target.value);
+                  setErrors((prev) => { const next = { ...prev }; delete next.restaurantName; return next; });
+                }}
+                placeholder="Your restaurant name"
+              />
+              {renderFieldError('restaurantName')}
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="mb-1.5 block text-sm font-medium" style={{ color: '#2A2A2A' }}>
+                  City <span className="font-normal text-gray-400">(optional)</span>
+                </label>
+                <Input
+                  value={restaurantCity}
+                  onChange={(e) => setRestaurantCity(e.target.value)}
+                  placeholder="City"
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-sm font-medium" style={{ color: '#2A2A2A' }}>
+                  State <span className="font-normal text-gray-400">(optional)</span>
+                </label>
+                <Input
+                  value={restaurantState}
+                  onChange={(e) => setRestaurantState(e.target.value)}
+                  placeholder="CA"
+                  maxLength={2}
+                />
+              </div>
+            </div>
+          </>
+        ) : null}
+
+        {/* Location invite banner */}
+        {inviteLocationId && (
+          <div className="flex items-center gap-3 rounded-lg border border-green-200 bg-green-50 px-4 py-3">
+            <div className="flex size-8 items-center justify-center rounded bg-green-100">
+              <ChefHat className="size-4 text-green-600" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-green-800">
+                You've been invited to join a team
+              </p>
+              <p className="text-xs text-green-600">Create your account to get started</p>
+            </div>
+          </div>
+        )}
+
         {/* Distributor name with autocomplete */}
-        {!inviteDistributorId ? (
+        {!inviteDistributorId && !isBuyerRole ? (
         <div className="relative">
           <label
             className="mb-1.5 block text-sm font-medium"
@@ -516,13 +605,13 @@ export function AuthPage() {
           </div>
         </div>
 
-        {/* Work email */}
+        {/* Email */}
         <div>
           <label
             className="mb-1.5 block text-sm font-medium"
             style={{ color: '#2A2A2A' }}
           >
-            Work Email
+            {isBuyerRole ? 'Email' : 'Work Email'}
           </label>
           <Input
             type="email"
@@ -535,7 +624,7 @@ export function AuthPage() {
                 return next;
               });
             }}
-            placeholder="jane@yourdistributor.com"
+            placeholder={isBuyerRole ? 'jane@example.com' : 'jane@yourdistributor.com'}
           />
           {renderFieldError('email')}
         </div>
