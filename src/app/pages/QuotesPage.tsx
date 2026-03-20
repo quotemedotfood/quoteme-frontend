@@ -114,7 +114,7 @@ export function QuotesPage() {
   };
 
   const handleViewQuote = (quoteId: string) => {
-    window.open(`/export-finalize?quoteId=${quoteId}`, '_blank');
+    navigate('/export-finalize', { state: { quoteId, isOpenQuote: false } });
   };
 
   const handleEditQuote = (quoteId: string) => {
