@@ -84,6 +84,8 @@ export interface AdminDistributor {
   created_at: string;
   rep_count: number;
   product_count: number;
+  admin_user_id: string | null;
+  admin_user_name: string | null;
 }
 
 export interface AdminDistributorDetail extends AdminDistributor {
@@ -120,6 +122,8 @@ export interface AdminRestaurant {
   contact_count: number;
   restaurant_group: { id: string; name: string } | null;
   created_at: string;
+  admin_user_id: string | null;
+  admin_user_name: string | null;
 }
 
 export interface ConferenceLead {
@@ -266,6 +270,12 @@ export async function getAdminRestaurants(): Promise<ApiResponse<AdminRestaurant
 
 export async function getAdminRestaurant(id: string): Promise<ApiResponse<AdminRestaurantDetail>> {
   return fetchWithAuth(`/api/v1/admin/restaurants/${id}`);
+}
+
+// ============= IMPERSONATE =============
+
+export async function impersonateUser(userId: string): Promise<ApiResponse<{ token: string; user: { id: string; email: string; first_name: string; last_name: string; role: string } }>> {
+  return fetchWithAuth(`/api/v1/admin/users/${userId}/impersonate`, { method: 'POST' });
 }
 
 // ============= CONFERENCE LEADS =============

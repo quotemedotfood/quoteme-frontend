@@ -11,7 +11,8 @@ import {
   TableHead,
   TableCell,
 } from '../../components/ui/table';
-import { getAdminDistributors, createDistributor, AdminDistributor } from '../../services/adminApi';
+import { getAdminDistributors, createDistributor, impersonateUser, AdminDistributor } from '../../services/adminApi';
+import { UserCheck } from 'lucide-react';
 
 type SortField = 'name' | 'region' | 'status' | 'rep_count' | 'product_count' | 'created_at';
 type SortDir = 'asc' | 'desc';
@@ -28,6 +29,21 @@ export function QMAdminDistributors() {
   const [newDomain, setNewDomain] = useState('');
   const [newRegion, setNewRegion] = useState('');
   const [creating, setCreating] = useState(false);
+  const [impersonating, setImpersonating] = useState<string | null>(null);
+
+  async function handleImpersonate(userId: string, userName: string) {
+    setImpersonating(userId);
+    const res = await impersonateUser(userId);
+    if (res.data?.token) {
+      localStorage.setItem('quoteme_admin_token', localStorage.getItem('quoteme_token') || '');
+      localStorage.setItem('quoteme_impersonating', userName);
+      localStorage.setItem('quoteme_token', res.data.token);
+      window.location.href = '/';
+    } else {
+      setError(res.error || 'Failed to impersonate');
+      setImpersonating(null);
+    }
+  }
 
   useEffect(() => {
     loadDistributors();
@@ -188,6 +204,7 @@ export function QMAdminDistributors() {
                   <TableHead className="cursor-pointer" onClick={() => toggleSort('created_at')}>
                     <div className="flex items-center gap-1">Created <SortIcon field="created_at" /></div>
                   </TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -208,6 +225,22 @@ export function QMAdminDistributors() {
                       </span>
                     </TableCell>
                     <TableCell className="text-sm text-gray-500">{formatDate(d.created_at)}</TableCell>
+                    <TableCell className="text-right">
+                      {d.admin_user_id ? (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-xs text-[#7FAEC2] hover:text-[#6A9AB0]"
+                          disabled={impersonating === d.admin_user_id}
+                          onClick={() => handleImpersonate(d.admin_user_id!, d.admin_user_name || d.name)}
+                        >
+                          <UserCheck size={14} className="mr-1" />
+                          {impersonating === d.admin_user_id ? 'Switching...' : 'Impersonate'}
+                        </Button>
+                      ) : (
+                        <span className="text-xs text-gray-400">No user</span>
+                      )}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
