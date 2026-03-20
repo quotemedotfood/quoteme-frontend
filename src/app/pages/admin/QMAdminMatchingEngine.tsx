@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import {
   ChevronDown, ChevronRight, Download, Send, Trash2, ArrowUpCircle, Paperclip, X,
   Beaker, Fish, Wine, Coffee, GlassWater, Filter, BookOpen, Lock, RefreshCw,
+  CheckCircle, AlertTriangle, XCircle, RotateCcw, Save,
 } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
@@ -9,6 +10,7 @@ import {
   getMatchingEngineRules,
   getMatchingEngineLogs,
   sendMatchingEngineChat,
+  saveMatchingEngineRules,
   deleteMatchingEngineRule,
   promoteCorrection,
   getMatchingEngineExportUrl,
@@ -22,6 +24,7 @@ import {
   type AdminStockQuote,
   type ConceptLabel,
   type ConceptTestResult,
+  type RuleValidation,
 } from '../../services/adminApi';
 
 type Tab = 'rules' | 'training' | 'concepts' | 'changelog';
@@ -401,10 +404,72 @@ function StockQuotesSection() {
 // ═══════════════════════════════════════════════════════════════════════
 // Training Chat Tab
 // ═══════════════════════════════════════════════════════════════════════
+interface ChatMessage {
+  role: 'user' | 'system';
+  text: string;
+  rules?: string[];
+  validation?: RuleValidation;
+  originalMessage?: string;
+  timestamp: string;
+}
+
+function ValidationBadge({ validation, onSave, onRetry, saving }: {
+  validation: RuleValidation;
+  onSave: () => void;
+  onRetry: () => void;
+  saving: boolean;
+}) {
+  const badge = {
+    pass: { bg: 'bg-green-50 border-green-200', icon: <CheckCircle size={14} className="text-green-600" />, label: 'Validated', color: 'text-green-700' },
+    warn: { bg: 'bg-amber-50 border-amber-200', icon: <AlertTriangle size={14} className="text-amber-600" />, label: 'Warnings', color: 'text-amber-700' },
+    reject: { bg: 'bg-red-50 border-red-200', icon: <XCircle size={14} className="text-red-600" />, label: 'Rejected', color: 'text-red-700' },
+  }[validation.status];
+
+  return (
+    <div className={`mt-2 p-3 rounded-lg border ${badge.bg}`}>
+      <div className="flex items-center gap-1.5 mb-1">
+        {badge.icon}
+        <span className={`text-xs font-semibold ${badge.color}`}>{badge.label}</span>
+        <span className="text-xs text-gray-500 ml-1">{validation.rules.length} rule(s)</span>
+      </div>
+      {validation.warnings.length > 0 && (
+        <div className="mt-1 space-y-0.5">
+          {validation.warnings.map((w, i) => <p key={i} className="text-xs text-amber-600">⚠ {w}</p>)}
+        </div>
+      )}
+      {validation.rejections.length > 0 && (
+        <div className="mt-1 space-y-0.5">
+          {validation.rejections.map((r, i) => <p key={i} className="text-xs text-red-600">✕ {r}</p>)}
+        </div>
+      )}
+      {validation.rules.length > 0 && (
+        <div className="mt-2 space-y-1">
+          {validation.rules.map((rule, i) => (
+            <div key={i} className="text-xs font-mono bg-white/60 rounded px-2 py-1">
+              {(rule as Record<string, unknown>).type}: {(rule as Record<string, unknown>).ingredient_pattern || (rule as Record<string, unknown>).canonical_name || (rule as Record<string, unknown>).sauce_name || JSON.stringify(rule)}
+            </div>
+          ))}
+        </div>
+      )}
+      <div className="flex gap-2 mt-2">
+        {validation.status !== 'reject' && validation.rules.length > 0 && (
+          <Button size="sm" onClick={onSave} disabled={saving} className="bg-green-600 text-white hover:bg-green-700 text-xs h-7 px-3">
+            <Save size={12} className="mr-1" /> {saving ? 'Saving...' : 'Save Rules'}
+          </Button>
+        )}
+        <Button size="sm" variant="outline" onClick={onRetry} className="text-xs h-7 px-3">
+          <RotateCcw size={12} className="mr-1" /> Retry
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 function TrainingTab() {
-  const [messages, setMessages] = useState<Array<{ role: 'user' | 'system'; text: string; rules?: string[]; timestamp: string }>>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [attachedFile, setAttachedFile] = useState<File | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -413,12 +478,12 @@ function TrainingTab() {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [messages]);
 
-  const handleSend = async () => {
-    if ((!input.trim() && !attachedFile) || sending) return;
-    const userMsg = input.trim() || (attachedFile ? `Uploaded: ${attachedFile.name}` : '');
-    const file = attachedFile;
-    setInput('');
-    setAttachedFile(null);
+  const handleSend = async (overrideMsg?: string) => {
+    const msgToSend = overrideMsg || input.trim();
+    if ((!msgToSend && !attachedFile) || sending) return;
+    const userMsg = msgToSend || (attachedFile ? `Uploaded: ${attachedFile.name}` : '');
+    const file = overrideMsg ? null : attachedFile;
+    if (!overrideMsg) { setInput(''); setAttachedFile(null); }
     const displayText = file ? `${userMsg}\n📎 ${file.name}` : userMsg;
     setMessages(prev => [...prev, { role: 'user', text: displayText, timestamp: new Date().toISOString() }]);
     setSending(true);
@@ -431,6 +496,8 @@ function TrainingTab() {
         role: 'system',
         text: res.data!.confirmation,
         rules: res.data!.rules_applied,
+        validation: res.data!.validation,
+        originalMessage: userMsg,
         timestamp: res.data!.timestamp,
       }]);
     } else {
@@ -438,9 +505,25 @@ function TrainingTab() {
     }
   };
 
+  const handleSaveRules = async (rules: Record<string, unknown>[], msgIndex: number) => {
+    setSaving(true);
+    const res = await saveMatchingEngineRules(rules);
+    setSaving(false);
+    if (res.data) {
+      setMessages(prev => prev.map((m, i) => i === msgIndex ? {
+        ...m,
+        validation: undefined,
+        rules: res.data!.rules_applied,
+        text: m.text + '\n\n✓ Rules saved successfully.',
+      } : m));
+    } else {
+      setMessages(prev => [...prev, { role: 'system', text: `Failed to save: ${res.error}`, timestamp: new Date().toISOString() }]);
+    }
+  };
+
   return (
     <div className="flex flex-col h-[calc(100vh-220px)]">
-      <p className="text-sm text-[#4F4F4F] mb-3">Type natural language instructions to create or update matching rules. The engine interprets your intent and applies changes immediately.</p>
+      <p className="text-sm text-[#4F4F4F] mb-3">Type natural language instructions to create or update matching rules. Rules are validated before saving — review and confirm.</p>
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto space-y-4 border border-gray-200 rounded-lg bg-white p-4 mb-3">
         {messages.length === 0 && (
@@ -460,6 +543,14 @@ function TrainingTab() {
                     <p key={j} className="text-xs opacity-80">→ {r}</p>
                   ))}
                 </div>
+              )}
+              {msg.validation && (
+                <ValidationBadge
+                  validation={msg.validation}
+                  onSave={() => handleSaveRules(msg.validation!.rules, i)}
+                  onRetry={() => handleSend(msg.originalMessage)}
+                  saving={saving}
+                />
               )}
             </div>
             <TimeAgo date={msg.timestamp} />

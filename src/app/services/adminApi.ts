@@ -498,10 +498,23 @@ export interface MatchingEngineLog {
   created_at: string;
 }
 
+export interface RuleValidation {
+  status: 'pass' | 'warn' | 'reject';
+  rules: Record<string, unknown>[];
+  warnings: string[];
+  rejections: string[];
+}
+
 export interface ChatResponse {
   confirmation: string;
   rules_applied: string[];
+  validation?: RuleValidation;
   timestamp: string;
+}
+
+export interface SaveRulesResponse {
+  status: string;
+  rules_applied: string[];
 }
 
 export async function getMatchingEngineRules(): Promise<ApiResponse<MatchingEngineRules>> {
@@ -563,6 +576,15 @@ export async function sendMatchingEngineChat(
   return fetchWithAuth('/api/v1/admin/matching-engine/chat', {
     method: 'POST',
     body: JSON.stringify({ message }),
+  });
+}
+
+export async function saveMatchingEngineRules(
+  rules: Record<string, unknown>[]
+): Promise<ApiResponse<SaveRulesResponse>> {
+  return fetchWithAuth('/api/v1/admin/matching-engine/save-rules', {
+    method: 'POST',
+    body: JSON.stringify({ rules }),
   });
 }
 
