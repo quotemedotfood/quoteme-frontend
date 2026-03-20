@@ -374,12 +374,15 @@ export function MapIngredientsPage() {
     const confidence = bestCandidate?.score != null ? Math.round(bestCandidate.score * 100) : null;
     const isMapped = mappedComponents[component]?.length > 0;
 
-    const badge = confidence != null
-      ? confidence >= 90 ? { text: 'Strong Match', cls: 'bg-green-100 text-green-700' }
-        : confidence >= 70 ? { text: 'Good Match', cls: 'bg-[#A5CFDD]/20 text-[#2A5F6F]' }
-        : confidence >= 50 ? { text: 'Review Suggested', cls: 'bg-amber-100 text-amber-700' }
-        : { text: 'Needs Your Pick', cls: 'bg-red-100 text-red-700' }
-      : null;
+    const badge = isMapped
+      ? { text: 'Your Pick', cls: 'bg-green-100 text-green-700' }
+      : confidence != null
+        ? confidence >= 90 ? { text: 'Strong Match', cls: 'bg-green-100 text-green-700' }
+          : confidence >= 70 ? { text: 'Good Match', cls: 'bg-[#A5CFDD]/20 text-[#2A5F6F]' }
+          : confidence >= 50 ? { text: 'Review Suggested', cls: 'bg-amber-100 text-amber-700' }
+          : { text: 'Needs Your Pick', cls: 'bg-red-100 text-red-700' }
+        : !bestMatch ? { text: 'Needs Your Pick', cls: 'bg-red-100 text-red-700' }
+        : null;
 
     return (
       <div key={component} className="grid grid-cols-[1fr_1fr_auto] items-center gap-4 py-3 border-b border-gray-100 last:border-b-0">
@@ -399,7 +402,14 @@ export function MapIngredientsPage() {
               )}
             </div>
           ) : (
-            <span className="text-xs italic text-gray-400">No match found</span>
+            <div className="text-xs">
+              <span className="italic text-gray-400">No match found</span>
+              {badge && (
+                <span className={`mt-1 inline-block rounded px-2 py-0.5 text-xs font-medium ${badge.cls}`}>
+                  {badge.text}
+                </span>
+              )}
+            </div>
           )}
         </div>
 
@@ -409,7 +419,7 @@ export function MapIngredientsPage() {
           className={`text-xs px-3 py-1 whitespace-nowrap ${isMapped ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-[#A5CFDD] hover:bg-[#8db9c9] text-[#2A2A2A]'}`}
           onClick={() => handleMapComponent(component)}
         >
-          {isMapped ? 'Mapped ✓' : 'Add Match'}
+          {isMapped ? 'Change Match' : 'Add Match'}
         </Button>
       </div>
     );
