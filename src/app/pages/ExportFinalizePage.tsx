@@ -21,7 +21,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '../components/ui/dialog';
-import { getQuote, getGuestQuote, downloadQuotePdf, sendQuote, sendQuoteSms } from '../services/api';
+import { getQuote, getGuestQuote, downloadQuotePdf, downloadOrderGuide, sendQuote, sendQuoteSms } from '../services/api';
 import type { QuoteResponse, QuoteLineResponse } from '../services/api';
 import { isDemoMode, PROD_SIGNUP_URL } from '../utils/demoMode';
 
@@ -69,6 +69,7 @@ export function ExportFinalizePage() {
   const [quoteData, setQuoteData] = useState<QuoteResponse | null>(null);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [downloadingCsv, setDownloadingCsv] = useState(false);
+  const [downloadingOrderGuide, setDownloadingOrderGuide] = useState(false);
 
   // Premium feature state
   const [selectedDocs, setSelectedDocs] = useState<string[]>([]);
@@ -159,6 +160,24 @@ export function ExportFinalizePage() {
       }
     } finally {
       setDownloadingPdf(false);
+    }
+  }
+
+  async function handleOrderGuideDownload() {
+    if (!quoteId) return;
+    setDownloadingOrderGuide(true);
+    try {
+      const result = await downloadOrderGuide(quoteId);
+      if (result.blob) {
+        const url = URL.createObjectURL(result.blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `order-guide-${quoteId}.xlsx`;
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+    } finally {
+      setDownloadingOrderGuide(false);
     }
   }
 
@@ -787,6 +806,18 @@ export function ExportFinalizePage() {
                     <FileText className="w-4 h-4 mr-3" />
                   )}
                   PDF Quote
+                </Button>
+                <Button
+                  className="w-full justify-start bg-[#F9A64B] hover:bg-[#E8953A] text-white h-12"
+                  disabled={!isFinalized || downloadingOrderGuide || !quoteId}
+                  onClick={handleOrderGuideDownload}
+                >
+                  {downloadingOrderGuide ? (
+                    <Loader2 className="w-4 h-4 mr-3 animate-spin" />
+                  ) : (
+                    <FileText className="w-4 h-4 mr-3" />
+                  )}
+                  Convert to Order Guide
                 </Button>
               </div>
             </div>

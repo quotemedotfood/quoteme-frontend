@@ -838,6 +838,33 @@ export async function downloadQuotePdf(id: string): Promise<{ blob?: Blob; error
   }
 }
 
+export async function downloadOrderGuide(id: string): Promise<{ blob?: Blob; error?: string }> {
+  const token = getAuthToken();
+  const guestToken = getGuestToken();
+  const headers: Record<string, string> = {};
+
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  } else if (guestToken) {
+    headers['X-Guest-Token'] = guestToken;
+  }
+
+  try {
+    const endpoint = token
+      ? `${API_BASE_URL}/api/v1/quotes/${id}/order_guide`
+      : `${API_BASE_URL}/api/v1/guest/quotes/${id}/order_guide`;
+    const response = await fetch(endpoint, { headers });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      return { error: errorData.error || `HTTP ${response.status}` };
+    }
+    const blob = await response.blob();
+    return { blob };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : 'Network error' };
+  }
+}
+
 // Catalog product search — used for manual match selection
 export interface CatalogSearchProduct {
   id: string;
