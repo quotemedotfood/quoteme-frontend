@@ -537,8 +537,29 @@ export async function promoteCorrection(
 }
 
 export async function sendMatchingEngineChat(
-  message: string
+  message: string,
+  file?: File
 ): Promise<ApiResponse<ChatResponse>> {
+  if (file) {
+    // Use FormData for file uploads — must NOT set Content-Type header
+    const token = getAuthToken();
+    const formData = new FormData();
+    formData.append('message', message);
+    formData.append('file', file);
+    const headers: Record<string, string> = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const response = await fetch(`${API_BASE_URL}/api/v1/admin/matching-engine/chat`, {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+    if (!response.ok) {
+      const errBody = await response.json().catch(() => ({}));
+      return { data: null, error: errBody.error || `HTTP ${response.status}` };
+    }
+    const data = await response.json();
+    return { data, error: null };
+  }
   return fetchWithAuth('/api/v1/admin/matching-engine/chat', {
     method: 'POST',
     body: JSON.stringify({ message }),

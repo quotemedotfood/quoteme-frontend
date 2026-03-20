@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import {
-  ChevronDown, ChevronRight, Download, Send, Trash2, ArrowUpCircle,
+  ChevronDown, ChevronRight, Download, Send, Trash2, ArrowUpCircle, Paperclip, X,
   Beaker, Fish, Wine, Coffee, GlassWater, Filter, BookOpen, Lock, RefreshCw,
 } from 'lucide-react';
 import { Button } from '../../components/ui/button';
@@ -401,20 +401,25 @@ function TrainingTab() {
   const [messages, setMessages] = useState<Array<{ role: 'user' | 'system'; text: string; rules?: string[]; timestamp: string }>>([]);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
+  const [attachedFile, setAttachedFile] = useState<File | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [messages]);
 
   const handleSend = async () => {
-    if (!input.trim() || sending) return;
-    const userMsg = input.trim();
+    if ((!input.trim() && !attachedFile) || sending) return;
+    const userMsg = input.trim() || (attachedFile ? `Uploaded: ${attachedFile.name}` : '');
+    const file = attachedFile;
     setInput('');
-    setMessages(prev => [...prev, { role: 'user', text: userMsg, timestamp: new Date().toISOString() }]);
+    setAttachedFile(null);
+    const displayText = file ? `${userMsg}\n📎 ${file.name}` : userMsg;
+    setMessages(prev => [...prev, { role: 'user', text: displayText, timestamp: new Date().toISOString() }]);
     setSending(true);
 
-    const res = await sendMatchingEngineChat(userMsg);
+    const res = await sendMatchingEngineChat(userMsg, file || undefined);
     setSending(false);
 
     if (res.data) {
@@ -465,15 +470,46 @@ function TrainingTab() {
         )}
       </div>
 
+      {attachedFile && (
+        <div className="flex items-center gap-2 mb-2 px-2 py-1 bg-blue-50 rounded text-sm text-[#4F4F4F]">
+          <Paperclip size={14} />
+          <span className="truncate flex-1">{attachedFile.name}</span>
+          <button onClick={() => setAttachedFile(null)} className="text-gray-400 hover:text-gray-600">
+            <X size={14} />
+          </button>
+        </div>
+      )}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".txt,.csv,.json,.xlsx"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) setAttachedFile(file);
+          e.target.value = '';
+        }}
+      />
       <form onSubmit={(e) => { e.preventDefault(); handleSend(); }} className="flex gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={sending}
+          className="shrink-0"
+          title="Attach file (.txt, .csv, .json, .xlsx)"
+        >
+          <Paperclip size={16} />
+        </Button>
         <Input
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Type a matching rule instruction..."
+          placeholder="Ask about matching logic or type an instruction..."
           disabled={sending}
           className="flex-1"
         />
-        <Button type="submit" disabled={!input.trim() || sending} className="bg-[#7FAEC2] text-white hover:bg-[#6b9ab0]">
+        <Button type="submit" disabled={(!input.trim() && !attachedFile) || sending} className="bg-[#7FAEC2] text-white hover:bg-[#6b9ab0]">
           <Send size={16} />
         </Button>
       </form>
