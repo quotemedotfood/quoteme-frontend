@@ -605,7 +605,7 @@ function ChangeLogTab() {
 // Main page
 // ═══════════════════════════════════════════════════════════════════════
 export function QMAdminMatchingEngine() {
-  const [tab, setTab] = useState<Tab>('rules');
+  const [tab, setTab] = useState<Tab>('training');
   const [rules, setRules] = useState<MatchingEngineRules | null>(null);
   const [loading, setLoading] = useState(true);
 
