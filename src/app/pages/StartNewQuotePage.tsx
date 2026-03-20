@@ -2,7 +2,7 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
-import { Upload, Link as LinkIcon, X, Loader2, FileText, Camera, RefreshCw, Pencil, ChevronDown, ChevronUp } from 'lucide-react';
+import { Upload, Link as LinkIcon, X, Loader2, FileText, Camera, RefreshCw, Pencil, ChevronDown, ChevronUp, Lightbulb } from 'lucide-react';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router';
 import { Checkbox } from '../components/ui/checkbox';
@@ -98,6 +98,7 @@ export function StartNewQuotePage() {
   const [selectedContactIds, setSelectedContactIds] = useState<string[]>([]);
   const [menuPreviewText, setMenuPreviewText] = useState('');
   const [pasteText, setPasteText] = useState('');
+  const [conceptTipDismissed, setConceptTipDismissed] = useState(() => localStorage.getItem('quoteme_concept_tip_dismissed') === 'true');
   const [menuUrl, setMenuUrl] = useState('');
   const [isQuoteOpened, setIsQuoteOpened] = useState(isDemoMode());
   const [isUpgradeDrawerOpen, setIsUpgradeDrawerOpen] = useState(false);
@@ -773,6 +774,25 @@ export function StartNewQuotePage() {
                 </div>
               ) : (
                 <>
+                  {!conceptTipDismissed && (
+                    <div className="mb-3 p-3 bg-[#A5CFDD]/10 border border-[#A5CFDD]/30 rounded-lg flex items-start gap-2">
+                      <Lightbulb className="w-4 h-4 text-[#2A5F6F] mt-0.5 shrink-0" />
+                      <div className="flex-1">
+                        <p className="text-xs text-[#2A5F6F]">
+                          <span className="font-medium">No menu yet?</span> Just type a concept like "Italian deli" or "sushi restaurant" and we'll build a starter quote with typical ingredients.
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setConceptTipDismissed(true);
+                          localStorage.setItem('quoteme_concept_tip_dismissed', 'true');
+                        }}
+                        className="text-[#2A5F6F]/50 hover:text-[#2A5F6F] shrink-0"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  )}
                   <Textarea
                     className="bg-gray-50 min-h-[300px] resize-none text-sm"
                     placeholder="Paste a menu, cocktail list, or food concept, anything a chef or operator would hand a rep."
