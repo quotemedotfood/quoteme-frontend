@@ -350,6 +350,9 @@ export function ExportFinalizePage() {
             </button>
             <div>
               <h1 className="text-xl text-[#4F4F4F]">Review & Send</h1>
+              {quoteData?.input_mode === 'concept_only' && (
+                <p className="text-xs text-amber-600 font-medium mt-0.5">Concept-based starting quote</p>
+              )}
             </div>
           </div>
           <div className="hidden md:flex gap-2">

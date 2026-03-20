@@ -120,6 +120,9 @@ export interface QuoteResponse {
   created_at: string;
   contacts?: QuoteContact[];
   lines: QuoteLineResponse[];
+  input_mode?: string | null;
+  detected_concept?: string | null;
+  concept_review_required?: boolean | null;
 }
 
 export interface QuoteLineResponse {

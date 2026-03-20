@@ -71,6 +71,8 @@ export function QuoteBuilderPage() {
   const [stockQuoteName, setStockQuoteName] = useState('');
   const [stockQuoteType, setStockQuoteType] = useState('');
   const [savingStockQuote, setSavingStockQuote] = useState(false);
+  const [inputMode, setInputMode] = useState<string | null>(null);
+  const [detectedConcept, setDetectedConcept] = useState<string | null>(null);
 
   const isGuest = !localStorage.getItem('quoteme_token');
   const fetchQuote = (id: string) => isGuest ? getGuestQuote(id) : getQuote(id);
@@ -112,6 +114,8 @@ export function QuoteBuilderPage() {
           });
         }
         setItems(productItems);
+        if (data.input_mode) setInputMode(data.input_mode);
+        if (data.detected_concept) setDetectedConcept(data.detected_concept);
         setLoading(false);
       } catch (e: any) {
         setError(e.message || 'Something went wrong');
@@ -323,6 +327,9 @@ export function QuoteBuilderPage() {
             <div className="min-w-0">
               <h1 className="text-xl text-[#4F4F4F]">Quote Builder</h1>
               <p className="text-sm text-gray-500 truncate">Step 3 of 4 - Total Components: {items.length}</p>
+              {inputMode === 'concept_only' && (
+                <p className="text-xs text-amber-600 font-medium mt-0.5">Concept-based starting quote</p>
+              )}
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
