@@ -736,22 +736,13 @@ export function QuoteBuilderPage() {
 
       </div>
 
-      {/* Sticky bottom CTA */}
-      <div className="fixed bottom-0 left-0 right-0 md:left-64 bg-white border-t border-gray-200 p-4 z-40">
-        {demo && (
-          <p className="text-center text-xs text-gray-500 mb-2 md:hidden">
-            {quotesRemaining > 0
-              ? `${quotesRemaining} free quote${quotesRemaining !== 1 ? 's' : ''} left`
-              : 'No free quotes left'}
-          </p>
-        )}
-        <button
-          onClick={() => navigate('/review', { state: { quoteId, isOpenQuote } })}
-          className="w-full md:w-auto md:min-w-[200px] md:mx-auto md:block bg-[#F9A64B] hover:bg-[#E8953A] text-white font-medium py-3 px-6 rounded-lg text-base min-h-[48px]"
-        >
-          Finish Quote
-        </button>
-      </div>
+      {/* Floating Finish Quote button */}
+      <button
+        onClick={() => navigate('/review', { state: { quoteId, isOpenQuote } })}
+        className="fixed bottom-6 right-6 bg-[#F9A64B] hover:bg-[#E8953A] text-white font-medium py-3 px-6 rounded-full shadow-lg text-base min-h-[48px] z-40"
+      >
+        Finish Quote
+      </button>
 
       {/* Add Product Drawer */}
       <Drawer open={addProductDrawerOpen} onOpenChange={setAddProductDrawerOpen} direction="right">

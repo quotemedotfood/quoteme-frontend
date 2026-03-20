@@ -98,7 +98,7 @@ export function QuotesPage() {
   };
 
   const handleViewQuote = (quoteId: string) => {
-    navigate('/export-finalize', { state: { quoteId, isOpenQuote: false } });
+    window.open(`/export-finalize?quoteId=${quoteId}`, '_blank');
   };
 
   const handleEditQuote = (quoteId: string) => {

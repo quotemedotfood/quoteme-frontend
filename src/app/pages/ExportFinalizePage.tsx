@@ -52,8 +52,9 @@ const onboardingLinks = [
 export function ExportFinalizePage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const quoteId: string | undefined = (location.state as any)?.quoteId;
-  const isOpenQuote: boolean = (location.state as any)?.isOpenQuote || false;
+  const searchParams = new URLSearchParams(location.search);
+  const quoteId: string | undefined = (location.state as any)?.quoteId || searchParams.get('quoteId') || undefined;
+  const isOpenQuote: boolean = (location.state as any)?.isOpenQuote || searchParams.get('isOpenQuote') === 'true' || false;
 
   const isAuthenticated = !!localStorage.getItem('quoteme_token');
   const [isFinalized, setIsFinalized] = useState(isAuthenticated);
