@@ -581,6 +581,48 @@ export function getMatchingEngineExportUrl(): string {
   return `${API_BASE_URL}/api/v1/admin/matching-engine/export`;
 }
 
+export interface ConceptLabel {
+  label: string;
+  concept: string;
+  cuisine: string | null;
+  format: string;
+  has_profile: boolean;
+  strong_fit_count: number;
+  likely_fit_count: number;
+  manual_count: number;
+}
+
+export interface ConceptsResponse {
+  labels: ConceptLabel[];
+  profile_concepts: string[];
+  total_labels: number;
+  total_profiles: number;
+}
+
+export interface ConceptTestResult {
+  input: string;
+  is_concept: boolean;
+  profile: { concept: string; cuisine: string | null; format: string } | null;
+  profile_data?: {
+    strong_fit: string[];
+    likely_fit: string[];
+    manual: Array<{ name: string; reason: string; status: string }>;
+  };
+}
+
+export async function getMatchingEngineConcepts(): Promise<ApiResponse<ConceptsResponse>> {
+  return fetchWithAuth('/api/v1/admin/matching-engine/concepts');
+}
+
+export async function testMatchingEngineConcept(
+  input: string
+): Promise<ApiResponse<ConceptTestResult>> {
+  return fetchWithAuth('/api/v1/admin/matching-engine/test-concept', {
+    method: 'POST',
+    body: JSON.stringify({ input }),
+  });
+}
+
 // ============= ADMIN STOCK QUOTES =============
 
 export interface AdminStockQuote {

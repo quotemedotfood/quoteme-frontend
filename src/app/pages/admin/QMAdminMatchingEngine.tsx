@@ -12,15 +12,19 @@ import {
   deleteMatchingEngineRule,
   promoteCorrection,
   getMatchingEngineExportUrl,
+  getMatchingEngineConcepts,
+  testMatchingEngineConcept,
   getAdminStockQuotes,
   createAdminStockQuote,
   deleteAdminStockQuote,
   type MatchingEngineRules,
   type MatchingEngineLog,
   type AdminStockQuote,
+  type ConceptLabel,
+  type ConceptTestResult,
 } from '../../services/adminApi';
 
-type Tab = 'rules' | 'training' | 'changelog';
+type Tab = 'rules' | 'training' | 'concepts' | 'changelog';
 
 function toTitleCase(str: string) {
   return str.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
@@ -602,6 +606,142 @@ function ChangeLogTab() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
+// Menu Concepts Tab
+// ═══════════════════════════════════════════════════════════════════════
+function ConceptsTab() {
+  const [labels, setLabels] = useState<ConceptLabel[]>([]);
+  const [profileConcepts, setProfileConcepts] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [testInput, setTestInput] = useState('');
+  const [testResult, setTestResult] = useState<ConceptTestResult | null>(null);
+  const [testing, setTesting] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      const res = await getMatchingEngineConcepts();
+      if (res.data) {
+        setLabels(res.data.labels);
+        setProfileConcepts(res.data.profile_concepts);
+      }
+      setLoading(false);
+    })();
+  }, []);
+
+  const handleTest = async () => {
+    if (!testInput.trim() || testing) return;
+    setTesting(true);
+    const res = await testMatchingEngineConcept(testInput.trim());
+    if (res.data) setTestResult(res.data);
+    setTesting(false);
+  };
+
+  if (loading) return <div className="text-center py-12 text-gray-400">Loading concepts...</div>;
+
+  const withProfile = labels.filter(l => l.has_profile);
+  const withoutProfile = labels.filter(l => !l.has_profile);
+
+  return (
+    <div className="space-y-6">
+      {/* Test Concept Input */}
+      <div className="bg-white border border-gray-200 rounded-lg p-4">
+        <h3 className="text-sm font-semibold text-[#2A2A2A] mb-2">Test Concept Detection</h3>
+        <p className="text-xs text-[#4F4F4F] mb-3">Type any input to see if it's recognized as a concept.</p>
+        <form onSubmit={(e) => { e.preventDefault(); handleTest(); }} className="flex gap-2">
+          <Input
+            value={testInput}
+            onChange={(e) => setTestInput(e.target.value)}
+            placeholder='Try "italian deli" or "sushi restaurant"...'
+            className="flex-1"
+          />
+          <Button type="submit" disabled={!testInput.trim() || testing} className="bg-[#7FAEC2] text-white hover:bg-[#6b9ab0]">
+            Test
+          </Button>
+        </form>
+        {testResult && (
+          <div className={`mt-3 p-3 rounded-lg text-sm ${testResult.is_concept ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
+            <p className="font-medium">{testResult.is_concept ? 'Recognized as concept' : 'Not recognized as concept'}</p>
+            {testResult.profile && (
+              <p className="text-xs mt-1">Concept: <span className="font-mono">{testResult.profile.concept}</span> | Cuisine: {testResult.profile.cuisine || 'N/A'} | Format: {testResult.profile.format}</p>
+            )}
+            {testResult.profile_data && (
+              <div className="mt-2 text-xs space-y-1">
+                <p>Strong fit: {testResult.profile_data.strong_fit.length} items ({testResult.profile_data.strong_fit.slice(0, 5).join(', ')}{testResult.profile_data.strong_fit.length > 5 ? '...' : ''})</p>
+                <p>Likely fit: {testResult.profile_data.likely_fit.length} items ({testResult.profile_data.likely_fit.slice(0, 5).join(', ')}{testResult.profile_data.likely_fit.length > 5 ? '...' : ''})</p>
+                <p>Manual review: {testResult.profile_data.manual.length} items</p>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-3 gap-4">
+        <div className="bg-white border border-gray-200 rounded-lg p-4 text-center">
+          <p className="text-2xl font-bold text-[#2A2A2A]">{labels.length}</p>
+          <p className="text-xs text-[#4F4F4F]">Recognized Labels</p>
+        </div>
+        <div className="bg-white border border-gray-200 rounded-lg p-4 text-center">
+          <p className="text-2xl font-bold text-[#2A2A2A]">{profileConcepts.length}</p>
+          <p className="text-xs text-[#4F4F4F]">Concept Profiles</p>
+        </div>
+        <div className="bg-white border border-gray-200 rounded-lg p-4 text-center">
+          <p className="text-2xl font-bold text-[#2A2A2A]">{withoutProfile.length}</p>
+          <p className="text-xs text-[#4F4F4F]">Labels Without Profile</p>
+        </div>
+      </div>
+
+      {/* Labels with profiles */}
+      <div className="bg-white border border-gray-200 rounded-lg p-4">
+        <h3 className="text-sm font-semibold text-[#2A2A2A] mb-3">Concepts with Profiles ({withProfile.length})</h3>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-gray-200 text-left text-xs text-[#4F4F4F]">
+                <th className="pb-2 pr-4">Label</th>
+                <th className="pb-2 pr-4">Concept</th>
+                <th className="pb-2 pr-4">Cuisine</th>
+                <th className="pb-2 pr-4">Format</th>
+                <th className="pb-2 pr-4 text-center">Strong</th>
+                <th className="pb-2 pr-4 text-center">Likely</th>
+                <th className="pb-2 text-center">Manual</th>
+              </tr>
+            </thead>
+            <tbody>
+              {withProfile.map((l, i) => (
+                <tr key={i} className="border-b border-gray-100">
+                  <td className="py-2 pr-4 font-medium">{l.label}</td>
+                  <td className="py-2 pr-4 font-mono text-xs">{l.concept}</td>
+                  <td className="py-2 pr-4">{l.cuisine || '—'}</td>
+                  <td className="py-2 pr-4 text-xs">{l.format}</td>
+                  <td className="py-2 pr-4 text-center">{l.strong_fit_count}</td>
+                  <td className="py-2 pr-4 text-center">{l.likely_fit_count}</td>
+                  <td className="py-2 text-center">{l.manual_count}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Labels without profiles */}
+      {withoutProfile.length > 0 && (
+        <div className="bg-white border border-amber-200 rounded-lg p-4">
+          <h3 className="text-sm font-semibold text-amber-700 mb-3">Labels Without Profiles ({withoutProfile.length})</h3>
+          <p className="text-xs text-[#4F4F4F] mb-3">These labels are recognized but don't have ingredient profiles yet. They'll fall through to menu parsing.</p>
+          <div className="flex flex-wrap gap-2">
+            {withoutProfile.map((l, i) => (
+              <span key={i} className="px-2 py-1 bg-amber-50 border border-amber-200 rounded text-xs">
+                {l.label} <span className="text-amber-500">({l.cuisine || l.format})</span>
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════
 // Main page
 // ═══════════════════════════════════════════════════════════════════════
 export function QMAdminMatchingEngine() {
@@ -621,6 +761,7 @@ export function QMAdminMatchingEngine() {
   const tabs: Array<{ key: Tab; label: string }> = [
     { key: 'rules', label: 'Rules' },
     { key: 'training', label: 'Training Chat' },
+    { key: 'concepts', label: 'Menu Concepts' },
     { key: 'changelog', label: 'Change Log' },
   ];
 
@@ -649,6 +790,7 @@ export function QMAdminMatchingEngine() {
       {/* Tab content */}
       {tab === 'rules' && <RulesTab rules={rules} onRefresh={loadRules} />}
       {tab === 'training' && <TrainingTab />}
+      {tab === 'concepts' && <ConceptsTab />}
       {tab === 'changelog' && <ChangeLogTab />}
     </div>
   );
