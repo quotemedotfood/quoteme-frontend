@@ -130,8 +130,6 @@ export function StartNewQuotePage() {
 
   // Stock quotes
   const [stockQuotes, setStockQuotes] = useState<StockQuoteResponse[]>([]);
-  const [selectedStockType, setSelectedStockType] = useState('');
-  const [generatingStock, setGeneratingStock] = useState(false);
 
   // Parsed ingredients for right panel
   const [parsedDishes, setParsedDishes] = useState<ParsedDish[]>([]);
@@ -609,7 +607,7 @@ export function StartNewQuotePage() {
             {liquorDemo ? 'Start New Beverage Quote' : 'Start New Quote'}
           </h1>
           <p className="text-gray-600" style={{ fontFamily: "'DM Sans', sans-serif" }}>
-            {liquorDemo ? 'Paste a drink menu, upload a photo, or type your list.' : 'Paste a menu, upload a photo, or type ingredients.'}
+            {liquorDemo ? 'Paste a drink menu, upload a photo, or type your list.' : 'Paste a menu, cocktail list, or food concept — anything a chef or operator would hand a rep.'}
           </p>
 
           {/* Five-step guide — demo flow */}
@@ -696,53 +694,9 @@ export function StartNewQuotePage() {
         </div>
 
 
-        {/* ── Restaurant Type + URL Row ── */}
+        {/* ── Menu URL Row ── */}
         <div className="bg-white rounded-xl p-6 mb-6 shadow-sm border border-gray-100">
-          <div className="flex flex-col lg:flex-row gap-6">
-            {/* Left: Restaurant Type */}
-            <div className="flex-1">
-              <Label className="text-sm mb-2 block text-gray-700 font-medium">
-                Restaurant Type - Fill In Quote
-              </Label>
-              <div className="flex gap-2">
-                <select
-                  className="flex-1 px-3 py-2 border border-gray-200 rounded-md bg-gray-50 text-sm"
-                  value={selectedStockType}
-                  onChange={(e) => setSelectedStockType(e.target.value)}
-                >
-                  <option value="">Select restaurant type</option>
-                  {(() => {
-                    const types = [...new Set(stockQuotes.map(sq => sq.restaurant_type).filter(Boolean))];
-                    const fallbackTypes = liquorDemo
-                      ? ['Cocktail Bar', 'Wine Bar', 'Hotel Bar', 'Restaurant Bar Program', 'Nightclub']
-                      : ['Bar/Grill', 'Spanish', 'Italian', 'Brewery', 'Coffee Shop'];
-                    return types.length > 0
-                      ? types.map(t => <option key={t} value={t!}>{t}</option>)
-                      : fallbackTypes.map(t =>
-                          <option key={t} value={t}>{t}</option>
-                        );
-                  })()}
-                </select>
-                <Button
-                  className="bg-[#A5CFDD] hover:bg-[#7FAEC2] text-white shrink-0"
-                  disabled={!selectedStockType || generatingStock}
-                  onClick={async () => {
-                    const match = stockQuotes.find(sq => sq.restaurant_type === selectedStockType);
-                    if (!match) return;
-                    setGeneratingStock(true);
-                    const res = await generateFromStockQuote(match.id);
-                    setGeneratingStock(false);
-                    if (res.data) navigate('/map-ingredients', { state: { menuId: res.data.menu_id, isOpenQuote: isQuoteOpened } });
-                  }}
-                >
-                  {generatingStock ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
-                  Start Quote
-                </Button>
-              </div>
-            </div>
-
-            {/* Right: Menu URL */}
-            <div className="flex-1">
+          <div className="max-w-lg">
               <Label className="text-sm mb-2 block text-gray-700 font-medium">Menu URL</Label>
               <div className="flex gap-2">
                 <Input
@@ -769,7 +723,6 @@ export function StartNewQuotePage() {
               >
                 Click to Link from Customer Profile
               </button>
-            </div>
           </div>
         </div>
 
@@ -822,7 +775,7 @@ export function StartNewQuotePage() {
                 <>
                   <Textarea
                     className="bg-gray-50 min-h-[300px] resize-none text-sm"
-                    placeholder="Paste or type your menu here..."
+                    placeholder="Paste a menu, cocktail list, or food concept, anything a chef or operator would hand a rep."
                     value={pasteText}
                     onChange={(e) => setPasteText(e.target.value)}
                     maxLength={5000}
