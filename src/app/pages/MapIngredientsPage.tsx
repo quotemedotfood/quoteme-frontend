@@ -295,13 +295,9 @@ export function MapIngredientsPage() {
     }
   };
 
-  const handleReplaceMatch = (componentName: string, productId: string, product?: { id: string; item_number: string; brand: string; product: string; pack_size: string; category: string }) => {
-    // Find product info from candidates or use the passed product data
-    const allCandidates = selectedLine?.alignment_candidates || [];
-    const candidateProduct = allCandidates.find(c => c.product.id === productId)?.product || product;
-    if (candidateProduct) {
-      // Update the dish's component line with the new product
-      setDishes(prev => prev.map(dish => {
+  const updateDishProduct = (componentName: string, candidateProduct: { id: string; item_number: string; brand: string; product: string; pack_size: string; category: string }) => {
+    setDishes(prev => {
+      const updated = prev.map(dish => {
         if (dish.componentLines[componentName]) {
           const updatedLine = { ...dish.componentLines[componentName], product: candidateProduct };
           return {
@@ -310,16 +306,31 @@ export function MapIngredientsPage() {
           };
         }
         return dish;
-      }));
+      });
+      // Keep selectedDish in sync
+      if (selectedDish) {
+        const refreshed = updated.find(d => d.id === selectedDish.id);
+        if (refreshed) setSelectedDish(refreshed);
+      }
+      return updated;
+    });
+  };
+
+  const handleReplaceMatch = (componentName: string, productId: string, product?: { id: string; item_number: string; brand: string; product: string; pack_size: string; category: string }) => {
+    const allCandidates = selectedLine?.alignment_candidates || [];
+    const candidateProduct = allCandidates.find(c => c.product.id === productId)?.product || product;
+    if (candidateProduct) {
+      updateDishProduct(componentName, candidateProduct);
     }
     setMappedComponents(prev => ({ ...prev, [componentName]: [productId] }));
   };
 
   const handleAddToQuote = (componentName: string, productId: string, product?: { id: string; item_number: string; brand: string; product: string; pack_size: string; category: string }) => {
-    // Find the product from candidates or use the passed product data
     const allCandidates = selectedLine?.alignment_candidates || [];
     const candidateProduct = allCandidates.find(c => c.product.id === productId)?.product || product;
     if (candidateProduct) {
+      // Update the component line so the main page shows the match
+      updateDishProduct(componentName, candidateProduct);
       setAdditions(prev => [...prev, {
         id: `atq-${Date.now()}-${productId}`,
         componentName,
