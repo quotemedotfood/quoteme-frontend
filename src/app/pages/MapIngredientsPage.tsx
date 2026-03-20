@@ -582,6 +582,7 @@ export function MapIngredientsPage() {
                         { key: 'needs-review', label: 'Needs Review', cls: 'bg-amber-50 text-amber-700 border-amber-300' },
                         { key: 'good-match', label: 'Good Match', cls: 'bg-[#A5CFDD]/10 text-[#2A5F6F] border-[#A5CFDD]' },
                         { key: 'strong-match', label: 'Strong Match', cls: 'bg-green-50 text-green-700 border-green-300' },
+                        { key: 'your-pick', label: 'Your Pick', cls: 'bg-green-50 text-green-700 border-green-300' },
                       ] as const).map(filter => {
                         const active = strengthFilters.has(filter.key);
                         return (
@@ -610,6 +611,7 @@ export function MapIngredientsPage() {
                           { key: 'needs-review', label: 'Needs Review', badgeCls: 'bg-amber-100 text-amber-700', items: [] },
                           { key: 'good-match', label: 'Good Match', badgeCls: 'bg-[#A5CFDD]/20 text-[#2A5F6F]', items: [] },
                           { key: 'strong-match', label: 'Strong Match', badgeCls: 'bg-green-100 text-green-700', items: [] },
+                          { key: 'your-pick', label: 'Your Pick', badgeCls: 'bg-green-100 text-green-700', items: [] },
                         ];
 
                         const seenProducts = new Set<string>();
@@ -619,6 +621,12 @@ export function MapIngredientsPage() {
                             const productKey = line?.product?.id || comp;
                             if (seenProducts.has(productKey)) continue;
                             seenProducts.add(productKey);
+
+                            // User manually picked → goes to "Your Pick" group
+                            if (mappedComponents[comp]?.length > 0) {
+                              groups[4].items.push({ component: comp, line });
+                              continue;
+                            }
 
                             const bestCandidate = line?.alignment_candidates?.find(c => c.position === 1);
                             const score = bestCandidate?.score != null ? Math.round(bestCandidate.score * 100) : null;
