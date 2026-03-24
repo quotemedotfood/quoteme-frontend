@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router';
-import { LayoutDashboard, Users, FileText, Plus, Settings, UserPlus, ClipboardList } from 'lucide-react';
+import { LayoutDashboard, Users, FileText, Plus, Settings, UserPlus, ClipboardList, Store } from 'lucide-react';
 import logoSquare from '/src/assets/e549e7d27b183e98e791f43494c715b8cc6ce7e9.png';
 import { useUser } from '../contexts/UserContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -52,6 +52,7 @@ export function AppSidebar() {
   const { quotesRemaining, profile } = useUser();
   const { user } = useAuth();
   const isDistributorAdmin = user?.role === 'distributor_admin';
+  const isBuyer = user?.role === 'buyer';
 
   const navItems = isDistributorAdmin
     ? [
@@ -61,6 +62,13 @@ export function AppSidebar() {
         { icon: <Users size={20} />, label: "Customers", path: "/customers" },
         { icon: <UserPlus size={20} />, label: "Reps", path: "/distributor-admin/reps" },
         { icon: <ClipboardList size={20} />, label: "Onboarding", path: "/distributor-admin/onboarding-docs" },
+      ]
+    : isBuyer
+    ? [
+        { icon: <Plus size={20} />, label: "New Quote", path: "/", highlight: true },
+        { icon: <LayoutDashboard size={20} />, label: "Dashboard", path: "/dashboard" },
+        { icon: <Store size={20} />, label: "Vendors", path: "/vendors" },
+        { icon: <FileText size={20} />, label: "Quotes", path: "/quotes" },
       ]
     : [
         { icon: <Plus size={20} />, label: "New Quote", path: "/", highlight: true },
@@ -125,9 +133,9 @@ export function AppSidebar() {
                {...navItems.find(i => i.label === 'Dashboard')!} 
                isActive={pathname === '/quoteme'} 
              />
-             <MobileNavItem 
-               {...navItems.find(i => i.label === 'Customers')!} 
-               isActive={pathname === '/'} 
+             <MobileNavItem
+               {...(navItems.find(i => i.label === 'Vendors') || navItems.find(i => i.label === 'Customers'))!}
+               isActive={pathname === '/vendors' || pathname === '/customers'}
              />
           </div>
 

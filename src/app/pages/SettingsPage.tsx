@@ -1,11 +1,11 @@
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
-import { Upload, Edit, Camera, X } from 'lucide-react';
+import { Upload, Edit, Camera, X, Plus, MapPin } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { useUser } from '../contexts/UserContext';
 import { useAuth } from '../contexts/AuthContext';
-import { updateCurrentUser, getBilling, createCheckoutSession, createPortalSession, sendPasswordReset } from '../services/api';
+import { updateCurrentUser, getBilling, createCheckoutSession, createPortalSession, sendPasswordReset, getLocations, addLocationToGroup, type LocationItem } from '../services/api';
 import { AuthDrawer } from '../components/AuthDrawer';
 
 export function SettingsPage() {
@@ -47,6 +47,16 @@ export function SettingsPage() {
   const [billingActionLoading, setBillingActionLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  // Location state
+  const [locations, setLocations] = useState<LocationItem[]>([]);
+  const [showAddLocation, setShowAddLocation] = useState(false);
+  const [newLocationName, setNewLocationName] = useState('');
+  const [newLocationCity, setNewLocationCity] = useState('');
+  const [newLocationState, setNewLocationState] = useState('');
+  const [newLocationConcept, setNewLocationConcept] = useState('');
+  const [addingLocation, setAddingLocation] = useState(false);
+  const [locationError, setLocationError] = useState<string | null>(null);
 
   // Track unsaved changes for guest warning
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
@@ -263,8 +273,52 @@ export function SettingsPage() {
   }, [location.pathname]);
 
   const isGuest = profile.isGuest;
+  const isBuyer = user?.role === 'buyer';
   const accountFieldsReadOnly = !isGuest && !isEditingAccount;
   const distributorFieldsReadOnly = !isEditingDistributor;
+
+  // Fetch locations for buyer users
+  useEffect(() => {
+    if (isBuyer && !isGuest) {
+      getLocations().then((res) => {
+        if (res.data) setLocations(res.data);
+      });
+    }
+  }, [isBuyer, isGuest]);
+
+  const handleAddLocation = async () => {
+    if (!newLocationName.trim()) return;
+    setAddingLocation(true);
+    setLocationError(null);
+
+    const groupId = locations[0]?.location_group?.id;
+    if (!groupId) {
+      setLocationError('No location group found. Please contact support.');
+      setAddingLocation(false);
+      return;
+    }
+
+    const res = await addLocationToGroup(groupId, {
+      name: newLocationName.trim(),
+      city: newLocationCity.trim() || undefined,
+      state: newLocationState.trim() || undefined,
+      concept_type: newLocationConcept.trim() || undefined,
+    });
+
+    if (res.error) {
+      setLocationError(res.error);
+    } else {
+      // Refresh locations
+      const locRes = await getLocations();
+      if (locRes.data) setLocations(locRes.data);
+      setNewLocationName('');
+      setNewLocationCity('');
+      setNewLocationState('');
+      setNewLocationConcept('');
+      setShowAddLocation(false);
+    }
+    setAddingLocation(false);
+  };
 
   return (
     <div className="p-4 md:p-8 bg-[#FFF9F3] min-h-screen">
@@ -437,7 +491,8 @@ export function SettingsPage() {
           )}
         </div>
 
-        {/* Distributor Settings Section */}
+        {/* Distributor Settings Section — hidden for buyer role */}
+        {!isBuyer && (
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <div className="flex justify-between items-center mb-1">
             <h2 className="text-lg text-[#4F4F4F]">Distributor Settings</h2>
@@ -611,8 +666,10 @@ export function SettingsPage() {
             </div>
           )}
         </div>
+        )}
 
-        {/* Documents Section */}
+        {/* Documents Section — hidden for buyer role */}
+        {!isBuyer && (
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <div className="flex justify-between items-start mb-6">
             <div>
@@ -627,6 +684,125 @@ export function SettingsPage() {
             <p className="text-xs text-[#4F4F4F]">Document management coming soon</p>
           </div>
         </div>
+        )}
+
+        {/* Locations Section — buyer only */}
+        {isBuyer && !isGuest && (
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <div className="flex justify-between items-center mb-1">
+            <h2 className="text-lg text-[#4F4F4F]">Locations</h2>
+            {!showAddLocation && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowAddLocation(true)}
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Add Location
+              </Button>
+            )}
+          </div>
+          <p className="text-sm text-[#4F4F4F] mb-6">
+            Manage your restaurant locations
+          </p>
+
+          {/* Existing locations */}
+          {locations.length > 0 && (
+            <div className="space-y-3 mb-6">
+              {locations.map((loc) => (
+                <div key={loc.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                  <MapPin className="w-5 h-5 text-[#7FAEC2] flex-shrink-0" />
+                  <div className="flex-1">
+                    <p className="font-medium text-[#2A2A2A]">{loc.name}</p>
+                    <p className="text-sm text-[#4F4F4F]">
+                      {[loc.city, loc.state].filter(Boolean).join(', ')}
+                      {loc.concept_type ? ` \u2022 ${loc.concept_type}` : ''}
+                    </p>
+                  </div>
+                  {loc.membership_role === 'group_admin' && (
+                    <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">Admin</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Add Location Form */}
+          {showAddLocation && (
+            <div className="border border-[#7FAEC2] rounded-lg p-4 bg-[#F8FCFD]">
+              {locations.length === 1 && (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
+                  <p className="text-sm text-amber-800">
+                    Adding a second location starts your group plan at $50/month. Your first location stays free.
+                  </p>
+                </div>
+              )}
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm text-[#4F4F4F] mb-1">Location Name *</label>
+                  <Input
+                    value={newLocationName}
+                    onChange={(e) => setNewLocationName(e.target.value)}
+                    placeholder="e.g., Downtown Location"
+                    className="bg-white"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm text-[#4F4F4F] mb-1">City</label>
+                    <Input
+                      value={newLocationCity}
+                      onChange={(e) => setNewLocationCity(e.target.value)}
+                      placeholder="City"
+                      className="bg-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-[#4F4F4F] mb-1">State</label>
+                    <Input
+                      value={newLocationState}
+                      onChange={(e) => setNewLocationState(e.target.value)}
+                      placeholder="e.g., CA"
+                      className="bg-white"
+                      maxLength={2}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm text-[#4F4F4F] mb-1">Concept Type</label>
+                  <Input
+                    value={newLocationConcept}
+                    onChange={(e) => setNewLocationConcept(e.target.value)}
+                    placeholder="e.g., Fine Dining, Fast Casual"
+                    className="bg-white"
+                  />
+                </div>
+                {locationError && <p className="text-sm text-red-500">{locationError}</p>}
+                <div className="flex gap-3 pt-2">
+                  <Button
+                    onClick={handleAddLocation}
+                    disabled={addingLocation || !newLocationName.trim()}
+                    className="bg-[#7FAEC2] hover:bg-[#6A9AB0] text-white"
+                  >
+                    {addingLocation ? 'Adding...' : 'Add Location'}
+                  </Button>
+                  <Button variant="outline" onClick={() => { setShowAddLocation(false); setLocationError(null); }}>
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {locations.length === 0 && !showAddLocation && (
+            <div className="text-center py-8">
+              <MapPin className="w-8 h-8 text-gray-300 mx-auto mb-3" />
+              <p className="text-sm text-[#4F4F4F] mb-1">No locations yet</p>
+              <p className="text-xs text-[#4F4F4F]">Add your first location to get started</p>
+            </div>
+          )}
+        </div>
+        )}
 
         {/* Billing Section */}
         <div

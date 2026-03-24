@@ -32,6 +32,7 @@ import { CatalogConfirmationPage } from "./pages/CatalogConfirmationPage";
 import { RepInvitePage } from "./pages/RepInvitePage";
 import { DistributorRepsPage } from "./pages/DistributorRepsPage";
 import { OnboardingDocsPage } from "./pages/OnboardingDocsPage";
+import { VendorsPage } from "./pages/VendorsPage";
 import { isDemoMode } from "./utils/demoMode";
 
 const demo = isDemoMode();
@@ -74,6 +75,7 @@ export const router = createBrowserRouter([
           ...(demo ? [] : [
             { path: "dashboard", Component: QuoteMePage },
             { path: "customers", Component: CustomersPage },
+            { path: "vendors", Component: VendorsPage },
             { path: "quotes", Component: QuotesPage },
             { path: "settings", Component: SettingsPage },
             { path: "settings/billing", Component: SettingsPage },

@@ -1095,6 +1095,58 @@ export async function deleteContact(restaurantId: string, contactId: string): Pr
   });
 }
 
+// ============= LOCATION ENDPOINTS =============
+
+export interface LocationItem {
+  id: string;
+  name: string;
+  concept_type: string | null;
+  city: string;
+  state: string;
+  phone: string | null;
+  email: string | null;
+  logo_url: string | null;
+  location_group: { id: string; name: string } | null;
+  membership_role: string;
+  created_at: string;
+}
+
+export interface LocationDistributorRelationship {
+  id: string;
+  status: string;
+  distributor_name_text: string;
+  distributor: { id: string; name: string; logo_url?: string } | null;
+  rep: { id: string; name: string; email: string } | null;
+  rep_name_text: string | null;
+  rep_email_text: string | null;
+  rep_phone_text: string | null;
+  created_at: string;
+}
+
+export async function getLocations(): Promise<ApiResponse<LocationItem[]>> {
+  return fetchWithAuth('/api/v1/locations');
+}
+
+export async function getLocationDistributors(locationId: string): Promise<ApiResponse<LocationDistributorRelationship[]>> {
+  return fetchWithAuth(`/api/v1/locations/${locationId}/distributors`);
+}
+
+export async function addLocationToGroup(groupId: string, data: {
+  name: string;
+  city?: string;
+  state?: string;
+  concept_type?: string;
+}): Promise<ApiResponse<{ id: string; name: string; city: string; state: string; concept_type: string | null; location_group_id: string }>> {
+  return fetchWithAuth(`/api/v1/location_groups/${groupId}/add_location`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function getLocationGroupBilling(groupId: string): Promise<ApiResponse<any>> {
+  return fetchWithAuth(`/api/v1/location_groups/${groupId}/billing`);
+}
+
 // ============= BILLING ENDPOINTS =============
 
 export async function getBilling(): Promise<ApiResponse<any>> {
