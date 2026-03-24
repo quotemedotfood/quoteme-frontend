@@ -54,6 +54,7 @@ export function QuoteBuilderPage() {
   const demo = isDemoMode();
   const quoteId: string | undefined = (location.state as any)?.quoteId;
   const isOpenQuote: boolean = (location.state as any)?.isOpenQuote || false;
+  const locationId: string | undefined = (location.state as any)?.locationId;
 
   const [items, setItems] = useState<ProductItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -319,7 +320,7 @@ export function QuoteBuilderPage() {
         <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
           <div className="flex items-center gap-4 min-w-0">
             <button
-              onClick={() => navigate('/map-ingredients', { state: { quoteId, isOpenQuote } })}
+              onClick={() => navigate('/map-ingredients', { state: { quoteId, isOpenQuote, locationId } })}
               className="text-gray-400 hover:text-gray-600 flex-shrink-0"
             >
               <ArrowLeft className="w-5 h-5" />
@@ -353,7 +354,7 @@ export function QuoteBuilderPage() {
               </Button>
             )}
             <Button
-              onClick={() => navigate('/review', { state: { quoteId, isOpenQuote } })}
+              onClick={() => navigate('/review', { state: { quoteId, isOpenQuote, locationId } })}
               className="hidden md:flex bg-[#F9A64B] hover:bg-[#E8953A] text-white"
             >
               Finish quote
@@ -745,7 +746,7 @@ export function QuoteBuilderPage() {
 
       {/* Floating Finish Quote button */}
       <button
-        onClick={() => navigate('/review', { state: { quoteId, isOpenQuote } })}
+        onClick={() => navigate('/review', { state: { quoteId, isOpenQuote, locationId } })}
         className="fixed bottom-6 right-6 bg-[#F9A64B] hover:bg-[#E8953A] text-white font-medium py-3 px-6 rounded-full shadow-lg text-base min-h-[48px] z-40"
       >
         Finish Quote

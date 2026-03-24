@@ -32,6 +32,7 @@ export function QuoteReviewPage() {
   const location = useLocation();
   const quoteId: string | undefined = (location.state as any)?.quoteId;
   const isOpenQuote: boolean = (location.state as any)?.isOpenQuote || false;
+  const locationId: string | undefined = (location.state as any)?.locationId;
 
   const [quote, setQuote] = useState<QuoteResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -441,7 +442,7 @@ export function QuoteReviewPage() {
         <div className="max-w-5xl mx-auto flex flex-col md:flex-row items-center justify-between gap-3">
           <Button
             variant="outline"
-            onClick={() => navigate('/quote-builder', { state: { quoteId, isOpenQuote } })}
+            onClick={() => navigate('/quote-builder', { state: { quoteId, isOpenQuote, locationId } })}
             className="hidden md:flex text-gray-600 border-gray-300 hover:bg-gray-50"
           >
             <ArrowLeft size={16} className="mr-2" /> Back to Builder

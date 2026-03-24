@@ -1147,6 +1147,24 @@ export async function getLocationGroupBilling(groupId: string): Promise<ApiRespo
   return fetchWithAuth(`/api/v1/location_groups/${groupId}/billing`);
 }
 
+export async function createLocationGroupPortalSession(groupId: string): Promise<ApiResponse<{ portal_url: string }>> {
+  return fetchWithAuth(`/api/v1/location_groups/${groupId}/portal`, {
+    method: 'POST',
+  });
+}
+
+export async function createLocationVendor(locationId: string, data: {
+  distributor_name_text: string;
+  distributor_id?: string;
+  rep_name_text?: string;
+  rep_email_text?: string;
+}): Promise<ApiResponse<LocationDistributorRelationship>> {
+  return fetchWithAuth(`/api/v1/locations/${locationId}/vendors`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
 // ============= BILLING ENDPOINTS =============
 
 export async function getBilling(): Promise<ApiResponse<any>> {

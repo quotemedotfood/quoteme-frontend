@@ -1,8 +1,10 @@
 import { Link, useLocation } from 'react-router';
-import { LayoutDashboard, Users, FileText, Plus, Settings, UserPlus, ClipboardList, Store } from 'lucide-react';
+import { LayoutDashboard, Users, FileText, Plus, Settings, UserPlus, ClipboardList, Store, ChevronDown, MapPin } from 'lucide-react';
 import logoSquare from '/src/assets/e549e7d27b183e98e791f43494c715b8cc6ce7e9.png';
 import { useUser } from '../contexts/UserContext';
 import { useAuth } from '../contexts/AuthContext';
+import { useLocation2 } from '../contexts/LocationContext';
+import { useState, useRef, useEffect } from 'react';
 
 interface NavItemProps {
   icon: React.ReactNode;
@@ -46,13 +48,69 @@ function MobileNavItem({ icon, label, path, isActive, highlight }: NavItemProps)
   );
 }
 
+function LocationSwitcher() {
+  const { locations, selectedLocation, setSelectedLocationId, isMultiLocation } = useLocation2();
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
+
+  if (!selectedLocation) return null;
+
+  if (!isMultiLocation) {
+    return (
+      <div className="mx-2 mt-3 mb-1 px-2">
+        <div className="flex items-center gap-1.5 text-center">
+          <MapPin size={12} className="text-[#7FAEC2] flex-shrink-0" />
+          <span className="text-[10px] text-[#4F4F4F] leading-tight truncate">{selectedLocation.name}</span>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div ref={ref} className="relative mx-2 mt-3 mb-1">
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center gap-1 px-2 py-1.5 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors"
+      >
+        <MapPin size={12} className="text-[#7FAEC2] flex-shrink-0" />
+        <span className="text-[10px] text-[#4F4F4F] truncate flex-1 text-left">{selectedLocation.name}</span>
+        <ChevronDown size={10} className="text-gray-400 flex-shrink-0" />
+      </button>
+      {open && (
+        <div className="absolute left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 py-1">
+          {locations.map((loc) => (
+            <button
+              key={loc.id}
+              onClick={() => { setSelectedLocationId(loc.id); setOpen(false); }}
+              className={`w-full text-left px-3 py-2 text-[10px] hover:bg-gray-50 flex items-center gap-1.5 ${
+                loc.id === selectedLocation.id ? 'text-[#F2993D] font-medium' : 'text-[#4F4F4F]'
+              }`}
+            >
+              <MapPin size={10} className={loc.id === selectedLocation.id ? 'text-[#F2993D]' : 'text-gray-400'} />
+              <span className="truncate">{loc.name}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function AppSidebar() {
   const location = useLocation();
   const pathname = location.pathname;
   const { quotesRemaining, profile } = useUser();
   const { user } = useAuth();
   const isDistributorAdmin = user?.role === 'distributor_admin';
-  const isBuyer = user?.role === 'buyer';
+  const isBuyer = user?.role === 'buyer' || user?.role === 'group_admin';
 
   const navItems = isDistributorAdmin
     ? [
@@ -89,6 +147,9 @@ export function AppSidebar() {
           className="w-12 h-12 object-contain"
         />
       </div>
+
+      {/* Location Switcher — buyer only */}
+      {isBuyer && <LocationSwitcher />}
 
       {/* Trial Badge - Only show for non-paid users */}
       {!profile.hasPaidSubscription && (

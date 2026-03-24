@@ -5,7 +5,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { useUser } from '../contexts/UserContext';
 import { useAuth } from '../contexts/AuthContext';
-import { updateCurrentUser, getBilling, createCheckoutSession, createPortalSession, sendPasswordReset, getLocations, addLocationToGroup, type LocationItem } from '../services/api';
+import { updateCurrentUser, getBilling, createCheckoutSession, createPortalSession, sendPasswordReset, getLocations, addLocationToGroup, getLocationGroupBilling, createLocationGroupPortalSession, type LocationItem } from '../services/api';
 import { AuthDrawer } from '../components/AuthDrawer';
 
 export function SettingsPage() {
@@ -50,6 +50,8 @@ export function SettingsPage() {
 
   // Location state
   const [locations, setLocations] = useState<LocationItem[]>([]);
+  const [groupBilling, setGroupBilling] = useState<any>(null);
+  const [billingPortalLoading, setBillingPortalLoading] = useState(false);
   const [showAddLocation, setShowAddLocation] = useState(false);
   const [newLocationName, setNewLocationName] = useState('');
   const [newLocationCity, setNewLocationCity] = useState('');
@@ -277,11 +279,23 @@ export function SettingsPage() {
   const accountFieldsReadOnly = !isGuest && !isEditingAccount;
   const distributorFieldsReadOnly = !isEditingDistributor;
 
+  const isGroupAdmin = locations.some((l) => l.membership_role === 'group_admin');
+
   // Fetch locations for buyer users
   useEffect(() => {
     if (isBuyer && !isGuest) {
       getLocations().then((res) => {
-        if (res.data) setLocations(res.data);
+        if (res.data) {
+          setLocations(res.data);
+          // Fetch group billing if user is group_admin
+          const groupId = res.data[0]?.location_group?.id;
+          const hasAdmin = res.data.some((l) => l.membership_role === 'group_admin');
+          if (groupId && hasAdmin) {
+            getLocationGroupBilling(groupId).then((bRes) => {
+              if (bRes.data) setGroupBilling(bRes.data);
+            });
+          }
+        }
       });
     }
   }, [isBuyer, isGuest]);
@@ -308,9 +322,17 @@ export function SettingsPage() {
     if (res.error) {
       setLocationError(res.error);
     } else {
-      // Refresh locations
+      // Refresh locations and billing
       const locRes = await getLocations();
-      if (locRes.data) setLocations(locRes.data);
+      if (locRes.data) {
+        setLocations(locRes.data);
+        const gId = locRes.data[0]?.location_group?.id;
+        if (gId) {
+          getLocationGroupBilling(gId).then((bRes) => {
+            if (bRes.data) setGroupBilling(bRes.data);
+          });
+        }
+      }
       setNewLocationName('');
       setNewLocationCity('');
       setNewLocationState('');
@@ -318,6 +340,17 @@ export function SettingsPage() {
       setShowAddLocation(false);
     }
     setAddingLocation(false);
+  };
+
+  const handleManageGroupBilling = async () => {
+    const groupId = locations[0]?.location_group?.id;
+    if (!groupId) return;
+    setBillingPortalLoading(true);
+    const res = await createLocationGroupPortalSession(groupId);
+    setBillingPortalLoading(false);
+    if (res.data?.portal_url) {
+      window.location.href = res.data.portal_url;
+    }
   };
 
   return (
@@ -799,6 +832,55 @@ export function SettingsPage() {
               <MapPin className="w-8 h-8 text-gray-300 mx-auto mb-3" />
               <p className="text-sm text-[#4F4F4F] mb-1">No locations yet</p>
               <p className="text-xs text-[#4F4F4F]">Add your first location to get started</p>
+            </div>
+          )}
+
+          {/* Group Billing — group_admin only */}
+          {isGroupAdmin && groupBilling && (
+            <div className="mt-6 pt-6 border-t border-gray-200">
+              <h3 className="text-sm font-medium text-[#4F4F4F] mb-3">Group Billing</h3>
+              <div className="bg-gray-50 rounded-lg p-4 space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-[#4F4F4F]">Locations</span>
+                  <span className="font-medium text-[#2A2A2A]">{groupBilling.location_count}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-[#4F4F4F]">Plan</span>
+                  <span className="font-medium text-[#2A2A2A]">
+                    {groupBilling.billable_locations === 0 ? 'Free' : `$${groupBilling.monthly_total_cents / 100}/month`}
+                  </span>
+                </div>
+                {groupBilling.billable_locations > 0 && (
+                  <p className="text-xs text-[#4F4F4F]">
+                    $50/month per additional location. First location is free.
+                  </p>
+                )}
+                {groupBilling.subscription && (
+                  <div className="flex items-center gap-2 text-xs">
+                    <span className={`px-1.5 py-0.5 rounded font-medium ${
+                      groupBilling.subscription.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
+                    }`}>
+                      {groupBilling.subscription.status}
+                    </span>
+                    {groupBilling.subscription.current_period_end && (
+                      <span className="text-[#4F4F4F]">
+                        Next billing: {new Date(groupBilling.subscription.current_period_end).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      </span>
+                    )}
+                  </div>
+                )}
+                {groupBilling.stripe_customer_id && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleManageGroupBilling}
+                    disabled={billingPortalLoading}
+                    className="mt-2"
+                  >
+                    {billingPortalLoading ? 'Loading...' : 'Manage Billing'}
+                  </Button>
+                )}
+              </div>
             </div>
           )}
         </div>

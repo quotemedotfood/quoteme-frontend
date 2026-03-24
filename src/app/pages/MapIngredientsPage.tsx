@@ -86,6 +86,7 @@ export function MapIngredientsPage() {
   const routerMenuId: string | undefined = (location.state as any)?.menuId;
   const routerQuoteId: string | undefined = (location.state as any)?.quoteId;
   const isOpenQuote: boolean = (location.state as any)?.isOpenQuote || false;
+  const locationId: string | undefined = (location.state as any)?.locationId;
 
   // ── Core state ──
   const [quoteId, setQuoteId] = useState<string | null>(routerQuoteId || null);
@@ -859,7 +860,7 @@ export function MapIngredientsPage() {
           </p>
         )}
         <button
-          onClick={() => navigate('/quote-builder', { state: { quoteId, isOpenQuote } })}
+          onClick={() => navigate('/quote-builder', { state: { quoteId, isOpenQuote, locationId } })}
           className="w-full md:w-auto md:min-w-[200px] md:mx-auto md:block bg-[#F9A64B] hover:bg-[#E8953A] text-white font-medium py-3 px-6 rounded-lg text-base min-h-[48px]"
         >
           Adjust Pricing

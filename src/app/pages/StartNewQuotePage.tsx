@@ -7,6 +7,8 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router';
 import { Checkbox } from '../components/ui/checkbox';
 import { useUser } from '../contexts/UserContext';
+import { useLocation2 } from '../contexts/LocationContext';
+import { useAuth } from '../contexts/AuthContext';
 import { UpgradeDrawer } from '../components/UpgradeDrawer';
 import { createMenu, createGuestQuote, extractMenuText, getCatalogs, uploadCatalogFile, getRestaurants, getRestaurant, getStockQuotes, generateFromStockQuote, getDemoDistributor } from '../services/api';
 import type { CatalogSummary, RestaurantSummary, RestaurantDetail, StockQuoteResponse } from '../services/api';
@@ -103,6 +105,9 @@ export function StartNewQuotePage() {
   const [isQuoteOpened, setIsQuoteOpened] = useState(isDemoMode());
   const [isUpgradeDrawerOpen, setIsUpgradeDrawerOpen] = useState(false);
   const { hasQuotesRemaining, incrementQuoteCount, quotesRemaining, profile, initGuestSession } = useUser();
+  const { selectedLocation } = useLocation2();
+  const { user } = useAuth();
+  const isBuyerRole = user?.role === 'buyer' || user?.role === 'group_admin';
   const isGuest = profile.isGuest || localStorage.getItem('quoteme_token') === null;
   const [isCreatingQuote, setIsCreatingQuote] = useState(false);
   const [serviceBusy, setServiceBusy] = useState(false);
@@ -443,7 +448,7 @@ export function StartNewQuotePage() {
         if (response.data) {
           incrementQuoteCount();
           navigate('/map-ingredients', {
-            state: { quoteId: response.data.quote_id, menuId: response.data.menu_id, isOpenQuote: isQuoteOpened }
+            state: { quoteId: response.data.quote_id, menuId: response.data.menu_id, isOpenQuote: isQuoteOpened, locationId: isBuyerRole ? selectedLocation?.id : undefined }
           });
         }
       } else {
@@ -456,7 +461,7 @@ export function StartNewQuotePage() {
         if (response.data) {
           incrementQuoteCount();
           navigate('/map-ingredients', {
-            state: { quoteId: response.data.quote_id, menuId: response.data.menu_id, isOpenQuote: isQuoteOpened }
+            state: { quoteId: response.data.quote_id, menuId: response.data.menu_id, isOpenQuote: isQuoteOpened, locationId: isBuyerRole ? selectedLocation?.id : undefined }
           });
         }
       }
