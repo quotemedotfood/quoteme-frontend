@@ -58,6 +58,8 @@ export function QMAdminUsers() {
 
   // Invite modal state
   const [showInvite, setShowInvite] = useState(false);
+  const [inviteFirstName, setInviteFirstName] = useState('');
+  const [inviteLastName, setInviteLastName] = useState('');
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState('quoteme_admin');
   const [inviting, setInviting] = useState(false);
@@ -146,15 +148,22 @@ export function QMAdminUsers() {
   }
 
   async function handleInvite() {
-    if (!inviteEmail.trim()) return;
+    if (!inviteFirstName.trim() || !inviteLastName.trim() || !inviteEmail.trim()) return;
     setInviting(true);
     setInviteError(null);
-    const res = await inviteAdminUser({ email: inviteEmail.trim(), role: inviteRole });
+    const res = await inviteAdminUser({
+      first_name: inviteFirstName.trim(),
+      last_name: inviteLastName.trim(),
+      email: inviteEmail.trim(),
+      role: inviteRole,
+    });
     if (res.error) {
       setInviteError(res.error);
       setInviting(false);
       return;
     }
+    setInviteFirstName('');
+    setInviteLastName('');
     setInviteEmail('');
     setInviteRole('quoteme_admin');
     setShowInvite(false);
@@ -218,6 +227,24 @@ export function QMAdminUsers() {
               </button>
             </div>
             <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-[#4F4F4F] mb-1">First Name</label>
+                  <Input
+                    value={inviteFirstName}
+                    onChange={(e) => setInviteFirstName(e.target.value)}
+                    placeholder="First name"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-[#4F4F4F] mb-1">Last Name</label>
+                  <Input
+                    value={inviteLastName}
+                    onChange={(e) => setInviteLastName(e.target.value)}
+                    placeholder="Last name"
+                  />
+                </div>
+              </div>
               <div>
                 <label className="block text-sm font-medium text-[#4F4F4F] mb-1">Email</label>
                 <Input
@@ -251,7 +278,7 @@ export function QMAdminUsers() {
                 </Button>
                 <Button
                   onClick={handleInvite}
-                  disabled={inviting || !inviteEmail.trim()}
+                  disabled={inviting || !inviteFirstName.trim() || !inviteLastName.trim() || !inviteEmail.trim()}
                   className="bg-[#7FAEC2] hover:bg-[#6a9ab0] text-white"
                 >
                   {inviting ? 'Sending...' : 'Send Invite'}

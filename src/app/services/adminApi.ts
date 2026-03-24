@@ -192,6 +192,8 @@ export async function updateAdminUser(
 }
 
 export async function inviteAdminUser(data: {
+  first_name: string;
+  last_name: string;
   email: string;
   role: string;
 }): Promise<ApiResponse<AdminUser>> {
