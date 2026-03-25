@@ -440,6 +440,30 @@ export async function searchDistributors(query: string): Promise<ApiResponse<Dis
   }
 }
 
+export interface DistributorRepInfo {
+  id: string;
+  name: string;
+  email: string;
+  role: 'Admin' | 'Rep';
+  territory: string | null;
+}
+
+export async function getDistributorReps(distributorId: string): Promise<ApiResponse<DistributorRepInfo[]>> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/v1/distributors/${distributorId}/reps`, {
+      headers: { 'Content-Type': 'application/json' },
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      return { error: errorData.error || `HTTP ${response.status}` };
+    }
+    const data = await response.json();
+    return { data };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : 'Network error' };
+  }
+}
+
 // ============= PASSWORD RESET =============
 
 export async function sendPasswordReset(email: string): Promise<ApiResponse<{ message: string }>> {
@@ -1156,6 +1180,7 @@ export async function createLocationGroupPortalSession(groupId: string): Promise
 export async function createLocationVendor(locationId: string, data: {
   distributor_name_text: string;
   distributor_id?: string;
+  rep_id?: string;
   rep_name_text?: string;
   rep_email_text?: string;
 }): Promise<ApiResponse<LocationDistributorRelationship>> {

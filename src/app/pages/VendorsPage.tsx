@@ -1,14 +1,16 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Loader2, Plus, X } from 'lucide-react';
+import { Loader2, Plus, X, Check } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { useLocation2 } from '../contexts/LocationContext';
 import {
   getLocationDistributors,
   searchDistributors,
+  getDistributorReps,
   createLocationVendor,
   type LocationDistributorRelationship,
   type DistributorSearchResult,
+  type DistributorRepInfo,
 } from '../services/api';
 
 const statusStyles: Record<string, string> = {
@@ -36,6 +38,11 @@ export function VendorsPage() {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const suggestRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+
+  // Rep selection for known distributors
+  const [distReps, setDistReps] = useState<DistributorRepInfo[]>([]);
+  const [repsLoading, setRepsLoading] = useState(false);
+  const [selectedRepId, setSelectedRepId] = useState<string | null>(null);
 
   const fetchVendors = useCallback(async () => {
     if (!selectedLocation) {
@@ -71,6 +78,8 @@ export function VendorsPage() {
   const handleNameChange = (val: string) => {
     setVendorName(val);
     setSelectedDistId(null);
+    setDistReps([]);
+    setSelectedRepId(null);
     if (debounceRef.current) clearTimeout(debounceRef.current);
     if (val.trim().length >= 2) {
       debounceRef.current = setTimeout(async () => {
@@ -86,11 +95,30 @@ export function VendorsPage() {
     }
   };
 
-  const handleSelectSuggestion = (d: DistributorSearchResult) => {
+  const handleSelectSuggestion = async (d: DistributorSearchResult) => {
     setVendorName(d.name);
     setSelectedDistId(d.id);
     setShowSuggestions(false);
     setSuggestions([]);
+    setSelectedRepId(null);
+
+    // Fetch reps for this distributor
+    setRepsLoading(true);
+    const res = await getDistributorReps(d.id);
+    if (res.data) {
+      setDistReps(res.data);
+    }
+    setRepsLoading(false);
+  };
+
+  const resetForm = () => {
+    setVendorName('');
+    setVendorRepName('');
+    setVendorRepEmail('');
+    setSelectedDistId(null);
+    setDistReps([]);
+    setSelectedRepId(null);
+    setAddError(null);
   };
 
   const handleAddVendor = async () => {
@@ -101,18 +129,16 @@ export function VendorsPage() {
     const res = await createLocationVendor(selectedLocation.id, {
       distributor_name_text: vendorName.trim(),
       distributor_id: selectedDistId || undefined,
-      rep_name_text: vendorRepName.trim() || undefined,
-      rep_email_text: vendorRepEmail.trim() || undefined,
+      rep_id: selectedRepId || undefined,
+      rep_name_text: !selectedDistId ? (vendorRepName.trim() || undefined) : undefined,
+      rep_email_text: !selectedDistId ? (vendorRepEmail.trim() || undefined) : undefined,
     });
 
     if (res.error) {
       setAddError(res.error);
     } else if (res.data) {
       setVendors((prev) => [res.data!, ...prev]);
-      setVendorName('');
-      setVendorRepName('');
-      setVendorRepEmail('');
-      setSelectedDistId(null);
+      resetForm();
       setShowAddVendor(false);
     }
     setAddingVendor(false);
@@ -144,11 +170,12 @@ export function VendorsPage() {
           <div className="bg-white border border-[#F2993D] rounded-xl p-5 mb-6 shadow-sm">
             <div className="flex items-center justify-between mb-4">
               <h2 className="font-semibold text-[#2A2A2A]">Add Vendor</h2>
-              <button onClick={() => { setShowAddVendor(false); setAddError(null); }} className="text-gray-400 hover:text-gray-600">
+              <button onClick={() => { setShowAddVendor(false); resetForm(); }} className="text-gray-400 hover:text-gray-600">
                 <X size={18} />
               </button>
             </div>
             <div className="space-y-3">
+              {/* Distributor Name with Autocomplete */}
               <div className="relative" ref={suggestRef}>
                 <label className="block text-sm text-[#4F4F4F] mb-1">Distributor Name *</label>
                 <Input
@@ -179,27 +206,89 @@ export function VendorsPage() {
                   </div>
                 )}
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+
+              {/* Known distributor selected — show reps */}
+              {selectedDistId && (
                 <div>
-                  <label className="block text-sm text-[#4F4F4F] mb-1">Rep Name</label>
-                  <Input
-                    value={vendorRepName}
-                    onChange={(e) => setVendorRepName(e.target.value)}
-                    placeholder="Optional"
-                    className="bg-white"
-                  />
+                  <label className="block text-sm text-[#4F4F4F] mb-2">Select a Rep</label>
+                  {repsLoading ? (
+                    <div className="flex items-center gap-2 py-3 text-sm text-gray-400">
+                      <Loader2 className="w-4 h-4 animate-spin" /> Loading team...
+                    </div>
+                  ) : distReps.length === 0 ? (
+                    <p className="text-sm text-gray-400 py-2">No reps available. Request will go to the distributor admin.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {distReps.map((rep) => {
+                        const isSelected = selectedRepId === rep.id;
+                        return (
+                          <button
+                            key={rep.id}
+                            type="button"
+                            onClick={() => setSelectedRepId(isSelected ? null : rep.id)}
+                            className={`w-full text-left rounded-lg border p-3 transition-colors flex items-center gap-3 ${
+                              isSelected
+                                ? 'border-[#F2993D] bg-[#FFF9F3]'
+                                : 'border-gray-200 hover:border-gray-300 bg-white'
+                            }`}
+                          >
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-sm font-medium ${
+                              isSelected ? 'bg-[#F2993D] text-white' : 'bg-gray-100 text-gray-500'
+                            }`}>
+                              {isSelected ? <Check size={14} /> : rep.name.charAt(0).toUpperCase()}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium text-sm text-[#2A2A2A] truncate">{rep.name}</span>
+                                <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
+                                  rep.role === 'Admin' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'
+                                }`}>
+                                  {rep.role}
+                                </span>
+                              </div>
+                              <div className="text-xs text-gray-400 truncate">{rep.email}</div>
+                              {rep.territory && (
+                                <div className="text-xs text-gray-400 mt-0.5">{rep.territory}</div>
+                              )}
+                            </div>
+                          </button>
+                        );
+                      })}
+                      {!selectedRepId && (
+                        <p className="text-xs text-gray-400 pt-1">
+                          No selection? Request goes to the distributor admin by default.
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
-                <div>
-                  <label className="block text-sm text-[#4F4F4F] mb-1">Rep Email</label>
-                  <Input
-                    type="email"
-                    value={vendorRepEmail}
-                    onChange={(e) => setVendorRepEmail(e.target.value)}
-                    placeholder="Optional"
-                    className="bg-white"
-                  />
+              )}
+
+              {/* Manual rep fields — only when distributor NOT in QuoteMe */}
+              {!selectedDistId && vendorName.trim().length > 0 && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm text-[#4F4F4F] mb-1">Rep Name</label>
+                    <Input
+                      value={vendorRepName}
+                      onChange={(e) => setVendorRepName(e.target.value)}
+                      placeholder="Optional"
+                      className="bg-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-[#4F4F4F] mb-1">Rep Email</label>
+                    <Input
+                      type="email"
+                      value={vendorRepEmail}
+                      onChange={(e) => setVendorRepEmail(e.target.value)}
+                      placeholder="Optional"
+                      className="bg-white"
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
+
               {addError && <p className="text-sm text-red-500">{addError}</p>}
               <div className="flex gap-3 pt-1">
                 <Button
@@ -209,7 +298,7 @@ export function VendorsPage() {
                 >
                   {addingVendor ? 'Adding...' : 'Add Vendor'}
                 </Button>
-                <Button variant="outline" onClick={() => { setShowAddVendor(false); setAddError(null); }}>
+                <Button variant="outline" onClick={() => { setShowAddVendor(false); resetForm(); }}>
                   Cancel
                 </Button>
               </div>
