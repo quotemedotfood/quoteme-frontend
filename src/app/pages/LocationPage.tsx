@@ -20,6 +20,8 @@ interface LocationMember {
   name: string | null;
   email: string;
   invited_email?: string;
+  phone?: string | null;
+  title?: string | null;
 }
 
 export function LocationPage() {
@@ -198,11 +200,17 @@ function LocationDetailView({
   onBack: () => void;
   onLocationAdded: () => Promise<void>;
 }) {
+  const { locations } = useLocation2();
   const [members, setMembers] = useState<LocationMember[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(true);
   const [showInvite, setShowInvite] = useState(false);
+  const [inviteFirstName, setInviteFirstName] = useState('');
+  const [inviteLastName, setInviteLastName] = useState('');
   const [inviteEmail, setInviteEmail] = useState('');
+  const [invitePhone, setInvitePhone] = useState('');
+  const [inviteTitle, setInviteTitle] = useState('');
   const [inviteRole, setInviteRole] = useState<'buyer' | 'group_admin'>('buyer');
+  const [inviteLocationIds, setInviteLocationIds] = useState<string[]>([location.id]);
   const [inviting, setInviting] = useState(false);
   const [inviteError, setInviteError] = useState<string | null>(null);
   const [inviteSuccess, setInviteSuccess] = useState<string | null>(null);
@@ -223,15 +231,35 @@ function LocationDetailView({
     }
   };
 
+  const resetInviteForm = () => {
+    setInviteFirstName('');
+    setInviteLastName('');
+    setInviteEmail('');
+    setInvitePhone('');
+    setInviteTitle('');
+    setInviteRole('buyer');
+    setInviteLocationIds([location.id]);
+    setInviteError(null);
+  };
+
   const handleInvite = async () => {
-    if (!inviteEmail.trim()) return;
+    if (!inviteEmail.trim() || !inviteFirstName.trim() || !inviteLastName.trim()) return;
     setInviting(true);
     setInviteError(null);
     setInviteSuccess(null);
     try {
-      await inviteLocationMember(location.id, inviteEmail.trim(), inviteRole);
-      setInviteSuccess(`Invitation sent to ${inviteEmail.trim()}`);
-      setInviteEmail('');
+      await inviteLocationMember(location.id, {
+        email: inviteEmail.trim(),
+        role: inviteRole,
+        first_name: inviteFirstName.trim(),
+        last_name: inviteLastName.trim(),
+        phone: invitePhone.trim() || undefined,
+        title: inviteTitle.trim() || undefined,
+        location_ids: inviteLocationIds.length > 1 ? inviteLocationIds : undefined,
+      });
+      const name = `${inviteFirstName.trim()} ${inviteLastName.trim()}`;
+      setInviteSuccess(`Invitation sent to ${name} (${inviteEmail.trim()})`);
+      resetInviteForm();
       setShowInvite(false);
       fetchMembers();
     } catch (e: any) {
@@ -239,6 +267,12 @@ function LocationDetailView({
     } finally {
       setInviting(false);
     }
+  };
+
+  const toggleLocationId = (id: string) => {
+    setInviteLocationIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
   };
 
   return (
@@ -279,6 +313,26 @@ function LocationDetailView({
         {showInvite && (
           <div className="border border-[#7FAEC2] rounded-lg p-4 bg-[#F8FCFD] mb-4">
             <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm text-[#4F4F4F] mb-1">First Name *</label>
+                  <Input
+                    value={inviteFirstName}
+                    onChange={(e) => setInviteFirstName(e.target.value)}
+                    placeholder="Jane"
+                    className="bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-[#4F4F4F] mb-1">Last Name *</label>
+                  <Input
+                    value={inviteLastName}
+                    onChange={(e) => setInviteLastName(e.target.value)}
+                    placeholder="Smith"
+                    className="bg-white"
+                  />
+                </div>
+              </div>
               <div>
                 <label className="block text-sm text-[#4F4F4F] mb-1">Email Address *</label>
                 <Input
@@ -288,6 +342,31 @@ function LocationDetailView({
                   placeholder="team@example.com"
                   className="bg-white"
                 />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm text-[#4F4F4F] mb-1">
+                    Phone <span className="font-normal text-gray-400">(optional)</span>
+                  </label>
+                  <Input
+                    type="tel"
+                    value={invitePhone}
+                    onChange={(e) => setInvitePhone(e.target.value)}
+                    placeholder="(555) 123-4567"
+                    className="bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-[#4F4F4F] mb-1">
+                    Title <span className="font-normal text-gray-400">(optional)</span>
+                  </label>
+                  <Input
+                    value={inviteTitle}
+                    onChange={(e) => setInviteTitle(e.target.value)}
+                    placeholder="e.g., Sous Chef, GM"
+                    className="bg-white"
+                  />
+                </div>
               </div>
               <div>
                 <label className="block text-sm text-[#4F4F4F] mb-1">Role</label>
@@ -300,12 +379,36 @@ function LocationDetailView({
                   <option value="group_admin">Admin</option>
                 </select>
               </div>
+              {/* Multi-location select */}
+              {locations.length > 1 && (
+                <div>
+                  <label className="block text-sm text-[#4F4F4F] mb-2">Locations</label>
+                  <div className="space-y-1.5">
+                    {locations.map((loc) => (
+                      <label key={loc.id} className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={inviteLocationIds.includes(loc.id)}
+                          onChange={() => toggleLocationId(loc.id)}
+                          className="rounded border-gray-300 text-[#7FAEC2] focus:ring-[#7FAEC2]"
+                          style={{ width: '16px', height: '16px', minWidth: '16px', minHeight: '16px', maxWidth: '16px', maxHeight: '16px' }}
+                        />
+                        <span className="text-sm text-[#2A2A2A]">{loc.name}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
               {inviteError && <p className="text-sm text-red-500">{inviteError}</p>}
               <div className="flex gap-3 pt-1">
-                <Button onClick={handleInvite} disabled={inviting || !inviteEmail.trim()} className="bg-[#7FAEC2] hover:bg-[#6A9AB0] text-white">
+                <Button
+                  onClick={handleInvite}
+                  disabled={inviting || !inviteEmail.trim() || !inviteFirstName.trim() || !inviteLastName.trim() || inviteLocationIds.length === 0}
+                  className="bg-[#7FAEC2] hover:bg-[#6A9AB0] text-white"
+                >
                   {inviting ? 'Sending...' : 'Send Invite'}
                 </Button>
-                <Button variant="outline" onClick={() => { setShowInvite(false); setInviteError(null); }}>Cancel</Button>
+                <Button variant="outline" onClick={() => { setShowInvite(false); resetInviteForm(); }}>Cancel</Button>
               </div>
             </div>
           </div>
@@ -334,7 +437,9 @@ function LocationDetailView({
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-[#2A2A2A] text-sm truncate">{m.name || m.invited_email || m.email}</p>
-                  <p className="text-xs text-[#4F4F4F] truncate">{m.email || m.invited_email}</p>
+                  <p className="text-xs text-[#4F4F4F] truncate">
+                    {m.title ? `${m.title} · ` : ''}{m.email || m.invited_email}
+                  </p>
                 </div>
                 <span className={`text-xs px-2 py-0.5 rounded ${
                   m.role === 'group_admin' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'

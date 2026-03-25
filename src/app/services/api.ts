@@ -1217,10 +1217,18 @@ export async function getLocationMembers(locationId: string): Promise<any[]> {
   return res.data as any[];
 }
 
-export async function inviteLocationMember(locationId: string, email: string, role: string): Promise<any> {
+export async function inviteLocationMember(locationId: string, data: {
+  email: string;
+  role: string;
+  first_name?: string;
+  last_name?: string;
+  phone?: string;
+  title?: string;
+  location_ids?: string[];
+}): Promise<any> {
   const res = await fetchWithAuth(`/api/v1/locations/${locationId}/members/invite`, {
     method: 'POST',
-    body: JSON.stringify({ email, role }),
+    body: JSON.stringify(data),
   });
   return res.data;
 }
