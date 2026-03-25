@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useNavigate } from 'react-router';
 import { Loader2, Plus, X, Check } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -21,6 +22,7 @@ const statusStyles: Record<string, string> = {
 };
 
 export function VendorsPage() {
+  const navigate = useNavigate();
   const { selectedLocation } = useLocation2();
   const [vendors, setVendors] = useState<LocationDistributorRelationship[]>([]);
   const [loading, setLoading] = useState(true);
@@ -331,7 +333,11 @@ export function VendorsPage() {
             {/* Mobile Cards */}
             <div className="md:hidden space-y-3">
               {vendors.map((v) => (
-                <div key={v.id} className="bg-white rounded-lg border border-gray-200 shadow-sm p-4">
+                <div
+                  key={v.id}
+                  onClick={() => navigate(`/vendors/${v.id}`)}
+                  className="bg-white rounded-lg border border-gray-200 shadow-sm p-4 cursor-pointer hover:border-[#7FAEC2] transition-colors"
+                >
                   <div className="flex items-center justify-between mb-2">
                     <h3 className="font-medium text-[#2A2A2A]">
                       {v.distributor?.name || v.distributor_name_text}
@@ -379,7 +385,7 @@ export function VendorsPage() {
                   </thead>
                   <tbody>
                     {vendors.map((v) => (
-                      <tr key={v.id} className="border-b border-gray-100 hover:bg-gray-50">
+                      <tr key={v.id} onClick={() => navigate(`/vendors/${v.id}`)} className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer">
                         <td className="py-3 font-medium text-[#2A2A2A]">
                           {v.distributor?.name || v.distributor_name_text}
                         </td>

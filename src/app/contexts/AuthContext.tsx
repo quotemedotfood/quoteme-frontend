@@ -6,8 +6,8 @@ interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (credentials: LoginData) => Promise<{ success: boolean; error?: string }>;
-  signup: (data: SignUpData, guestToken?: string) => Promise<{ success: boolean; error?: string }>;
+  login: (credentials: LoginData) => Promise<{ success: boolean; error?: string; error_code?: string }>;
+  signup: (data: SignUpData, guestToken?: string) => Promise<{ success: boolean; error?: string; error_code?: string }>;
   logout: () => void;
   refreshUser: () => Promise<void>;
 }
@@ -54,12 +54,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(false);
   }
 
-  async function login(credentials: LoginData): Promise<{ success: boolean; error?: string }> {
+  async function login(credentials: LoginData): Promise<{ success: boolean; error?: string; error_code?: string }> {
     const response = await signIn(credentials);
     console.log('[login] signIn response:', { error: response.error, hasToken: !!response.token, hasData: !!response.data });
 
     if (response.error) {
-      return { success: false, error: response.error };
+      return { success: false, error: response.error, error_code: response.error_code };
     }
 
     if (response.token) {
@@ -76,7 +76,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function signup(
     data: SignUpData,
     guestToken?: string
-  ): Promise<{ success: boolean; error?: string }> {
+  ): Promise<{ success: boolean; error?: string; error_code?: string }> {
     // If guest token exists, convert guest to user
     if (guestToken) {
       const response = await convertGuestToUser({
@@ -85,7 +85,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
 
       if (response.error) {
-        return { success: false, error: response.error };
+        return { success: false, error: response.error, error_code: response.error_code };
       }
 
       if (response.token) {
@@ -102,7 +102,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const response = await signUp(data);
 
     if (response.error) {
-      return { success: false, error: response.error };
+      return { success: false, error: response.error, error_code: response.error_code };
     }
 
     if (response.token) {

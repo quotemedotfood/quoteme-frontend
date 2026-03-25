@@ -19,6 +19,7 @@ export function AuthDrawer({ isOpen, onClose, defaultMode = 'login', onSuccess }
   const [mode, setMode] = useState<'login' | 'signup'>(defaultMode);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [errorCode, setErrorCode] = useState<string | null>(null);
 
   // Login form
   const [loginEmail, setLoginEmail] = useState('');
@@ -61,6 +62,7 @@ export function AuthDrawer({ isOpen, onClose, defaultMode = 'login', onSuccess }
       onSuccess?.();
       onClose();
     } else {
+      setErrorCode(result.error_code || null);
       setError(result.error || 'Login failed. Please try again.');
     }
   };
@@ -94,6 +96,7 @@ export function AuthDrawer({ isOpen, onClose, defaultMode = 'login', onSuccess }
       onSuccess?.();
       onClose();
     } else {
+      setErrorCode(result.error_code || null);
       setError(result.error || 'Signup failed. Please try again.');
     }
   };
@@ -112,9 +115,23 @@ export function AuthDrawer({ isOpen, onClose, defaultMode = 'login', onSuccess }
 
         <div className="mt-6">
           {error && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2 text-red-700 text-sm">
-              <AlertCircle className="w-4 h-4 flex-shrink-0" />
-              <span>{error}</span>
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2 text-red-700 text-sm">
+              <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+              <span>
+                {errorCode === 'email_not_found' ? (
+                  <>No account found with this email. Check for typos or{' '}
+                    <button type="button" onClick={() => { setMode('signup'); setError(null); setErrorCode(null); }} className="font-semibold hover:underline" style={{ color: '#7FAEC2' }}>create an account</button>.
+                  </>
+                ) : errorCode === 'wrong_password' ? (
+                  <>Incorrect password. Try again or{' '}
+                    <a href="/auth" className="font-semibold hover:underline" style={{ color: '#7FAEC2' }}>reset your password</a>.
+                  </>
+                ) : errorCode === 'email_taken' ? (
+                  <>An account with this email already exists.{' '}
+                    <button type="button" onClick={() => { setMode('login'); setError(null); setErrorCode(null); }} className="font-semibold hover:underline" style={{ color: '#7FAEC2' }}>Try signing in instead</button>.
+                  </>
+                ) : error}
+              </span>
             </div>
           )}
 

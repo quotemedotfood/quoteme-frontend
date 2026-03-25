@@ -4,6 +4,7 @@ const API_BASE_URL = 'https://web-production-9f6e9.up.railway.app';
 interface ApiResponse<T> {
   data?: T;
   error?: string;
+  error_code?: string;
   token?: string;
 }
 
@@ -291,7 +292,7 @@ async function fetchWithGuest<T>(
 
 // ============= AUTH ENDPOINTS =============
 
-export async function signIn(credentials: LoginData): Promise<ApiResponse<{ message?: string; user?: any }>> {
+export async function signIn(credentials: LoginData): Promise<ApiResponse<{ message?: string; user?: any; error_code?: string }>> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   };
@@ -314,6 +315,7 @@ export async function signIn(credentials: LoginData): Promise<ApiResponse<{ mess
       const errorData = await response.json().catch(() => ({}));
       return {
         error: errorData.error || errorData.message || `HTTP ${response.status}`,
+        error_code: errorData.error_code,
         data: undefined,
       };
     }
@@ -359,6 +361,7 @@ export async function signUp(data: SignUpData): Promise<ApiResponse<{ message: s
       const errorData = await response.json().catch(() => ({}));
       return {
         error: errorData.error || errorData.errors?.full_messages?.join(', ') || errorData.message || `HTTP ${response.status}`,
+        error_code: errorData.error_code,
         data: undefined,
       };
     }
@@ -1188,6 +1191,23 @@ export async function createLocationVendor(locationId: string, data: {
     method: 'POST',
     body: JSON.stringify(data),
   });
+}
+
+// ============= LOCATION QUOTES =============
+
+export interface LocationQuote {
+  id: string;
+  status: string;
+  working_label: string | null;
+  quote_type: string | null;
+  distributor: { id: string; name: string } | null;
+  total_cents: number | null;
+  created_at: string;
+  sent_at: string | null;
+}
+
+export async function getLocationQuotes(locationId: string): Promise<ApiResponse<LocationQuote[]>> {
+  return fetchWithAuth(`/api/v1/locations/${locationId}/quotes`);
 }
 
 // ============= LOCATION MEMBERS =============

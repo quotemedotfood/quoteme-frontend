@@ -205,7 +205,13 @@ export function AuthPage() {
     if (result.success) {
       // Role-based routing handled by useEffect when user state updates
     } else {
-      setErrors({ form: result.error || 'Registration failed' });
+      if (result.error_code === 'email_taken') {
+        setErrors({ email: 'email_taken' });
+      } else if (result.error_code === 'distributor_name_exists') {
+        setErrors({ distributor: 'distributor_name_exists' });
+      } else {
+        setErrors({ form: result.error || 'Registration failed' });
+      }
     }
   };
 
@@ -224,7 +230,13 @@ export function AuthPage() {
     if (result.success) {
       // Role-based routing handled by useEffect when user state updates
     } else {
-      setErrors({ form: 'Invalid email or password' });
+      if (result.error_code === 'email_not_found') {
+        setErrors({ email: 'email_not_found' });
+      } else if (result.error_code === 'wrong_password') {
+        setErrors({ password: 'wrong_password' });
+      } else {
+        setErrors({ form: result.error || 'Invalid email or password' });
+      }
     }
   };
 
@@ -246,6 +258,58 @@ export function AuthPage() {
 
   const renderFieldError = (field: string) => {
     if (!errors[field]) return null;
+
+    // Specific error codes with contextual messages and links
+    if (errors[field] === 'email_not_found') {
+      return (
+        <p className="mt-1 flex items-start gap-1 text-sm text-red-600">
+          <AlertCircle className="size-3.5 shrink-0 mt-0.5" />
+          <span>
+            No account found with this email. Check for typos or{' '}
+            <button onClick={() => switchView('signup')} className="font-semibold underline-offset-2 hover:underline" style={{ color: '#7FAEC2' }}>
+              create an account
+            </button>.
+          </span>
+        </p>
+      );
+    }
+    if (errors[field] === 'wrong_password') {
+      return (
+        <p className="mt-1 flex items-start gap-1 text-sm text-red-600">
+          <AlertCircle className="size-3.5 shrink-0 mt-0.5" />
+          <span>
+            Incorrect password. Try again or{' '}
+            <button onClick={() => switchView('forgot-password')} className="font-semibold underline-offset-2 hover:underline" style={{ color: '#7FAEC2' }}>
+              reset your password
+            </button>.
+          </span>
+        </p>
+      );
+    }
+    if (errors[field] === 'email_taken') {
+      return (
+        <p className="mt-1 flex items-start gap-1 text-sm text-red-600">
+          <AlertCircle className="size-3.5 shrink-0 mt-0.5" />
+          <span>
+            An account with this email already exists.{' '}
+            <button onClick={() => switchView('signin')} className="font-semibold underline-offset-2 hover:underline" style={{ color: '#7FAEC2' }}>
+              Try signing in instead
+            </button>.
+          </span>
+        </p>
+      );
+    }
+    if (errors[field] === 'distributor_name_exists') {
+      return (
+        <p className="mt-1 flex items-start gap-1 text-sm text-red-600">
+          <AlertCircle className="size-3.5 shrink-0 mt-0.5" />
+          <span>
+            A distributor named "{distributorName}" already exists. If you're joining this distributor, ask your admin for an invite. If this is a different business, use a unique name.
+          </span>
+        </p>
+      );
+    }
+
     return (
       <p className="mt-1 flex items-center gap-1 text-sm text-red-600">
         <AlertCircle className="size-3.5 shrink-0" />
