@@ -1190,6 +1190,21 @@ export async function createLocationVendor(locationId: string, data: {
   });
 }
 
+// ============= LOCATION MEMBERS =============
+
+export async function getLocationMembers(locationId: string): Promise<any[]> {
+  const res = await fetchWithAuth(`/api/v1/locations/${locationId}/members`);
+  return res.data as any[];
+}
+
+export async function inviteLocationMember(locationId: string, email: string, role: string): Promise<any> {
+  const res = await fetchWithAuth(`/api/v1/locations/${locationId}/members/invite`, {
+    method: 'POST',
+    body: JSON.stringify({ email, role }),
+  });
+  return res.data;
+}
+
 // ============= BILLING ENDPOINTS =============
 
 export async function getBilling(): Promise<ApiResponse<any>> {

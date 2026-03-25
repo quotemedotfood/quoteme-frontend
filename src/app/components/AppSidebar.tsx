@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router';
-import { LayoutDashboard, Users, FileText, Plus, Settings, UserPlus, ClipboardList, Store, ChevronDown, MapPin } from 'lucide-react';
+import { LayoutDashboard, Users, FileText, Plus, Settings, UserPlus, ClipboardList, Store, ChevronDown, MapPin, Building2 } from 'lucide-react';
 import logoSquare from '/src/assets/e549e7d27b183e98e791f43494c715b8cc6ce7e9.png';
 import { useUser } from '../contexts/UserContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -112,6 +112,8 @@ export function AppSidebar() {
   const isDistributorAdmin = user?.role === 'distributor_admin';
   const isBuyer = user?.role === 'buyer' || user?.role === 'group_admin';
 
+  const { isMultiLocation } = useLocation2();
+
   const navItems = isDistributorAdmin
     ? [
         { icon: <LayoutDashboard size={20} />, label: "Dashboard", path: "/distributor-admin" },
@@ -127,6 +129,7 @@ export function AppSidebar() {
         { icon: <LayoutDashboard size={20} />, label: "Dashboard", path: "/dashboard" },
         { icon: <Store size={20} />, label: "Vendors", path: "/vendors" },
         { icon: <FileText size={20} />, label: "Quotes", path: "/quotes" },
+        { icon: <Building2 size={20} />, label: isMultiLocation ? "Locations" : "Location", path: "/locations" },
       ]
     : [
         { icon: <Plus size={20} />, label: "New Quote", path: "/", highlight: true },

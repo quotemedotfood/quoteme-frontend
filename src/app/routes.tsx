@@ -33,6 +33,7 @@ import { RepInvitePage } from "./pages/RepInvitePage";
 import { DistributorRepsPage } from "./pages/DistributorRepsPage";
 import { OnboardingDocsPage } from "./pages/OnboardingDocsPage";
 import { VendorsPage } from "./pages/VendorsPage";
+import { LocationPage } from "./pages/LocationPage";
 import { isDemoMode } from "./utils/demoMode";
 
 const demo = isDemoMode();
@@ -76,6 +77,7 @@ export const router = createBrowserRouter([
             { path: "dashboard", Component: QuoteMePage },
             { path: "customers", Component: CustomersPage },
             { path: "vendors", Component: VendorsPage },
+            { path: "locations", Component: LocationPage },
             { path: "quotes", Component: QuotesPage },
             { path: "settings", Component: SettingsPage },
             { path: "settings/billing", Component: SettingsPage },
