@@ -7,6 +7,7 @@ import { useUser } from '../contexts/UserContext';
 import { useAuth } from '../contexts/AuthContext';
 import { updateCurrentUser, getBilling, createCheckoutSession, createPortalSession, sendPasswordReset, getLocations, addLocationToGroup, getLocationGroupBilling, createLocationGroupPortalSession, type LocationItem } from '../services/api';
 import { AuthDrawer } from '../components/AuthDrawer';
+import { isBuyerRole } from '../utils/roles';
 
 export function SettingsPage() {
   const { profile, updateProfile } = useUser();
@@ -275,7 +276,7 @@ export function SettingsPage() {
   }, [location.pathname]);
 
   const isGuest = profile.isGuest;
-  const isBuyer = user?.role === 'buyer' || user?.role === 'group_admin';
+  const isBuyer = isBuyerRole(user?.role);
   const accountFieldsReadOnly = !isGuest && !isEditingAccount;
   const distributorFieldsReadOnly = !isEditingDistributor;
 

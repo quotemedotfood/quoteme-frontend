@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { getLocations, type LocationItem } from '../services/api';
 import { useAuth } from './AuthContext';
+import { isBuyerRole } from '../utils/roles';
 
 interface LocationContextType {
   locations: LocationItem[];
@@ -22,7 +23,7 @@ const LocationContext = createContext<LocationContextType>({
 
 export function LocationProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
-  const isBuyer = user?.role === 'buyer' || user?.role === 'group_admin';
+  const isBuyer = isBuyerRole(user?.role);
   const [locations, setLocations] = useState<LocationItem[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(() => {
     return localStorage.getItem('quoteme_selected_location_id');

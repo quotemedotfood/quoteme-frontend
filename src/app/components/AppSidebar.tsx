@@ -4,6 +4,7 @@ import logoSquare from '/src/assets/e549e7d27b183e98e791f43494c715b8cc6ce7e9.png
 import { useUser } from '../contexts/UserContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useLocation2 } from '../contexts/LocationContext';
+import { isBuyerRole } from '../utils/roles';
 import { useState, useRef, useEffect } from 'react';
 
 interface NavItemProps {
@@ -110,7 +111,7 @@ export function AppSidebar() {
   const { quotesRemaining, profile } = useUser();
   const { user } = useAuth();
   const isDistributorAdmin = user?.role === 'distributor_admin';
-  const isBuyer = user?.role === 'buyer' || user?.role === 'group_admin';
+  const isBuyer = isBuyerRole(user?.role);
 
   const { isMultiLocation } = useLocation2();
 

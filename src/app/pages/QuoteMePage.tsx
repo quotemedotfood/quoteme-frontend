@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { useAuth } from '../contexts/AuthContext';
 import { useLocation2 } from '../contexts/LocationContext';
+import { isBuyerRole } from '../utils/roles';
 import {
   getQuotes,
   getRestaurants,
@@ -421,7 +422,7 @@ export function QuoteMePage() {
 
   if (authLoading) return null;
 
-  const isBuyer = user?.role === 'buyer' || user?.role === 'group_admin';
+  const isBuyer = isBuyerRole(user?.role);
 
   if (isBuyer) return <BuyerDashboard />;
   return <RepDashboard />;

@@ -13,6 +13,7 @@ import { UpgradeDrawer } from '../components/UpgradeDrawer';
 import { createMenu, createGuestQuote, extractMenuText, getCatalogs, uploadCatalogFile, getRestaurants, getRestaurant, getStockQuotes, generateFromStockQuote, getDemoDistributor } from '../services/api';
 import type { CatalogSummary, RestaurantSummary, RestaurantDetail, StockQuoteResponse } from '../services/api';
 import { isDemoMode, isLiquorDemo, demoType } from '../utils/demoMode';
+import { isBuyerRole as checkBuyerRole } from '../utils/roles';
 
 // --- Types for ingredient editing ---
 interface ParsedIngredient {
@@ -107,7 +108,7 @@ export function StartNewQuotePage() {
   const { hasQuotesRemaining, incrementQuoteCount, quotesRemaining, profile, initGuestSession } = useUser();
   const { selectedLocation } = useLocation2();
   const { user } = useAuth();
-  const isBuyerRole = user?.role === 'buyer' || user?.role === 'group_admin';
+  const isBuyerRole = checkBuyerRole(user?.role);
   const isGuest = profile.isGuest || localStorage.getItem('quoteme_token') === null;
   const [isCreatingQuote, setIsCreatingQuote] = useState(false);
   const [serviceBusy, setServiceBusy] = useState(false);
