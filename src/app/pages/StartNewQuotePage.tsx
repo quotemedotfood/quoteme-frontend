@@ -398,7 +398,12 @@ export function StartNewQuotePage() {
   };
 
   const handleAddIngredient = (dishId: string) => {
-    if (!newIngredientName.trim()) return;
+    if (!newIngredientName.trim()) {
+      // Empty enter = done adding, close the input
+      setAddingToDish(null);
+      setNewIngredientName('');
+      return;
+    }
     nextIngId++;
     setParsedDishes(prev => prev.map(d =>
       d.id === dishId ? {
@@ -407,7 +412,7 @@ export function StartNewQuotePage() {
       } : d
     ));
     setNewIngredientName('');
-    setAddingToDish(null);
+    // Keep input open for continuous entry — don't close addingToDish
   };
 
   // Quote creation
@@ -884,9 +889,10 @@ export function StartNewQuotePage() {
                             value={newIngredientName}
                             onChange={(e) => setNewIngredientName(e.target.value)}
                             onKeyDown={(e) => {
-                              if (e.key === 'Enter') handleAddIngredient(dish.id);
+                              if (e.key === 'Enter') { e.preventDefault(); handleAddIngredient(dish.id); }
                               if (e.key === 'Escape') { setAddingToDish(null); setNewIngredientName(''); }
                             }}
+                            onBlur={() => { if (!newIngredientName.trim()) { setAddingToDish(null); setNewIngredientName(''); } }}
                             autoFocus
                           />
                           <button
