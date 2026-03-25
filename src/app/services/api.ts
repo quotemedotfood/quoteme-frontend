@@ -189,7 +189,7 @@ function getAuthToken(): string | null {
 }
 
 // Helper to get guest token
-function getGuestToken(): string | null {
+export function getGuestToken(): string | null {
   return localStorage.getItem('quoteme_guest_token');
 }
 
