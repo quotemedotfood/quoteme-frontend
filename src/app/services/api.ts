@@ -830,11 +830,11 @@ export async function updateQuote(id: string, updates: any): Promise<ApiResponse
 }
 
 export async function sendQuote(id: string, recipientEmail?: string): Promise<ApiResponse<any>> {
-  return fetchWithAuth(`/api/v1/quotes/${id}/send_quote`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ recipient_email: recipientEmail || undefined }),
-  });
+  const options: RequestInit = { method: 'POST' };
+  if (recipientEmail) {
+    options.body = JSON.stringify({ recipient_email: recipientEmail });
+  }
+  return fetchWithAuth(`/api/v1/quotes/${id}/send_quote`, options);
 }
 
 export async function sendQuoteSms(id: string): Promise<ApiResponse<any>> {
