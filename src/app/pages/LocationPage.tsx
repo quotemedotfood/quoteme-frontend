@@ -54,6 +54,7 @@ export function LocationPage() {
       isGroupAdmin={isGroupAdmin}
       showBack={isMultiLocation}
       onBack={() => setDetailLocationId(null)}
+      onLocationAdded={refreshLocations}
     />
   );
 }
@@ -189,11 +190,13 @@ function LocationDetailView({
   isGroupAdmin,
   showBack,
   onBack,
+  onLocationAdded,
 }: {
   location: LocationItem;
   isGroupAdmin: boolean;
   showBack: boolean;
   onBack: () => void;
+  onLocationAdded: () => Promise<void>;
 }) {
   const [members, setMembers] = useState<LocationMember[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(true);
@@ -346,6 +349,107 @@ function LocationDetailView({
           </div>
         )}
       </div>
+
+      {/* Add Location — group_admin only, single-location view */}
+      {isGroupAdmin && !showBack && <AddLocationSection location={location} onLocationAdded={onLocationAdded} />}
+    </div>
+  );
+}
+
+/* ─── Add Location section for single-location detail view ─── */
+
+function AddLocationSection({
+  location,
+  onLocationAdded,
+}: {
+  location: LocationItem;
+  onLocationAdded: () => Promise<void>;
+}) {
+  const [showForm, setShowForm] = useState(false);
+  const [name, setName] = useState('');
+  const [city, setCity] = useState('');
+  const [state, setState] = useState('');
+  const [concept, setConcept] = useState('');
+  const [adding, setAdding] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleAdd = async () => {
+    if (!name.trim() || !location.location_group_id) return;
+    setAdding(true);
+    setError(null);
+    try {
+      await addLocationToGroup(location.location_group_id, {
+        name: name.trim(),
+        city: city.trim() || undefined,
+        state: state.trim() || undefined,
+        concept_type: concept.trim() || undefined,
+      });
+      setName('');
+      setCity('');
+      setState('');
+      setConcept('');
+      setShowForm(false);
+      await onLocationAdded();
+    } catch (e: any) {
+      setError(e?.response?.data?.error || 'Failed to add location');
+    } finally {
+      setAdding(false);
+    }
+  };
+
+  return (
+    <div className="mt-6">
+      {!showForm ? (
+        <Button
+          onClick={() => setShowForm(true)}
+          className="bg-[#F2993D] hover:bg-[#E08A2E] text-white"
+        >
+          <Plus className="w-4 h-4 mr-2" />
+          Add Location
+        </Button>
+      ) : (
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <h2 className="text-lg text-[#4F4F4F] mb-4">Add Location</h2>
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
+            <p className="text-sm text-amber-800">
+              Adding a second location starts your group plan at $50/month. Your first location stays free.
+            </p>
+          </div>
+          <div className="space-y-3">
+            <div>
+              <label className="block text-sm text-[#4F4F4F] mb-1">Location Name *</label>
+              <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g., Downtown Location" className="bg-white" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm text-[#4F4F4F] mb-1">City *</label>
+                <Input value={city} onChange={(e) => setCity(e.target.value)} placeholder="City" className="bg-white" />
+              </div>
+              <div>
+                <label className="block text-sm text-[#4F4F4F] mb-1">State *</label>
+                <Input value={state} onChange={(e) => setState(e.target.value)} placeholder="e.g., CA" className="bg-white" maxLength={2} />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm text-[#4F4F4F] mb-1">
+                Concept Type <span className="font-normal text-gray-400">(optional)</span>
+              </label>
+              <Input value={concept} onChange={(e) => setConcept(e.target.value)} placeholder="e.g., Fine Dining, Fast Casual" className="bg-white" />
+            </div>
+            {error && <p className="text-sm text-red-500">{error}</p>}
+            <div className="flex gap-3 pt-2">
+              <Button
+                onClick={handleAdd}
+                disabled={adding || !name.trim() || !city.trim() || !state.trim()}
+                className="bg-[#F2993D] hover:bg-[#E08A2E] text-white"
+              >
+                {adding ? 'Adding...' : 'Add Location'}
+              </Button>
+              <Button variant="outline" onClick={() => { setShowForm(false); setError(null); }}>Cancel</Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
