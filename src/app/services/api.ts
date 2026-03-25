@@ -1340,7 +1340,7 @@ export interface DistributorRep {
   created_at: string;
 }
 
-export async function getDistributorReps(): Promise<ApiResponse<DistributorRep[]>> {
+export async function getDistributorAdminReps(): Promise<ApiResponse<DistributorRep[]>> {
   return fetchWithAuth('/api/v1/distributor_admin/reps');
 }
 

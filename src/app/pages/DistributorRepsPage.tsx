@@ -3,7 +3,7 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Loader2, Check, Send, UserPlus, Users, X } from 'lucide-react';
-import { inviteRep, getDistributorReps } from '../services/api';
+import { inviteRep, getDistributorAdminReps } from '../services/api';
 import type { DistributorRep } from '../services/api';
 
 export function DistributorRepsPage() {
@@ -29,7 +29,7 @@ export function DistributorRepsPage() {
 
   async function loadReps() {
     setLoading(true);
-    const res = await getDistributorReps();
+    const res = await getDistributorAdminReps();
     if (res.data) setReps(res.data);
     setLoading(false);
   }
