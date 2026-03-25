@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { User, signIn, signUp, getCurrentUser, convertGuestToUser, SignUpData, LoginData } from '../services/api';
+import { User, signIn, signUp, getCurrentUser, convertGuestToUser, SignUpData, LoginData, getGuestToken } from '../services/api';
 import { isDemoMode } from '../utils/demoMode';
 
 interface AuthContextType {
@@ -55,7 +55,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function login(credentials: LoginData): Promise<{ success: boolean; error?: string; error_code?: string }> {
-    const response = await signIn(credentials);
+    // Include guest token if available so backend can link guest quotes
+    const guestToken = getGuestToken();
+    const loginData = guestToken ? { ...credentials, guest_token: guestToken } : credentials;
+    const response = await signIn(loginData);
     console.log('[login] signIn response:', { error: response.error, hasToken: !!response.token, hasData: !!response.data });
 
     if (response.error) {
@@ -64,6 +67,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (response.token) {
       localStorage.setItem('quoteme_token', response.token);
+      if (guestToken) localStorage.removeItem('quoteme_guest_token');
       console.log('[login] Token stored:', response.token.substring(0, 30) + '...');
       await validateToken('login');
       return { success: true };

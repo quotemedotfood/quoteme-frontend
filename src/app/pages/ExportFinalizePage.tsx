@@ -266,7 +266,8 @@ export function ExportFinalizePage() {
     setSendingEmail(true);
     setSendError(null);
     try {
-      const res = await sendQuote(quoteId);
+      const emailToSend = manualEmail || contactEmail || undefined;
+      const res = await sendQuote(quoteId, emailToSend || undefined);
       if (res.error) {
         setSendError(res.error);
       } else {
@@ -1068,9 +1069,8 @@ export function ExportFinalizePage() {
                 <Input
                   type="email"
                   placeholder="chef@restaurant.com"
-                  value={effectiveOpenQuote ? manualEmail : (contactEmail || '')}
-                  onChange={(e) => effectiveOpenQuote && setManualEmail(e.target.value)}
-                  readOnly={!effectiveOpenQuote}
+                  value={manualEmail || contactEmail || ''}
+                  onChange={(e) => setManualEmail(e.target.value)}
                   className="border-gray-300"
                 />
               </div>

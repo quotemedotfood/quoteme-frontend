@@ -56,6 +56,7 @@ export interface SignUpData {
 export interface LoginData {
   email: string;
   password: string;
+  guest_token?: string;
 }
 
 // Guest Types
@@ -301,7 +302,10 @@ export async function signIn(credentials: LoginData): Promise<ApiResponse<{ mess
     const response = await fetch(`${API_BASE_URL}/users/sign_in`, {
       method: 'POST',
       headers,
-      body: JSON.stringify({ user: credentials }),
+      body: JSON.stringify({
+        user: { email: credentials.email, password: credentials.password },
+        ...(credentials.guest_token ? { guest_token: credentials.guest_token } : {}),
+      }),
     });
 
     // Devise-JWT puts the token in the Authorization header
@@ -825,9 +829,11 @@ export async function updateQuote(id: string, updates: any): Promise<ApiResponse
   });
 }
 
-export async function sendQuote(id: string): Promise<ApiResponse<any>> {
+export async function sendQuote(id: string, recipientEmail?: string): Promise<ApiResponse<any>> {
   return fetchWithAuth(`/api/v1/quotes/${id}/send_quote`, {
     method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ recipient_email: recipientEmail || undefined }),
   });
 }
 
