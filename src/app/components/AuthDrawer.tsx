@@ -242,7 +242,8 @@ export function AuthDrawer({ isOpen, onClose, defaultMode = 'login', onSuccess }
                   type="checkbox"
                   checked={agreeToTerms}
                   onChange={(e) => setAgreeToTerms(e.target.checked)}
-                  className="mt-0.5 w-4 h-4 shrink-0 rounded border-gray-300 text-[#F2993D] focus:ring-[#F2993D]"
+                  className="mt-0.5 shrink-0 rounded border-gray-300 text-[#F2993D] focus:ring-[#F2993D]"
+                  style={{ width: '16px', height: '16px', minWidth: '16px', minHeight: '16px', maxWidth: '16px', maxHeight: '16px' }}
                 />
                 <span className="text-sm text-gray-600" style={{ fontFamily: 'DM Sans, sans-serif' }}>
                   I agree to the{' '}

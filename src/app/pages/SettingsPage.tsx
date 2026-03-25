@@ -275,7 +275,7 @@ export function SettingsPage() {
   }, [location.pathname]);
 
   const isGuest = profile.isGuest;
-  const isBuyer = user?.role === 'buyer';
+  const isBuyer = user?.role === 'buyer' || user?.role === 'group_admin';
   const accountFieldsReadOnly = !isGuest && !isEditingAccount;
   const distributorFieldsReadOnly = !isEditingDistributor;
 

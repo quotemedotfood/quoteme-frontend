@@ -815,7 +815,8 @@ export function AuthPage() {
                 });
               }
             }}
-            className="mt-0.5 w-4 h-4 shrink-0 rounded border-gray-300 text-[#7FAEC2] focus:ring-[#7FAEC2]"
+            className="mt-0.5 shrink-0 rounded border-gray-300 text-[#7FAEC2] focus:ring-[#7FAEC2]"
+            style={{ width: '16px', height: '16px', minWidth: '16px', minHeight: '16px', maxWidth: '16px', maxHeight: '16px' }}
           />
           <span className="text-sm" style={{ color: '#4F4F4F', fontFamily: 'DM Sans, sans-serif' }}>
             I agree to the{' '}
