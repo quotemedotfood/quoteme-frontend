@@ -724,7 +724,7 @@ export function SettingsPage() {
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <div className="flex justify-between items-center mb-1">
             <h2 className="text-lg text-[#4F4F4F]">Locations</h2>
-            {!showAddLocation && (
+            {isGroupAdmin && !showAddLocation && (
               <Button
                 variant="outline"
                 size="sm"
@@ -760,8 +760,8 @@ export function SettingsPage() {
             </div>
           )}
 
-          {/* Add Location Form */}
-          {showAddLocation && (
+          {/* Add Location Form — group_admin only */}
+          {isGroupAdmin && showAddLocation && (
             <div className="border border-[#7FAEC2] rounded-lg p-4 bg-[#F8FCFD]">
               {locations.length === 1 && (
                 <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
@@ -831,7 +831,9 @@ export function SettingsPage() {
             <div className="text-center py-8">
               <MapPin className="w-8 h-8 text-gray-300 mx-auto mb-3" />
               <p className="text-sm text-[#4F4F4F] mb-1">No locations yet</p>
-              <p className="text-xs text-[#4F4F4F]">Add your first location to get started</p>
+              {isGroupAdmin && (
+                <p className="text-xs text-[#4F4F4F]">Add your first location to get started</p>
+              )}
             </div>
           )}
 
