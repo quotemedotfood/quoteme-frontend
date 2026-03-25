@@ -88,6 +88,7 @@ function reconstructText(dishes: ParsedDish[]): string {
 }
 
 let nextIngId = 1000;
+let nextDishId = 5000;
 
 export function StartNewQuotePage() {
   const navigate = useNavigate();
@@ -144,6 +145,8 @@ export function StartNewQuotePage() {
   const [editValue, setEditValue] = useState('');
   const [addingToDish, setAddingToDish] = useState<string | null>(null);
   const [newIngredientName, setNewIngredientName] = useState('');
+  const [addingNewDish, setAddingNewDish] = useState(false);
+  const [newDishName, setNewDishName] = useState('');
   const [isExtractingPreview, setIsExtractingPreview] = useState(false);
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
 
@@ -413,6 +416,21 @@ export function StartNewQuotePage() {
     ));
     setNewIngredientName('');
     // Keep input open for continuous entry — don't close addingToDish
+  };
+
+  const handleAddDish = () => {
+    if (!newDishName.trim()) {
+      setAddingNewDish(false);
+      setNewDishName('');
+      return;
+    }
+    nextDishId++;
+    const dishId = `dish-new-${nextDishId}`;
+    setParsedDishes(prev => [...prev, { id: dishId, name: newDishName.trim(), ingredients: [] }]);
+    setNewDishName('');
+    setAddingNewDish(false);
+    // Auto-open ingredient input for the new dish
+    setAddingToDish(dishId);
   };
 
   // Quote creation
@@ -912,6 +930,37 @@ export function StartNewQuotePage() {
                       )}
                     </div>
                   ))}
+                  {/* Add Dish */}
+                  {addingNewDish ? (
+                    <div className="flex items-center gap-1 mt-4 pt-4 border-t border-gray-100">
+                      <input
+                        type="text"
+                        className="text-sm border border-gray-300 rounded-lg px-3 py-1.5 w-48 focus:outline-none focus:ring-1 focus:ring-[#A5CFDD]"
+                        placeholder="Dish name"
+                        value={newDishName}
+                        onChange={(e) => setNewDishName(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') { e.preventDefault(); handleAddDish(); }
+                          if (e.key === 'Escape') { setAddingNewDish(false); setNewDishName(''); }
+                        }}
+                        onBlur={() => { if (!newDishName.trim()) { setAddingNewDish(false); setNewDishName(''); } }}
+                        autoFocus
+                      />
+                      <button
+                        onClick={handleAddDish}
+                        className="text-sm text-[#A5CFDD] hover:text-[#7FAEC2] font-medium px-2"
+                      >
+                        Add
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setAddingNewDish(true)}
+                      className="text-sm text-[#A5CFDD] hover:text-[#7FAEC2] mt-4 pt-4 border-t border-gray-100 w-full text-left font-medium"
+                    >
+                      + Add Dish
+                    </button>
+                  )}
                 </div>
               ) : (
                 <div className="flex items-center justify-center min-h-[300px]">
