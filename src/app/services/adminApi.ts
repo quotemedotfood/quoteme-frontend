@@ -712,7 +712,7 @@ export interface DiagnosticResult {
     identity_semi_locked: boolean;
   };
   retrieval_guard: {
-    synonym_text_matches: { count: number; top_10: ProductBrief[] };
+    synonym_text_matches: { count: number; token_fallback_used?: boolean; token_fallback_tokens?: string[]; top_10: ProductBrief[] };
     // Fix 125: absurd_category_block replaces category_gating
     absurd_category_block?: {
       component_category: string;

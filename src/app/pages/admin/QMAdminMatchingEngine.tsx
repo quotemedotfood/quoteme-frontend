@@ -1033,6 +1033,9 @@ function DiagnoseTab() {
             <div className="space-y-3">
               <div>
                 <p className="text-xs font-semibold text-gray-600 mb-1">Synonym/Text Matches ({result.retrieval_guard.synonym_text_matches.count})</p>
+                {result.retrieval_guard.synonym_text_matches.token_fallback_used && (
+                  <p className="text-xs text-orange-500 mb-1">Fix 126: Full phrase got 0 hits — token fallback used: [{result.retrieval_guard.synonym_text_matches.token_fallback_tokens?.join(', ')}]</p>
+                )}
                 <div className="space-y-1">
                   {result.retrieval_guard.synonym_text_matches.top_10.map((p, i) => (
                     <DiagProductRow key={i} p={p} status="neutral" />
