@@ -1084,6 +1084,21 @@ function DiagnoseTab() {
                 </div>
               )}
 
+              {result.retrieval_guard.prep_state_gate && result.retrieval_guard.prep_state_gate.removed.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-gray-600 mb-1">Prep State Gate — {result.retrieval_guard.prep_state_gate.removed.length} prepared_finished blocked</p>
+                  <div className="space-y-1">
+                    {result.retrieval_guard.prep_state_gate.removed.map((r: any, i: number) => (
+                      <div key={i} className="flex items-center gap-2 px-3 py-1.5 rounded text-xs bg-red-50">
+                        <span className="inline-block w-2.5 h-2.5 rounded-full bg-red-500 shrink-0" />
+                        <span className="font-medium">{r.product.brand} {r.product.product_name}</span>
+                        <span className="text-red-500">— {r.reason}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div>
                 <p className="text-xs font-semibold text-gray-600 mb-1">Final Guard Candidates ({result.retrieval_guard.final_candidates.length})</p>
                 <div className="space-y-1">

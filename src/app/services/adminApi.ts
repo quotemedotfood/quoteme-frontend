@@ -739,6 +739,11 @@ export interface DiagnosticResult {
       survived: number;
       removed: Array<{ product: ProductBrief; reason: string }>;
     };
+    prep_state_gate?: {
+      is_raw_component: boolean;
+      survived: number;
+      removed: Array<{ product: ProductBrief; reason: string }>;
+    };
     final_candidates: ProductBrief[];
   };
   fallback_path: {
