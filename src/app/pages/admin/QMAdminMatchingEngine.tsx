@@ -845,12 +845,13 @@ function ConceptsTab() {
 
 function DiagProductRow({ p, status }: { p: ProductBrief; status: 'pass' | 'fail' | 'neutral' }) {
   const bg = status === 'pass' ? 'bg-green-50' : status === 'fail' ? 'bg-red-50' : 'bg-gray-50';
-  const dot = status === 'pass' ? '🟢' : status === 'fail' ? '🔴' : '⚪';
+  const dotColor = status === 'pass' ? 'bg-green-500' : status === 'fail' ? 'bg-red-500' : 'bg-gray-400';
   return (
     <div className={`flex items-center gap-2 px-3 py-1.5 rounded text-xs ${bg}`}>
-      <span>{dot}</span>
+      <span className={`inline-block w-2.5 h-2.5 rounded-full ${dotColor} shrink-0`} />
       <span className="font-medium text-[#2A2A2A]">{p.brand} {p.product_name}</span>
       <span className="text-gray-400">({p.category})</span>
+      {p.normalized_category && <span className="text-blue-400">[{p.normalized_category}]</span>}
       {p.pack_size && <span className="text-gray-400">{p.pack_size}</span>}
     </div>
   );
@@ -1016,6 +1017,8 @@ function DiagnoseTab() {
               <div><span className="text-gray-500">Format:</span> <span className="font-medium">{result.input.detected_format || '(none)'}</span></div>
               <div><span className="text-gray-500">Synonyms:</span> <span className="font-mono">{result.input.synonyms_expanded.join(', ')}</span></div>
               <div><span className="text-gray-500">Family:</span> <span className="font-mono">{result.input.synonym_family || '(none)'}</span></div>
+              <div><span className="text-gray-500">Adjacency allowed:</span> <span className="font-mono">{result.input.adjacency_allowed?.join(', ') || '(none)'}</span></div>
+              <div><span className="text-gray-500">Absurd blocked:</span> <span className="font-mono text-red-500">{result.input.absurd_blocked?.length ? result.input.absurd_blocked.join(', ') : '(none)'}</span></div>
               <div>
                 <span className="text-gray-500">Identity Lock:</span>{' '}
                 {result.input.identity_locked ? <span className="text-red-600 font-semibold">LOCKED</span> :
@@ -1042,14 +1045,20 @@ function DiagnoseTab() {
 
               <div>
                 <p className="text-xs font-semibold text-gray-600 mb-1">
-                  Category Gate — allowed: [{result.retrieval_guard.category_gating.allowed_categories.join(', ')}] → {result.retrieval_guard.category_gating.survived} survived
+                  Absurd Category Block (Tier 1) — {result.retrieval_guard.absurd_category_block?.survived ?? result.retrieval_guard.category_gating?.survived ?? 0} survived
+                  {result.retrieval_guard.absurd_category_block?.absurd_pairs?.length > 0 && (
+                    <span className="text-gray-400 font-normal"> | blocked pairs: [{result.retrieval_guard.absurd_category_block.absurd_pairs.join(', ')}]</span>
+                  )}
                 </p>
-                {result.retrieval_guard.category_gating.removed.length > 0 && (
+                <p className="text-xs text-gray-400 italic mb-1">Category adjacency boost (+20%) applied in scoring, not as a filter</p>
+                {(result.retrieval_guard.absurd_category_block?.removed ?? result.retrieval_guard.category_gating?.removed ?? []).length > 0 && (
                   <div className="space-y-1">
-                    {result.retrieval_guard.category_gating.removed.map((r, i) => (
+                    <p className="text-xs font-medium text-red-600 mb-1">Filtered out:</p>
+                    {(result.retrieval_guard.absurd_category_block?.removed ?? result.retrieval_guard.category_gating?.removed ?? []).map((r: any, i: number) => (
                       <div key={i} className="flex items-center gap-2 px-3 py-1.5 rounded text-xs bg-red-50">
-                        <span>🔴</span>
+                        <span className="inline-block w-2.5 h-2.5 rounded-full bg-red-500 shrink-0" />
                         <span className="font-medium">{r.product.brand} {r.product.product_name}</span>
+                        <span className="text-gray-400">[{r.product.normalized_category}]</span>
                         <span className="text-red-500">— {r.reason}</span>
                       </div>
                     ))}
@@ -1063,7 +1072,7 @@ function DiagnoseTab() {
                   <div className="space-y-1">
                     {result.retrieval_guard.format_blocking.removed.map((r, i) => (
                       <div key={i} className="flex items-center gap-2 px-3 py-1.5 rounded text-xs bg-red-50">
-                        <span>🔴</span>
+                        <span className="inline-block w-2.5 h-2.5 rounded-full bg-red-500 shrink-0" />
                         <span className="font-medium">{r.product.brand} {r.product.product_name}</span>
                         <span className="text-red-500">— {r.reason}</span>
                       </div>
@@ -1094,6 +1103,15 @@ function DiagnoseTab() {
               <div className="space-y-2 text-xs">
                 {result.fallback_path.guard_fallback_fired && (
                   <p className="text-orange-600 font-medium">Guard fallback fired — {result.fallback_path.guard_fallback_count} candidates via token search</p>
+                )}
+                {result.fallback_path.absurd_blocked_fallback && (
+                  <>
+                    <p className="text-orange-600 font-medium">Absurd-pair fallback (Fix 125)</p>
+                    {result.fallback_path.absurd_pairs_excluded?.length > 0 && (
+                      <p className="text-gray-500">Excluded absurd categories: [{result.fallback_path.absurd_pairs_excluded.join(', ')}]</p>
+                    )}
+                    <p className="text-gray-500">Pool size: {result.fallback_path.pool_size} products</p>
+                  </>
                 )}
                 {result.fallback_path.category_constrained_fallback && (
                   <>
@@ -1134,6 +1152,7 @@ function DiagnoseTab() {
                       <span className="text-xs font-bold text-gray-400">#{i + 1}</span>
                       <span className="text-sm font-semibold text-[#2A2A2A]">{c.brand} {c.product_name}</span>
                       <span className="text-xs text-gray-400">({c.category})</span>
+                      {c.normalized_category && <span className="text-xs text-blue-400">[{c.normalized_category}]</span>}
                       {c.pack_size && <span className="text-xs text-gray-400">{c.pack_size}</span>}
                     </div>
                     <span className={`text-sm font-bold ${c.above_floor ? 'text-green-700' : 'text-red-600'}`}>
@@ -1150,6 +1169,7 @@ function DiagnoseTab() {
                     <ScoreBar label="Concept Fit" value={c.scores.concept_fit} />
                     <ScoreBar label="Format Fit" value={c.scores.format_fit} />
                     {c.scores.name_boost > 0 && <ScoreBar label="Name Boost" value={c.scores.name_boost} max={0.25} />}
+                    {c.scores.category_boost > 0 && <ScoreBar label="Category Boost (Fix 125)" value={c.scores.category_boost} max={0.20} />}
                   </div>
                 </div>
               ))}

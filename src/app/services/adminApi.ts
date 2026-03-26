@@ -703,6 +703,8 @@ export interface DiagnosticResult {
     component_name: string;
     normalized_name: string;
     inferred_category: string;
+    adjacency_allowed?: string[];
+    absurd_blocked?: string[];
     synonyms_expanded: string[];
     synonym_family: string | null;
     detected_format: string | null;
@@ -711,7 +713,17 @@ export interface DiagnosticResult {
   };
   retrieval_guard: {
     synonym_text_matches: { count: number; top_10: ProductBrief[] };
-    category_gating: {
+    // Fix 125: absurd_category_block replaces category_gating
+    absurd_category_block?: {
+      component_category: string;
+      absurd_pairs: string[];
+      adjacent_categories: string[];
+      survived: number;
+      removed: Array<{ product: ProductBrief; reason: string }>;
+      note: string;
+    };
+    // Legacy field for backward compat
+    category_gating?: {
       component_category: string;
       allowed_categories: string[];
       survived: number;
@@ -734,11 +746,14 @@ export interface DiagnosticResult {
     reason?: string;
     guard_fallback_fired?: boolean;
     guard_fallback_count?: number;
+    absurd_blocked_fallback?: boolean;
+    absurd_pairs_excluded?: string[];
     category_constrained_fallback?: boolean;
     searched_categories?: string[];
     pool_size?: number;
     candidates_found?: ProductBrief[];
     clean_miss?: boolean;
+    note?: string;
   };
   scoring: {
     sensitivity: string;
@@ -772,6 +787,7 @@ export interface ProductBrief {
   product_name: string;
   canonical_product: string | null;
   category: string;
+  normalized_category?: string;
   pack_size: string | null;
   prep_state: string | null;
   search_text: string | null;
@@ -782,6 +798,7 @@ export interface ScoredCandidate {
   product_name: string;
   brand: string;
   category: string;
+  normalized_category?: string;
   pack_size: string | null;
   prep_state: string | null;
   scores: {
@@ -794,6 +811,7 @@ export interface ScoredCandidate {
     concept_fit: number;
     format_fit: number;
     name_boost: number;
+    category_boost: number;
     total: number;
   };
   above_floor: boolean;
