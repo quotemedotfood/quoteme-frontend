@@ -693,3 +693,134 @@ export async function deleteAdminStockQuote(id: string): Promise<ApiResponse<voi
     method: 'DELETE',
   });
 }
+
+// ═══════════════════════════════════════════════════════════════════════
+// Matching Diagnostics (Fix 119)
+// ═══════════════════════════════════════════════════════════════════════
+
+export interface DiagnosticResult {
+  input: {
+    component_name: string;
+    normalized_name: string;
+    inferred_category: string;
+    synonyms_expanded: string[];
+    synonym_family: string | null;
+    detected_format: string | null;
+    identity_locked: boolean;
+    identity_semi_locked: boolean;
+  };
+  retrieval_guard: {
+    synonym_text_matches: { count: number; top_10: ProductBrief[] };
+    category_gating: {
+      component_category: string;
+      allowed_categories: string[];
+      survived: number;
+      removed: Array<{ product: ProductBrief; reason: string }>;
+    };
+    format_blocking: {
+      detected_format: string | null;
+      blocked_patterns: string[];
+      survived: number;
+      removed: Array<{ product: ProductBrief; reason: string }>;
+    };
+    name_format_blocking: {
+      survived: number;
+      removed: Array<{ product: ProductBrief; reason: string }>;
+    };
+    final_candidates: ProductBrief[];
+  };
+  fallback_path: {
+    triggered: boolean;
+    reason?: string;
+    guard_fallback_fired?: boolean;
+    guard_fallback_count?: number;
+    category_constrained_fallback?: boolean;
+    searched_categories?: string[];
+    pool_size?: number;
+    candidates_found?: ProductBrief[];
+    clean_miss?: boolean;
+  };
+  scoring: {
+    sensitivity: string;
+    role: string;
+    identity_family: string | null;
+    locked: boolean;
+    floor: number;
+    candidates: ScoredCandidate[];
+    note?: string;
+  };
+  final_result: {
+    match: {
+      product_name: string;
+      brand: string;
+      category: string;
+      score: number;
+      quality: string;
+    } | null;
+    reason?: string;
+    alternates_count?: number;
+    total_scored?: number;
+    total_above_floor?: number;
+    best_score?: number;
+  };
+}
+
+export interface ProductBrief {
+  product_id: string;
+  item_number: string;
+  brand: string;
+  product_name: string;
+  canonical_product: string | null;
+  category: string;
+  pack_size: string | null;
+  prep_state: string | null;
+  search_text: string | null;
+}
+
+export interface ScoredCandidate {
+  product_id: string;
+  product_name: string;
+  brand: string;
+  category: string;
+  pack_size: string | null;
+  prep_state: string | null;
+  scores: {
+    exact_identity: number;
+    name_similarity: number;
+    category_fit: number;
+    role_fit: number;
+    keyword_overlap: number;
+    pack_plausibility: number;
+    concept_fit: number;
+    format_fit: number;
+    name_boost: number;
+    total: number;
+  };
+  above_floor: boolean;
+}
+
+export interface DiagnosticCatalog {
+  id: string;
+  distributor_name: string;
+  product_count: number;
+  is_demo: boolean;
+  created_at: string;
+}
+
+export async function getDiagnosticsEnabled(): Promise<ApiResponse<{ enabled: boolean }>> {
+  return fetchWithAuth('/api/v1/admin/matching-engine/diagnostics-enabled');
+}
+
+export async function getDiagnosticsCatalogs(): Promise<ApiResponse<{ catalogs: DiagnosticCatalog[] }>> {
+  return fetchWithAuth('/api/v1/admin/matching-engine/diagnostics-catalogs');
+}
+
+export async function runDiagnostic(
+  component: string,
+  catalogId: string,
+  category?: string
+): Promise<ApiResponse<DiagnosticResult>> {
+  const qs = new URLSearchParams({ component, catalog_id: catalogId });
+  if (category) qs.set('category', category);
+  return fetchWithAuth(`/api/v1/admin/matching-engine/diagnose?${qs}`);
+}

@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import {
   ChevronDown, ChevronRight, Download, Send, Trash2, ArrowUpCircle, Paperclip, X,
   Beaker, Fish, Wine, Coffee, GlassWater, Filter, BookOpen, Lock, RefreshCw,
-  CheckCircle, AlertTriangle, XCircle, RotateCcw, Save,
+  CheckCircle, AlertTriangle, XCircle, RotateCcw, Save, Search, Microscope,
 } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
@@ -19,15 +19,22 @@ import {
   getAdminStockQuotes,
   createAdminStockQuote,
   deleteAdminStockQuote,
+  getDiagnosticsEnabled,
+  getDiagnosticsCatalogs,
+  runDiagnostic,
   type MatchingEngineRules,
   type MatchingEngineLog,
   type AdminStockQuote,
   type ConceptLabel,
   type ConceptTestResult,
   type RuleValidation,
+  type DiagnosticResult,
+  type DiagnosticCatalog,
+  type ProductBrief,
+  type ScoredCandidate,
 } from '../../services/adminApi';
 
-type Tab = 'rules' | 'training' | 'concepts' | 'changelog';
+type Tab = 'rules' | 'training' | 'concepts' | 'changelog' | 'diagnose';
 
 function toTitleCase(str: string) {
   return str.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
@@ -833,12 +840,335 @@ function ConceptsTab() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
+// Diagnose Tab (Fix 119)
+// ═══════════════════════════════════════════════════════════════════════
+
+function DiagProductRow({ p, status }: { p: ProductBrief; status: 'pass' | 'fail' | 'neutral' }) {
+  const bg = status === 'pass' ? 'bg-green-50' : status === 'fail' ? 'bg-red-50' : 'bg-gray-50';
+  const dot = status === 'pass' ? '🟢' : status === 'fail' ? '🔴' : '⚪';
+  return (
+    <div className={`flex items-center gap-2 px-3 py-1.5 rounded text-xs ${bg}`}>
+      <span>{dot}</span>
+      <span className="font-medium text-[#2A2A2A]">{p.brand} {p.product_name}</span>
+      <span className="text-gray-400">({p.category})</span>
+      {p.pack_size && <span className="text-gray-400">{p.pack_size}</span>}
+    </div>
+  );
+}
+
+function DiagSection({ title, open: defaultOpen = false, count, color, children }: {
+  title: string; open?: boolean; count?: number; color?: string; children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className="border border-gray-200 rounded-lg overflow-hidden mb-3">
+      <button onClick={() => setOpen(!open)} className="flex items-center gap-2 w-full px-4 py-2.5 text-left hover:bg-gray-50">
+        {open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+        <span className={`text-sm font-semibold ${color || 'text-[#2A2A2A]'}`}>{title}</span>
+        {count !== undefined && <span className="ml-auto text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{count}</span>}
+      </button>
+      {open && <div className="px-4 pb-3 border-t border-gray-100 space-y-2 pt-2">{children}</div>}
+    </div>
+  );
+}
+
+function ScoreBar({ label, value, max = 1.0 }: { label: string; value: number; max?: number }) {
+  const pct = Math.min((value / max) * 100, 100);
+  const color = pct >= 70 ? 'bg-green-500' : pct >= 40 ? 'bg-yellow-500' : 'bg-red-400';
+  return (
+    <div className="flex items-center gap-2 text-xs">
+      <span className="w-28 text-gray-500 text-right">{label}</span>
+      <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+        <div className={`h-full ${color} rounded-full`} style={{ width: `${pct}%` }} />
+      </div>
+      <span className="w-10 text-gray-600 font-mono">{value.toFixed(2)}</span>
+    </div>
+  );
+}
+
+function DiagnoseTab() {
+  const [catalogs, setCatalogs] = useState<DiagnosticCatalog[]>([]);
+  const [catalogId, setCatalogId] = useState('');
+  const [component, setComponent] = useState('');
+  const [category, setCategory] = useState('');
+  const [running, setRunning] = useState(false);
+  const [result, setResult] = useState<DiagnosticResult | null>(null);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    getDiagnosticsCatalogs().then(res => {
+      if (res.data?.catalogs) {
+        setCatalogs(res.data.catalogs);
+        if (res.data.catalogs.length > 0) setCatalogId(res.data.catalogs[0].id);
+      }
+    });
+  }, []);
+
+  const handleRun = async () => {
+    if (!component.trim() || !catalogId) return;
+    setRunning(true);
+    setError('');
+    setResult(null);
+    const res = await runDiagnostic(component.trim(), catalogId, category.trim() || undefined);
+    if (res.error) {
+      setError(res.error);
+    } else if (res.data) {
+      setResult(res.data);
+    }
+    setRunning(false);
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Input form */}
+      <div className="bg-white border border-gray-200 rounded-lg p-4 space-y-3">
+        <div className="flex items-center gap-2 mb-2">
+          <Microscope size={18} className="text-[#7FAEC2]" />
+          <span className="font-semibold text-sm text-[#2A2A2A]">Matching Diagnostic</span>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Ingredient name</label>
+            <Input
+              value={component}
+              onChange={e => setComponent(e.target.value)}
+              placeholder="e.g. burrata, basil, hamachi"
+              onKeyDown={e => e.key === 'Enter' && handleRun()}
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Catalog</label>
+            <select
+              value={catalogId}
+              onChange={e => setCatalogId(e.target.value)}
+              className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+            >
+              {catalogs.map(c => (
+                <option key={c.id} value={c.id}>
+                  {c.distributor_name}{c.is_demo ? ' (Demo)' : ''} — {c.product_count} products
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Category override (optional)</label>
+            <Input
+              value={category}
+              onChange={e => setCategory(e.target.value)}
+              placeholder="e.g. dairy, produce"
+            />
+          </div>
+        </div>
+        <Button onClick={handleRun} disabled={running || !component.trim()} className="bg-[#7FAEC2] hover:bg-[#6A9BB0] text-white">
+          {running ? <RefreshCw size={14} className="animate-spin mr-2" /> : <Search size={14} className="mr-2" />}
+          {running ? 'Running...' : 'Run Diagnostic'}
+        </Button>
+        {error && <p className="text-sm text-red-600">{error}</p>}
+      </div>
+
+      {/* Results */}
+      {result && (
+        <div className="space-y-1">
+          {/* Final result banner */}
+          {result.final_result.match ? (
+            <div className={`rounded-lg p-4 mb-4 ${
+              result.final_result.match.quality === 'strong' ? 'bg-green-50 border border-green-200' :
+              result.final_result.match.quality === 'moderate' ? 'bg-yellow-50 border border-yellow-200' :
+              'bg-orange-50 border border-orange-200'
+            }`}>
+              <div className="flex items-center gap-3">
+                {result.final_result.match.quality === 'strong' ? <CheckCircle size={20} className="text-green-600" /> :
+                 result.final_result.match.quality === 'moderate' ? <AlertTriangle size={20} className="text-yellow-600" /> :
+                 <AlertTriangle size={20} className="text-orange-600" />}
+                <div>
+                  <p className="font-semibold text-sm">
+                    Match: {result.final_result.match.brand} {result.final_result.match.product_name}
+                  </p>
+                  <p className="text-xs text-gray-600">
+                    Score: {(result.final_result.match.score * 100).toFixed(0)}% ({result.final_result.match.quality}) •
+                    {result.final_result.alternates_count} alternates •
+                    {result.final_result.total_scored} total scored
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-lg p-4 mb-4 bg-red-50 border border-red-200">
+              <div className="flex items-center gap-3">
+                <XCircle size={20} className="text-red-600" />
+                <div>
+                  <p className="font-semibold text-sm text-red-800">No Match (Clean Miss)</p>
+                  <p className="text-xs text-red-600">{result.final_result.reason}</p>
+                  {result.final_result.best_score !== undefined && (
+                    <p className="text-xs text-red-500">Best score: {(result.final_result.best_score * 100).toFixed(0)}%</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Step 1 — Input */}
+          <DiagSection title="Step 1 — Input" open={true} color="text-blue-700">
+            <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-xs">
+              <div><span className="text-gray-500">Component:</span> <span className="font-medium">{result.input.component_name}</span></div>
+              <div><span className="text-gray-500">Normalized:</span> <span className="font-mono">{result.input.normalized_name}</span></div>
+              <div><span className="text-gray-500">Category:</span> <span className="font-medium">{result.input.inferred_category}</span></div>
+              <div><span className="text-gray-500">Format:</span> <span className="font-medium">{result.input.detected_format || '(none)'}</span></div>
+              <div><span className="text-gray-500">Synonyms:</span> <span className="font-mono">{result.input.synonyms_expanded.join(', ')}</span></div>
+              <div><span className="text-gray-500">Family:</span> <span className="font-mono">{result.input.synonym_family || '(none)'}</span></div>
+              <div>
+                <span className="text-gray-500">Identity Lock:</span>{' '}
+                {result.input.identity_locked ? <span className="text-red-600 font-semibold">LOCKED</span> :
+                 result.input.identity_semi_locked ? <span className="text-yellow-600 font-semibold">SEMI-LOCKED</span> :
+                 <span className="text-green-600">unlocked</span>}
+              </div>
+            </div>
+          </DiagSection>
+
+          {/* Step 2 — RetrievalGuard */}
+          <DiagSection title="Step 2 — RetrievalGuard" count={result.retrieval_guard.final_candidates.length} color="text-purple-700">
+            <div className="space-y-3">
+              <div>
+                <p className="text-xs font-semibold text-gray-600 mb-1">Synonym/Text Matches ({result.retrieval_guard.synonym_text_matches.count})</p>
+                <div className="space-y-1">
+                  {result.retrieval_guard.synonym_text_matches.top_10.map((p, i) => (
+                    <DiagProductRow key={i} p={p} status="neutral" />
+                  ))}
+                  {result.retrieval_guard.synonym_text_matches.count === 0 && (
+                    <p className="text-xs text-gray-400 italic">No products matched synonym/text search</p>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <p className="text-xs font-semibold text-gray-600 mb-1">
+                  Category Gate — allowed: [{result.retrieval_guard.category_gating.allowed_categories.join(', ')}] → {result.retrieval_guard.category_gating.survived} survived
+                </p>
+                {result.retrieval_guard.category_gating.removed.length > 0 && (
+                  <div className="space-y-1">
+                    {result.retrieval_guard.category_gating.removed.map((r, i) => (
+                      <div key={i} className="flex items-center gap-2 px-3 py-1.5 rounded text-xs bg-red-50">
+                        <span>🔴</span>
+                        <span className="font-medium">{r.product.brand} {r.product.product_name}</span>
+                        <span className="text-red-500">— {r.reason}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {result.retrieval_guard.format_blocking.removed.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-gray-600 mb-1">Format Blocked ({result.retrieval_guard.format_blocking.removed.length} removed)</p>
+                  <div className="space-y-1">
+                    {result.retrieval_guard.format_blocking.removed.map((r, i) => (
+                      <div key={i} className="flex items-center gap-2 px-3 py-1.5 rounded text-xs bg-red-50">
+                        <span>🔴</span>
+                        <span className="font-medium">{r.product.brand} {r.product.product_name}</span>
+                        <span className="text-red-500">— {r.reason}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <p className="text-xs font-semibold text-gray-600 mb-1">Final Guard Candidates ({result.retrieval_guard.final_candidates.length})</p>
+                <div className="space-y-1">
+                  {result.retrieval_guard.final_candidates.map((p, i) => (
+                    <DiagProductRow key={i} p={p} status="pass" />
+                  ))}
+                  {result.retrieval_guard.final_candidates.length === 0 && (
+                    <p className="text-xs text-orange-500 font-medium">Guard returned empty → fallback path triggered</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </DiagSection>
+
+          {/* Step 3 — Fallback */}
+          <DiagSection title="Step 3 — Fallback Path" color={result.fallback_path.triggered ? 'text-orange-600' : 'text-green-700'}>
+            {!result.fallback_path.triggered ? (
+              <p className="text-xs text-green-600">{result.fallback_path.reason}</p>
+            ) : (
+              <div className="space-y-2 text-xs">
+                {result.fallback_path.guard_fallback_fired && (
+                  <p className="text-orange-600 font-medium">Guard fallback fired — {result.fallback_path.guard_fallback_count} candidates via token search</p>
+                )}
+                {result.fallback_path.category_constrained_fallback && (
+                  <>
+                    <p className="text-orange-600 font-medium">Category-constrained fallback (Fix 111)</p>
+                    <p className="text-gray-500">Searched categories: [{result.fallback_path.searched_categories?.join(', ')}]</p>
+                    <p className="text-gray-500">Pool size: {result.fallback_path.pool_size} products</p>
+                  </>
+                )}
+                {result.fallback_path.clean_miss && (
+                  <p className="text-red-600 font-semibold">Clean miss — no match. {result.fallback_path.reason}</p>
+                )}
+                {result.fallback_path.candidates_found && result.fallback_path.candidates_found.length > 0 && (
+                  <div className="space-y-1">
+                    {result.fallback_path.candidates_found.map((p, i) => (
+                      <DiagProductRow key={i} p={p} status="pass" />
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </DiagSection>
+
+          {/* Step 4 — Scoring */}
+          <DiagSection title="Step 4 — Alignment Scoring" count={result.scoring.candidates?.length} color="text-indigo-700">
+            <div className="text-xs text-gray-500 mb-2 space-x-4">
+              <span>Sensitivity: <strong>{result.scoring.sensitivity}</strong></span>
+              <span>Role: <strong>{result.scoring.role}</strong></span>
+              <span>Floor: <strong>{(result.scoring.floor * 100).toFixed(0)}%</strong></span>
+              <span>Locked: <strong>{result.scoring.locked ? 'YES' : 'no'}</strong></span>
+              {result.scoring.identity_family && <span>Family: <strong>{result.scoring.identity_family}</strong></span>}
+            </div>
+            {result.scoring.note && <p className="text-xs text-gray-400 italic">{result.scoring.note}</p>}
+            <div className="space-y-3">
+              {result.scoring.candidates?.map((c, i) => (
+                <div key={i} className={`border rounded-lg p-3 ${c.above_floor ? 'border-green-200 bg-green-50/50' : 'border-red-200 bg-red-50/50'}`}>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-gray-400">#{i + 1}</span>
+                      <span className="text-sm font-semibold text-[#2A2A2A]">{c.brand} {c.product_name}</span>
+                      <span className="text-xs text-gray-400">({c.category})</span>
+                      {c.pack_size && <span className="text-xs text-gray-400">{c.pack_size}</span>}
+                    </div>
+                    <span className={`text-sm font-bold ${c.above_floor ? 'text-green-700' : 'text-red-600'}`}>
+                      {(c.scores.total * 100).toFixed(0)}%
+                    </span>
+                  </div>
+                  <div className="space-y-1">
+                    <ScoreBar label="Exact Identity" value={c.scores.exact_identity} />
+                    <ScoreBar label="Name Similarity" value={c.scores.name_similarity} />
+                    <ScoreBar label="Category Fit" value={c.scores.category_fit} />
+                    <ScoreBar label="Role Fit" value={c.scores.role_fit} />
+                    <ScoreBar label="Keyword Overlap" value={c.scores.keyword_overlap} />
+                    <ScoreBar label="Pack Plausibility" value={c.scores.pack_plausibility} />
+                    <ScoreBar label="Concept Fit" value={c.scores.concept_fit} />
+                    <ScoreBar label="Format Fit" value={c.scores.format_fit} />
+                    {c.scores.name_boost > 0 && <ScoreBar label="Name Boost" value={c.scores.name_boost} max={0.25} />}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </DiagSection>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════
 // Main page
 // ═══════════════════════════════════════════════════════════════════════
 export function QMAdminMatchingEngine() {
   const [tab, setTab] = useState<Tab>('training');
   const [rules, setRules] = useState<MatchingEngineRules | null>(null);
   const [loading, setLoading] = useState(true);
+  const [diagnosticsAvailable, setDiagnosticsAvailable] = useState(false);
 
   const loadRules = async () => {
     setLoading(true);
@@ -847,13 +1177,19 @@ export function QMAdminMatchingEngine() {
     setLoading(false);
   };
 
-  useEffect(() => { loadRules(); }, []);
+  useEffect(() => {
+    loadRules();
+    getDiagnosticsEnabled().then(res => {
+      if (res.data?.enabled) setDiagnosticsAvailable(true);
+    });
+  }, []);
 
   const tabs: Array<{ key: Tab; label: string }> = [
     { key: 'rules', label: 'Rules' },
     { key: 'training', label: 'Training Chat' },
     { key: 'concepts', label: 'Menu Concepts' },
     { key: 'changelog', label: 'Change Log' },
+    ...(diagnosticsAvailable ? [{ key: 'diagnose' as Tab, label: 'Diagnose' }] : []),
   ];
 
   return (
@@ -883,6 +1219,7 @@ export function QMAdminMatchingEngine() {
       {tab === 'training' && <TrainingTab />}
       {tab === 'concepts' && <ConceptsTab />}
       {tab === 'changelog' && <ChangeLogTab />}
+      {tab === 'diagnose' && <DiagnoseTab />}
     </div>
   );
 }
