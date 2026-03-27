@@ -1907,7 +1907,7 @@ function CatalogsTab() {
                 <select value={bulkCat} onChange={e => {
                   if (e.target.value === '__new__') setShowNewCat(true);
                   else setBulkCat(e.target.value);
-                }} className="text-xs bg-white/10 border border-white/20 rounded px-2 py-1.5 text-white">
+                }} className="text-xs bg-white border border-gray-200 rounded px-2 py-1.5 text-[#2A2A2A]">
                   <option value="">Category...</option>
                   {allCats().map(c => <option key={c} value={c}>{toTitleCase(c)}</option>)}
                   <option value="__new__">+ New Category</option>
