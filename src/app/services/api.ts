@@ -669,9 +669,21 @@ export interface CatalogUploadResponse {
   id: string;
   item_count: number;
   message: string;
-  flagged_count?: number;
-  ai_classified_count?: number;
+  classification_status?: string;
+  classification_total?: number;
   column_info?: CatalogColumnInfo;
+}
+
+export interface ClassificationStatusResponse {
+  catalog_id: string;
+  status: string; // "pending" | "classifying" | "complete"
+  progress: number;
+  total: number;
+  flagged_count: number;
+}
+
+export async function getClassificationStatus(catalogId: string): Promise<ApiResponse<ClassificationStatusResponse>> {
+  return fetchWithAuth(`/api/v1/catalogs/${catalogId}/classification_status`);
 }
 
 export interface FlaggedProduct {

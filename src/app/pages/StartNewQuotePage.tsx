@@ -11,7 +11,7 @@ import { useLocation2 } from '../contexts/LocationContext';
 import { useAuth } from '../contexts/AuthContext';
 import { UpgradeDrawer } from '../components/UpgradeDrawer';
 import { CategoryReviewPanel } from '../components/CategoryReviewPanel';
-import { createMenu, createGuestQuote, extractMenuText, getCatalogs, uploadCatalogFile, getRestaurants, getRestaurant, getStockQuotes, generateFromStockQuote, getDemoDistributor } from '../services/api';
+import { createMenu, createGuestQuote, extractMenuText, getCatalogs, uploadCatalogFile, getRestaurants, getRestaurant, getStockQuotes, generateFromStockQuote, getDemoDistributor, getClassificationStatus } from '../services/api';
 import type { CatalogSummary, RestaurantSummary, RestaurantDetail, StockQuoteResponse } from '../services/api';
 import { isDemoMode, isLiquorDemo, demoType } from '../utils/demoMode';
 import { isBuyerRole as checkBuyerRole } from '../utils/roles';
@@ -127,7 +127,7 @@ export function StartNewQuotePage() {
   const [catalogs, setCatalogs] = useState<CatalogSummary[]>([]);
   const [catalogLoading, setCatalogLoading] = useState(false);
   const [catalogUploading, setCatalogUploading] = useState(false);
-  const [catalogUploadResult, setCatalogUploadResult] = useState<{ message: string; isError: boolean; flaggedCount?: number; catalogId?: string } | null>(null);
+  const [catalogUploadResult, setCatalogUploadResult] = useState<{ message: string; isError: boolean; catalogId?: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isDraggingCatalog, setIsDraggingCatalog] = useState(false);
   const catalogFileInputRef = useRef<HTMLInputElement>(null);
@@ -137,6 +137,10 @@ export function StartNewQuotePage() {
     !!(location.state as any)?.expandCatalog
   );
   const [showCategoryReview, setShowCategoryReview] = useState(false);
+  const [uploadPhase, setUploadPhase] = useState<string | null>(null); // "uploading" | "imported" | "classifying" | "complete"
+  const [classificationProgress, setClassificationProgress] = useState({ progress: 0, total: 0 });
+  const [classificationFlagged, setClassificationFlagged] = useState(0);
+  const classificationPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Stock quotes
   const [stockQuotes, setStockQuotes] = useState<StockQuoteResponse[]>([]);
@@ -346,6 +350,30 @@ export function StartNewQuotePage() {
   };
 
   // Catalog upload
+  const startClassificationPolling = (catalogId: string) => {
+    if (classificationPollRef.current) clearInterval(classificationPollRef.current);
+    setUploadPhase('classifying');
+    classificationPollRef.current = setInterval(async () => {
+      const statusRes = await getClassificationStatus(catalogId);
+      if (statusRes.data) {
+        setClassificationProgress({ progress: statusRes.data.progress, total: statusRes.data.total });
+        if (statusRes.data.status === 'complete') {
+          if (classificationPollRef.current) clearInterval(classificationPollRef.current);
+          classificationPollRef.current = null;
+          setUploadPhase('complete');
+          setClassificationFlagged(statusRes.data.flagged_count);
+        }
+      }
+    }, 2000);
+  };
+
+  // Clean up polling on unmount
+  useEffect(() => {
+    return () => {
+      if (classificationPollRef.current) clearInterval(classificationPollRef.current);
+    };
+  }, []);
+
   const handleCatalogFileSelect = async (file: File) => {
     const ext = file.name.toLowerCase();
     if (!ext.endsWith('.csv') && !ext.endsWith('.xlsx') && !ext.endsWith('.xls')) {
@@ -354,15 +382,18 @@ export function StartNewQuotePage() {
     }
     setCatalogUploading(true);
     setCatalogUploadResult(null);
+    setUploadPhase('uploading');
+    setClassificationProgress({ progress: 0, total: 0 });
+    setClassificationFlagged(0);
     if (isGuest && !localStorage.getItem('quoteme_guest_token')) await initGuestSession();
     const res = await uploadCatalogFile(file);
     if (res.error) {
       setCatalogUploadResult({ message: res.error, isError: true });
+      setUploadPhase(null);
     } else if (res.data) {
       setCatalogUploadResult({
         message: res.data.message,
         isError: false,
-        flaggedCount: res.data.flagged_count,
         catalogId: res.data.id
       });
       if (!isGuest) {
@@ -370,6 +401,14 @@ export function StartNewQuotePage() {
         if (listRes.data) setCatalogs(listRes.data);
       } else {
         setCatalogs([{ id: res.data.id, status: 'active', row_count: res.data.item_count, created_at: new Date().toISOString() } as CatalogSummary]);
+      }
+
+      // Start polling if AI classification is needed
+      if (res.data.classification_status === 'pending') {
+        setClassificationProgress({ progress: 0, total: res.data.classification_total || 0 });
+        startClassificationPolling(res.data.id);
+      } else {
+        setUploadPhase('complete');
       }
     }
     setCatalogUploading(false);
@@ -1254,24 +1293,70 @@ export function StartNewQuotePage() {
                 </>
               )}
             </div>
-            {catalogUploadResult && (
-              <div className={`mt-3 p-3 rounded-lg text-sm ${
-                catalogUploadResult.isError
-                  ? 'bg-red-50 text-red-700 border border-red-200'
-                  : 'bg-green-50 text-green-700 border border-green-200'
-              }`}>
+            {/* Upload result / error */}
+            {catalogUploadResult?.isError && (
+              <div className="mt-3 p-3 rounded-lg text-sm bg-red-50 text-red-700 border border-red-200">
                 {catalogUploadResult.message}
               </div>
             )}
-            {catalogUploadResult && !catalogUploadResult.isError && (catalogUploadResult.flaggedCount ?? 0) > 0 && (
-              <div className="mt-2 p-3 rounded-lg text-sm bg-amber-50 text-amber-800 border border-amber-200 flex items-center justify-between">
-                <span>{catalogUploadResult.flaggedCount} product{catalogUploadResult.flaggedCount === 1 ? '' : 's'} need category review</span>
-                <button
-                  onClick={() => catalogUploadResult.catalogId && setShowCategoryReview(true)}
-                  className="text-xs font-medium px-3 py-1 bg-amber-100 hover:bg-amber-200 rounded transition-colors"
-                >
-                  Review
-                </button>
+
+            {/* Phased progress tracker */}
+            {uploadPhase && !catalogUploadResult?.isError && (
+              <div className="mt-3 space-y-2">
+                {/* Phase 1: Import */}
+                <div className="flex items-center gap-2 text-sm">
+                  {uploadPhase === 'uploading' ? (
+                    <Loader2 className="w-4 h-4 animate-spin text-[#A5CFDD]" />
+                  ) : (
+                    <div className="w-4 h-4 rounded-full bg-green-500 flex items-center justify-center">
+                      <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                    </div>
+                  )}
+                  <span className={uploadPhase === 'uploading' ? 'text-gray-600' : 'text-green-700'}>
+                    {uploadPhase === 'uploading' ? 'Importing products...' : catalogUploadResult?.message || 'Products imported'}
+                  </span>
+                </div>
+
+                {/* Phase 2: AI Classification */}
+                {(uploadPhase === 'classifying' || uploadPhase === 'complete') && classificationProgress.total > 0 && (
+                  <div className="flex items-center gap-2 text-sm">
+                    {uploadPhase === 'classifying' ? (
+                      <Loader2 className="w-4 h-4 animate-spin text-[#A5CFDD]" />
+                    ) : (
+                      <div className="w-4 h-4 rounded-full bg-green-500 flex items-center justify-center">
+                        <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                      </div>
+                    )}
+                    <span className={uploadPhase === 'classifying' ? 'text-gray-600' : 'text-green-700'}>
+                      {uploadPhase === 'classifying'
+                        ? `Adding categories... ${classificationProgress.progress}/${classificationProgress.total}`
+                        : `Categories added for ${classificationProgress.total} products`}
+                    </span>
+                  </div>
+                )}
+
+                {/* Progress bar during classification */}
+                {uploadPhase === 'classifying' && classificationProgress.total > 0 && (
+                  <div className="ml-6 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-[#A5CFDD] rounded-full transition-all duration-500"
+                      style={{ width: `${Math.round((classificationProgress.progress / classificationProgress.total) * 100)}%` }}
+                    />
+                  </div>
+                )}
+
+                {/* Phase 3: Review needed */}
+                {uploadPhase === 'complete' && classificationFlagged > 0 && (
+                  <div className="p-3 rounded-lg text-sm bg-amber-50 text-amber-800 border border-amber-200 flex items-center justify-between">
+                    <span>{classificationFlagged} product{classificationFlagged === 1 ? '' : 's'} need category review</span>
+                    <button
+                      onClick={() => catalogUploadResult?.catalogId && setShowCategoryReview(true)}
+                      className="text-xs font-medium px-3 py-1 bg-amber-100 hover:bg-amber-200 rounded transition-colors"
+                    >
+                      Review
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -1300,11 +1385,7 @@ export function StartNewQuotePage() {
                 catalogId={catalogUploadResult.catalogId}
                 onDone={(remaining) => {
                   setShowCategoryReview(false);
-                  if (remaining === 0) {
-                    setCatalogUploadResult(prev => prev ? { ...prev, flaggedCount: 0 } : null);
-                  } else {
-                    setCatalogUploadResult(prev => prev ? { ...prev, flaggedCount: remaining } : null);
-                  }
+                  setClassificationFlagged(remaining);
                 }}
               />
             </div>
