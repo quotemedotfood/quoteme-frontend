@@ -117,7 +117,10 @@ export function DistributorHomePage() {
           {/* Stats row if data exists */}
           {homeData && (hasCatalog || homeData.rep_count > 0 || homeData.quote_count > 0) && (
             <div className="grid grid-cols-3 gap-4 mt-8">
-              <div className="bg-white rounded-lg border border-gray-200 p-4 text-center">
+              <div
+                className="bg-white rounded-lg border border-gray-200 p-4 text-center cursor-pointer hover:border-[#A5CFDD] transition-colors"
+                onClick={() => navigate('/distributor-admin/catalog')}
+              >
                 <p className="text-2xl font-semibold text-[#2A2A2A]">{homeData.catalog_product_count}</p>
                 <p className="text-xs text-gray-500">Products</p>
               </div>

@@ -719,6 +719,46 @@ export async function approveAllCategories(catalogId: string): Promise<ApiRespon
   });
 }
 
+export async function reclassifyOthers(catalogId: string): Promise<ApiResponse<{ message: string; other_count: number; classification_status: string }>> {
+  return fetchWithAuth(`/api/v1/catalogs/${catalogId}/reclassify_others`, {
+    method: 'POST',
+  });
+}
+
+export interface CatalogProductsResponse {
+  page: number;
+  per_page: number;
+  total: number;
+  total_pages: number;
+  products: Array<{
+    id: string;
+    item_number: string;
+    brand: string;
+    product_name: string;
+    canonical_product: string | null;
+    pack_size: string;
+    price_cents: number;
+    category: string;
+    status: string;
+  }>;
+}
+
+export async function getCatalogProducts(catalogId: string, page = 1, perPage = 50): Promise<ApiResponse<CatalogProductsResponse>> {
+  return fetchWithAuth(`/api/v1/catalogs/${catalogId}/products?page=${page}&per_page=${perPage}`);
+}
+
+export interface CatalogStatsResponse {
+  id: string;
+  total_products: number;
+  by_category: Record<string, number>;
+  average_price_cents: number;
+  last_uploaded_at: string;
+}
+
+export async function getCatalogStats(catalogId: string): Promise<ApiResponse<CatalogStatsResponse>> {
+  return fetchWithAuth(`/api/v1/catalogs/${catalogId}/stats`);
+}
+
 export async function getCatalogs(): Promise<ApiResponse<CatalogSummary[]>> {
   return fetchWithAuth('/api/v1/catalogs');
 }

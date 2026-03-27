@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router';
-import { LayoutDashboard, Users, FileText, Plus, Settings, UserPlus, ClipboardList, Store, ChevronDown, MapPin, Building2 } from 'lucide-react';
+import { LayoutDashboard, Users, FileText, Plus, Settings, UserPlus, ClipboardList, Store, ChevronDown, MapPin, Building2, Package } from 'lucide-react';
 import logoSquare from '/src/assets/e549e7d27b183e98e791f43494c715b8cc6ce7e9.png';
 import { useUser } from '../contexts/UserContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -118,6 +118,7 @@ export function AppSidebar() {
   const navItems = isDistributorAdmin
     ? [
         { icon: <LayoutDashboard size={20} />, label: "Dashboard", path: "/distributor-admin" },
+        { icon: <Package size={20} />, label: "Catalog", path: "/distributor-admin/catalog" },
         { icon: <Plus size={20} />, label: "New Quote", path: "/start-new-quote", highlight: true },
         { icon: <FileText size={20} />, label: "Quotes", path: "/quotes" },
         { icon: <Users size={20} />, label: "Customers", path: "/customers" },
