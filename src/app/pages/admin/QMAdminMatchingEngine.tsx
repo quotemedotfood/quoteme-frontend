@@ -1102,11 +1102,30 @@ function DiagnoseTab() {
             />
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           <Button onClick={handleRun} disabled={running || !component.trim()} className="bg-[#7FAEC2] hover:bg-[#6A9BB0] text-white">
             {running ? <RefreshCw size={14} className="animate-spin mr-2" /> : <Search size={14} className="mr-2" />}
             {running ? 'Running...' : 'Run Diagnostic'}
           </Button>
+          {!teachMode && result && result.scoring.candidates && result.scoring.candidates.length > 0 && teachStep === 'pick' && (
+            <Button onClick={() => setTeachMode(true)} variant="outline" className="text-[#7FAEC2] border-[#7FAEC2]">
+              <GraduationCap size={14} className="mr-2" /> Teach the Engine
+            </Button>
+          )}
+          {teachMode && teachStep === 'pick' && (
+            <>
+              <Button
+                onClick={handleAnalyze}
+                disabled={Object.keys(userPicks).length === 0 || teachLoading}
+                className="bg-[#7FAEC2] hover:bg-[#6A9BB0] text-white"
+              >
+                {teachLoading ? <RefreshCw size={14} className="animate-spin mr-2" /> : <Search size={14} className="mr-2" />}
+                Analyze Gaps
+              </Button>
+              <Button onClick={resetTeach} variant="outline" className="text-gray-500">Cancel</Button>
+              <p className="text-xs text-gray-500">Click 1st/2nd/3rd on your preferred products, then analyze.</p>
+            </>
+          )}
           {lastSavedRuleIds.length > 0 && teachStep !== 'applied' && (
             <Button onClick={handleUndo} variant="outline" className="text-orange-600 border-orange-300">
               <Undo2 size={14} className="mr-1" /> Undo Last Teach
@@ -1389,28 +1408,6 @@ function DiagnoseTab() {
               })}
             </div>
 
-            {/* Teach mode controls */}
-            {!teachMode && result.scoring.candidates && result.scoring.candidates.length > 0 && teachStep === 'pick' && (
-              <div className="mt-4 pt-3 border-t border-gray-200">
-                <Button onClick={() => setTeachMode(true)} variant="outline" className="text-[#7FAEC2] border-[#7FAEC2]">
-                  <GraduationCap size={14} className="mr-2" /> Teach the Engine
-                </Button>
-              </div>
-            )}
-            {teachMode && teachStep === 'pick' && (
-              <div className="mt-4 pt-3 border-t border-gray-200 flex items-center gap-3">
-                <p className="text-xs text-gray-500">Click 1st/2nd/3rd on your preferred products, then analyze.</p>
-                <Button
-                  onClick={handleAnalyze}
-                  disabled={Object.keys(userPicks).length === 0 || teachLoading}
-                  className="bg-[#7FAEC2] hover:bg-[#6A9BB0] text-white"
-                >
-                  {teachLoading ? <RefreshCw size={14} className="animate-spin mr-2" /> : <Search size={14} className="mr-2" />}
-                  Analyze Gaps
-                </Button>
-                <Button onClick={resetTeach} variant="outline" className="text-gray-500">Cancel</Button>
-              </div>
-            )}
           </DiagSection>
 
           {/* Teach mode: Review panel */}
