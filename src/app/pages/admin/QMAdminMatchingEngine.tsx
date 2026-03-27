@@ -3,7 +3,7 @@ import {
   ChevronDown, ChevronRight, Download, Send, Trash2, ArrowUpCircle, Paperclip, X,
   Beaker, Fish, Wine, Coffee, GlassWater, Filter, BookOpen, Lock, RefreshCw,
   CheckCircle, AlertTriangle, XCircle, RotateCcw, Save, Search, Microscope,
-  GraduationCap, Plus, ArrowUp, ArrowDown, Undo2, Edit3, Shield,
+  GraduationCap, Plus, ArrowUp, ArrowDown, Undo2, Edit3, Shield, Loader2, Check,
 } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
@@ -1639,21 +1639,32 @@ function DiagnoseTab() {
 // ═══════════════════════════════════════════════════════════════════════
 
 const ADMIN_CATEGORIES = [
-  'cheese', 'protein', 'dry_goods', 'dairy', 'produce', 'oils_condiments',
-  'spice', 'beverage_bar', 'prepared', 'tomatoes', 'seafood', 'meat',
-  'poultry', 'bakery', 'frozen', 'sauce', 'charcuterie', 'other',
+  'produce', 'meat', 'poultry', 'seafood', 'dairy', 'cheese', 'dry_goods',
+  'frozen', 'bakery', 'beverage', 'prepared', 'non_food', 'other',
 ];
 
 const CAT_COLORS: Record<string, string> = {
-  protein: 'bg-red-100 text-red-700', seafood: 'bg-blue-100 text-blue-700',
-  cheese: 'bg-yellow-100 text-yellow-700', dairy: 'bg-yellow-50 text-yellow-600',
-  produce: 'bg-green-100 text-green-700', dry_goods: 'bg-amber-100 text-amber-700',
-  oils_condiments: 'bg-orange-100 text-orange-700', spice: 'bg-rose-100 text-rose-700',
-  beverage_bar: 'bg-purple-100 text-purple-700', bakery: 'bg-pink-100 text-pink-700',
-  prepared: 'bg-teal-100 text-teal-700', tomatoes: 'bg-red-50 text-red-600',
-  sauce: 'bg-orange-50 text-orange-600', frozen: 'bg-cyan-100 text-cyan-700',
-  meat: 'bg-red-100 text-red-700', poultry: 'bg-red-50 text-red-600',
-  charcuterie: 'bg-rose-100 text-rose-800', other: 'bg-gray-100 text-gray-500',
+  produce: 'bg-green-100 text-green-700',
+  meat: 'bg-red-100 text-red-700',
+  poultry: 'bg-red-50 text-red-600',
+  seafood: 'bg-blue-100 text-blue-700',
+  dairy: 'bg-yellow-50 text-yellow-600',
+  cheese: 'bg-yellow-100 text-yellow-700',
+  dry_goods: 'bg-amber-100 text-amber-700',
+  frozen: 'bg-cyan-100 text-cyan-700',
+  bakery: 'bg-pink-100 text-pink-700',
+  beverage: 'bg-purple-100 text-purple-700',
+  prepared: 'bg-teal-100 text-teal-700',
+  non_food: 'bg-slate-100 text-slate-700',
+  other: 'bg-gray-100 text-gray-500',
+  // Legacy categories (for catalogs classified before framework update)
+  protein: 'bg-red-100 text-red-700',
+  oils_condiments: 'bg-orange-100 text-orange-700',
+  spice: 'bg-rose-100 text-rose-700',
+  beverage_bar: 'bg-purple-100 text-purple-700',
+  tomatoes: 'bg-red-50 text-red-600',
+  sauce: 'bg-orange-50 text-orange-600',
+  charcuterie: 'bg-rose-100 text-rose-800',
 };
 
 function CatalogsTab() {
@@ -1925,6 +1936,7 @@ function CatalogsTab() {
                     <th className="px-3 py-2">Brand</th>
                     <th className="px-3 py-2">Pack</th>
                     <th className="px-3 py-2">Category</th>
+                    <th className="px-3 py-2">Subcategory</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
@@ -1942,10 +1954,13 @@ function CatalogsTab() {
                           {toTitleCase(p.category)}
                         </span>
                       </td>
+                      <td className="px-3 py-2 text-[10px] text-gray-400 max-w-[180px] truncate" title={p.subcategory || ''}>
+                        {p.subcategory || '—'}
+                      </td>
                     </tr>
                   ))}
                   {(!products?.products || products.products.length === 0) && (
-                    <tr><td colSpan={5} className="px-3 py-6 text-center text-gray-400">No products</td></tr>
+                    <tr><td colSpan={6} className="px-3 py-6 text-center text-gray-400">No products</td></tr>
                   )}
                 </tbody>
               </table>

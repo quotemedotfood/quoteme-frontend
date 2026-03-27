@@ -17,30 +17,32 @@ import {
 } from '../services/api';
 
 const DEFAULT_CATEGORIES = [
-  'cheese', 'protein', 'dry_goods', 'dairy', 'produce', 'oils_condiments',
-  'spice', 'beverage_bar', 'prepared', 'tomatoes', 'seafood', 'meat',
-  'poultry', 'bakery', 'frozen', 'sauce', 'charcuterie', 'other',
+  'produce', 'meat', 'poultry', 'seafood', 'dairy', 'cheese', 'dry_goods',
+  'frozen', 'bakery', 'beverage', 'prepared', 'non_food', 'other',
 ];
 
 const CATEGORY_COLORS: Record<string, string> = {
-  protein: 'bg-red-100 text-red-700',
-  seafood: 'bg-blue-100 text-blue-700',
-  cheese: 'bg-yellow-100 text-yellow-700',
-  dairy: 'bg-yellow-50 text-yellow-600',
   produce: 'bg-green-100 text-green-700',
+  meat: 'bg-red-100 text-red-700',
+  poultry: 'bg-red-50 text-red-600',
+  seafood: 'bg-blue-100 text-blue-700',
+  dairy: 'bg-yellow-50 text-yellow-600',
+  cheese: 'bg-yellow-100 text-yellow-700',
   dry_goods: 'bg-amber-100 text-amber-700',
+  frozen: 'bg-cyan-100 text-cyan-700',
+  bakery: 'bg-pink-100 text-pink-700',
+  beverage: 'bg-purple-100 text-purple-700',
+  prepared: 'bg-teal-100 text-teal-700',
+  non_food: 'bg-slate-100 text-slate-700',
+  other: 'bg-gray-100 text-gray-500',
+  // Legacy categories
+  protein: 'bg-red-100 text-red-700',
   oils_condiments: 'bg-orange-100 text-orange-700',
   spice: 'bg-rose-100 text-rose-700',
   beverage_bar: 'bg-purple-100 text-purple-700',
-  bakery: 'bg-pink-100 text-pink-700',
-  prepared: 'bg-teal-100 text-teal-700',
   tomatoes: 'bg-red-50 text-red-600',
   sauce: 'bg-orange-50 text-orange-600',
-  frozen: 'bg-cyan-100 text-cyan-700',
-  meat: 'bg-red-100 text-red-700',
-  poultry: 'bg-red-50 text-red-600',
   charcuterie: 'bg-rose-100 text-rose-800',
-  other: 'bg-gray-100 text-gray-500',
 };
 
 function formatCategory(cat: string) {

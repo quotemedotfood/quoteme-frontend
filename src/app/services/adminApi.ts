@@ -1010,7 +1010,9 @@ export interface AdminCatalogProduct {
   product_name: string;
   pack_size: string;
   category: string;
+  subcategory: string | null;
   category_source: string;
+  ai_confidence: string | null;
 }
 
 export interface AdminCatalogProductsResponse {
