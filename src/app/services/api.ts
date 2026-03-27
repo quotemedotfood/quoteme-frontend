@@ -737,6 +737,7 @@ export interface CatalogProductsResponse {
   per_page: number;
   total: number;
   total_pages: number;
+  brands: string[];
   products: Array<{
     id: string;
     item_number: string;
@@ -746,14 +747,16 @@ export interface CatalogProductsResponse {
     pack_size: string;
     price_cents: number;
     category: string;
+    subcategory: string | null;
     status: string;
   }>;
 }
 
-export async function getCatalogProducts(catalogId: string, page = 1, perPage = 50, opts?: { category?: string; search?: string }): Promise<ApiResponse<CatalogProductsResponse>> {
+export async function getCatalogProducts(catalogId: string, page = 1, perPage = 50, opts?: { category?: string; search?: string; brand?: string }): Promise<ApiResponse<CatalogProductsResponse>> {
   const params = new URLSearchParams({ page: String(page), per_page: String(perPage) });
   if (opts?.category) params.set('category', opts.category);
   if (opts?.search) params.set('search', opts.search);
+  if (opts?.brand) params.set('brand', opts.brand);
   return fetchWithAuth(`/api/v1/catalogs/${catalogId}/products?${params}`);
 }
 

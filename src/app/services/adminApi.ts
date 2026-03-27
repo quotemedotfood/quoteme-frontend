@@ -1020,6 +1020,7 @@ export interface AdminCatalogProductsResponse {
   per_page: number;
   total: number;
   total_pages: number;
+  brands: string[];
   products: AdminCatalogProduct[];
 }
 
@@ -1028,11 +1029,12 @@ export async function getAdminCatalogStats(catalogId: string): Promise<ApiRespon
 }
 
 export async function getAdminCatalogProducts(
-  catalogId: string, page = 1, perPage = 50, opts?: { category?: string; search?: string }
+  catalogId: string, page = 1, perPage = 50, opts?: { category?: string; search?: string; brand?: string }
 ): Promise<ApiResponse<AdminCatalogProductsResponse>> {
   const params = new URLSearchParams({ catalog_id: catalogId, page: String(page), per_page: String(perPage) });
   if (opts?.category) params.set('category', opts.category);
   if (opts?.search) params.set('search', opts.search);
+  if (opts?.brand) params.set('brand', opts.brand);
   return fetchWithAuth(`/api/v1/admin/matching-engine/catalog-products?${params}`);
 }
 

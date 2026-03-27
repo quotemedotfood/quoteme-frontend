@@ -62,6 +62,7 @@ export function CatalogManagePage() {
   const [reclassifying, setReclassifying] = useState(false);
   const [reclassifyMsg, setReclassifyMsg] = useState('');
   const [filterCategory, setFilterCategory] = useState<string | null>(null);
+  const [filterBrand, setFilterBrand] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchInput, setSearchInput] = useState('');
   const [page, setPage] = useState(1);
@@ -127,14 +128,15 @@ export function CatalogManagePage() {
     const res = await getCatalogProducts(catalogId, page, 50, {
       category: filterCategory || undefined,
       search: searchQuery || undefined,
+      brand: filterBrand || undefined,
     });
     if (res.data) setProducts(res.data);
-  }, [catalogId, page, filterCategory, searchQuery]);
+  }, [catalogId, page, filterCategory, filterBrand, searchQuery]);
 
   useEffect(() => { loadProducts(); }, [loadProducts]);
 
   // Clear selection when filter/page changes
-  useEffect(() => { setSelectedIds(new Set()); }, [page, filterCategory, searchQuery]);
+  useEffect(() => { setSelectedIds(new Set()); }, [page, filterCategory, filterBrand, searchQuery]);
 
   // Poll classification status when classifying
   useEffect(() => {
@@ -460,8 +462,19 @@ export function CatalogManagePage() {
             {filterCategory ? `${formatCategory(filterCategory)} Products` : 'All Products'}
             <span className="text-gray-400 font-normal ml-2">({products?.total || 0})</span>
           </h2>
-          {/* Search */}
-          <div className="flex items-center gap-2 flex-1 max-w-xs">
+          {/* Filters + Search */}
+          <div className="flex items-center gap-2 flex-1 max-w-lg">
+            {/* Brand filter */}
+            <select
+              value={filterBrand || ''}
+              onChange={e => { setFilterBrand(e.target.value || null); setPage(1); }}
+              className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-[#A5CFDD] max-w-[160px]"
+            >
+              <option value="">All Brands</option>
+              {(products?.brands || []).map(b => (
+                <option key={b} value={b}>{b}</option>
+              ))}
+            </select>
             <div className="relative flex-1">
               <input
                 type="text"
@@ -473,9 +486,9 @@ export function CatalogManagePage() {
               />
               <Search className="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
             </div>
-            {searchQuery && (
+            {(searchQuery || filterBrand) && (
               <button
-                onClick={() => { setSearchInput(''); setSearchQuery(''); setPage(1); }}
+                onClick={() => { setSearchInput(''); setSearchQuery(''); setFilterBrand(null); setPage(1); }}
                 className="text-xs text-gray-400 hover:text-gray-600"
               >
                 <X className="w-3.5 h-3.5" />

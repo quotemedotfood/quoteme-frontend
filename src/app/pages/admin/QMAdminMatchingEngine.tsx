@@ -1674,6 +1674,7 @@ function CatalogsTab() {
   const [products, setProducts] = useState<AdminCatalogProductsResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [filterCat, setFilterCat] = useState('');
+  const [filterBrand, setFilterBrand] = useState('');
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
@@ -1702,6 +1703,7 @@ function CatalogsTab() {
     const res = await getAdminCatalogProducts(selectedCatalogId, page, 50, {
       category: filterCat || undefined,
       search: search || undefined,
+      brand: filterBrand || undefined,
     });
     if (res.data) setProducts(res.data);
   };
@@ -1711,14 +1713,15 @@ function CatalogsTab() {
       loadStats(selectedCatalogId);
       setPage(1);
       setFilterCat('');
+      setFilterBrand('');
       setSearch('');
       setSearchInput('');
       setSelected(new Set());
     }
   }, [selectedCatalogId]);
 
-  useEffect(() => { loadProducts(); }, [selectedCatalogId, page, filterCat, search]);
-  useEffect(() => { setSelected(new Set()); }, [page, filterCat, search]);
+  useEffect(() => { loadProducts(); }, [selectedCatalogId, page, filterCat, filterBrand, search]);
+  useEffect(() => { setSelected(new Set()); }, [page, filterCat, filterBrand, search]);
 
   // Poll during reclassification
   useEffect(() => {
@@ -1854,13 +1857,29 @@ function CatalogsTab() {
               })}
             </div>
 
-            {/* Reclassify */}
-            {otherCount > 0 && !reclassifying && stats.classification_status !== 'classifying' && (
+            {/* Uncategorized banner + Reclassify */}
+            {otherCount > 0 && (
               <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between">
-                <span className="text-sm text-gray-500"><span className="font-medium text-[#2A2A2A]">{otherCount}</span> "other"</span>
-                <Button onClick={handleReclassify} className="bg-[#A5CFDD] hover:bg-[#7FAEC2] text-white text-xs h-8">
-                  <RefreshCw className="w-3.5 h-3.5 mr-1" /> Reclassify Others
-                </Button>
+                <div className="flex items-center gap-3">
+                  <span className="text-sm text-gray-500">
+                    <span className="font-bold text-orange-600">{otherCount}</span> uncategorized
+                  </span>
+                  <button
+                    onClick={() => { setFilterCat(filterCat === 'other' ? '' : 'other'); setPage(1); }}
+                    className={`text-xs font-medium px-3 py-1 rounded-full border transition-colors ${
+                      filterCat === 'other'
+                        ? 'bg-orange-100 text-orange-700 border-orange-300'
+                        : 'bg-white text-orange-600 border-orange-200 hover:bg-orange-50'
+                    }`}
+                  >
+                    {filterCat === 'other' ? 'Showing Uncategorized' : 'Show Uncategorized'}
+                  </button>
+                </div>
+                {!reclassifying && stats.classification_status !== 'classifying' && (
+                  <Button onClick={handleReclassify} className="bg-[#A5CFDD] hover:bg-[#7FAEC2] text-white text-xs h-8">
+                    <RefreshCw className="w-3.5 h-3.5 mr-1" /> Reclassify Others
+                  </Button>
+                )}
               </div>
             )}
           </div>
@@ -1909,10 +1928,29 @@ function CatalogsTab() {
           {/* Product table */}
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
             <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between gap-3">
-              <span className="text-xs font-semibold text-[#2A2A2A]">
-                {filterCat ? toTitleCase(filterCat) : 'All Products'} ({products?.total || 0})
-              </span>
-              <div className="flex items-center gap-2 flex-1 max-w-xs">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold text-[#2A2A2A]">
+                  {filterCat ? toTitleCase(filterCat) : 'All Products'} ({products?.total || 0})
+                </span>
+                {(filterCat || filterBrand) && (
+                  <button onClick={() => { setFilterCat(''); setFilterBrand(''); setPage(1); }}
+                    className="text-[10px] text-[#A5CFDD] hover:underline flex items-center gap-0.5">
+                    <X className="w-3 h-3" /> Clear filters
+                  </button>
+                )}
+              </div>
+              <div className="flex items-center gap-2 flex-1 max-w-lg">
+                {/* Brand filter */}
+                <select
+                  value={filterBrand}
+                  onChange={e => { setFilterBrand(e.target.value); setPage(1); }}
+                  className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-[#A5CFDD] max-w-[160px]"
+                >
+                  <option value="">All Brands</option>
+                  {(products?.brands || []).map(b => (
+                    <option key={b} value={b}>{b}</option>
+                  ))}
+                </select>
                 <div className="relative flex-1">
                   <input type="text" value={searchInput} onChange={e => setSearchInput(e.target.value)}
                     onKeyDown={e => { if (e.key === 'Enter') { setSearch(searchInput.trim()); setPage(1); }}}
