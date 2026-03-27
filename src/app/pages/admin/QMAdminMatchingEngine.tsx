@@ -1726,17 +1726,21 @@ function CatalogsTab() {
   // Poll during reclassification
   useEffect(() => {
     if (!reclassifying || !selectedCatalogId) return;
+    let pollCount = 0;
     const interval = setInterval(async () => {
+      pollCount++;
       const res = await getAdminCatalogStats(selectedCatalogId);
       if (res.data) {
         setStats(res.data);
-        if (res.data.classification_status === 'complete') {
+        // "complete" means done — or if we've polled 3+ times and it's still not "classifying",
+        // the thread likely finished before we started polling
+        if (res.data.classification_status === 'complete' || (pollCount >= 3 && res.data.classification_status !== 'classifying')) {
           clearInterval(interval);
           setReclassifying(false);
           loadProducts();
         }
       }
-    }, 3000);
+    }, 2000);
     return () => clearInterval(interval);
   }, [reclassifying, selectedCatalogId]);
 
@@ -1748,7 +1752,15 @@ function CatalogsTab() {
 
   const handleReclassify = async () => {
     setReclassifying(true);
-    await adminReclassifyOthers(selectedCatalogId);
+    const res = await adminReclassifyOthers(selectedCatalogId);
+    if (res.error) {
+      setReclassifying(false);
+      return;
+    }
+    // Force stats to show classifying state immediately
+    if (stats) {
+      setStats({ ...stats, classification_status: 'classifying', classification_progress: 0, classification_total: res.data?.other_count || 0 });
+    }
   };
 
   const handleBulkAssign = async () => {
