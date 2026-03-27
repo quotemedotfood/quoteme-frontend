@@ -719,6 +719,13 @@ export async function approveAllCategories(catalogId: string): Promise<ApiRespon
   });
 }
 
+export async function bulkUpdateCategory(catalogId: string, productIds: string[], category: string): Promise<ApiResponse<{ updated: number; category: string }>> {
+  return fetchWithAuth(`/api/v1/catalogs/${catalogId}/bulk_update_category`, {
+    method: 'PATCH',
+    body: JSON.stringify({ product_ids: productIds, category }),
+  });
+}
+
 export async function reclassifyOthers(catalogId: string): Promise<ApiResponse<{ message: string; other_count: number; classification_status: string }>> {
   return fetchWithAuth(`/api/v1/catalogs/${catalogId}/reclassify_others`, {
     method: 'POST',
@@ -743,8 +750,11 @@ export interface CatalogProductsResponse {
   }>;
 }
 
-export async function getCatalogProducts(catalogId: string, page = 1, perPage = 50): Promise<ApiResponse<CatalogProductsResponse>> {
-  return fetchWithAuth(`/api/v1/catalogs/${catalogId}/products?page=${page}&per_page=${perPage}`);
+export async function getCatalogProducts(catalogId: string, page = 1, perPage = 50, opts?: { category?: string; search?: string }): Promise<ApiResponse<CatalogProductsResponse>> {
+  const params = new URLSearchParams({ page: String(page), per_page: String(perPage) });
+  if (opts?.category) params.set('category', opts.category);
+  if (opts?.search) params.set('search', opts.search);
+  return fetchWithAuth(`/api/v1/catalogs/${catalogId}/products?${params}`);
 }
 
 export interface CatalogStatsResponse {
