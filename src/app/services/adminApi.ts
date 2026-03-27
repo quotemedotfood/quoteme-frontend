@@ -783,6 +783,149 @@ export interface DiagnosticResult {
     total_above_floor?: number;
     best_score?: number;
   };
+  active_rule_count?: number;
+  active_rules?: TeachExistingRule[];
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// Fix 127: Teach mode types
+// ═══════════════════════════════════════════════════════════════════════
+
+export interface TeachUserPick {
+  position: number;
+  product_id: string;
+}
+
+export interface TeachGap {
+  position: number;
+  already_correct: boolean;
+  user_pick: { product_id: string; product_name: string; brand: string; engine_rank: number | null; engine_score: number };
+  engine_pick: { product_id: string; product_name: string; brand: string; engine_rank: number; engine_score: number } | null;
+  score_delta: number;
+  factor_deltas: Record<string, number>;
+}
+
+export interface TeachProposedRule {
+  rule_type: string;
+  target_name: string;
+  replacement_name: string | null;
+  reason: string;
+  affects_positions: number[];
+}
+
+export interface TeachPreviewCandidate {
+  product_id: string;
+  product_name: string;
+  brand: string;
+  category?: string;
+  normalized_category?: string;
+  original_score: number;
+  adjusted_score: number;
+  original_rank: number;
+  new_rank: number;
+  rules_applied: string[];
+}
+
+export interface TeachConflict {
+  type: 'contradiction' | 'stacking' | 'identity_lock_override';
+  new_rule: TeachProposedRule;
+  existing_rule?: TeachExistingRule;
+  existing_count?: number;
+  existing_rules?: TeachExistingRule[];
+  message: string;
+  warning?: boolean;
+}
+
+export interface TeachExistingRule {
+  id: string;
+  rule_type: string;
+  target_name: string;
+  replacement_name?: string | null;
+  reason?: string;
+  source?: string;
+  active?: boolean;
+  created_at?: string;
+}
+
+export interface TeachResult {
+  gaps: { gaps: TeachGap[]; agreement_count: number; total_positions: number };
+  proposed_rules: TeachProposedRule[];
+  explanation: string;
+  preview: { candidates: TeachPreviewCandidate[] };
+  conflicts: TeachConflict[];
+}
+
+export interface TeachApplyResult {
+  saved_rule_ids: string[];
+  confirmed_result: DiagnosticResult;
+}
+
+export async function runTeachAnalysis(
+  component: string,
+  catalogId: string,
+  userRanking: TeachUserPick[],
+  engineCandidates: ScoredCandidate[],
+  category?: string
+): Promise<ApiResponse<TeachResult>> {
+  return fetchWithAuth('/api/v1/admin/matching-engine/teach', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      component,
+      catalog_id: catalogId,
+      category,
+      user_ranking: userRanking,
+      engine_candidates: engineCandidates
+    })
+  });
+}
+
+export async function runTeachPreview(
+  component: string,
+  catalogId: string,
+  rules: TeachProposedRule[],
+  engineCandidates: ScoredCandidate[]
+): Promise<ApiResponse<{ preview: { candidates: TeachPreviewCandidate[] }; conflicts: TeachConflict[] }>> {
+  return fetchWithAuth('/api/v1/admin/matching-engine/teach-preview', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      component,
+      catalog_id: catalogId,
+      rules,
+      engine_candidates: engineCandidates
+    })
+  });
+}
+
+export async function applyTeachRules(
+  component: string,
+  catalogId: string,
+  rules: TeachProposedRule[],
+  userRanking: TeachUserPick[],
+  beforeRanking: ScoredCandidate[],
+  category?: string
+): Promise<ApiResponse<TeachApplyResult>> {
+  return fetchWithAuth('/api/v1/admin/matching-engine/teach-apply', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      component,
+      catalog_id: catalogId,
+      category,
+      rules,
+      user_ranking: userRanking,
+      before_ranking: beforeRanking
+    })
+  });
+}
+
+export async function undoTeachSession(ruleIds: string[]): Promise<ApiResponse<{ success: boolean; undone_count: number }>> {
+  return fetchWithAuth('/api/v1/admin/matching-engine/teach-undo', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ rule_ids: ruleIds })
+  });
 }
 
 export interface ProductBrief {

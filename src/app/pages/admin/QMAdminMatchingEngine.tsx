@@ -3,6 +3,7 @@ import {
   ChevronDown, ChevronRight, Download, Send, Trash2, ArrowUpCircle, Paperclip, X,
   Beaker, Fish, Wine, Coffee, GlassWater, Filter, BookOpen, Lock, RefreshCw,
   CheckCircle, AlertTriangle, XCircle, RotateCcw, Save, Search, Microscope,
+  GraduationCap, Plus, ArrowUp, ArrowDown, Undo2, Edit3, Shield,
 } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
@@ -22,6 +23,10 @@ import {
   getDiagnosticsEnabled,
   getDiagnosticsCatalogs,
   runDiagnostic,
+  runTeachAnalysis,
+  runTeachPreview,
+  applyTeachRules,
+  undoTeachSession,
   type MatchingEngineRules,
   type MatchingEngineLog,
   type AdminStockQuote,
@@ -32,6 +37,12 @@ import {
   type DiagnosticCatalog,
   type ProductBrief,
   type ScoredCandidate,
+  type TeachResult,
+  type TeachProposedRule,
+  type TeachPreviewCandidate,
+  type TeachConflict,
+  type TeachApplyResult,
+  type TeachExistingRule,
 } from '../../services/adminApi';
 
 type Tab = 'rules' | 'training' | 'concepts' | 'changelog' | 'diagnose';
@@ -896,6 +907,17 @@ function DiagnoseTab() {
   const [result, setResult] = useState<DiagnosticResult | null>(null);
   const [error, setError] = useState('');
 
+  // Teach mode state
+  const [teachMode, setTeachMode] = useState(false);
+  const [userPicks, setUserPicks] = useState<Record<number, string>>({}); // position -> product_id
+  const [teachResult, setTeachResult] = useState<TeachResult | null>(null);
+  const [teachStep, setTeachStep] = useState<'pick' | 'review' | 'applied'>('pick');
+  const [teachLoading, setTeachLoading] = useState(false);
+  const [appliedResult, setAppliedResult] = useState<TeachApplyResult | null>(null);
+  const [editedRules, setEditedRules] = useState<TeachProposedRule[]>([]);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [lastSavedRuleIds, setLastSavedRuleIds] = useState<string[]>([]);
+
   useEffect(() => {
     getDiagnosticsCatalogs().then(res => {
       if (res.data?.catalogs) {
@@ -905,11 +927,22 @@ function DiagnoseTab() {
     });
   }, []);
 
+  const resetTeach = () => {
+    setTeachMode(false);
+    setUserPicks({});
+    setTeachResult(null);
+    setTeachStep('pick');
+    setAppliedResult(null);
+    setEditedRules([]);
+    setLastSavedRuleIds([]);
+  };
+
   const handleRun = async () => {
     if (!component.trim() || !catalogId) return;
     setRunning(true);
     setError('');
     setResult(null);
+    resetTeach();
     const res = await runDiagnostic(component.trim(), catalogId, category.trim() || undefined);
     if (res.error) {
       setError(res.error);
@@ -918,6 +951,115 @@ function DiagnoseTab() {
     }
     setRunning(false);
   };
+
+  const togglePick = (position: number, productId: string) => {
+    setUserPicks(prev => {
+      const next = { ...prev };
+      // If this product is already at this position, deselect
+      if (next[position] === productId) {
+        delete next[position];
+        return next;
+      }
+      // Remove product from any other position
+      for (const p of [1, 2, 3]) {
+        if (next[p] === productId) delete next[p];
+      }
+      next[position] = productId;
+      return next;
+    });
+  };
+
+  const getPickPosition = (productId: string): number | null => {
+    for (const [pos, pid] of Object.entries(userPicks)) {
+      if (pid === productId) return Number(pos);
+    }
+    return null;
+  };
+
+  const handleAnalyze = async () => {
+    if (!result || Object.keys(userPicks).length === 0) return;
+    setTeachLoading(true);
+    const picks = Object.entries(userPicks).map(([pos, pid]) => ({ position: Number(pos), product_id: pid }));
+    const res = await runTeachAnalysis(
+      component.trim(), catalogId, picks,
+      result.scoring.candidates, category.trim() || undefined
+    );
+    if (res.data) {
+      setTeachResult(res.data);
+      setEditedRules([...res.data.proposed_rules]);
+      setTeachStep('review');
+    }
+    setTeachLoading(false);
+  };
+
+  const handleEditRule = (idx: number, field: keyof TeachProposedRule, value: string) => {
+    setEditedRules(prev => {
+      const next = [...prev];
+      next[idx] = { ...next[idx], [field]: value };
+      return next;
+    });
+  };
+
+  const handleDeleteRule = (idx: number) => {
+    setEditedRules(prev => prev.filter((_, i) => i !== idx));
+  };
+
+  const handleAddRule = () => {
+    setEditedRules(prev => [...prev, {
+      rule_type: 'product_prefer',
+      target_name: '',
+      replacement_name: null,
+      reason: `Manual rule for '${component.trim()}'`,
+      affects_positions: []
+    }]);
+  };
+
+  const handleRefreshPreview = async () => {
+    if (!result) return;
+    setPreviewLoading(true);
+    const res = await runTeachPreview(component.trim(), catalogId, editedRules, result.scoring.candidates);
+    if (res.data && teachResult) {
+      setTeachResult({ ...teachResult, preview: res.data.preview, conflicts: res.data.conflicts });
+    }
+    setPreviewLoading(false);
+  };
+
+  const handleApply = async () => {
+    if (!result || editedRules.length === 0) return;
+    setTeachLoading(true);
+    const picks = Object.entries(userPicks).map(([pos, pid]) => ({ position: Number(pos), product_id: pid }));
+    const res = await applyTeachRules(
+      component.trim(), catalogId, editedRules, picks,
+      result.scoring.candidates, category.trim() || undefined
+    );
+    if (res.data) {
+      setAppliedResult(res.data);
+      setLastSavedRuleIds(res.data.saved_rule_ids);
+      setTeachStep('applied');
+    }
+    setTeachLoading(false);
+  };
+
+  const handleUndo = async () => {
+    if (lastSavedRuleIds.length === 0) return;
+    setTeachLoading(true);
+    await undoTeachSession(lastSavedRuleIds);
+    setLastSavedRuleIds([]);
+    resetTeach();
+    // Re-run diagnostic to show reverted state
+    const res = await runDiagnostic(component.trim(), catalogId, category.trim() || undefined);
+    if (res.data) setResult(res.data);
+    setTeachLoading(false);
+  };
+
+  const ruleTypeOptions = [
+    { value: 'product_prefer', label: 'Prefer Product' },
+    { value: 'product_exclude', label: 'Exclude Product' },
+    { value: 'brand_prefer', label: 'Prefer Brand' },
+    { value: 'brand_exclude', label: 'Exclude Brand' },
+    { value: 'ingredient_prefer', label: 'Prefer Ingredient' },
+    { value: 'ingredient_exclude', label: 'Exclude Ingredient' },
+  ];
 
   return (
     <div className="space-y-6">
@@ -960,16 +1102,44 @@ function DiagnoseTab() {
             />
           </div>
         </div>
-        <Button onClick={handleRun} disabled={running || !component.trim()} className="bg-[#7FAEC2] hover:bg-[#6A9BB0] text-white">
-          {running ? <RefreshCw size={14} className="animate-spin mr-2" /> : <Search size={14} className="mr-2" />}
-          {running ? 'Running...' : 'Run Diagnostic'}
-        </Button>
+        <div className="flex items-center gap-3">
+          <Button onClick={handleRun} disabled={running || !component.trim()} className="bg-[#7FAEC2] hover:bg-[#6A9BB0] text-white">
+            {running ? <RefreshCw size={14} className="animate-spin mr-2" /> : <Search size={14} className="mr-2" />}
+            {running ? 'Running...' : 'Run Diagnostic'}
+          </Button>
+          {lastSavedRuleIds.length > 0 && teachStep !== 'applied' && (
+            <Button onClick={handleUndo} variant="outline" className="text-orange-600 border-orange-300">
+              <Undo2 size={14} className="mr-1" /> Undo Last Teach
+            </Button>
+          )}
+        </div>
         {error && <p className="text-sm text-red-600">{error}</p>}
       </div>
 
       {/* Results */}
       {result && (
         <div className="space-y-1">
+          {/* Active rule count badge */}
+          {(result.active_rule_count ?? 0) > 0 && (
+            <div className={`rounded-lg p-3 mb-2 border ${(result.active_rule_count ?? 0) > 5 ? 'bg-amber-50 border-amber-200' : 'bg-blue-50 border-blue-200'}`}>
+              <div className="flex items-center gap-2 text-xs">
+                <Shield size={14} className={(result.active_rule_count ?? 0) > 5 ? 'text-amber-600' : 'text-blue-500'} />
+                <span className="font-medium">{result.active_rule_count} active rule(s)</span>
+                {(result.active_rule_count ?? 0) > 5 && <span className="text-amber-600">— Consider consolidating</span>}
+              </div>
+              {result.active_rules && result.active_rules.length > 0 && (
+                <div className="mt-2 space-y-1">
+                  {result.active_rules.map((r, i) => (
+                    <div key={i} className="text-xs text-gray-500 pl-5">
+                      <span className="font-mono">{r.rule_type}</span>: {r.target_name}
+                      {r.source && <span className="text-gray-400"> ({r.source})</span>}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Final result banner */}
           {result.final_result.match ? (
             <div className={`rounded-lg p-4 mb-4 ${
@@ -1152,7 +1322,7 @@ function DiagnoseTab() {
             )}
           </DiagSection>
 
-          {/* Step 4 — Scoring */}
+          {/* Step 4 — Scoring with teach mode pick buttons */}
           <DiagSection title="Step 4 — Alignment Scoring" count={result.scoring.candidates?.length} color="text-indigo-700">
             <div className="text-xs text-gray-500 mb-2 space-x-4">
               <span>Sensitivity: <strong>{result.scoring.sensitivity}</strong></span>
@@ -1163,36 +1333,296 @@ function DiagnoseTab() {
             </div>
             {result.scoring.note && <p className="text-xs text-gray-400 italic">{result.scoring.note}</p>}
             <div className="space-y-3">
-              {result.scoring.candidates?.map((c, i) => (
-                <div key={i} className={`border rounded-lg p-3 ${c.above_floor ? 'border-green-200 bg-green-50/50' : 'border-red-200 bg-red-50/50'}`}>
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-gray-400">#{i + 1}</span>
-                      <span className="text-sm font-semibold text-[#2A2A2A]">{c.brand} {c.product_name}</span>
-                      <span className="text-xs text-gray-400">({c.category})</span>
-                      {c.normalized_category && <span className="text-xs text-blue-400">[{c.normalized_category}]</span>}
-                      {c.pack_size && <span className="text-xs text-gray-400">{c.pack_size}</span>}
+              {result.scoring.candidates?.map((c, i) => {
+                const pickPos = getPickPosition(c.product_id);
+                return (
+                  <div key={i} className={`border rounded-lg p-3 ${
+                    pickPos ? 'border-green-400 bg-green-50 ring-1 ring-green-300' :
+                    c.above_floor ? 'border-green-200 bg-green-50/50' : 'border-red-200 bg-red-50/50'
+                  }`}>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-gray-400">#{i + 1}</span>
+                        <span className="text-sm font-semibold text-[#2A2A2A]">{c.brand} {c.product_name}</span>
+                        <span className="text-xs text-gray-400">({c.category})</span>
+                        {c.normalized_category && <span className="text-xs text-blue-400">[{c.normalized_category}]</span>}
+                        {c.pack_size && <span className="text-xs text-gray-400">{c.pack_size}</span>}
+                        {pickPos && <span className="text-xs font-bold text-green-700 bg-green-100 px-1.5 py-0.5 rounded">Your #{pickPos}</span>}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {teachMode && teachStep === 'pick' && (
+                          <div className="flex gap-1">
+                            {[1, 2, 3].map(pos => (
+                              <button
+                                key={pos}
+                                onClick={() => togglePick(pos, c.product_id)}
+                                className={`px-2 py-0.5 rounded text-xs font-bold transition-colors ${
+                                  userPicks[pos] === c.product_id
+                                    ? 'bg-green-500 text-white'
+                                    : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                                }`}
+                              >
+                                {pos === 1 ? '1st' : pos === 2 ? '2nd' : '3rd'}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                        <span className={`text-sm font-bold ${c.above_floor ? 'text-green-700' : 'text-red-600'}`}>
+                          {(c.scores.total * 100).toFixed(0)}%
+                        </span>
+                      </div>
                     </div>
-                    <span className={`text-sm font-bold ${c.above_floor ? 'text-green-700' : 'text-red-600'}`}>
-                      {(c.scores.total * 100).toFixed(0)}%
-                    </span>
+                    <div className="space-y-1">
+                      <ScoreBar label="Exact Identity" value={c.scores.exact_identity} />
+                      <ScoreBar label="Name Similarity" value={c.scores.name_similarity} />
+                      <ScoreBar label="Category Fit" value={c.scores.category_fit} />
+                      <ScoreBar label="Role Fit" value={c.scores.role_fit} />
+                      <ScoreBar label="Keyword Overlap" value={c.scores.keyword_overlap} />
+                      <ScoreBar label="Pack Plausibility" value={c.scores.pack_plausibility} />
+                      <ScoreBar label="Concept Fit" value={c.scores.concept_fit} />
+                      <ScoreBar label="Format Fit" value={c.scores.format_fit} />
+                      {c.scores.name_boost > 0 && <ScoreBar label="Name Boost" value={c.scores.name_boost} max={0.25} />}
+                      {c.scores.category_boost > 0 && <ScoreBar label="Category Boost (Fix 125)" value={c.scores.category_boost} max={0.20} />}
+                    </div>
                   </div>
-                  <div className="space-y-1">
-                    <ScoreBar label="Exact Identity" value={c.scores.exact_identity} />
-                    <ScoreBar label="Name Similarity" value={c.scores.name_similarity} />
-                    <ScoreBar label="Category Fit" value={c.scores.category_fit} />
-                    <ScoreBar label="Role Fit" value={c.scores.role_fit} />
-                    <ScoreBar label="Keyword Overlap" value={c.scores.keyword_overlap} />
-                    <ScoreBar label="Pack Plausibility" value={c.scores.pack_plausibility} />
-                    <ScoreBar label="Concept Fit" value={c.scores.concept_fit} />
-                    <ScoreBar label="Format Fit" value={c.scores.format_fit} />
-                    {c.scores.name_boost > 0 && <ScoreBar label="Name Boost" value={c.scores.name_boost} max={0.25} />}
-                    {c.scores.category_boost > 0 && <ScoreBar label="Category Boost (Fix 125)" value={c.scores.category_boost} max={0.20} />}
+                );
+              })}
+            </div>
+
+            {/* Teach mode controls */}
+            {!teachMode && result.scoring.candidates && result.scoring.candidates.length > 0 && teachStep === 'pick' && (
+              <div className="mt-4 pt-3 border-t border-gray-200">
+                <Button onClick={() => setTeachMode(true)} variant="outline" className="text-[#7FAEC2] border-[#7FAEC2]">
+                  <GraduationCap size={14} className="mr-2" /> Teach the Engine
+                </Button>
+              </div>
+            )}
+            {teachMode && teachStep === 'pick' && (
+              <div className="mt-4 pt-3 border-t border-gray-200 flex items-center gap-3">
+                <p className="text-xs text-gray-500">Click 1st/2nd/3rd on your preferred products, then analyze.</p>
+                <Button
+                  onClick={handleAnalyze}
+                  disabled={Object.keys(userPicks).length === 0 || teachLoading}
+                  className="bg-[#7FAEC2] hover:bg-[#6A9BB0] text-white"
+                >
+                  {teachLoading ? <RefreshCw size={14} className="animate-spin mr-2" /> : <Search size={14} className="mr-2" />}
+                  Analyze Gaps
+                </Button>
+                <Button onClick={resetTeach} variant="outline" className="text-gray-500">Cancel</Button>
+              </div>
+            )}
+          </DiagSection>
+
+          {/* Teach mode: Review panel */}
+          {teachResult && teachStep === 'review' && (
+            <DiagSection title="Teach — Gap Analysis & Rules" open={true} color="text-[#7FAEC2]">
+              <div className="space-y-4">
+                {/* Gap analysis */}
+                <div>
+                  <p className="text-xs font-semibold text-gray-600 mb-2">Gap Analysis ({teachResult.gaps.agreement_count}/{teachResult.gaps.total_positions} already correct)</p>
+                  <div className="space-y-2">
+                    {teachResult.gaps.gaps.map((g, i) => (
+                      <div key={i} className={`rounded-lg p-3 text-xs ${g.already_correct ? 'bg-green-50 border border-green-200' : 'bg-orange-50 border border-orange-200'}`}>
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="font-bold">Position #{g.position}</span>
+                          {g.already_correct ? (
+                            <span className="text-green-600 flex items-center gap-1"><CheckCircle size={12} /> Already correct</span>
+                          ) : (
+                            <span className="text-orange-600">Needs adjustment</span>
+                          )}
+                        </div>
+                        {!g.already_correct && (
+                          <div className="grid grid-cols-2 gap-2 mt-1">
+                            <div>
+                              <span className="text-gray-500">Engine picked:</span> <span className="font-medium">{g.engine_pick?.product_name}</span>
+                              <span className="text-gray-400 ml-1">({((g.engine_pick?.engine_score ?? 0) * 100).toFixed(0)}%)</span>
+                            </div>
+                            <div>
+                              <span className="text-gray-500">You picked:</span> <span className="font-medium">{g.user_pick.product_name}</span>
+                              <span className="text-gray-400 ml-1">({(g.user_pick.engine_score * 100).toFixed(0)}% at #{g.user_pick.engine_rank})</span>
+                            </div>
+                            {Object.keys(g.factor_deltas).length > 0 && (
+                              <div className="col-span-2 text-gray-400">
+                                Key deltas: {Object.entries(g.factor_deltas).map(([f, d]) => `${f}: ${d > 0 ? '+' : ''}${(d * 100).toFixed(0)}%`).join(', ')}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 </div>
-              ))}
-            </div>
-          </DiagSection>
+
+                {/* Editable rules */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-xs font-semibold text-gray-600">Proposed Rules ({editedRules.length})</p>
+                    <button onClick={handleAddRule} className="flex items-center gap-1 text-xs text-[#7FAEC2] hover:text-[#6A9BB0]">
+                      <Plus size={12} /> Add Rule
+                    </button>
+                  </div>
+                  <p className="text-xs text-gray-400 mb-2">{teachResult.explanation}</p>
+                  <div className="space-y-2">
+                    {editedRules.map((rule, idx) => (
+                      <div key={idx} className="border border-gray-200 rounded-lg p-3 bg-white">
+                        <div className="flex items-start gap-2">
+                          <div className="flex-1 space-y-2">
+                            <div className="flex gap-2">
+                              <select
+                                value={rule.rule_type}
+                                onChange={e => handleEditRule(idx, 'rule_type', e.target.value)}
+                                className="border border-gray-300 rounded px-2 py-1 text-xs"
+                              >
+                                {ruleTypeOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                              </select>
+                              <input
+                                value={rule.target_name}
+                                onChange={e => handleEditRule(idx, 'target_name', e.target.value)}
+                                className="flex-1 border border-gray-300 rounded px-2 py-1 text-xs"
+                                placeholder="Target product/brand name"
+                              />
+                            </div>
+                            <input
+                              value={rule.reason}
+                              onChange={e => handleEditRule(idx, 'reason', e.target.value)}
+                              className="w-full border border-gray-200 rounded px-2 py-1 text-xs text-gray-500"
+                              placeholder="Reason"
+                            />
+                          </div>
+                          <button onClick={() => handleDeleteRule(idx)} className="text-red-400 hover:text-red-600 p-1">
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                        {rule.affects_positions.length > 0 && (
+                          <p className="text-xs text-gray-400 mt-1">Affects position(s): {rule.affects_positions.join(', ')}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  <Button onClick={handleRefreshPreview} disabled={previewLoading} variant="outline" className="mt-2 text-xs">
+                    {previewLoading ? <RefreshCw size={12} className="animate-spin mr-1" /> : <RefreshCw size={12} className="mr-1" />}
+                    Refresh Preview
+                  </Button>
+                </div>
+
+                {/* Conflicts */}
+                {teachResult.conflicts.length > 0 && (
+                  <div>
+                    <p className="text-xs font-semibold text-orange-600 mb-2">Conflicts Detected ({teachResult.conflicts.length})</p>
+                    <div className="space-y-2">
+                      {teachResult.conflicts.map((c, i) => (
+                        <div key={i} className={`rounded-lg p-2 text-xs border ${
+                          c.type === 'contradiction' ? 'bg-red-50 border-red-200' :
+                          c.warning ? 'bg-amber-50 border-amber-200' :
+                          'bg-yellow-50 border-yellow-200'
+                        }`}>
+                          <div className="flex items-center gap-1">
+                            <AlertTriangle size={12} className={c.type === 'contradiction' ? 'text-red-500' : 'text-amber-500'} />
+                            <span className="font-medium capitalize">{c.type.replace(/_/g, ' ')}</span>
+                          </div>
+                          <p className="text-gray-600 mt-1">{c.message}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Preview */}
+                {teachResult.preview.candidates.length > 0 && (
+                  <div>
+                    <p className="text-xs font-semibold text-gray-600 mb-2">Preview — Projected Ranking</p>
+                    <div className="space-y-1">
+                      {teachResult.preview.candidates.slice(0, 10).map((c, i) => {
+                        const moved = c.new_rank < c.original_rank;
+                        const dropped = c.new_rank > c.original_rank;
+                        const isUserPick = Object.values(userPicks).includes(c.product_id);
+                        return (
+                          <div key={i} className={`flex items-center gap-2 px-3 py-2 rounded text-xs ${
+                            isUserPick ? 'bg-green-50 border border-green-200' : 'bg-gray-50'
+                          }`}>
+                            <span className="font-bold text-gray-400 w-6">#{c.new_rank}</span>
+                            {moved && <ArrowUp size={12} className="text-green-500" />}
+                            {dropped && <ArrowDown size={12} className="text-red-400" />}
+                            {!moved && !dropped && <span className="w-3" />}
+                            <span className="font-medium flex-1">{c.brand} {c.product_name}</span>
+                            <span className="text-gray-400">was #{c.original_rank}</span>
+                            <span className={`font-bold ${c.adjusted_score > c.original_score ? 'text-green-600' : c.adjusted_score < c.original_score ? 'text-red-600' : 'text-gray-600'}`}>
+                              {(c.adjusted_score * 100).toFixed(0)}%
+                            </span>
+                            {c.rules_applied.length > 0 && (
+                              <span className="text-xs text-blue-400">[{c.rules_applied.join(', ')}]</span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Apply / Cancel */}
+                <div className="flex items-center gap-3 pt-2 border-t border-gray-200">
+                  <Button
+                    onClick={handleApply}
+                    disabled={teachLoading || editedRules.length === 0}
+                    className="bg-green-600 hover:bg-green-700 text-white"
+                  >
+                    {teachLoading ? <RefreshCw size={14} className="animate-spin mr-2" /> : <Save size={14} className="mr-2" />}
+                    Apply {editedRules.length} Rule(s)
+                  </Button>
+                  <Button onClick={resetTeach} variant="outline" className="text-gray-500">Cancel</Button>
+                </div>
+              </div>
+            </DiagSection>
+          )}
+
+          {/* Teach mode: Applied confirmation */}
+          {appliedResult && teachStep === 'applied' && (
+            <DiagSection title="Teach — Rules Applied" open={true} color="text-green-700">
+              <div className="space-y-3">
+                <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle size={16} className="text-green-600" />
+                    <span className="text-sm font-semibold text-green-800">{lastSavedRuleIds.length} rule(s) saved</span>
+                  </div>
+                </div>
+
+                {/* Confirmed ranking */}
+                <div>
+                  <p className="text-xs font-semibold text-gray-600 mb-2">Confirmed Ranking (fresh diagnostic)</p>
+                  <div className="space-y-1">
+                    {appliedResult.confirmed_result.scoring.candidates?.slice(0, 10).map((c, i) => {
+                      const isUserPick = Object.values(userPicks).includes(c.product_id);
+                      const userPos = getPickPosition(c.product_id);
+                      const posMatch = userPos === i + 1;
+                      return (
+                        <div key={i} className={`flex items-center gap-2 px-3 py-2 rounded text-xs ${
+                          isUserPick && posMatch ? 'bg-green-50 border border-green-300' :
+                          isUserPick ? 'bg-yellow-50 border border-yellow-200' :
+                          'bg-gray-50'
+                        }`}>
+                          <span className="font-bold text-gray-400 w-6">#{i + 1}</span>
+                          {isUserPick && posMatch && <CheckCircle size={12} className="text-green-500" />}
+                          {isUserPick && !posMatch && <AlertTriangle size={12} className="text-amber-500" />}
+                          <span className="font-medium flex-1">{c.brand} {c.product_name}</span>
+                          <span className={`font-bold ${c.above_floor ? 'text-green-700' : 'text-red-600'}`}>
+                            {(c.scores.total * 100).toFixed(0)}%
+                          </span>
+                          {userPos && <span className="text-xs text-gray-400">(your #{userPos})</span>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 pt-2 border-t border-gray-200">
+                  <Button onClick={handleUndo} variant="outline" className="text-orange-600 border-orange-300">
+                    <Undo2 size={14} className="mr-1" /> Undo
+                  </Button>
+                  <Button onClick={resetTeach} variant="outline" className="text-gray-500">Done</Button>
+                </div>
+              </div>
+            </DiagSection>
+          )}
         </div>
       )}
     </div>
