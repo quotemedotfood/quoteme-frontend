@@ -669,7 +669,42 @@ export interface CatalogUploadResponse {
   id: string;
   item_count: number;
   message: string;
+  flagged_count?: number;
+  ai_classified_count?: number;
   column_info?: CatalogColumnInfo;
+}
+
+export interface FlaggedProduct {
+  id: string;
+  product_name: string;
+  brand: string;
+  pack_size: string;
+  category: string;
+  ai_confidence: string;
+  category_source: string;
+}
+
+export interface FlaggedProductsResponse {
+  catalog_id: string;
+  flagged_count: number;
+  products: FlaggedProduct[];
+}
+
+export async function getFlaggedProducts(catalogId: string): Promise<ApiResponse<FlaggedProductsResponse>> {
+  return fetchWithAuth(`/api/v1/catalogs/${catalogId}/flagged_products`);
+}
+
+export async function reviewCategories(catalogId: string, updates: { id: string; category: string }[]): Promise<ApiResponse<{ updated: number; remaining_flagged: number }>> {
+  return fetchWithAuth(`/api/v1/catalogs/${catalogId}/review_categories`, {
+    method: 'PATCH',
+    body: JSON.stringify({ updates }),
+  });
+}
+
+export async function approveAllCategories(catalogId: string): Promise<ApiResponse<{ approved: number }>> {
+  return fetchWithAuth(`/api/v1/catalogs/${catalogId}/approve_categories`, {
+    method: 'POST',
+  });
 }
 
 export async function getCatalogs(): Promise<ApiResponse<CatalogSummary[]>> {

@@ -10,6 +10,7 @@ import { useUser } from '../contexts/UserContext';
 import { useLocation2 } from '../contexts/LocationContext';
 import { useAuth } from '../contexts/AuthContext';
 import { UpgradeDrawer } from '../components/UpgradeDrawer';
+import { CategoryReviewPanel } from '../components/CategoryReviewPanel';
 import { createMenu, createGuestQuote, extractMenuText, getCatalogs, uploadCatalogFile, getRestaurants, getRestaurant, getStockQuotes, generateFromStockQuote, getDemoDistributor } from '../services/api';
 import type { CatalogSummary, RestaurantSummary, RestaurantDetail, StockQuoteResponse } from '../services/api';
 import { isDemoMode, isLiquorDemo, demoType } from '../utils/demoMode';
@@ -126,7 +127,7 @@ export function StartNewQuotePage() {
   const [catalogs, setCatalogs] = useState<CatalogSummary[]>([]);
   const [catalogLoading, setCatalogLoading] = useState(false);
   const [catalogUploading, setCatalogUploading] = useState(false);
-  const [catalogUploadResult, setCatalogUploadResult] = useState<{ message: string; isError: boolean } | null>(null);
+  const [catalogUploadResult, setCatalogUploadResult] = useState<{ message: string; isError: boolean; flaggedCount?: number; catalogId?: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isDraggingCatalog, setIsDraggingCatalog] = useState(false);
   const catalogFileInputRef = useRef<HTMLInputElement>(null);
@@ -135,6 +136,7 @@ export function StartNewQuotePage() {
   const [catalogUploadExpanded, setCatalogUploadExpanded] = useState(
     !!(location.state as any)?.expandCatalog
   );
+  const [showCategoryReview, setShowCategoryReview] = useState(false);
 
   // Stock quotes
   const [stockQuotes, setStockQuotes] = useState<StockQuoteResponse[]>([]);
@@ -357,7 +359,12 @@ export function StartNewQuotePage() {
     if (res.error) {
       setCatalogUploadResult({ message: res.error, isError: true });
     } else if (res.data) {
-      setCatalogUploadResult({ message: res.data.message, isError: false });
+      setCatalogUploadResult({
+        message: res.data.message,
+        isError: false,
+        flaggedCount: res.data.flagged_count,
+        catalogId: res.data.id
+      });
       if (!isGuest) {
         const listRes = await getCatalogs();
         if (listRes.data) setCatalogs(listRes.data);
@@ -1256,12 +1263,54 @@ export function StartNewQuotePage() {
                 {catalogUploadResult.message}
               </div>
             )}
+            {catalogUploadResult && !catalogUploadResult.isError && (catalogUploadResult.flaggedCount ?? 0) > 0 && (
+              <div className="mt-2 p-3 rounded-lg text-sm bg-amber-50 text-amber-800 border border-amber-200 flex items-center justify-between">
+                <span>{catalogUploadResult.flaggedCount} product{catalogUploadResult.flaggedCount === 1 ? '' : 's'} need category review</span>
+                <button
+                  onClick={() => catalogUploadResult.catalogId && setShowCategoryReview(true)}
+                  className="text-xs font-medium px-3 py-1 bg-amber-100 hover:bg-amber-200 rounded transition-colors"
+                >
+                  Review
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
       </div>
 
       {/* ── Drawers ── */}
+
+      {/* Category Review Drawer */}
+      {showCategoryReview && catalogUploadResult?.catalogId && (
+        <>
+          <div className="fixed inset-0 bg-black/50 z-40" onClick={() => setShowCategoryReview(false)} />
+          <div className="fixed right-0 top-0 h-full w-full sm:w-[560px] bg-white shadow-xl z-50 overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center">
+              <h2 className="text-lg text-[#2A2A2A]">Review Product Categories</h2>
+              <button onClick={() => setShowCategoryReview(false)} className="text-gray-400 hover:text-gray-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6">
+              <p className="text-sm text-gray-500 mb-4">
+                These products were auto-classified but the AI wasn't confident. Review and fix any incorrect categories.
+              </p>
+              <CategoryReviewPanel
+                catalogId={catalogUploadResult.catalogId}
+                onDone={(remaining) => {
+                  setShowCategoryReview(false);
+                  if (remaining === 0) {
+                    setCatalogUploadResult(prev => prev ? { ...prev, flaggedCount: 0 } : null);
+                  } else {
+                    setCatalogUploadResult(prev => prev ? { ...prev, flaggedCount: remaining } : null);
+                  }
+                }}
+              />
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Add Restaurant Drawer */}
       {isAddRestaurantOpen && (
