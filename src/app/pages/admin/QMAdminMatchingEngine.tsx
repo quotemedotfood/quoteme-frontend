@@ -43,9 +43,17 @@ import {
   type TeachConflict,
   type TeachApplyResult,
   type TeachExistingRule,
+  getDiagnosticsCatalogs as getAdminCatalogs,
+  getAdminCatalogStats,
+  getAdminCatalogProducts,
+  adminReclassifyOthers,
+  adminBulkUpdateCategory,
+  type DiagnosticCatalog,
+  type AdminCatalogStats,
+  type AdminCatalogProductsResponse,
 } from '../../services/adminApi';
 
-type Tab = 'rules' | 'training' | 'concepts' | 'changelog' | 'diagnose';
+type Tab = 'rules' | 'training' | 'concepts' | 'changelog' | 'diagnose' | 'catalogs';
 
 function toTitleCase(str: string) {
   return str.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
@@ -1627,6 +1635,341 @@ function DiagnoseTab() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
+// Catalogs Tab — Admin catalog classification
+// ═══════════════════════════════════════════════════════════════════════
+
+const ADMIN_CATEGORIES = [
+  'cheese', 'protein', 'dry_goods', 'dairy', 'produce', 'oils_condiments',
+  'spice', 'beverage_bar', 'prepared', 'tomatoes', 'seafood', 'meat',
+  'poultry', 'bakery', 'frozen', 'sauce', 'charcuterie', 'other',
+];
+
+const CAT_COLORS: Record<string, string> = {
+  protein: 'bg-red-100 text-red-700', seafood: 'bg-blue-100 text-blue-700',
+  cheese: 'bg-yellow-100 text-yellow-700', dairy: 'bg-yellow-50 text-yellow-600',
+  produce: 'bg-green-100 text-green-700', dry_goods: 'bg-amber-100 text-amber-700',
+  oils_condiments: 'bg-orange-100 text-orange-700', spice: 'bg-rose-100 text-rose-700',
+  beverage_bar: 'bg-purple-100 text-purple-700', bakery: 'bg-pink-100 text-pink-700',
+  prepared: 'bg-teal-100 text-teal-700', tomatoes: 'bg-red-50 text-red-600',
+  sauce: 'bg-orange-50 text-orange-600', frozen: 'bg-cyan-100 text-cyan-700',
+  meat: 'bg-red-100 text-red-700', poultry: 'bg-red-50 text-red-600',
+  charcuterie: 'bg-rose-100 text-rose-800', other: 'bg-gray-100 text-gray-500',
+};
+
+function CatalogsTab() {
+  const [catalogs, setCatalogs] = useState<DiagnosticCatalog[]>([]);
+  const [selectedCatalogId, setSelectedCatalogId] = useState('');
+  const [stats, setStats] = useState<AdminCatalogStats | null>(null);
+  const [products, setProducts] = useState<AdminCatalogProductsResponse | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [filterCat, setFilterCat] = useState('');
+  const [searchInput, setSearchInput] = useState('');
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkCat, setBulkCat] = useState('');
+  const [bulkSaving, setBulkSaving] = useState(false);
+  const [reclassifying, setReclassifying] = useState(false);
+  const [newCatName, setNewCatName] = useState('');
+  const [showNewCat, setShowNewCat] = useState(false);
+
+  useEffect(() => {
+    getAdminCatalogs().then(res => {
+      if (res.data?.catalogs) setCatalogs(res.data.catalogs);
+    });
+  }, []);
+
+  const loadStats = async (catId: string) => {
+    setLoading(true);
+    const res = await getAdminCatalogStats(catId);
+    if (res.data) setStats(res.data);
+    setLoading(false);
+  };
+
+  const loadProducts = async () => {
+    if (!selectedCatalogId) return;
+    const res = await getAdminCatalogProducts(selectedCatalogId, page, 50, {
+      category: filterCat || undefined,
+      search: search || undefined,
+    });
+    if (res.data) setProducts(res.data);
+  };
+
+  useEffect(() => {
+    if (selectedCatalogId) {
+      loadStats(selectedCatalogId);
+      setPage(1);
+      setFilterCat('');
+      setSearch('');
+      setSearchInput('');
+      setSelected(new Set());
+    }
+  }, [selectedCatalogId]);
+
+  useEffect(() => { loadProducts(); }, [selectedCatalogId, page, filterCat, search]);
+  useEffect(() => { setSelected(new Set()); }, [page, filterCat, search]);
+
+  // Poll during reclassification
+  useEffect(() => {
+    if (!reclassifying || !selectedCatalogId) return;
+    const interval = setInterval(async () => {
+      const res = await getAdminCatalogStats(selectedCatalogId);
+      if (res.data) {
+        setStats(res.data);
+        if (res.data.classification_status === 'complete') {
+          clearInterval(interval);
+          setReclassifying(false);
+          loadProducts();
+        }
+      }
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [reclassifying, selectedCatalogId]);
+
+  const allCats = () => {
+    const s = new Set(ADMIN_CATEGORIES);
+    if (stats?.by_category) Object.keys(stats.by_category).forEach(c => s.add(c));
+    return Array.from(s);
+  };
+
+  const handleReclassify = async () => {
+    setReclassifying(true);
+    await adminReclassifyOthers(selectedCatalogId);
+  };
+
+  const handleBulkAssign = async () => {
+    if (!bulkCat || selected.size === 0) return;
+    setBulkSaving(true);
+    await adminBulkUpdateCategory(selectedCatalogId, Array.from(selected), bulkCat);
+    setSelected(new Set());
+    setBulkCat('');
+    setBulkSaving(false);
+    await loadStats(selectedCatalogId);
+    loadProducts();
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelected(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  };
+
+  const toggleAll = () => {
+    if (!products) return;
+    const ids = products.products.map(p => p.id);
+    const all = ids.every(id => selected.has(id));
+    setSelected(prev => { const n = new Set(prev); ids.forEach(id => all ? n.delete(id) : n.add(id)); return n; });
+  };
+
+  const sortedCats = stats?.by_category
+    ? Object.entries(stats.by_category).sort((a, b) => a[0] === 'other' ? 1 : b[0] === 'other' ? -1 : b[1] - a[1])
+    : [];
+
+  const otherCount = stats?.by_category?.other || 0;
+  const pageIds = products?.products.map(p => p.id) || [];
+  const allSel = pageIds.length > 0 && pageIds.every(id => selected.has(id));
+  const someSel = pageIds.some(id => selected.has(id));
+
+  return (
+    <div>
+      {/* Catalog selector */}
+      <div className="mb-6">
+        <label className="text-xs text-gray-500 block mb-1">Select Catalog</label>
+        <select
+          value={selectedCatalogId}
+          onChange={e => setSelectedCatalogId(e.target.value)}
+          className="text-sm border border-gray-300 rounded-lg px-3 py-2 w-full max-w-md focus:outline-none focus:ring-2 focus:ring-[#A5CFDD]"
+        >
+          <option value="">Choose a catalog...</option>
+          {catalogs.map(c => (
+            <option key={c.id} value={c.id}>
+              {c.distributor_name} — {c.product_count} products {c.is_demo ? '(demo)' : ''}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {loading && <div className="flex justify-center py-10"><Loader2 className="w-5 h-5 animate-spin text-gray-400" /></div>}
+
+      {stats && !loading && (
+        <>
+          {/* Classification banner */}
+          {(stats.classification_status === 'classifying' || reclassifying) && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4 flex items-center gap-3">
+              <Loader2 className="w-5 h-5 animate-spin text-blue-500 shrink-0" />
+              <p className="text-sm font-medium text-blue-800">
+                Classifying... {stats.classification_progress} / {stats.classification_total}
+              </p>
+            </div>
+          )}
+
+          {/* Stats + category chips */}
+          <div className="bg-white rounded-xl border border-gray-200 p-5 mb-4">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-sm font-semibold text-[#2A2A2A]">
+                {stats.distributor_name} — {stats.total_products.toLocaleString()} products
+              </p>
+              {filterCat && (
+                <button onClick={() => { setFilterCat(''); setPage(1); }} className="text-xs text-[#A5CFDD] hover:underline flex items-center gap-1">
+                  <X className="w-3 h-3" /> Clear filter
+                </button>
+              )}
+            </div>
+
+            {/* Bar */}
+            <div className="flex h-6 rounded-lg overflow-hidden mb-3">
+              {sortedCats.map(([cat, count]) => {
+                const pct = (count / stats.total_products) * 100;
+                if (pct < 0.5) return null;
+                const bg = (CAT_COLORS[cat] || 'bg-indigo-100 text-indigo-700').split(' ')[0];
+                return (
+                  <div key={cat} className={`${bg} cursor-pointer hover:opacity-80 relative`} style={{ width: `${pct}%` }}
+                    onClick={() => { setFilterCat(cat === filterCat ? '' : cat); setPage(1); }}
+                    title={`${toTitleCase(cat)}: ${count}`}>
+                    {pct > 8 && <span className="absolute inset-0 flex items-center justify-center text-[9px] font-medium truncate px-1">{toTitleCase(cat)}</span>}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Chips */}
+            <div className="flex flex-wrap gap-1.5">
+              {sortedCats.map(([cat, count]) => {
+                const colors = CAT_COLORS[cat] || 'bg-indigo-100 text-indigo-700';
+                return (
+                  <button key={cat} onClick={() => { setFilterCat(cat === filterCat ? '' : cat); setPage(1); }}
+                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium ${colors} ${filterCat === cat ? 'ring-2 ring-[#A5CFDD] ring-offset-1' : 'hover:opacity-80'}`}>
+                    {toTitleCase(cat)} <span className="font-bold">{count}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Reclassify */}
+            {otherCount > 0 && !reclassifying && stats.classification_status !== 'classifying' && (
+              <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between">
+                <span className="text-sm text-gray-500"><span className="font-medium text-[#2A2A2A]">{otherCount}</span> "other"</span>
+                <Button onClick={handleReclassify} className="bg-[#A5CFDD] hover:bg-[#7FAEC2] text-white text-xs h-8">
+                  <RefreshCw className="w-3.5 h-3.5 mr-1" /> Reclassify Others
+                </Button>
+              </div>
+            )}
+          </div>
+
+          {/* Bulk bar */}
+          {selected.size > 0 && (
+            <div className="bg-[#2A2A2A] text-white rounded-xl p-3 mb-4 flex items-center justify-between gap-3 shadow-lg sticky top-4 z-10">
+              <div className="flex items-center gap-2 text-sm">
+                <span className="font-medium">{selected.size} selected</span>
+                <button onClick={() => setSelected(new Set())} className="text-xs text-gray-400 hover:text-white underline">Clear</button>
+              </div>
+              <div className="flex items-center gap-2">
+                <select value={bulkCat} onChange={e => {
+                  if (e.target.value === '__new__') setShowNewCat(true);
+                  else setBulkCat(e.target.value);
+                }} className="text-xs bg-white/10 border border-white/20 rounded px-2 py-1.5 text-white">
+                  <option value="">Category...</option>
+                  {allCats().map(c => <option key={c} value={c}>{toTitleCase(c)}</option>)}
+                  <option value="__new__">+ New Category</option>
+                </select>
+                <Button onClick={handleBulkAssign} disabled={bulkSaving || !bulkCat} className="bg-[#A5CFDD] hover:bg-[#7FAEC2] text-white text-xs h-8">
+                  {bulkSaving ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Check className="w-3.5 h-3.5 mr-1" />} Apply
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* New category modal */}
+          {showNewCat && (
+            <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+              <div className="bg-white rounded-xl p-6 w-72 shadow-xl">
+                <h3 className="text-sm font-semibold text-[#2A2A2A] mb-3">New Category</h3>
+                <input type="text" value={newCatName} onChange={e => setNewCatName(e.target.value)}
+                  placeholder="e.g. Charcuterie" autoFocus
+                  onKeyDown={e => { if (e.key === 'Enter' && newCatName.trim()) { setBulkCat(newCatName.trim().toLowerCase().replace(/\s+/g, '_')); setNewCatName(''); setShowNewCat(false); }}}
+                  className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 mb-3 focus:outline-none focus:ring-2 focus:ring-[#A5CFDD]" />
+                <div className="flex gap-2 justify-end">
+                  <Button variant="outline" onClick={() => { setShowNewCat(false); setNewCatName(''); }} className="text-xs h-8">Cancel</Button>
+                  <Button onClick={() => { setBulkCat(newCatName.trim().toLowerCase().replace(/\s+/g, '_')); setNewCatName(''); setShowNewCat(false); }}
+                    disabled={!newCatName.trim()} className="bg-[#A5CFDD] hover:bg-[#7FAEC2] text-white text-xs h-8">Create</Button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Product table */}
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+            <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between gap-3">
+              <span className="text-xs font-semibold text-[#2A2A2A]">
+                {filterCat ? toTitleCase(filterCat) : 'All Products'} ({products?.total || 0})
+              </span>
+              <div className="flex items-center gap-2 flex-1 max-w-xs">
+                <div className="relative flex-1">
+                  <input type="text" value={searchInput} onChange={e => setSearchInput(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') { setSearch(searchInput.trim()); setPage(1); }}}
+                    placeholder="Search..." className="w-full text-xs border border-gray-200 rounded-lg pl-7 pr-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#A5CFDD]" />
+                  <Search className="w-3 h-3 text-gray-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                </div>
+                {search && <button onClick={() => { setSearchInput(''); setSearch(''); setPage(1); }}><X className="w-3.5 h-3.5 text-gray-400" /></button>}
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="bg-gray-50 text-left text-[10px] text-gray-500 uppercase tracking-wider">
+                    <th className="px-3 py-2 w-8">
+                      <input type="checkbox" checked={allSel}
+                        ref={el => { if (el) el.indeterminate = someSel && !allSel; }}
+                        onChange={toggleAll} className="rounded border-gray-300 text-[#A5CFDD]" />
+                    </th>
+                    <th className="px-3 py-2">Product</th>
+                    <th className="px-3 py-2">Brand</th>
+                    <th className="px-3 py-2">Pack</th>
+                    <th className="px-3 py-2">Category</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {products?.products.map(p => (
+                    <tr key={p.id} className={`hover:bg-gray-50/50 ${selected.has(p.id) ? 'bg-blue-50/30' : ''}`}>
+                      <td className="px-3 py-2">
+                        <input type="checkbox" checked={selected.has(p.id)} onChange={() => toggleSelect(p.id)}
+                          className="rounded border-gray-300 text-[#A5CFDD]" />
+                      </td>
+                      <td className="px-3 py-2 text-[#2A2A2A] font-medium">{p.product_name}</td>
+                      <td className="px-3 py-2 text-gray-500">{p.brand || '—'}</td>
+                      <td className="px-3 py-2 text-gray-500">{p.pack_size || '—'}</td>
+                      <td className="px-3 py-2">
+                        <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-medium ${CAT_COLORS[p.category] || 'bg-indigo-100 text-indigo-700'}`}>
+                          {toTitleCase(p.category)}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                  {(!products?.products || products.products.length === 0) && (
+                    <tr><td colSpan={5} className="px-3 py-6 text-center text-gray-400">No products</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {products && products.total_pages > 1 && (
+              <div className="px-4 py-2 border-t border-gray-100 flex items-center justify-between">
+                <span className="text-[10px] text-gray-400">Page {products.page}/{products.total_pages}</span>
+                <div className="flex gap-1">
+                  <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1}
+                    className="px-2 py-1 rounded border border-gray-200 text-xs disabled:opacity-40 hover:bg-gray-50">Prev</button>
+                  <button onClick={() => setPage(p => Math.min(products.total_pages, p + 1))} disabled={page >= products.total_pages}
+                    className="px-2 py-1 rounded border border-gray-200 text-xs disabled:opacity-40 hover:bg-gray-50">Next</button>
+                </div>
+              </div>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════
 // Main page
 // ═══════════════════════════════════════════════════════════════════════
 export function QMAdminMatchingEngine() {
@@ -1655,6 +1998,7 @@ export function QMAdminMatchingEngine() {
     { key: 'concepts', label: 'Menu Concepts' },
     { key: 'changelog', label: 'Change Log' },
     ...(diagnosticsAvailable ? [{ key: 'diagnose' as Tab, label: 'Diagnose' }] : []),
+    { key: 'catalogs' as Tab, label: 'Catalogs' },
   ];
 
   return (
@@ -1685,6 +2029,7 @@ export function QMAdminMatchingEngine() {
       {tab === 'concepts' && <ConceptsTab />}
       {tab === 'changelog' && <ChangeLogTab />}
       {tab === 'diagnose' && <DiagnoseTab />}
+      {tab === 'catalogs' && <CatalogsTab />}
     </div>
   );
 }

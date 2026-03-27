@@ -990,3 +990,60 @@ export async function runDiagnostic(
   if (category) qs.set('category', category);
   return fetchWithAuth(`/api/v1/admin/matching-engine/diagnose?${qs}`);
 }
+
+// ============= ADMIN CATALOG CLASSIFICATION =============
+
+export interface AdminCatalogStats {
+  id: string;
+  distributor_name: string;
+  total_products: number;
+  by_category: Record<string, number>;
+  classification_status: string;
+  classification_progress: number;
+  classification_total: number;
+}
+
+export interface AdminCatalogProduct {
+  id: string;
+  item_number: string;
+  brand: string;
+  product_name: string;
+  pack_size: string;
+  category: string;
+  category_source: string;
+}
+
+export interface AdminCatalogProductsResponse {
+  page: number;
+  per_page: number;
+  total: number;
+  total_pages: number;
+  products: AdminCatalogProduct[];
+}
+
+export async function getAdminCatalogStats(catalogId: string): Promise<ApiResponse<AdminCatalogStats>> {
+  return fetchWithAuth(`/api/v1/admin/matching-engine/catalog-stats?catalog_id=${catalogId}`);
+}
+
+export async function getAdminCatalogProducts(
+  catalogId: string, page = 1, perPage = 50, opts?: { category?: string; search?: string }
+): Promise<ApiResponse<AdminCatalogProductsResponse>> {
+  const params = new URLSearchParams({ catalog_id: catalogId, page: String(page), per_page: String(perPage) });
+  if (opts?.category) params.set('category', opts.category);
+  if (opts?.search) params.set('search', opts.search);
+  return fetchWithAuth(`/api/v1/admin/matching-engine/catalog-products?${params}`);
+}
+
+export async function adminReclassifyOthers(catalogId: string): Promise<ApiResponse<{ message: string; other_count: number }>> {
+  return fetchWithAuth('/api/v1/admin/matching-engine/catalog-reclassify', {
+    method: 'POST',
+    body: JSON.stringify({ catalog_id: catalogId }),
+  });
+}
+
+export async function adminBulkUpdateCategory(catalogId: string, productIds: string[], category: string): Promise<ApiResponse<{ updated: number; category: string }>> {
+  return fetchWithAuth('/api/v1/admin/matching-engine/catalog-bulk-update', {
+    method: 'PATCH',
+    body: JSON.stringify({ catalog_id: catalogId, product_ids: productIds, category }),
+  });
+}
