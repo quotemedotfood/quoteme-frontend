@@ -33,6 +33,7 @@ interface ProductItem {
   currentPrice: number;
   percentChange: number;
   unmatched?: boolean;
+  chefNote?: string | null;
 }
 
 function toTitleCase(str: string): string {
@@ -112,6 +113,7 @@ export function QuoteBuilderPage() {
             currentPrice: priceDollars,
             percentChange: 0,
             unmatched: isUnmatched,
+            chefNote: line.chef_note,
           });
         }
         setItems(productItems);
@@ -472,8 +474,10 @@ export function QuoteBuilderPage() {
                 {/* Header: Ingredient name */}
                 <h3 className="text-base font-semibold text-[#2A2A2A] mb-1">{toTitleCase(item.component)}</h3>
                 {/* Body: Product + brand */}
-                <p className={`text-sm mb-1 ${item.unmatched ? 'text-red-400 italic' : 'text-gray-500'}`}>
-                  {item.unmatched ? 'No catalog match' : formatProductName(item.product, item.brand)}
+                <p className={`text-sm mb-1 ${item.unmatched ? (item.chefNote?.includes('Category not carried') ? 'text-amber-600 italic' : 'text-red-400 italic') : 'text-gray-500'}`}>
+                  {item.unmatched
+                    ? (item.chefNote?.includes('Category not carried') ? 'Category not carried' : 'No catalog match')
+                    : formatProductName(item.product, item.brand)}
                 </p>
 
                 <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-gray-600 mt-2 mb-3">
@@ -634,7 +638,11 @@ export function QuoteBuilderPage() {
                     <td className="px-4 py-3 text-sm text-[#2A2A2A]">{toTitleCase(item.component)}</td>
                     <td className="px-4 py-3 text-sm text-[#2A2A2A]">{item.sku}</td>
                     <td className="px-4 py-3 text-sm text-[#2A2A2A]">{toTitleCase(item.brand)}</td>
-                    <td className={`px-4 py-3 text-sm ${item.unmatched ? 'text-red-400 italic' : 'text-[#2A2A2A]'}`}>{toTitleCase(item.product)}</td>
+                    <td className={`px-4 py-3 text-sm ${item.unmatched ? (item.chefNote?.includes('Category not carried') ? 'text-amber-600 italic' : 'text-red-400 italic') : 'text-[#2A2A2A]'}`}>
+                      {item.unmatched && item.chefNote?.includes('Category not carried')
+                        ? 'Category not carried'
+                        : toTitleCase(item.product)}
+                    </td>
                     <td className="px-4 py-3 text-sm text-gray-500">{item.pack}</td>
                     <td className="px-4 py-3 text-sm text-gray-500">{toTitleCase(item.category)}</td>
                     {editMode && (

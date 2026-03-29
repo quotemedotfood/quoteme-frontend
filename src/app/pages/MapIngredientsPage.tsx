@@ -415,7 +415,11 @@ export function MapIngredientsPage() {
             </div>
           ) : (
             <div className="text-xs">
-              <span className="italic text-gray-400">No match found</span>
+              {line?.chef_note?.includes('Category not carried') ? (
+                <span className="italic text-amber-600">Category not carried</span>
+              ) : (
+                <span className="italic text-gray-400">No match found</span>
+              )}
               {badge && (
                 <span className={`mt-1 inline-block rounded px-2 py-0.5 text-xs font-medium ${badge.cls}`}>
                   {badge.text}
