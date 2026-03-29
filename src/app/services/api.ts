@@ -1528,3 +1528,47 @@ export async function updateOnboardingDoc(id: string, data: FormData): Promise<A
 export async function deleteOnboardingDoc(id: string): Promise<ApiResponse<{ status: string }>> {
   return fetchWithAuth(`/api/v1/distributor_admin/onboarding_docs/${id}`, { method: 'DELETE' });
 }
+
+// ============= CATEGORY EXCLUSIONS =============
+
+export interface CategoryEntry {
+  key: string;
+  label: string;
+  product_count: number;
+}
+
+export interface CategoryExclusionsResponse {
+  excluded_categories: string[];
+  available_categories: CategoryEntry[];
+}
+
+// Distributor admin category exclusions
+export async function getDistributorCategoryExclusions(): Promise<ApiResponse<CategoryExclusionsResponse>> {
+  return fetchWithAuth('/api/v1/distributor_admin/category_exclusions');
+}
+
+export async function updateDistributorCategoryExclusions(
+  excludedCategories: string[]
+): Promise<ApiResponse<CategoryExclusionsResponse>> {
+  return fetchWithAuth('/api/v1/distributor_admin/category_exclusions', {
+    method: 'PATCH',
+    body: JSON.stringify({ excluded_categories: excludedCategories }),
+  });
+}
+
+// QM admin category exclusions (per distributor)
+export async function getAdminCategoryExclusions(
+  distributorId: string
+): Promise<ApiResponse<CategoryExclusionsResponse>> {
+  return fetchWithAuth(`/api/v1/admin/distributors/${distributorId}/category_exclusions`);
+}
+
+export async function updateAdminCategoryExclusions(
+  distributorId: string,
+  excludedCategories: string[]
+): Promise<ApiResponse<CategoryExclusionsResponse>> {
+  return fetchWithAuth(`/api/v1/admin/distributors/${distributorId}/category_exclusions`, {
+    method: 'PATCH',
+    body: JSON.stringify({ excluded_categories: excludedCategories }),
+  });
+}
