@@ -255,7 +255,7 @@ export function QMAdminDistributors() {
                           onClick={() => loadExclusions(d.id)}
                           className="text-xs px-2 py-1 border border-gray-300 rounded hover:bg-gray-50"
                         >
-                          Categories
+                          Excluded Categories
                         </button>
                         {d.admin_user_id ? (
                           <Button
