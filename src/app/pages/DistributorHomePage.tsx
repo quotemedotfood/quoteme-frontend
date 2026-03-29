@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router';
 import { Button } from '../components/ui/button';
 import { Upload, FileText, Loader2 } from 'lucide-react';
@@ -6,6 +6,12 @@ import { useAuth } from '../contexts/AuthContext';
 import { getDistributorHome } from '../services/api';
 import type { DistributorHomeData } from '../services/api';
 import { CatalogUploadDrawer } from '../components/CatalogUploadDrawer';
+import CategoryExclusionDrawer from '../components/CategoryExclusionDrawer';
+import {
+  getDistributorCategoryExclusions,
+  updateDistributorCategoryExclusions,
+  CategoryExclusionsResponse,
+} from '../services/api';
 
 export function DistributorHomePage() {
   const navigate = useNavigate();
@@ -13,6 +19,9 @@ export function DistributorHomePage() {
   const [homeData, setHomeData] = useState<DistributorHomeData | null>(null);
   const [loading, setLoading] = useState(true);
   const [catalogDrawerOpen, setCatalogDrawerOpen] = useState(false);
+  const [exclusionDrawerOpen, setExclusionDrawerOpen] = useState(false);
+  const [exclusionData, setExclusionData] = useState<CategoryExclusionsResponse | null>(null);
+  const [exclusionLoading, setExclusionLoading] = useState(false);
 
   const firstName = user?.first_name || '';
 
@@ -35,6 +44,19 @@ export function DistributorHomePage() {
   }
 
   useEffect(() => { loadHome(); }, []);
+
+  const loadExclusions = useCallback(async () => {
+    setExclusionLoading(true);
+    setExclusionDrawerOpen(true);
+    const res = await getDistributorCategoryExclusions();
+    if (res.data) setExclusionData(res.data);
+    setExclusionLoading(false);
+  }, []);
+
+  const saveExclusions = useCallback(async (excluded: string[]) => {
+    const res = await updateDistributorCategoryExclusions(excluded);
+    if (res.data) setExclusionData(res.data);
+  }, []);
 
   const hasCatalog = homeData?.has_catalog ?? false;
 
@@ -81,6 +103,19 @@ export function DistributorHomePage() {
               >
                 {hasCatalog ? 'Update Catalog' : 'Upload Catalog'}
               </Button>
+              {hasCatalog && (
+                <button
+                  onClick={loadExclusions}
+                  className="mt-2 w-full px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 text-gray-700"
+                >
+                  Excluded Categories
+                  {exclusionData && exclusionData.excluded_categories.length > 0 && (
+                    <span className="ml-2 bg-red-100 text-red-700 text-xs px-2 py-0.5 rounded-full">
+                      {exclusionData.excluded_categories.length}
+                    </span>
+                  )}
+                </button>
+              )}
             </div>
 
             {/* Create Quote */}
@@ -144,6 +179,15 @@ export function DistributorHomePage() {
         open={catalogDrawerOpen}
         onOpenChange={setCatalogDrawerOpen}
         onUploadComplete={() => loadHome()}
+      />
+
+      <CategoryExclusionDrawer
+        isOpen={exclusionDrawerOpen}
+        onClose={() => setExclusionDrawerOpen(false)}
+        excludedCategories={exclusionData?.excluded_categories || []}
+        availableCategories={exclusionData?.available_categories || []}
+        onSave={saveExclusions}
+        loading={exclusionLoading}
       />
     </div>
   );

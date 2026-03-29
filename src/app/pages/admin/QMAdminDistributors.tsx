@@ -1,6 +1,6 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Link } from 'react-router';
-import { Search, Plus, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { Search, Plus, ArrowUpDown, ArrowUp, ArrowDown, UserCheck } from 'lucide-react';
 import { Input } from '../../components/ui/input';
 import { Button } from '../../components/ui/button';
 import {
@@ -12,7 +12,12 @@ import {
   TableCell,
 } from '../../components/ui/table';
 import { getAdminDistributors, createDistributor, impersonateUser, AdminDistributor } from '../../services/adminApi';
-import { UserCheck } from 'lucide-react';
+import CategoryExclusionDrawer from '../../components/CategoryExclusionDrawer';
+import {
+  getAdminCategoryExclusions,
+  updateAdminCategoryExclusions,
+  CategoryExclusionsResponse,
+} from '../../services/api';
 
 type SortField = 'name' | 'region' | 'status' | 'rep_count' | 'product_count' | 'created_at';
 type SortDir = 'asc' | 'desc';
@@ -30,6 +35,10 @@ export function QMAdminDistributors() {
   const [newRegion, setNewRegion] = useState('');
   const [creating, setCreating] = useState(false);
   const [impersonating, setImpersonating] = useState<string | null>(null);
+  const [exclusionDrawerOpen, setExclusionDrawerOpen] = useState(false);
+  const [exclusionDistributorId, setExclusionDistributorId] = useState<string | null>(null);
+  const [exclusionData, setExclusionData] = useState<CategoryExclusionsResponse | null>(null);
+  const [exclusionLoading, setExclusionLoading] = useState(false);
 
   async function handleImpersonate(userId: string, userName: string) {
     setImpersonating(userId);
@@ -44,6 +53,21 @@ export function QMAdminDistributors() {
       setImpersonating(null);
     }
   }
+
+  const loadExclusions = useCallback(async (distributorId: string) => {
+    setExclusionDistributorId(distributorId);
+    setExclusionLoading(true);
+    setExclusionDrawerOpen(true);
+    const res = await getAdminCategoryExclusions(distributorId);
+    if (res.data) setExclusionData(res.data);
+    setExclusionLoading(false);
+  }, []);
+
+  const saveExclusions = useCallback(async (excluded: string[]) => {
+    if (!exclusionDistributorId) return;
+    const res = await updateAdminCategoryExclusions(exclusionDistributorId, excluded);
+    if (res.data) setExclusionData(res.data);
+  }, [exclusionDistributorId]);
 
   useEffect(() => {
     loadDistributors();
@@ -226,20 +250,28 @@ export function QMAdminDistributors() {
                     </TableCell>
                     <TableCell className="text-sm text-gray-500">{formatDate(d.created_at)}</TableCell>
                     <TableCell className="text-right">
-                      {d.admin_user_id ? (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-xs text-[#7FAEC2] hover:text-[#6A9AB0]"
-                          disabled={impersonating === d.admin_user_id}
-                          onClick={() => handleImpersonate(d.admin_user_id!, d.admin_user_name || d.name)}
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => loadExclusions(d.id)}
+                          className="text-xs px-2 py-1 border border-gray-300 rounded hover:bg-gray-50"
                         >
-                          <UserCheck size={14} className="mr-1" />
-                          {impersonating === d.admin_user_id ? 'Switching...' : 'Impersonate'}
-                        </Button>
-                      ) : (
-                        <span className="text-xs text-gray-400">No user</span>
-                      )}
+                          Categories
+                        </button>
+                        {d.admin_user_id ? (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-xs text-[#7FAEC2] hover:text-[#6A9AB0]"
+                            disabled={impersonating === d.admin_user_id}
+                            onClick={() => handleImpersonate(d.admin_user_id!, d.admin_user_name || d.name)}
+                          >
+                            <UserCheck size={14} className="mr-1" />
+                            {impersonating === d.admin_user_id ? 'Switching...' : 'Impersonate'}
+                          </Button>
+                        ) : (
+                          <span className="text-xs text-gray-400">No user</span>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -248,6 +280,15 @@ export function QMAdminDistributors() {
           </div>
         </div>
       )}
+
+      <CategoryExclusionDrawer
+        isOpen={exclusionDrawerOpen}
+        onClose={() => { setExclusionDrawerOpen(false); setExclusionDistributorId(null); }}
+        excludedCategories={exclusionData?.excluded_categories || []}
+        availableCategories={exclusionData?.available_categories || []}
+        onSave={saveExclusions}
+        loading={exclusionLoading}
+      />
     </div>
   );
 }
