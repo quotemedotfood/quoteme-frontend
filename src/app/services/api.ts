@@ -1572,3 +1572,52 @@ export async function updateAdminCategoryExclusions(
     body: JSON.stringify({ excluded_categories: excludedCategories }),
   });
 }
+
+// ============= SUBCATEGORY EXCLUSIONS =============
+
+export interface SubcategoryEntry {
+  id: string;
+  key: string;
+  label: string;
+  product_count: number;
+  status: 'included' | 'suggested' | 'excluded';
+  suggested_at: string | null;
+}
+
+export interface SubcategoryCategoryGroup {
+  key: string;
+  label: string;
+  total_product_count: number;
+  subcategories: SubcategoryEntry[];
+}
+
+export interface SubcategoryExclusionsResponse {
+  categories: SubcategoryCategoryGroup[];
+}
+
+export async function getDistributorSubcategoryExclusions(): Promise<ApiResponse<SubcategoryExclusionsResponse>> {
+  return fetchWithAuth('/api/v1/distributor_admin/subcategory_exclusions');
+}
+
+export async function updateDistributorSubcategoryExclusions(
+  actions: { confirm?: string[]; exclude?: string[]; include?: string[]; confirm_all?: boolean }
+): Promise<ApiResponse<SubcategoryExclusionsResponse>> {
+  return fetchWithAuth('/api/v1/distributor_admin/subcategory_exclusions', {
+    method: 'PATCH',
+    body: JSON.stringify(actions),
+  });
+}
+
+export async function getAdminSubcategoryExclusions(distributorId: string): Promise<ApiResponse<SubcategoryExclusionsResponse>> {
+  return fetchWithAuth(`/api/v1/admin/distributors/${distributorId}/subcategory_exclusions`);
+}
+
+export async function updateAdminSubcategoryExclusions(
+  distributorId: string,
+  actions: { confirm?: string[]; exclude?: string[]; include?: string[]; confirm_all?: boolean }
+): Promise<ApiResponse<SubcategoryExclusionsResponse>> {
+  return fetchWithAuth(`/api/v1/admin/distributors/${distributorId}/subcategory_exclusions`, {
+    method: 'PATCH',
+    body: JSON.stringify(actions),
+  });
+}

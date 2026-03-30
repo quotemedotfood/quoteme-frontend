@@ -6,11 +6,11 @@ import { useAuth } from '../contexts/AuthContext';
 import { getDistributorHome } from '../services/api';
 import type { DistributorHomeData } from '../services/api';
 import { CatalogUploadDrawer } from '../components/CatalogUploadDrawer';
-import CategoryExclusionDrawer from '../components/CategoryExclusionDrawer';
+import SubcategoryExclusionDrawer from '../components/SubcategoryExclusionDrawer';
 import {
-  getDistributorCategoryExclusions,
-  updateDistributorCategoryExclusions,
-  CategoryExclusionsResponse,
+  getDistributorSubcategoryExclusions,
+  updateDistributorSubcategoryExclusions,
+  SubcategoryExclusionsResponse,
 } from '../services/api';
 
 export function DistributorHomePage() {
@@ -20,7 +20,7 @@ export function DistributorHomePage() {
   const [loading, setLoading] = useState(true);
   const [catalogDrawerOpen, setCatalogDrawerOpen] = useState(false);
   const [exclusionDrawerOpen, setExclusionDrawerOpen] = useState(false);
-  const [exclusionData, setExclusionData] = useState<CategoryExclusionsResponse | null>(null);
+  const [exclusionData, setExclusionData] = useState<SubcategoryExclusionsResponse | null>(null);
   const [exclusionLoading, setExclusionLoading] = useState(false);
 
   const firstName = user?.first_name || '';
@@ -48,13 +48,13 @@ export function DistributorHomePage() {
   const loadExclusions = useCallback(async () => {
     setExclusionLoading(true);
     setExclusionDrawerOpen(true);
-    const res = await getDistributorCategoryExclusions();
+    const res = await getDistributorSubcategoryExclusions();
     if (res.data) setExclusionData(res.data);
     setExclusionLoading(false);
   }, []);
 
-  const saveExclusions = useCallback(async (excluded: string[]) => {
-    const res = await updateDistributorCategoryExclusions(excluded);
+  const saveExclusions = useCallback(async (actions: { confirm?: string[]; exclude?: string[]; include?: string[]; confirm_all?: boolean }) => {
+    const res = await updateDistributorSubcategoryExclusions(actions);
     if (res.data) setExclusionData(res.data);
   }, []);
 
@@ -108,12 +108,29 @@ export function DistributorHomePage() {
                   onClick={loadExclusions}
                   className="mt-2 w-full px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 text-gray-700"
                 >
-                  Excluded Categories
-                  {exclusionData && exclusionData.excluded_categories.length > 0 && (
-                    <span className="ml-2 bg-red-100 text-red-700 text-xs px-2 py-0.5 rounded-full">
-                      {exclusionData.excluded_categories.length}
-                    </span>
-                  )}
+                  Subcategory Exclusions
+                  {exclusionData && (() => {
+                    const suggestedCount = exclusionData.categories.reduce(
+                      (acc, cat) => acc + cat.subcategories.filter((s) => s.status === 'suggested').length, 0
+                    );
+                    const excludedCount = exclusionData.categories.reduce(
+                      (acc, cat) => acc + cat.subcategories.filter((s) => s.status === 'excluded').length, 0
+                    );
+                    return (
+                      <>
+                        {suggestedCount > 0 && (
+                          <span className="ml-2 bg-amber-100 text-amber-700 text-xs px-2 py-0.5 rounded-full">
+                            {suggestedCount} suggested
+                          </span>
+                        )}
+                        {excludedCount > 0 && (
+                          <span className="ml-2 bg-red-100 text-red-700 text-xs px-2 py-0.5 rounded-full">
+                            {excludedCount}
+                          </span>
+                        )}
+                      </>
+                    );
+                  })()}
                 </button>
               )}
             </div>
@@ -181,11 +198,10 @@ export function DistributorHomePage() {
         onUploadComplete={() => loadHome()}
       />
 
-      <CategoryExclusionDrawer
+      <SubcategoryExclusionDrawer
         isOpen={exclusionDrawerOpen}
         onClose={() => setExclusionDrawerOpen(false)}
-        excludedCategories={exclusionData?.excluded_categories || []}
-        availableCategories={exclusionData?.available_categories || []}
+        data={exclusionData}
         onSave={saveExclusions}
         loading={exclusionLoading}
       />

@@ -12,11 +12,11 @@ import {
   TableCell,
 } from '../../components/ui/table';
 import { getAdminDistributors, createDistributor, impersonateUser, AdminDistributor } from '../../services/adminApi';
-import CategoryExclusionDrawer from '../../components/CategoryExclusionDrawer';
+import SubcategoryExclusionDrawer from '../../components/SubcategoryExclusionDrawer';
 import {
-  getAdminCategoryExclusions,
-  updateAdminCategoryExclusions,
-  CategoryExclusionsResponse,
+  getAdminSubcategoryExclusions,
+  updateAdminSubcategoryExclusions,
+  SubcategoryExclusionsResponse,
 } from '../../services/api';
 
 type SortField = 'name' | 'region' | 'status' | 'rep_count' | 'product_count' | 'created_at';
@@ -37,7 +37,7 @@ export function QMAdminDistributors() {
   const [impersonating, setImpersonating] = useState<string | null>(null);
   const [exclusionDrawerOpen, setExclusionDrawerOpen] = useState(false);
   const [exclusionDistributorId, setExclusionDistributorId] = useState<string | null>(null);
-  const [exclusionData, setExclusionData] = useState<CategoryExclusionsResponse | null>(null);
+  const [exclusionData, setExclusionData] = useState<SubcategoryExclusionsResponse | null>(null);
   const [exclusionLoading, setExclusionLoading] = useState(false);
 
   async function handleImpersonate(userId: string, userName: string) {
@@ -58,14 +58,14 @@ export function QMAdminDistributors() {
     setExclusionDistributorId(distributorId);
     setExclusionLoading(true);
     setExclusionDrawerOpen(true);
-    const res = await getAdminCategoryExclusions(distributorId);
+    const res = await getAdminSubcategoryExclusions(distributorId);
     if (res.data) setExclusionData(res.data);
     setExclusionLoading(false);
   }, []);
 
-  const saveExclusions = useCallback(async (excluded: string[]) => {
+  const saveExclusions = useCallback(async (actions: { confirm?: string[]; exclude?: string[]; include?: string[]; confirm_all?: boolean }) => {
     if (!exclusionDistributorId) return;
-    const res = await updateAdminCategoryExclusions(exclusionDistributorId, excluded);
+    const res = await updateAdminSubcategoryExclusions(exclusionDistributorId, actions);
     if (res.data) setExclusionData(res.data);
   }, [exclusionDistributorId]);
 
@@ -255,7 +255,7 @@ export function QMAdminDistributors() {
                           onClick={() => loadExclusions(d.id)}
                           className="text-xs px-2 py-1 border border-gray-300 rounded hover:bg-gray-50"
                         >
-                          Excluded Categories
+                          Subcategory Exclusions
                         </button>
                         {d.admin_user_id ? (
                           <Button
@@ -281,11 +281,10 @@ export function QMAdminDistributors() {
         </div>
       )}
 
-      <CategoryExclusionDrawer
+      <SubcategoryExclusionDrawer
         isOpen={exclusionDrawerOpen}
         onClose={() => { setExclusionDrawerOpen(false); setExclusionDistributorId(null); }}
-        excludedCategories={exclusionData?.excluded_categories || []}
-        availableCategories={exclusionData?.available_categories || []}
+        data={exclusionData}
         onSave={saveExclusions}
         loading={exclusionLoading}
       />
