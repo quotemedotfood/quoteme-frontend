@@ -2004,8 +2004,8 @@ function CatalogsTab() {
                           {toTitleCase(p.category)}
                         </span>
                       </td>
-                      <td className="px-3 py-2 text-[10px] text-gray-400 max-w-[180px] truncate" title={p.subcategory || ''}>
-                        {p.subcategory || '—'}
+                      <td className="px-3 py-2 text-[10px] text-gray-400 max-w-[180px] truncate" title={p.standard_subcategory || p.subcategory || ''}>
+                        {toTitleCase(p.standard_subcategory || p.subcategory || '—')}
                       </td>
                     </tr>
                   ))}

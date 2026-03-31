@@ -1011,6 +1011,8 @@ export interface AdminCatalogProduct {
   pack_size: string;
   category: string;
   subcategory: string | null;
+  standard_subcategory: string | null;
+  normalized_category: string | null;
   category_source: string;
   ai_confidence: string | null;
 }
