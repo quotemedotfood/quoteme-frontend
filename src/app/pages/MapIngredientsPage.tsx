@@ -2,8 +2,8 @@ import { Button } from '../components/ui/button';
 import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
 import { Input } from '../components/ui/input';
-import { ArrowLeft, ChevronRight, ChevronDown, Plus, X, Loader2 } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { ArrowLeft, ChevronRight, ChevronDown, Plus, X, Loader2, Filter } from 'lucide-react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router';
 import { useUser } from '../contexts/UserContext';
 import { isDemoMode } from '../utils/demoMode';
@@ -76,6 +76,94 @@ interface Dish {
   componentLines: Record<string, QuoteLine>;
 }
 
+// ─── Match status helper ──────────────────────────────────────────────────────
+
+function getMatchStatus(line: QuoteLine | undefined, isMapped: boolean): string {
+  if (isMapped) return 'Your Pick';
+  if (!line?.product) return 'No Match';
+  const bestCandidate = line.alignment_candidates?.find(c => c.position === 1);
+  const score = bestCandidate?.score != null ? Math.round(bestCandidate.score * 100) : null;
+  if (score === null || score < 50) return 'Needs Your Pick';
+  if (score < 70) return 'Review Suggested';
+  if (score < 90) return 'Good Match';
+  return 'Strong Match';
+}
+
+const MATCH_STATUS_OPTIONS = ['Strong Match', 'Good Match', 'Review Suggested', 'Needs Your Pick', 'Your Pick', 'No Match'] as const;
+
+// ─── Filter Dropdown ─────────────────────────────────────────────────────────
+
+function FilterDropdown({ label, options, selected, onToggle, onClear }: {
+  label: string;
+  options: string[];
+  selected: Set<string>;
+  onToggle: (value: string) => void;
+  onClear: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  const activeCount = selected.size;
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        onClick={() => setOpen(!open)}
+        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+          activeCount > 0
+            ? 'bg-[#A5CFDD]/15 text-[#2A5F6F] border-[#A5CFDD]'
+            : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'
+        }`}
+      >
+        <Filter className="w-3 h-3" />
+        {label}
+        {activeCount > 0 && (
+          <span className="bg-[#A5CFDD] text-white rounded-full w-4 h-4 flex items-center justify-center text-[10px]">
+            {activeCount}
+          </span>
+        )}
+        <ChevronDown className={`w-3 h-3 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div className="absolute z-50 mt-1 w-56 bg-white border border-gray-200 rounded-lg shadow-lg max-h-64 overflow-y-auto">
+          {activeCount > 0 && (
+            <button
+              onClick={() => { onClear(); setOpen(false); }}
+              className="w-full text-left px-3 py-2 text-xs text-[#A5CFDD] hover:bg-gray-50 border-b border-gray-100"
+            >
+              Clear {label}
+            </button>
+          )}
+          {options.map(option => (
+            <label
+              key={option}
+              className="flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-50 cursor-pointer"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <input
+                type="checkbox"
+                checked={selected.has(option)}
+                onChange={() => onToggle(option)}
+                className="rounded border-gray-300 text-[#A5CFDD] focus:ring-[#A5CFDD]"
+              />
+              <span className="text-gray-700 truncate">{option}</span>
+            </label>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function MapIngredientsPage() {
@@ -113,6 +201,11 @@ export function MapIngredientsPage() {
   const [newDishComponents, setNewDishComponents] = useState('');
   const [addDishLoading, setAddDishLoading] = useState(false);
 
+  // ── Column filter state ──
+  const [statusFilter, setStatusFilter] = useState<Set<string>>(new Set());
+  const [categoryFilter, setCategoryFilter] = useState<Set<string>>(new Set());
+  const [brandFilter, setBrandFilter] = useState<Set<string>>(new Set());
+
   // ── Additions tracking (manually added dishes + "Add to Quote" products) ──
   const [additions, setAdditions] = useState<Array<{
     id: string;
@@ -122,6 +215,78 @@ export function MapIngredientsPage() {
     type: 'added_dish' | 'add_to_quote';
   }>>([]);
 
+
+  // ─── Filter helpers ──────────────────────────────────────────────────────
+
+  const allLines = useMemo(() => {
+    const seen = new Set<string>();
+    const result: { component: string; line: QuoteLine; dish: Dish }[] = [];
+    for (const dish of dishes) {
+      for (const comp of dish.components) {
+        const line = dish.componentLines[comp];
+        const key = line?.product?.id || comp;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        result.push({ component: comp, line, dish });
+      }
+    }
+    return result;
+  }, [dishes]);
+
+  const availableCategories = useMemo(() => {
+    const cats = new Set<string>();
+    for (const { line } of allLines) {
+      const cat = line?.category || line?.product?.category;
+      if (cat) cats.add(cat);
+    }
+    return Array.from(cats).sort();
+  }, [allLines]);
+
+  const availableBrands = useMemo(() => {
+    const brands = new Set<string>();
+    for (const { line } of allLines) {
+      if (line?.product?.brand) brands.add(line.product.brand);
+    }
+    return Array.from(brands).sort();
+  }, [allLines]);
+
+  const hasActiveFilters = statusFilter.size > 0 || categoryFilter.size > 0 || brandFilter.size > 0;
+
+  const passesFilters = useCallback((component: string, line: QuoteLine | undefined): boolean => {
+    if (!hasActiveFilters) return true;
+    if (statusFilter.size > 0) {
+      const status = getMatchStatus(line, (mappedComponents[component]?.length || 0) > 0);
+      if (!statusFilter.has(status)) return false;
+    }
+    if (categoryFilter.size > 0) {
+      const cat = line?.category || line?.product?.category || '';
+      if (!categoryFilter.has(cat)) return false;
+    }
+    if (brandFilter.size > 0) {
+      const brand = line?.product?.brand || '';
+      if (!brandFilter.has(brand)) return false;
+    }
+    return true;
+  }, [hasActiveFilters, statusFilter, categoryFilter, brandFilter, mappedComponents]);
+
+  const filteredCount = useMemo(() => {
+    if (!hasActiveFilters) return allLines.length;
+    return allLines.filter(({ component, line }) => passesFilters(component, line)).length;
+  }, [allLines, hasActiveFilters, passesFilters]);
+
+  const toggleFilter = (setter: React.Dispatch<React.SetStateAction<Set<string>>>, value: string) => {
+    setter(prev => {
+      const next = new Set(prev);
+      next.has(value) ? next.delete(value) : next.add(value);
+      return next;
+    });
+  };
+
+  const clearAllFilters = () => {
+    setStatusFilter(new Set());
+    setCategoryFilter(new Set());
+    setBrandFilter(new Set());
+  };
 
   // ─── Build dish list from quote lines ─────────────────────────────────────
 
@@ -618,6 +783,44 @@ export function MapIngredientsPage() {
                 ))}
               </div>
 
+              {/* Filter Bar */}
+              <div className="flex flex-wrap items-center gap-2 px-6 py-3 border-b border-gray-100 bg-gray-50/50">
+                <FilterDropdown
+                  label="Match Status"
+                  options={[...MATCH_STATUS_OPTIONS]}
+                  selected={statusFilter}
+                  onToggle={(v) => toggleFilter(setStatusFilter, v)}
+                  onClear={() => setStatusFilter(new Set())}
+                />
+                <FilterDropdown
+                  label="Category"
+                  options={availableCategories}
+                  selected={categoryFilter}
+                  onToggle={(v) => toggleFilter(setCategoryFilter, v)}
+                  onClear={() => setCategoryFilter(new Set())}
+                />
+                <FilterDropdown
+                  label="Brand"
+                  options={availableBrands}
+                  selected={brandFilter}
+                  onToggle={(v) => toggleFilter(setBrandFilter, v)}
+                  onClear={() => setBrandFilter(new Set())}
+                />
+                {hasActiveFilters && (
+                  <>
+                    <span className="text-xs text-gray-500 ml-2">
+                      Showing {filteredCount} of {allLines.length} items
+                    </span>
+                    <button
+                      onClick={clearAllFilters}
+                      className="text-xs text-[#A5CFDD] hover:text-[#7FAEC2] ml-1 underline"
+                    >
+                      Clear Filters
+                    </button>
+                  </>
+                )}
+              </div>
+
               <div className="p-6">
                 {selectedTab === 'dishes' ? (
                   <div>
@@ -628,8 +831,15 @@ export function MapIngredientsPage() {
                       Select a match for each ingredient from your distributor's catalog
                     </p>
                     <div className="space-y-3">
-                      {(selectedDish?.components || []).map(component =>
+                      {(selectedDish?.components || []).filter(component =>
+                        passesFilters(component, selectedDish?.componentLines[component])
+                      ).map(component =>
                         renderComponentRow(component, selectedDish?.componentLines[component])
+                      )}
+                      {hasActiveFilters && (selectedDish?.components || []).every(component =>
+                        !passesFilters(component, selectedDish?.componentLines[component])
+                      ) && (
+                        <p className="text-sm text-gray-400 text-center py-8">No ingredients match the active filters</p>
                       )}
                     </div>
                   </div>
@@ -684,6 +894,9 @@ export function MapIngredientsPage() {
                             const productKey = line?.product?.id || comp;
                             if (seenProducts.has(productKey)) continue;
                             seenProducts.add(productKey);
+
+                            // Apply column filters
+                            if (!passesFilters(comp, line)) continue;
 
                             // User manually picked → goes to "Your Pick" group
                             if (mappedComponents[comp]?.length > 0) {
@@ -753,12 +966,19 @@ export function MapIngredientsPage() {
                             const productKey = line?.product?.id || comp;
                             if (seenProducts.has(productKey)) continue;
                             seenProducts.add(productKey);
+                            // Apply column filters
+                            if (!passesFilters(comp, line)) continue;
                             const cat = line?.category || 'Uncategorized';
                             if (!categoryMap[cat]) categoryMap[cat] = [];
                             categoryMap[cat].push({ component: comp, line });
                           }
                         }
                         const sortedCategories = Object.keys(categoryMap).sort();
+                        if (sortedCategories.length === 0 && hasActiveFilters) {
+                          return (
+                            <p className="text-sm text-gray-400 text-center py-8">No ingredients match the active filters</p>
+                          );
+                        }
                         return sortedCategories.map(cat => {
                           const items = categoryMap[cat];
                           const isExpanded = expandedCategories.includes(cat);
