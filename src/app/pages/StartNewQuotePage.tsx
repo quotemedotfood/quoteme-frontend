@@ -327,9 +327,18 @@ export function StartNewQuotePage() {
       if (!url.startsWith('http://') && !url.startsWith('https://')) url = 'https://' + url;
       const res = await extractMenuText({ url });
       if (res.error) {
-        setExtractError(isServiceBusyError(res.error)
-          ? 'Our menu analysis service is temporarily busy. Please try again in a few seconds.'
-          : res.error);
+        const err = res.error;
+        if (isServiceBusyError(err)) {
+          setExtractError('Our menu analysis service is temporarily busy. Please try again in a few seconds.');
+        } else if (err.includes('pdf_too_large')) {
+          setExtractError("This menu is too large to process at once. Try uploading just the section you need — dinner entrees, cocktail list, or appetizers.");
+        } else if (err.includes('url_fetch_failed')) {
+          setExtractError("We couldn't fetch that URL. Check the link or try uploading the PDF directly.");
+        } else if (err.includes('url_unsupported_type')) {
+          setExtractError("That URL didn't return a menu we can read. Try uploading the PDF directly.");
+        } else {
+          setExtractError(err);
+        }
       } else if (res.data?.text) {
         const stripped = stripPrices(res.data.text);
         setPasteText(res.data.text);
