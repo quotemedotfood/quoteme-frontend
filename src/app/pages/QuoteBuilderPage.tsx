@@ -76,6 +76,10 @@ export function QuoteBuilderPage() {
   const [inputMode, setInputMode] = useState<string | null>(null);
   const [detectedConcept, setDetectedConcept] = useState<string | null>(null);
 
+  // ── Price editing state ──
+  const [editingPriceId, setEditingPriceId] = useState<string | null>(null);
+  const [editingPriceValue, setEditingPriceValue] = useState('');
+
   const isGuest = !localStorage.getItem('quoteme_token');
   const fetchQuote = (id: string) => isGuest ? getGuestQuote(id) : getQuote(id);
   const persistQuote = (id: string, updates: any) => isGuest ? updateGuestQuote(id, updates) : updateQuote(id, updates);
@@ -505,9 +509,18 @@ export function QuoteBuilderPage() {
                         <input
                           type="text"
                           inputMode="decimal"
-                          value={`$${item.currentPrice.toFixed(2)}`}
+                          value={editingPriceId === item.id ? editingPriceValue : `$${item.currentPrice.toFixed(2)}`}
                           onClick={(e) => e.stopPropagation()}
-                          onFocus={(e) => { e.target.value = item.currentPrice.toFixed(2); e.target.select(); }}
+                          onChange={(e) => {
+                            if (editingPriceId === item.id) {
+                              setEditingPriceValue(e.target.value);
+                            }
+                          }}
+                          onFocus={(e) => {
+                            setEditingPriceId(item.id);
+                            setEditingPriceValue(item.currentPrice.toFixed(2));
+                            setTimeout(() => e.target.select(), 0);
+                          }}
                           onBlur={(e) => {
                             const val = parseFloat(e.target.value.replace(/[^0-9.]/g, ''));
                             if (!isNaN(val)) {
@@ -521,9 +534,9 @@ export function QuoteBuilderPage() {
                                   return i;
                                 })
                               );
-                            } else {
-                              e.target.value = `$${item.currentPrice.toFixed(2)}`;
                             }
+                            setEditingPriceId(null);
+                            setEditingPriceValue('');
                           }}
                           className="min-w-0 flex-1 text-center border border-gray-300 rounded-lg px-2 py-2 text-sm text-[#2A2A2A] min-h-[44px] focus:outline-none focus:border-[#A5CFDD]"
                         />
@@ -693,9 +706,18 @@ export function QuoteBuilderPage() {
                           <input
                             type="text"
                             inputMode="decimal"
-                            value={`$${item.currentPrice.toFixed(2)}`}
+                            value={editingPriceId === item.id ? editingPriceValue : `$${item.currentPrice.toFixed(2)}`}
                             onClick={(e) => e.stopPropagation()}
-                            onFocus={(e) => { e.target.value = item.currentPrice.toFixed(2); e.target.select(); }}
+                            onChange={(e) => {
+                              if (editingPriceId === item.id) {
+                                setEditingPriceValue(e.target.value);
+                              }
+                            }}
+                            onFocus={(e) => {
+                              setEditingPriceId(item.id);
+                              setEditingPriceValue(item.currentPrice.toFixed(2));
+                              setTimeout(() => e.target.select(), 0);
+                            }}
                             onBlur={(e) => {
                               const val = parseFloat(e.target.value.replace(/[^0-9.]/g, ''));
                               if (!isNaN(val)) {
@@ -709,9 +731,9 @@ export function QuoteBuilderPage() {
                                     return i;
                                   })
                                 );
-                              } else {
-                                e.target.value = `$${item.currentPrice.toFixed(2)}`;
                               }
+                              setEditingPriceId(null);
+                              setEditingPriceValue('');
                             }}
                             className="w-20 text-center border border-gray-300 rounded px-1 py-1 text-sm text-[#2A2A2A] focus:outline-none focus:border-[#A5CFDD]"
                           />
