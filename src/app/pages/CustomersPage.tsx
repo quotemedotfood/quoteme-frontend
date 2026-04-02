@@ -11,6 +11,8 @@ import { SwipeHint } from '../components/SwipeHint';
 import {
   getRestaurants,
   getRestaurant,
+  getQuotes,
+  updateQuote,
   type RestaurantIndexItem,
   type RestaurantDetail,
   type RestaurantContact,
@@ -135,10 +137,27 @@ export function CustomersPage() {
     setEditCustomerOpen(true);
   }, []);
 
-  const handleDrawerSuccess = useCallback(() => {
+  const handleDrawerSuccess = useCallback(async (savedRestaurant?: { id: string; name: string }) => {
+    // Clear detail cache so expanded rows re-fetch fresh contacts
     setRestaurantDetails({});
-    fetchRestaurants();
-  }, [fetchRestaurants]);
+    await fetchRestaurants();
+
+    // Auto-populate: if there's a draft quote for "New Restaurant" (placeholder),
+    // update it to the saved restaurant so contacts flow through
+    if (savedRestaurant && isLoggedIn) {
+      try {
+        const quotesRes = await getQuotes({ status: 'draft' });
+        const placeholderDraft = quotesRes.data?.find(
+          (q) => q.restaurant === 'New Restaurant' || q.restaurant === null
+        );
+        if (placeholderDraft) {
+          await updateQuote(placeholderDraft.id, { restaurant_id: savedRestaurant.id });
+        }
+      } catch {
+        // Non-fatal — quote auto-populate is best-effort
+      }
+    }
+  }, [fetchRestaurants, isLoggedIn]);
 
   // Filter restaurants by search query
   const filteredRestaurants = restaurants.filter((r) => {

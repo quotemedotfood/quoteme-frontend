@@ -1,7 +1,6 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Drawer,
-  DrawerClose,
   DrawerContent,
   DrawerDescription,
   DrawerFooter,
@@ -11,7 +10,7 @@ import {
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
-import { X, Plus, Trash2, Loader2 } from 'lucide-react';
+import { X, Plus, Trash2, Loader2, ChevronDown } from 'lucide-react';
 import {
   updateRestaurant,
   createContact,
@@ -27,7 +26,7 @@ interface EditCustomerDrawerProps {
   onOpenChange: (open: boolean) => void;
   restaurant: RestaurantDetail | null;
   contact?: RestaurantContact | null;
-  onSuccess?: () => void;
+  onSuccess?: (savedRestaurant?: { id: string; name: string }) => void;
 }
 
 const recommendedPositions = [
@@ -79,6 +78,8 @@ export function EditCustomerDrawer({
   // Contact list editing (restaurant mode)
   const [editableContacts, setEditableContacts] = useState<EditableContact[]>([]);
   const [showNewPositionInput, setShowNewPositionInput] = useState<Record<string, boolean>>({});
+  // Custom dropdown state — tracks which contact's role dropdown is open
+  const [openRoleDropdown, setOpenRoleDropdown] = useState<string | null>(null);
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -98,8 +99,22 @@ export function EditCustomerDrawer({
 
   const isContactMode = !!contact;
 
+  // Close role dropdown when clicking outside
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!openRoleDropdown) return;
+    function handleClickOutside(e: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setOpenRoleDropdown(null);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [openRoleDropdown]);
+
   // Populate form when data changes
   useEffect(() => {
+    if (!open) return;
     if (contact) {
       setContactForm({
         firstName: contact.first_name || '',
@@ -135,7 +150,8 @@ export function EditCustomerDrawer({
     }
     setError(null);
     setShowNewPositionInput({});
-  }, [restaurant, contact]);
+    setOpenRoleDropdown(null);
+  }, [restaurant, contact, open]);
 
   const addNewContact = () => {
     const newContact: EditableContact = {
@@ -188,8 +204,11 @@ export function EditCustomerDrawer({
     markContactDeleted(contactToDelete.id);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleClose = useCallback(() => {
+    onOpenChange(false);
+  }, [onOpenChange]);
+
+  const handleSave = useCallback(async () => {
     if (!restaurant) return;
 
     setSaving(true);
@@ -242,7 +261,7 @@ export function EditCustomerDrawer({
             is_primary: ec.isPrimary,
           });
           if (result.error) {
-            console.warn('Failed to create contact:', result.error);
+            setError(`Failed to create contact: ${result.error}`);
           }
         } else {
           // Update existing contact
@@ -267,7 +286,7 @@ export function EditCustomerDrawer({
               is_primary: ec.isPrimary,
             });
             if (result.error) {
-              console.warn('Failed to update contact:', result.error);
+              setError(`Failed to update contact: ${result.error}`);
             }
           }
         }
@@ -276,10 +295,10 @@ export function EditCustomerDrawer({
 
     setSaving(false);
     onOpenChange(false);
-    onSuccess?.();
-  };
+    onSuccess?.({ id: restaurant.id, name: isContactMode ? restaurant.name : formData.name });
+  }, [restaurant, contact, isContactMode, contactForm, formData, editableContacts, onOpenChange, onSuccess]);
 
-  const handlePositionChange = (contactId: string, value: string) => {
+  const handleSelectRole = (contactId: string, value: string) => {
     if (value === 'add-new') {
       setShowNewPositionInput({ ...showNewPositionInput, [contactId]: true });
       if (isContactMode) {
@@ -295,12 +314,13 @@ export function EditCustomerDrawer({
         updateEditableContact(contactId, 'role', value);
       }
     }
+    setOpenRoleDropdown(null);
   };
 
   const renderPositionSelect = (contactId: string, currentRole: string) => {
     if (showNewPositionInput[contactId]) {
       return (
-        <div className="space-y-1">
+        <div className="space-y-1" onClick={(e) => e.stopPropagation()}>
           <Input
             type="text"
             value={currentRole}
@@ -318,7 +338,8 @@ export function EditCustomerDrawer({
             type="button"
             variant="ghost"
             size="sm"
-            onClick={() => {
+            onClick={(e) => {
+              e.stopPropagation();
               setShowNewPositionInput({ ...showNewPositionInput, [contactId]: false });
               if (isContactMode) {
                 setContactForm({ ...contactForm, role: '' });
@@ -334,33 +355,68 @@ export function EditCustomerDrawer({
       );
     }
 
+    const isOpen = openRoleDropdown === contactId;
+    const displayLabel = currentRole || 'Select role (optional)';
+
     return (
-      <select
-        value={currentRole}
-        onChange={(e) => handlePositionChange(contactId, e.target.value)}
-        className="w-full px-3 py-2 border border-gray-200 rounded-md bg-white text-sm"
-      >
-        <option value="">Select role (optional)</option>
-        {recommendedPositions.map((position) => (
-          <option key={position} value={position}>
-            {position}
-          </option>
-        ))}
-        {/* Show current role if not in list */}
-        {currentRole && !recommendedPositions.includes(currentRole) && (
-          <option value={currentRole}>{currentRole}</option>
+      <div className="relative" ref={isOpen ? dropdownRef : undefined} onClick={(e) => e.stopPropagation()}>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            setOpenRoleDropdown(isOpen ? null : contactId);
+          }}
+          className="w-full px-3 py-2 border border-gray-200 rounded-md bg-white text-sm text-left flex items-center justify-between"
+        >
+          <span className={currentRole ? 'text-gray-900' : 'text-gray-500'}>{displayLabel}</span>
+          <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+        </button>
+        {isOpen && (
+          <div className="absolute z-50 mt-1 w-full bg-white border border-gray-200 rounded-md shadow-lg max-h-48 overflow-y-auto">
+            <button
+              type="button"
+              className="w-full px-3 py-2 text-left text-sm text-gray-500 hover:bg-gray-50"
+              onClick={(e) => { e.stopPropagation(); handleSelectRole(contactId, ''); }}
+            >
+              Select role (optional)
+            </button>
+            {recommendedPositions.map((position) => (
+              <button
+                type="button"
+                key={position}
+                className={`w-full px-3 py-2 text-left text-sm hover:bg-gray-50 ${currentRole === position ? 'bg-gray-100 font-medium' : ''}`}
+                onClick={(e) => { e.stopPropagation(); handleSelectRole(contactId, position); }}
+              >
+                {position}
+              </button>
+            ))}
+            {currentRole && !recommendedPositions.includes(currentRole) && (
+              <button
+                type="button"
+                className="w-full px-3 py-2 text-left text-sm bg-gray-100 font-medium"
+                onClick={(e) => { e.stopPropagation(); handleSelectRole(contactId, currentRole); }}
+              >
+                {currentRole}
+              </button>
+            )}
+            <button
+              type="button"
+              className="w-full px-3 py-2 text-left text-sm text-orange-500 font-medium hover:bg-orange-50 border-t border-gray-100"
+              onClick={(e) => { e.stopPropagation(); handleSelectRole(contactId, 'add-new'); }}
+            >
+              + Add New Role
+            </button>
+          </div>
         )}
-        <option value="add-new" className="text-orange-500 font-medium">
-          + Add New Role
-        </option>
-      </select>
+      </div>
     );
   };
 
   const activeContacts = editableContacts.filter(c => !c.deleted);
 
   return (
-    <Drawer open={open} onOpenChange={onOpenChange} direction="right">
+    <Drawer open={open} onOpenChange={onOpenChange} direction="right" handleOnly>
       <DrawerContent className="w-full sm:max-w-md h-full flex flex-col">
         <DrawerHeader className="border-b border-gray-200 flex-shrink-0">
           <div className="flex items-center justify-between">
@@ -374,15 +430,13 @@ export function EditCustomerDrawer({
                   : 'Update restaurant customer profile'}
               </DrawerDescription>
             </div>
-            <DrawerClose asChild>
-              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                <X className="h-4 w-4" />
-              </Button>
-            </DrawerClose>
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={handleClose}>
+              <X className="h-4 w-4" />
+            </Button>
           </div>
         </DrawerHeader>
 
-        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
+        <div className="flex flex-col flex-1 min-h-0">
           <div className="flex-1 overflow-y-auto p-6 space-y-4">
             {error && (
               <div className="bg-red-50 border border-red-200 rounded-lg p-3">
@@ -401,7 +455,6 @@ export function EditCustomerDrawer({
                       value={contactForm.firstName}
                       onChange={(e) => setContactForm({ ...contactForm, firstName: e.target.value })}
                       placeholder="First name"
-                      required
                       className="bg-gray-50"
                     />
                   </div>
@@ -412,7 +465,6 @@ export function EditCustomerDrawer({
                       value={contactForm.lastName}
                       onChange={(e) => setContactForm({ ...contactForm, lastName: e.target.value })}
                       placeholder="Last name"
-                      required
                       className="bg-gray-50"
                     />
                   </div>
@@ -453,9 +505,9 @@ export function EditCustomerDrawer({
                     onChange={(e) => setContactForm({ ...contactForm, isPrimary: e.target.checked })}
                     className="rounded"
                   />
-                  <Label htmlFor="is-primary" className="text-sm cursor-pointer">
+                  <label htmlFor="is-primary" className="text-sm cursor-pointer">
                     Primary contact
-                  </Label>
+                  </label>
                 </div>
 
                 {/* Delete Contact Button */}
@@ -476,7 +528,7 @@ export function EditCustomerDrawer({
                           return;
                         }
                         onOpenChange(false);
-                        onSuccess?.();
+                        onSuccess?.({ id: restaurant.id, name: restaurant.name });
                       }}
                     >
                       {deletingContactId === contact.id ? (
@@ -507,7 +559,6 @@ export function EditCustomerDrawer({
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     placeholder="Enter restaurant name"
-                    required
                     className="bg-gray-50"
                   />
                 </div>
@@ -657,9 +708,10 @@ export function EditCustomerDrawer({
 
           <DrawerFooter className="border-t border-gray-200">
             <Button
-              type="submit"
+              type="button"
               className="bg-[#7FAEC2] hover:bg-[#6A9AB0] text-white w-full"
               disabled={saving}
+              onClick={handleSave}
             >
               {saving ? (
                 <>
@@ -670,13 +722,11 @@ export function EditCustomerDrawer({
                 'Save Changes'
               )}
             </Button>
-            <DrawerClose asChild>
-              <Button type="button" variant="outline" className="w-full" disabled={saving}>
-                Cancel
-              </Button>
-            </DrawerClose>
+            <Button type="button" variant="outline" className="w-full" disabled={saving} onClick={handleClose}>
+              Cancel
+            </Button>
           </DrawerFooter>
-        </form>
+        </div>
       </DrawerContent>
     </Drawer>
   );

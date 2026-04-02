@@ -1,7 +1,6 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import {
   Drawer,
-  DrawerClose,
   DrawerContent,
   DrawerDescription,
   DrawerFooter,
@@ -11,7 +10,7 @@ import {
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
-import { X, Plus, Trash2, Loader2, MapPin } from 'lucide-react';
+import { X, Plus, Trash2, Loader2, MapPin, ChevronDown } from 'lucide-react';
 import { createRestaurant, createContact } from '../services/api';
 import { useGooglePlaces } from '../hooks/useGooglePlaces';
 import type { ParsedAddress } from '../hooks/useGooglePlaces';
@@ -19,7 +18,7 @@ import type { ParsedAddress } from '../hooks/useGooglePlaces';
 interface AddCustomerDrawerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSuccess?: () => void;
+  onSuccess?: (savedRestaurant?: { id: string; name: string }) => void;
 }
 
 const recommendedPositions = [
@@ -66,8 +65,22 @@ export function AddCustomerDrawer({ open, onOpenChange, onSuccess }: AddCustomer
 
   const [contacts, setContacts] = useState<ChefContact[]>([]);
   const [showNewPositionInput, setShowNewPositionInput] = useState<Record<string, boolean>>({});
+  const [openRoleDropdown, setOpenRoleDropdown] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Close role dropdown when clicking outside
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!openRoleDropdown) return;
+    function handleClickOutside(e: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setOpenRoleDropdown(null);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [openRoleDropdown]);
 
   const addContact = () => {
     const newContact: ChefContact = {
@@ -91,7 +104,7 @@ export function AddCustomerDrawer({ open, onOpenChange, onSuccess }: AddCustomer
     setContacts(remaining);
   };
 
-  const updateContact = (id: string, field: keyof ChefContact, value: string | boolean) => {
+  const updateContactField = (id: string, field: keyof ChefContact, value: string | boolean) => {
     setContacts(contacts.map(c =>
       c.id === id ? { ...c, [field]: value } : c
     ));
@@ -109,11 +122,21 @@ export function AddCustomerDrawer({ open, onOpenChange, onSuccess }: AddCustomer
     setAddressDisplay('');
     setContacts([]);
     setShowNewPositionInput({});
+    setOpenRoleDropdown(null);
     setError(null);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleClose = useCallback(() => {
+    resetForm();
+    onOpenChange(false);
+  }, [onOpenChange]);
+
+  const handleSave = useCallback(async () => {
+    if (!formData.restaurantName.trim()) {
+      setError('Restaurant name is required');
+      return;
+    }
+
     setSaving(true);
     setError(null);
 
@@ -134,6 +157,7 @@ export function AddCustomerDrawer({ open, onOpenChange, onSuccess }: AddCustomer
     }
 
     const restaurantId = result.data!.id;
+    const restaurantName = formData.restaurantName;
 
     // Create contacts
     for (const contact of contacts) {
@@ -155,21 +179,99 @@ export function AddCustomerDrawer({ open, onOpenChange, onSuccess }: AddCustomer
     setSaving(false);
     resetForm();
     onOpenChange(false);
-    onSuccess?.();
-  };
+    onSuccess?.({ id: restaurantId, name: restaurantName });
+  }, [formData, contacts, onOpenChange, onSuccess]);
 
-  const handlePositionChange = (contactId: string, value: string) => {
+  const handleSelectRole = (contactId: string, value: string) => {
     if (value === 'add-new') {
       setShowNewPositionInput({ ...showNewPositionInput, [contactId]: true });
-      updateContact(contactId, 'role', '');
+      updateContactField(contactId, 'role', '');
     } else {
       setShowNewPositionInput({ ...showNewPositionInput, [contactId]: false });
-      updateContact(contactId, 'role', value);
+      updateContactField(contactId, 'role', value);
     }
+    setOpenRoleDropdown(null);
+  };
+
+  const renderPositionSelect = (contactId: string, currentRole: string) => {
+    if (showNewPositionInput[contactId]) {
+      return (
+        <div className="space-y-1" onClick={(e) => e.stopPropagation()}>
+          <Input
+            type="text"
+            value={currentRole}
+            onChange={(e) => updateContactField(contactId, 'role', e.target.value)}
+            placeholder="Enter role"
+            className="bg-white"
+          />
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowNewPositionInput({ ...showNewPositionInput, [contactId]: false });
+              updateContactField(contactId, 'role', '');
+            }}
+            className="text-xs text-gray-600"
+          >
+            Cancel - Select from list
+          </Button>
+        </div>
+      );
+    }
+
+    const isOpen = openRoleDropdown === contactId;
+    const displayLabel = currentRole || 'Select role (optional)';
+
+    return (
+      <div className="relative" ref={isOpen ? dropdownRef : undefined} onClick={(e) => e.stopPropagation()}>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            setOpenRoleDropdown(isOpen ? null : contactId);
+          }}
+          className="w-full px-3 py-2 border border-gray-200 rounded-md bg-white text-sm text-left flex items-center justify-between"
+        >
+          <span className={currentRole ? 'text-gray-900' : 'text-gray-500'}>{displayLabel}</span>
+          <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+        </button>
+        {isOpen && (
+          <div className="absolute z-50 mt-1 w-full bg-white border border-gray-200 rounded-md shadow-lg max-h-48 overflow-y-auto">
+            <button
+              type="button"
+              className="w-full px-3 py-2 text-left text-sm text-gray-500 hover:bg-gray-50"
+              onClick={(e) => { e.stopPropagation(); handleSelectRole(contactId, ''); }}
+            >
+              Select role (optional)
+            </button>
+            {recommendedPositions.map((position) => (
+              <button
+                type="button"
+                key={position}
+                className={`w-full px-3 py-2 text-left text-sm hover:bg-gray-50 ${currentRole === position ? 'bg-gray-100 font-medium' : ''}`}
+                onClick={(e) => { e.stopPropagation(); handleSelectRole(contactId, position); }}
+              >
+                {position}
+              </button>
+            ))}
+            <button
+              type="button"
+              className="w-full px-3 py-2 text-left text-sm text-orange-500 font-medium hover:bg-orange-50 border-t border-gray-100"
+              onClick={(e) => { e.stopPropagation(); handleSelectRole(contactId, 'add-new'); }}
+            >
+              + Add New Role
+            </button>
+          </div>
+        )}
+      </div>
+    );
   };
 
   return (
-    <Drawer open={open} onOpenChange={(val) => { if (!val) resetForm(); onOpenChange(val); }} direction="right">
+    <Drawer open={open} onOpenChange={(val) => { if (!val) resetForm(); onOpenChange(val); }} direction="right" handleOnly>
       <DrawerContent className="w-full sm:max-w-md h-full flex flex-col">
         <DrawerHeader className="border-b border-gray-200 flex-shrink-0">
           <div className="flex items-center justify-between">
@@ -179,15 +281,13 @@ export function AddCustomerDrawer({ open, onOpenChange, onSuccess }: AddCustomer
                 Create a new restaurant customer profile
               </DrawerDescription>
             </div>
-            <DrawerClose asChild>
-              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                <X className="h-4 w-4" />
-              </Button>
-            </DrawerClose>
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={handleClose}>
+              <X className="h-4 w-4" />
+            </Button>
           </div>
         </DrawerHeader>
 
-        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
+        <div className="flex flex-col flex-1 min-h-0">
           <div className="flex-1 overflow-y-auto p-6 space-y-4">
             {error && (
               <div className="bg-red-50 border border-red-200 rounded-lg p-3">
@@ -208,7 +308,6 @@ export function AddCustomerDrawer({ open, onOpenChange, onSuccess }: AddCustomer
                   setFormData({ ...formData, restaurantName: e.target.value })
                 }
                 placeholder="Enter restaurant name"
-                required
                 className="bg-gray-50"
               />
             </div>
@@ -285,68 +384,30 @@ export function AddCustomerDrawer({ open, onOpenChange, onSuccess }: AddCustomer
                         <Input
                           type="text"
                           value={contact.firstName}
-                          onChange={(e) => updateContact(contact.id, 'firstName', e.target.value)}
+                          onChange={(e) => updateContactField(contact.id, 'firstName', e.target.value)}
                           placeholder="First Name"
                           className="bg-white"
                         />
                         <Input
                           type="text"
                           value={contact.lastName}
-                          onChange={(e) => updateContact(contact.id, 'lastName', e.target.value)}
+                          onChange={(e) => updateContactField(contact.id, 'lastName', e.target.value)}
                           placeholder="Last Name"
                           className="bg-white"
                         />
                       </div>
-                      {!showNewPositionInput[contact.id] ? (
-                        <select
-                          value={contact.role}
-                          onChange={(e) => handlePositionChange(contact.id, e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-200 rounded-md bg-white text-sm"
-                        >
-                          <option value="">Select role (optional)</option>
-                          {recommendedPositions.map((position) => (
-                            <option key={position} value={position}>
-                              {position}
-                            </option>
-                          ))}
-                          <option value="add-new" className="text-orange-500 font-medium">
-                            + Add New Role
-                          </option>
-                        </select>
-                      ) : (
-                        <div className="space-y-1">
-                          <Input
-                            type="text"
-                            value={contact.role}
-                            onChange={(e) => updateContact(contact.id, 'role', e.target.value)}
-                            placeholder="Enter role"
-                            className="bg-white"
-                          />
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              setShowNewPositionInput({ ...showNewPositionInput, [contact.id]: false });
-                              updateContact(contact.id, 'role', '');
-                            }}
-                            className="text-xs text-gray-600"
-                          >
-                            Cancel - Select from list
-                          </Button>
-                        </div>
-                      )}
+                      {renderPositionSelect(contact.id, contact.role)}
                       <Input
                         type="email"
                         value={contact.email}
-                        onChange={(e) => updateContact(contact.id, 'email', e.target.value)}
+                        onChange={(e) => updateContactField(contact.id, 'email', e.target.value)}
                         placeholder="Email"
                         className="bg-white"
                       />
                       <Input
                         type="tel"
                         value={contact.phone}
-                        onChange={(e) => updateContact(contact.id, 'phone', e.target.value)}
+                        onChange={(e) => updateContactField(contact.id, 'phone', e.target.value)}
                         placeholder="Phone"
                         className="bg-white"
                       />
@@ -380,9 +441,10 @@ export function AddCustomerDrawer({ open, onOpenChange, onSuccess }: AddCustomer
 
           <DrawerFooter className="border-t border-gray-200">
             <Button
-              type="submit"
+              type="button"
               className="bg-[#7FAEC2] hover:bg-[#6A9AB0] text-white w-full"
               disabled={saving}
+              onClick={handleSave}
             >
               {saving ? (
                 <>
@@ -393,13 +455,11 @@ export function AddCustomerDrawer({ open, onOpenChange, onSuccess }: AddCustomer
                 'Add Customer'
               )}
             </Button>
-            <DrawerClose asChild>
-              <Button type="button" variant="outline" className="w-full" disabled={saving}>
-                Cancel
-              </Button>
-            </DrawerClose>
+            <Button type="button" variant="outline" className="w-full" disabled={saving} onClick={handleClose}>
+              Cancel
+            </Button>
           </DrawerFooter>
-        </form>
+        </div>
       </DrawerContent>
     </Drawer>
   );
