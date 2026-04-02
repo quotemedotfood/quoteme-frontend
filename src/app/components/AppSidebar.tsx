@@ -6,6 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useLocation2 } from '../contexts/LocationContext';
 import { isBuyerRole } from '../utils/roles';
 import { useState, useRef, useEffect } from 'react';
+import { NotificationBell } from './NotificationBell';
 
 interface NavItemProps {
   icon: React.ReactNode;
@@ -179,11 +180,12 @@ export function AppSidebar() {
         ))}
       </nav>
 
-      {/* User Profile */}
-      <div className="p-4 border-t border-gray-200">
+      {/* Notifications & Settings */}
+      <div className="p-4 border-t border-gray-200 flex flex-col items-center gap-3">
+        <NotificationBell />
         <Link to="/settings">
-          <Settings 
-            size={20} 
+          <Settings
+            size={20}
             className={`mx-auto ${pathname.includes('/settings') ? 'text-[#F2993D]' : 'text-[#4F4F4F] hover:text-[#F2993D]'} transition-colors cursor-pointer`}
           />
         </Link>

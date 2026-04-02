@@ -1621,3 +1621,23 @@ export async function updateAdminSubcategoryExclusions(
     body: JSON.stringify(actions),
   });
 }
+
+// ── Notifications ──
+
+export async function getNotifications(): Promise<ApiResponse<{ notifications: any[]; unread_count: number }>> {
+  return fetchWithAuth('/api/v1/notifications');
+}
+
+export async function markNotificationRead(id: string): Promise<ApiResponse<any>> {
+  return fetchWithAuth(`/api/v1/notifications/${id}/read`, {
+    method: 'PATCH',
+    body: JSON.stringify({}),
+  });
+}
+
+export async function markAllNotificationsRead(): Promise<ApiResponse<any>> {
+  return fetchWithAuth('/api/v1/notifications/mark_all_read', {
+    method: 'POST',
+    body: JSON.stringify({}),
+  });
+}

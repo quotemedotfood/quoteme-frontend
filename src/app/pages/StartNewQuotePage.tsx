@@ -11,7 +11,7 @@ import { useLocation2 } from '../contexts/LocationContext';
 import { useAuth } from '../contexts/AuthContext';
 import { UpgradeDrawer } from '../components/UpgradeDrawer';
 import { CategoryReviewPanel } from '../components/CategoryReviewPanel';
-import { createMenu, createGuestQuote, extractMenuText, getCatalogs, uploadCatalogFile, getRestaurants, getRestaurant, getStockQuotes, generateFromStockQuote, getDemoDistributor, getClassificationStatus, getQuotes } from '../services/api';
+import { createMenu, createGuestQuote, extractMenuText, getCatalogs, uploadCatalogFile, getRestaurants, getRestaurant, getStockQuotes, generateFromStockQuote, getDemoDistributor, getClassificationStatus, getQuotes, getMenuStatus } from '../services/api';
 import type { CatalogSummary, RestaurantSummary, RestaurantDetail, StockQuoteResponse } from '../services/api';
 import { isDemoMode, isLiquorDemo, demoType } from '../utils/demoMode';
 import { isBuyerRole as checkBuyerRole } from '../utils/roles';
@@ -123,6 +123,12 @@ export function StartNewQuotePage() {
   const [isDragging, setIsDragging] = useState(false);
   const [skipIngredientReview, setSkipIngredientReview] = useState(true);
 
+  // Background processing state
+  const [backgroundProcessing, setBackgroundProcessing] = useState(false);
+  const [backgroundMenuId, setBackgroundMenuId] = useState<string | null>(null);
+  const [backgroundAction, setBackgroundAction] = useState<'match' | 'skip' | null>(null);
+  const backgroundPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
   // Draft limit state (Fix 131)
   const [draftLimitReached, setDraftLimitReached] = useState(false);
 
@@ -227,6 +233,35 @@ export function StartNewQuotePage() {
     timeout = setTimeout(advance, delays[0]);
     return () => clearTimeout(timeout);
   }, [isCreatingQuote]);
+
+  // Background processing polling
+  useEffect(() => {
+    if (!backgroundProcessing || !backgroundMenuId) return;
+    const poll = async () => {
+      const res = await getMenuStatus(backgroundMenuId);
+      if (res.data) {
+        if (res.data.status === 'processed' && res.data.quote_id) {
+          setBackgroundProcessing(false);
+          setBackgroundMenuId(null);
+          if (backgroundPollRef.current) clearInterval(backgroundPollRef.current);
+          if (backgroundAction === 'skip') {
+            navigate('/export-finalize', { state: { quoteId: res.data.quote_id, isOpenQuote: isQuoteOpened } });
+          } else {
+            navigate('/map-ingredients', { state: { quoteId: res.data.quote_id, menuId: backgroundMenuId, isOpenQuote: isQuoteOpened, locationId: isBuyerRole ? selectedLocation?.id : undefined } });
+          }
+        } else if (res.data.status === 'failed') {
+          setBackgroundProcessing(false);
+          setBackgroundMenuId(null);
+          if (backgroundPollRef.current) clearInterval(backgroundPollRef.current);
+          setError('We had trouble with this menu. Try breaking it into sections \u2014 paste just the dinner entr\u00e9es or cocktail list.');
+        }
+      }
+    };
+    backgroundPollRef.current = setInterval(poll, 5000);
+    return () => {
+      if (backgroundPollRef.current) clearInterval(backgroundPollRef.current);
+    };
+  }, [backgroundProcessing, backgroundMenuId, backgroundAction]);
 
   // Load catalogs, restaurants, stock quotes on mount
   useEffect(() => {
@@ -552,9 +587,16 @@ export function StartNewQuotePage() {
           return;
         }
         if (response.data) {
-          navigate('/map-ingredients', {
-            state: { quoteId: response.data.quote_id, menuId: response.data.menu_id, isOpenQuote: isQuoteOpened, locationId: isBuyerRole ? selectedLocation?.id : undefined }
-          });
+          if ((response.data as any).background) {
+            setIsCreatingQuote(false);
+            setBackgroundProcessing(true);
+            setBackgroundMenuId(response.data.menu_id);
+            setBackgroundAction('match');
+          } else {
+            navigate('/map-ingredients', {
+              state: { quoteId: response.data.quote_id, menuId: response.data.menu_id, isOpenQuote: isQuoteOpened, locationId: isBuyerRole ? selectedLocation?.id : undefined }
+            });
+          }
         }
       }
     } catch (error) {
@@ -611,7 +653,14 @@ export function StartNewQuotePage() {
           return;
         }
         if (response.data) {
-          navigate('/export-finalize', { state: { quoteId: response.data.quote_id, isOpenQuote: isQuoteOpened } });
+          if ((response.data as any).background) {
+            setIsCreatingQuote(false);
+            setBackgroundProcessing(true);
+            setBackgroundMenuId(response.data.menu_id);
+            setBackgroundAction('skip');
+          } else {
+            navigate('/export-finalize', { state: { quoteId: response.data.quote_id, isOpenQuote: isQuoteOpened } });
+          }
         }
       }
     } catch (error) {
@@ -693,6 +742,38 @@ export function StartNewQuotePage() {
             <button onClick={() => setError(null)} className="text-red-400 hover:text-red-600 ml-2">
               <X className="w-4 h-4" />
             </button>
+          </div>
+        )}
+
+        {backgroundProcessing && (
+          <div className="bg-white rounded-xl p-6 mb-6 shadow-sm border border-[#A5CFDD]/30">
+            <div className="flex items-start gap-3">
+              <div className="mt-1 w-2 h-2 rounded-full bg-[#A5CFDD] animate-pulse shrink-0" />
+              <div className="flex-1">
+                <p className="text-sm font-medium text-[#2A2A2A]">
+                  This is a big menu! We're processing it in the background.
+                </p>
+                <p className="text-xs text-gray-500 mt-1">
+                  You'll get a notification when it's ready. You can navigate away.
+                </p>
+                {/* Pulsing teal bar */}
+                <div className="mt-3 h-1.5 rounded-full bg-gray-100 overflow-hidden">
+                  <div
+                    className="h-full w-1/3 rounded-full bg-[#A5CFDD]"
+                    style={{
+                      animation: 'pulse-slide 2s ease-in-out infinite',
+                    }}
+                  />
+                </div>
+                <style>{`
+                  @keyframes pulse-slide {
+                    0% { transform: translateX(-100%); opacity: 0.6; }
+                    50% { transform: translateX(100%); opacity: 1; }
+                    100% { transform: translateX(300%); opacity: 0.6; }
+                  }
+                `}</style>
+              </div>
+            </div>
           </div>
         )}
 
