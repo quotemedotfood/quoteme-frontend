@@ -104,12 +104,35 @@ export function ExportFinalizePage() {
     });
   }
 
+  // Partition lines: matched items sorted by category, then unmatched at bottom
+  function partitionLines(lines: QuoteLineResponse[]) {
+    const deduped = deduplicatedLines(lines);
+    const matched = deduped
+      .filter(l => l.product)
+      .sort((a, b) => (a.category || '').localeCompare(b.category || ''));
+    const unmatched = deduped.filter(l => !l.product);
+
+    // Group produce unmatched into one summary
+    const produceNames: string[] = [];
+    const otherUnmatched: QuoteLineResponse[] = [];
+    for (const line of unmatched) {
+      const cat = (line.category || '').toLowerCase();
+      if (cat.includes('produce') || cat.includes('fruit') || cat.includes('vegetable')) {
+        produceNames.push((line.component?.name || 'Unknown').toLowerCase());
+      } else {
+        otherUnmatched.push(line);
+      }
+    }
+
+    return { matched, produceNames: [...new Set(produceNames)], otherUnmatched };
+  }
+
   // CSV download
   async function handleCsvDownload() {
     if (!quoteData) return;
     setDownloadingCsv(true);
     try {
-      const lines = deduplicatedLines(quoteData.lines || []);
+      const { matched, produceNames, otherUnmatched } = partitionLines(quoteData.lines || []);
       const headers = ['Category', 'Item #', 'Brand', 'Product', 'Pack Size', 'Qty', 'Unit Price'];
       const escCsv = (val: string) => {
         if (val.includes(',') || val.includes('"') || val.includes('\n')) {
@@ -117,7 +140,7 @@ export function ExportFinalizePage() {
         }
         return val;
       };
-      const rows = lines.map(line => [
+      const rows = matched.map(line => [
         escCsv(line.category || ''),
         escCsv(line.product?.item_number || ''),
         escCsv(line.product?.brand || ''),
@@ -127,7 +150,20 @@ export function ExportFinalizePage() {
         line.unit_price || '',
       ].join(','));
 
-      const csv = [headers.join(','), ...rows].join('\n');
+      const csvParts = [headers.join(','), ...rows];
+
+      if (produceNames.length > 0 || otherUnmatched.length > 0) {
+        csvParts.push('');
+        csvParts.push('Items Not in Distributor Catalog');
+        if (produceNames.length > 0) {
+          csvParts.push(escCsv(`Fresh produce — source externally (${produceNames.join(', ')})`));
+        }
+        for (const line of otherUnmatched) {
+          csvParts.push(escCsv(line.component?.name || 'Unknown'));
+        }
+      }
+
+      const csv = csvParts.join('\n');
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -465,7 +501,7 @@ export function ExportFinalizePage() {
                 <div className="pt-4 border-t border-gray-200 space-y-3">
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-gray-600">Total Products:</span>
-                    <span className="text-sm text-[#2A2A2A] font-medium">{quoteData ? deduplicatedLines(quoteData.lines || []).length : '—'}</span>
+                    <span className="text-sm text-[#2A2A2A] font-medium">{quoteData ? partitionLines(quoteData.lines || []).matched.length : '—'}</span>
                   </div>
                 </div>
               </div>
@@ -582,25 +618,49 @@ export function ExportFinalizePage() {
 
               {/* Mobile quote preview - card based */}
               <div className="md:hidden space-y-3 mb-4">
-                {quoteData && deduplicatedLines(quoteData.lines || []).map((line) => (
-                  <div key={line.id} className="bg-gray-50 rounded-lg p-3 border border-gray-100">
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-[#2A2A2A] truncate">
-                          {toTitleCase(line.product?.product || line.component?.name || 'Unknown')}
-                        </p>
-                        <p className="text-xs text-gray-500 truncate">
-                          {toTitleCase(line.product?.brand || '')} {line.product?.pack_size ? `· ${line.product.pack_size}` : ''}
-                        </p>
-                        <p className="text-xs text-gray-400">{toTitleCase(line.category || '')}</p>
-                      </div>
-                      <div className="text-right ml-3 shrink-0">
-                        <p className="text-sm font-semibold text-[#2A2A2A]">{line.unit_price || '—'}</p>
-                        <p className="text-xs text-gray-400">×{line.quantity}</p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+                {quoteData && (() => {
+                  const { matched, produceNames, otherUnmatched } = partitionLines(quoteData.lines || []);
+                  return (
+                    <>
+                      {matched.map((line) => (
+                        <div key={line.id} className="bg-gray-50 rounded-lg p-3 border border-gray-100">
+                          <div className="flex justify-between items-start">
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-[#2A2A2A] truncate">
+                                {toTitleCase(line.product?.product || 'Unknown')}
+                              </p>
+                              <p className="text-xs text-gray-500 truncate">
+                                {toTitleCase(line.product?.brand || '')} {line.product?.pack_size ? `· ${line.product.pack_size}` : ''}
+                              </p>
+                              <p className="text-xs text-gray-400">{toTitleCase(line.category || '')}</p>
+                            </div>
+                            <div className="text-right ml-3 shrink-0">
+                              <p className="text-sm font-semibold text-[#2A2A2A]">{line.unit_price || '—'}</p>
+                              <p className="text-xs text-gray-400">×{line.quantity}</p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                      {(produceNames.length > 0 || otherUnmatched.length > 0) && (
+                        <div className="mt-4">
+                          <p className="text-xs font-medium text-gray-500 mb-2">Items Not in Distributor Catalog</p>
+                          {produceNames.length > 0 && (
+                            <div className="bg-amber-50 rounded-lg p-3 border border-amber-100 mb-2">
+                              <p className="text-xs text-amber-700">
+                                Fresh produce not carried by this distributor — source externally ({produceNames.join(', ')})
+                              </p>
+                            </div>
+                          )}
+                          {otherUnmatched.map((line) => (
+                            <div key={line.id} className="bg-gray-50 rounded-lg p-2 border border-gray-100 mb-1">
+                              <p className="text-xs text-gray-600">{toTitleCase(line.component?.name || 'Unknown')}</p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
                 {!quoteData && <p className="text-sm text-gray-400 text-center py-4">Loading...</p>}
               </div>
 
@@ -646,24 +706,39 @@ export function ExportFinalizePage() {
                         <div className="px-1.5 py-1 col-span-2">Product</div>
                         <div className="px-1.5 py-1 text-right">Price</div>
                       </div>
-                      {quoteData && deduplicatedLines(quoteData.lines || []).slice(0, 4).map((line, i) => (
-                        <div
-                          key={line.id}
-                          className="grid grid-cols-6 gap-0 text-[0.5rem] border-t border-gray-100"
-                          style={{ backgroundColor: i % 2 === 1 ? '#F9FAFB' : 'white' }}
-                        >
-                          <div className="px-1.5 py-0.5 truncate text-gray-600">{toTitleCase(line.category || '') || '—'}</div>
-                          <div className="px-1.5 py-0.5 truncate text-gray-600">{line.product?.item_number || '—'}</div>
-                          <div className="px-1.5 py-0.5 truncate text-gray-600">{toTitleCase(line.product?.brand || '') || '—'}</div>
-                          <div className="px-1.5 py-0.5 truncate text-gray-600 col-span-2">{toTitleCase(line.product?.product || '') || '—'}</div>
-                          <div className="px-1.5 py-0.5 text-right text-gray-600">{line.unit_price || '—'}</div>
-                        </div>
-                      ))}
-                      {quoteData && deduplicatedLines(quoteData.lines || []).length > 4 && (
-                        <div className="text-center text-[0.5rem] text-gray-400 py-1 border-t border-gray-100">
-                          + {deduplicatedLines(quoteData.lines || []).length - 4} more items
-                        </div>
-                      )}
+                      {quoteData && (() => {
+                        const { matched, produceNames, otherUnmatched } = partitionLines(quoteData.lines || []);
+                        const previewLines = matched.slice(0, 4);
+                        const remaining = matched.length - 4;
+                        const hasUnmatched = produceNames.length > 0 || otherUnmatched.length > 0;
+                        return (
+                          <>
+                            {previewLines.map((line, i) => (
+                              <div
+                                key={line.id}
+                                className="grid grid-cols-6 gap-0 text-[0.5rem] border-t border-gray-100"
+                                style={{ backgroundColor: i % 2 === 1 ? '#F9FAFB' : 'white' }}
+                              >
+                                <div className="px-1.5 py-0.5 truncate text-gray-600">{toTitleCase(line.category || '') || '—'}</div>
+                                <div className="px-1.5 py-0.5 truncate text-gray-600">{line.product?.item_number || '—'}</div>
+                                <div className="px-1.5 py-0.5 truncate text-gray-600">{toTitleCase(line.product?.brand || '') || '—'}</div>
+                                <div className="px-1.5 py-0.5 truncate text-gray-600 col-span-2">{toTitleCase(line.product?.product || '') || '—'}</div>
+                                <div className="px-1.5 py-0.5 text-right text-gray-600">{line.unit_price || '—'}</div>
+                              </div>
+                            ))}
+                            {remaining > 0 && (
+                              <div className="text-center text-[0.5rem] text-gray-400 py-1 border-t border-gray-100">
+                                + {remaining} more items
+                              </div>
+                            )}
+                            {hasUnmatched && (
+                              <div className="text-[0.45rem] text-amber-600 px-1.5 py-1 border-t border-gray-100 bg-amber-50/50">
+                                + {produceNames.length + otherUnmatched.length} items not in catalog
+                              </div>
+                            )}
+                          </>
+                        );
+                      })()}
                       {!quoteData && (
                         <div className="text-center text-[0.5rem] text-gray-400 py-2">Loading...</div>
                       )}
@@ -672,7 +747,7 @@ export function ExportFinalizePage() {
                     {/* Item count */}
                     <div className="flex justify-end items-center gap-2 pt-1 border-t border-gray-200">
                       <span className="text-gray-400 text-[0.6rem]">
-                        {quoteData ? deduplicatedLines(quoteData.lines || []).length : 0} items
+                        {quoteData ? partitionLines(quoteData.lines || []).matched.length : 0} items
                       </span>
                     </div>
                   </div>

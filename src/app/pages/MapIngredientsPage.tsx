@@ -16,6 +16,8 @@ import {
   getQuote,
   getGuestQuote,
   getMoreMatches,
+  updateQuote,
+  updateGuestQuote,
 } from '../services/api';
 
 // ─── Types (matching backend API responses) ──────────────────────────────────
@@ -140,6 +142,7 @@ export function MapIngredientsPage() {
 
   const isGuest = !localStorage.getItem('quoteme_token');
   const fetchQuote = (id: string) => isGuest ? getGuestQuote(id) : getQuote(id);
+  const persistQuote = (id: string, updates: any) => isGuest ? updateGuestQuote(id, updates) : updateQuote(id, updates);
 
   // ─── Poll menu status then load quote ─────────────────────────────────────
 
@@ -318,17 +321,48 @@ export function MapIngredientsPage() {
   };
 
   const handleReplaceMatch = (componentName: string, productId: string, product?: { id: string; item_number: string; brand: string; product: string; pack_size: string; category: string }) => {
-    const allCandidates = selectedLine?.alignment_candidates || [];
-    const candidateProduct = allCandidates.find(c => c.product.id === productId)?.product || product;
+    // Look up the line fresh from current dishes state to avoid stale closures
+    let line: QuoteLine | undefined;
+    for (const dish of dishes) {
+      if (dish.componentLines[componentName]) {
+        line = dish.componentLines[componentName];
+        break;
+      }
+    }
+    const allCandidates = line?.alignment_candidates || [];
+    const candidate = allCandidates.find(c => c.product.id === productId);
+    const candidateProduct = candidate?.product || product;
     if (candidateProduct) {
       updateDishProduct(componentName, candidateProduct);
     }
     setMappedComponents(prev => ({ ...prev, [componentName]: [productId] }));
+
+    // Persist to backend so downstream pages see the change
+    if (quoteId && line) {
+      const lineUpdate: any = { id: line.id };
+      if (candidate) {
+        lineUpdate.alignment_selected = candidate.position;
+      } else {
+        lineUpdate.product_id = productId;
+      }
+      persistQuote(quoteId, { lines: [lineUpdate] }).catch(() => {
+        setError('Failed to save match. Please try again.');
+      });
+    }
   };
 
   const handleAddToQuote = (componentName: string, productId: string, product?: { id: string; item_number: string; brand: string; product: string; pack_size: string; category: string }) => {
-    const allCandidates = selectedLine?.alignment_candidates || [];
-    const candidateProduct = allCandidates.find(c => c.product.id === productId)?.product || product;
+    // Look up the line fresh from current dishes state to avoid stale closures
+    let line: QuoteLine | undefined;
+    for (const dish of dishes) {
+      if (dish.componentLines[componentName]) {
+        line = dish.componentLines[componentName];
+        break;
+      }
+    }
+    const allCandidates = line?.alignment_candidates || [];
+    const candidate = allCandidates.find(c => c.product.id === productId);
+    const candidateProduct = candidate?.product || product;
     if (candidateProduct) {
       // Update the component line so the main page shows the match
       updateDishProduct(componentName, candidateProduct);
@@ -341,6 +375,19 @@ export function MapIngredientsPage() {
       }]);
     }
     setMappedComponents(prev => ({ ...prev, [componentName]: [...(prev[componentName] || []), productId] }));
+
+    // Persist to backend so downstream pages see the change
+    if (quoteId && line) {
+      const lineUpdate: any = { id: line.id };
+      if (candidate) {
+        lineUpdate.alignment_selected = candidate.position;
+      } else {
+        lineUpdate.product_id = productId;
+      }
+      persistQuote(quoteId, { lines: [lineUpdate] }).catch(() => {
+        setError('Failed to save match. Please try again.');
+      });
+    }
   };
 
   const toggleCategory = (id: string) => {
