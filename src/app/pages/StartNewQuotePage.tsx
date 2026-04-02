@@ -11,7 +11,7 @@ import { useLocation2 } from '../contexts/LocationContext';
 import { useAuth } from '../contexts/AuthContext';
 import { UpgradeDrawer } from '../components/UpgradeDrawer';
 import { CategoryReviewPanel } from '../components/CategoryReviewPanel';
-import { createMenu, createGuestQuote, extractMenuText, getCatalogs, uploadCatalogFile, getRestaurants, getRestaurant, getStockQuotes, generateFromStockQuote, getDemoDistributor, getClassificationStatus } from '../services/api';
+import { createMenu, createGuestQuote, extractMenuText, getCatalogs, uploadCatalogFile, getRestaurants, getRestaurant, getStockQuotes, generateFromStockQuote, getDemoDistributor, getClassificationStatus, getQuotes } from '../services/api';
 import type { CatalogSummary, RestaurantSummary, RestaurantDetail, StockQuoteResponse } from '../services/api';
 import { isDemoMode, isLiquorDemo, demoType } from '../utils/demoMode';
 import { isBuyerRole as checkBuyerRole } from '../utils/roles';
@@ -107,7 +107,7 @@ export function StartNewQuotePage() {
   const [menuUrl, setMenuUrl] = useState('');
   const [isQuoteOpened, setIsQuoteOpened] = useState(isDemoMode());
   const [isUpgradeDrawerOpen, setIsUpgradeDrawerOpen] = useState(false);
-  const { hasQuotesRemaining, incrementQuoteCount, quotesRemaining, profile, initGuestSession } = useUser();
+  const { hasQuotesRemaining, quotesRemaining, profile, initGuestSession } = useUser();
   const { selectedLocation } = useLocation2();
   const { user } = useAuth();
   const isBuyerRole = checkBuyerRole(user?.role);
@@ -122,6 +122,9 @@ export function StartNewQuotePage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [skipIngredientReview, setSkipIngredientReview] = useState(true);
+
+  // Draft limit state (Fix 131)
+  const [draftLimitReached, setDraftLimitReached] = useState(false);
 
   // Catalog state
   const [catalogs, setCatalogs] = useState<CatalogSummary[]>([]);
@@ -168,6 +171,16 @@ export function StartNewQuotePage() {
       });
     }
   }, [liquorDemo]);
+
+  // Fix 131: Check draft limit on mount for authenticated users
+  useEffect(() => {
+    if (isGuest) return;
+    getQuotes({ status: 'draft' }).then(res => {
+      if (res.data && res.data.length >= 2) {
+        setDraftLimitReached(true);
+      }
+    });
+  }, [isGuest]);
 
   // Load Google Fonts
   useEffect(() => {
@@ -512,11 +525,11 @@ export function StartNewQuotePage() {
         }
         if (response.error) {
           if (isServiceBusyError(response.error)) { setServiceBusy(true); return; }
+          if (response.error.includes('2 quotes in progress')) { setDraftLimitReached(true); return; }
           setError(`Failed to create quote: ${response.error}`);
           return;
         }
         if (response.data) {
-          incrementQuoteCount();
           navigate('/map-ingredients', {
             state: { quoteId: response.data.quote_id, menuId: response.data.menu_id, isOpenQuote: isQuoteOpened, locationId: isBuyerRole ? selectedLocation?.id : undefined }
           });
@@ -525,11 +538,11 @@ export function StartNewQuotePage() {
         const response = await createMenu({ raw_text: menuText, name: selectedRestaurant?.name || 'New Quote' });
         if (response.error) {
           if (isServiceBusyError(response.error)) { setServiceBusy(true); return; }
+          if (response.error.includes('2 quotes in progress')) { setDraftLimitReached(true); return; }
           setError(`Failed to create quote: ${response.error}`);
           return;
         }
         if (response.data) {
-          incrementQuoteCount();
           navigate('/map-ingredients', {
             state: { quoteId: response.data.quote_id, menuId: response.data.menu_id, isOpenQuote: isQuoteOpened, locationId: isBuyerRole ? selectedLocation?.id : undefined }
           });
@@ -573,22 +586,22 @@ export function StartNewQuotePage() {
         }
         if (response.error) {
           if (isServiceBusyError(response.error)) { setServiceBusy(true); return; }
+          if (response.error.includes('2 quotes in progress')) { setDraftLimitReached(true); return; }
           setError(`Failed to create quote: ${response.error}`);
           return;
         }
         if (response.data) {
-          incrementQuoteCount();
           navigate('/export-finalize', { state: { quoteId: response.data.quote_id, isOpenQuote: isQuoteOpened } });
         }
       } else {
         const response = await createMenu({ raw_text: menuText, name: selectedRestaurant?.name || 'New Quote' });
         if (response.error) {
           if (isServiceBusyError(response.error)) { setServiceBusy(true); return; }
+          if (response.error.includes('2 quotes in progress')) { setDraftLimitReached(true); return; }
           setError(`Failed to create quote: ${response.error}`);
           return;
         }
         if (response.data) {
-          incrementQuoteCount();
           navigate('/export-finalize', { state: { quoteId: response.data.quote_id, isOpenQuote: isQuoteOpened } });
         }
       }
@@ -701,8 +714,24 @@ export function StartNewQuotePage() {
           )}
         </div>
 
+        {/* Fix 131: Draft limit block */}
+        {draftLimitReached && (
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
+            <p className="text-sm text-amber-800">
+              You have 2 quotes in progress.{' '}
+              <button
+                onClick={() => navigate('/quotes')}
+                className="text-[#4A90D9] hover:text-[#3a7bc8] font-medium underline underline-offset-2"
+              >
+                Go to your quotes &rarr;
+              </button>
+              {' '}to finish or delete one before starting a new quote.
+            </p>
+          </div>
+        )}
+
         {/* ── Upload Zone ── */}
-        <div className="bg-white rounded-xl p-6 mb-6 shadow-sm border border-gray-100">
+        <div className={`bg-white rounded-xl p-6 mb-6 shadow-sm border border-gray-100 ${draftLimitReached ? 'opacity-40 pointer-events-none' : ''}`}>
           <input
             ref={fileInputRef}
             type="file"
@@ -1039,14 +1068,14 @@ export function StartNewQuotePage() {
             <Button
               className="bg-[#F9A64B] hover:bg-[#E8953A] text-white px-6"
               onClick={handleSkipToExport}
-              disabled={isCreatingQuote || (!pasteText && !menuPreviewText)}
+              disabled={isCreatingQuote || draftLimitReached || (!pasteText && !menuPreviewText)}
             >
               Skip to Quote
             </Button>
             <Button
               className="bg-[#A5CFDD] hover:bg-[#7FAEC2] text-white px-8 py-2.5 text-base font-medium"
               onClick={handleContinueToQuoteBuilder}
-              disabled={isCreatingQuote || (!pasteText && !menuPreviewText)}
+              disabled={isCreatingQuote || draftLimitReached || (!pasteText && !menuPreviewText)}
             >
               Match to Catalog
             </Button>

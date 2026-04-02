@@ -22,6 +22,7 @@ import {
   DialogTitle,
 } from '../components/ui/dialog';
 import { getQuote, getGuestQuote, downloadQuotePdf, downloadOrderGuide, sendQuote, sendQuoteSms } from '../services/api';
+import { useUser } from '../contexts/UserContext';
 import type { QuoteResponse, QuoteLineResponse } from '../services/api';
 import { isDemoMode, PROD_SIGNUP_URL } from '../utils/demoMode';
 
@@ -56,6 +57,7 @@ export function ExportFinalizePage() {
   const quoteId: string | undefined = (location.state as any)?.quoteId || searchParams.get('quoteId') || undefined;
   const isOpenQuote: boolean = (location.state as any)?.isOpenQuote || searchParams.get('isOpenQuote') === 'true' || false;
 
+  const { incrementQuoteCount } = useUser();
   const isAuthenticated = !!localStorage.getItem('quoteme_token');
   const [isFinalized, setIsFinalized] = useState(isAuthenticated);
   const [showSuccessDrawer, setShowSuccessDrawer] = useState(false);
@@ -310,6 +312,7 @@ export function ExportFinalizePage() {
         setEmailSent(true);
         setHasInteracted(true);
         setShowSuccessDrawer(true);
+        incrementQuoteCount();
       }
     } finally {
       setSendingEmail(false);
@@ -329,6 +332,7 @@ export function ExportFinalizePage() {
         setSmsSent(true);
         setHasInteracted(true);
         setShowSuccessDrawer(true);
+        incrementQuoteCount();
       }
     } finally {
       setSendingSms(false);
