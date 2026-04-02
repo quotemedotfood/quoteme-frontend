@@ -6,7 +6,6 @@ import { useNavigate } from 'react-router';
 import { SwipeableCard } from '../components/SwipeableCard';
 import { BottomSheet } from '../components/BottomSheet';
 import { MobilePullToRefresh } from '../components/MobilePullToRefresh';
-import { SwipeHint } from '../components/SwipeHint';
 import { getQuotes, requoteQuote, downloadQuotePdf, downloadOrderGuide, deleteQuote, type QuoteListItem, type GetQuotesParams } from '../services/api';
 
 export function QuotesPage() {
@@ -307,12 +306,13 @@ export function QuotesPage() {
         {!loading && !error && sortedQuotes.length > 0 && (
           <MobilePullToRefresh onRefresh={handleRefresh}>
             <div className="space-y-3">
-              {sortedQuotes.map((quote) => (
+              {sortedQuotes.map((quote, index) => (
                 <SwipeableCard
                   key={quote.id}
                   onEdit={() => handleEditQuote(quote.id)}
                   onDelete={() => setConfirmDeleteId(quote.id)}
                   className="rounded-lg border border-gray-200 shadow-sm p-4"
+                  bounceHint={index === 0}
                 >
                   <div className="flex justify-between items-start mb-2">
                     <div>
@@ -644,9 +644,6 @@ export function QuotesPage() {
           </Button>
         </div>
       </BottomSheet>
-
-      {/* Swipe Hint for Mobile Users */}
-      <SwipeHint />
 
       {/* Delete Confirmation */}
       {confirmDeleteId && (

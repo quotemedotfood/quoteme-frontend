@@ -1,4 +1,4 @@
-import { ReactNode, useState } from 'react';
+import { ReactNode, useState, useEffect, useRef } from 'react';
 import { useSwipeable } from 'react-swipeable';
 import { Edit, Trash2 } from 'lucide-react';
 
@@ -7,11 +7,22 @@ interface SwipeableCardProps {
   onEdit?: () => void;
   onDelete?: () => void;
   className?: string;
+  /** Show a bounce-left hint animation on mount */
+  bounceHint?: boolean;
 }
 
-export function SwipeableCard({ children, onEdit, onDelete, className = '' }: SwipeableCardProps) {
+export function SwipeableCard({ children, onEdit, onDelete, className = '', bounceHint = false }: SwipeableCardProps) {
   const [swipeOffset, setSwipeOffset] = useState(0);
   const [isSwiping, setIsSwiping] = useState(false);
+  const [showBounce, setShowBounce] = useState(false);
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!bounceHint) return;
+    // Small delay so the card renders first
+    const timer = setTimeout(() => setShowBounce(true), 300);
+    return () => clearTimeout(timer);
+  }, [bounceHint]);
 
   const handlers = useSwipeable({
     onSwiping: (eventData) => {
@@ -78,15 +89,28 @@ export function SwipeableCard({ children, onEdit, onDelete, className = '' }: Sw
 
       {/* Card Content */}
       <div
+        ref={cardRef}
         {...handlers}
         style={{
           transform: `translateX(${swipeOffset}px)`,
           transition: isSwiping ? 'none' : 'transform 0.3s ease-out',
+          animation: showBounce ? 'swipe-bounce-hint 0.5s ease-out forwards' : undefined,
         }}
+        onAnimationEnd={() => setShowBounce(false)}
         className={`bg-white ${className}`}
       >
         {children}
       </div>
+
+      {showBounce && (
+        <style>{`
+          @keyframes swipe-bounce-hint {
+            0% { transform: translateX(0); }
+            40% { transform: translateX(-25px); }
+            100% { transform: translateX(0); }
+          }
+        `}</style>
+      )}
     </div>
   );
 }
