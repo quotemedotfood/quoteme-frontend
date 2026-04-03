@@ -940,10 +940,12 @@ export async function sendQuote(id: string, recipientEmail?: string): Promise<Ap
   return fetchWithAuth(`/api/v1/quotes/${id}/send_quote`, options);
 }
 
-export async function sendQuoteSms(id: string): Promise<ApiResponse<any>> {
-  return fetchWithAuth(`/api/v1/quotes/${id}/send_sms`, {
-    method: 'POST',
-  });
+export async function sendQuoteSms(id: string, recipientPhone?: string): Promise<ApiResponse<any>> {
+  const options: RequestInit = { method: 'POST' };
+  if (recipientPhone) {
+    options.body = JSON.stringify({ recipient_phone: recipientPhone });
+  }
+  return fetchWithAuth(`/api/v1/quotes/${id}/send_sms`, options);
 }
 
 export async function getMenuStatus(id: string): Promise<ApiResponse<MenuStatusResponse>> {

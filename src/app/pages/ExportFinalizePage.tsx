@@ -322,10 +322,15 @@ export function ExportFinalizePage() {
   // Send SMS
   async function handleSendSms() {
     if (!quoteId) return;
+    const phone = contactPhone;
+    if (!phone) {
+      setSendError('No phone number — enter one or add a contact.');
+      return;
+    }
     setSendingSms(true);
     setSendError(null);
     try {
-      const res = await sendQuoteSms(quoteId);
+      const res = await sendQuoteSms(quoteId, phone);
       if (res.error) {
         setSendError(res.error);
       } else {
