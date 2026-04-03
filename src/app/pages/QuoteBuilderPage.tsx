@@ -103,14 +103,14 @@ export function QuoteBuilderPage() {
           if (seenProducts.has(productId)) continue;
           seenProducts.add(productId);
           const priceDollars = (line.unit_price_cents || 0) / 100;
-          const isUnmatched = line.unmatched === true || !line.product;
+          const isUnmatched = line.availability_status === 'not_in_catalog';
           productItems.push({
             id: line.id,
             dish: line.component?.source_dish || 'Unknown',
             component: line.component?.name || 'Unknown',
             sku: line.product?.item_number || '',
             brand: isUnmatched ? '' : (line.product?.brand || ''),
-            product: isUnmatched ? 'No catalog match' : (line.product?.product || ''),
+            product: line.product?.product || '',
             pack: line.product?.pack_size || '',
             category: line.category || 'Uncategorized',
             basePrice: priceDollars,
@@ -478,9 +478,9 @@ export function QuoteBuilderPage() {
                 {/* Header: Ingredient name */}
                 <h3 className="text-base font-semibold text-[#2A2A2A] mb-1">{toTitleCase(item.component)}</h3>
                 {/* Body: Product + brand */}
-                <p className={`text-sm mb-1 ${item.unmatched ? (item.chefNote?.includes('Category not carried') ? 'text-amber-600 italic' : 'text-red-400 italic') : 'text-gray-500'}`}>
+                <p className={`text-sm mb-1 ${item.unmatched ? 'text-gray-400 italic' : 'text-gray-500'}`}>
                   {item.unmatched
-                    ? (item.chefNote?.includes('Category not carried') ? 'Category not carried' : 'No catalog match')
+                    ? toTitleCase(item.component)
                     : formatProductName(item.product, item.brand)}
                 </p>
 
@@ -651,10 +651,8 @@ export function QuoteBuilderPage() {
                     <td className="px-4 py-3 text-sm text-[#2A2A2A]">{toTitleCase(item.component)}</td>
                     <td className="px-4 py-3 text-sm text-[#2A2A2A]">{item.sku}</td>
                     <td className="px-4 py-3 text-sm text-[#2A2A2A]">{toTitleCase(item.brand)}</td>
-                    <td className={`px-4 py-3 text-sm ${item.unmatched ? (item.chefNote?.includes('Category not carried') ? 'text-amber-600 italic' : 'text-red-400 italic') : 'text-[#2A2A2A]'}`}>
-                      {item.unmatched && item.chefNote?.includes('Category not carried')
-                        ? 'Category not carried'
-                        : toTitleCase(item.product)}
+                    <td className={`px-4 py-3 text-sm ${item.unmatched ? 'text-gray-400 italic' : 'text-[#2A2A2A]'}`}>
+                      {toTitleCase(item.unmatched ? item.component : item.product)}
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-500">{item.pack}</td>
                     <td className="px-4 py-3 text-sm text-gray-500">{toTitleCase(item.category)}</td>

@@ -313,7 +313,7 @@ export function QuoteReviewPage() {
             {/* Mobile cards */}
             <div className="md:hidden space-y-3 p-4">
               {filteredLines.map((line) => {
-                const isUnmatched = !line.product;
+                const isUnmatched = (line as any).availability_status === 'not_in_catalog';
                 const bestCandidate = line.alignment_candidates?.find(c => c.position === 1);
                 const score = bestCandidate?.score;
                 const label = score != null ? matchLabel(score) : null;
@@ -325,7 +325,7 @@ export function QuoteReviewPage() {
                       {label && <span className={`px-2 py-0.5 rounded text-[10px] font-medium ${label.cls}`}>{label.text}</span>}
                     </div>
                     {isUnmatched ? (
-                      <p className="text-xs text-amber-600 flex items-center gap-1"><AlertTriangle size={12} /> No catalog match</p>
+                      <p className="text-xs text-gray-400 italic">{toTitleCase(line.component?.name || '--')}</p>
                     ) : (
                       <>
                         <p className="text-sm text-[#2A2A2A]">{toTitleCase(line.product.product)}</p>
@@ -360,7 +360,7 @@ export function QuoteReviewPage() {
                 </thead>
                 <tbody>
                   {filteredLines.map((line) => {
-                    const isUnmatched = !line.product;
+                    const isUnmatched = (line as any).availability_status === 'not_in_catalog';
                     const bestCandidate = line.alignment_candidates?.find(c => c.position === 1);
                     const score = bestCandidate?.score;
                     const needsReview = isUnmatched || (score != null && score < 0.7);
@@ -390,9 +390,7 @@ export function QuoteReviewPage() {
                         </td>
                         <td className="px-4 py-3">
                           {isUnmatched ? (
-                            <span className="text-amber-600 text-xs flex items-center gap-1">
-                              <AlertTriangle size={12} /> No catalog match
-                            </span>
+                            <span className="text-gray-400 italic text-xs">{toTitleCase(line.component?.name || '--')}</span>
                           ) : (
                             <span className="text-[#2A2A2A]">{toTitleCase(line.product.product)}</span>
                           )}

@@ -110,9 +110,9 @@ export function ExportFinalizePage() {
   function partitionLines(lines: QuoteLineResponse[]) {
     const deduped = deduplicatedLines(lines);
     const matched = deduped
-      .filter(l => l.product)
+      .filter(l => l.availability_status !== 'not_in_catalog')
       .sort((a, b) => (a.category || '').localeCompare(b.category || ''));
-    const unmatched = deduped.filter(l => !l.product);
+    const unmatched = deduped.filter(l => l.availability_status === 'not_in_catalog');
 
     // Group produce unmatched into one summary
     const produceNames: string[] = [];

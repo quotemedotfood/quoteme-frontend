@@ -136,6 +136,7 @@ export interface QuoteLineResponse {
   unit_price_cents: number | null;
   unit_price: string | null;
   alignment_selected: number;
+  availability_status: 'available' | 'not_in_catalog';
   chef_note: string | null;
   component: {
     id: string;
