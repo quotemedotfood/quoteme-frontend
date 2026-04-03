@@ -11,7 +11,7 @@ import { isBuyerRole } from '../utils/roles';
 
 export function SettingsPage() {
   const { profile, updateProfile } = useUser();
-  const { user, logout } = useAuth();
+  const { user, logout, refreshUser } = useAuth();
   const navigate = useNavigate();
   const [isSaving, setIsSaving] = useState(false);
   const [isSavingCompany, setIsSavingCompany] = useState(false);
@@ -717,6 +717,46 @@ export function SettingsPage() {
             <p className="text-sm text-[#4F4F4F] mb-1">No documents uploaded yet</p>
             <p className="text-xs text-[#4F4F4F]">Document management coming soon</p>
           </div>
+        </div>
+        )}
+
+        {/* Quote Preferences Section — authenticated non-guest users */}
+        {!isGuest && (
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <div className="mb-6">
+            <h2 className="text-lg text-[#4F4F4F]">Quote Preferences</h2>
+            <p className="text-sm text-gray-500">Manage how quoting works for your account</p>
+          </div>
+
+          <div className="flex items-center justify-between py-3">
+            <div>
+              <p className="text-sm font-medium text-[#2A2A2A]">Draft Limit</p>
+              <p className="text-xs text-gray-500 mt-0.5">
+                {user?.unlimited_drafts
+                  ? 'You can have unlimited draft quotes at once'
+                  : 'Limited to 2 draft quotes at a time (recommended)'}
+              </p>
+            </div>
+            <button
+              onClick={async () => {
+                const newValue = !user?.unlimited_drafts;
+                const res = await updateCurrentUser({ unlimited_drafts: newValue });
+                if (res.data) {
+                  await refreshUser();
+                }
+              }}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                user?.unlimited_drafts ? 'bg-[#A5CFDD]' : 'bg-gray-200'
+              }`}
+            >
+              <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform shadow-sm ${
+                user?.unlimited_drafts ? 'translate-x-6' : 'translate-x-1'
+              }`} />
+            </button>
+          </div>
+          <p className="text-xs text-gray-400 mt-1">
+            {user?.unlimited_drafts ? 'Unlimited drafts' : '2 drafts (recommended)'}
+          </p>
         </div>
         )}
 

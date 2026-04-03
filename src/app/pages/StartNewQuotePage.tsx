@@ -11,7 +11,7 @@ import { useLocation2 } from '../contexts/LocationContext';
 import { useAuth } from '../contexts/AuthContext';
 import { UpgradeDrawer } from '../components/UpgradeDrawer';
 import { CategoryReviewPanel } from '../components/CategoryReviewPanel';
-import { createMenu, createGuestQuote, extractMenuText, getCatalogs, uploadCatalogFile, getRestaurants, getRestaurant, getStockQuotes, generateFromStockQuote, getDemoDistributor, getClassificationStatus, getQuotes, getMenuStatus } from '../services/api';
+import { createMenu, createGuestQuote, extractMenuText, getCatalogs, uploadCatalogFile, getRestaurants, getRestaurant, getStockQuotes, generateFromStockQuote, getDemoDistributor, getClassificationStatus, getQuotes, getMenuStatus, updateCurrentUser } from '../services/api';
 import type { CatalogSummary, RestaurantSummary, RestaurantDetail, StockQuoteResponse } from '../services/api';
 import { isDemoMode, isLiquorDemo, demoType } from '../utils/demoMode';
 import { isBuyerRole as checkBuyerRole } from '../utils/roles';
@@ -109,7 +109,7 @@ export function StartNewQuotePage() {
   const [isUpgradeDrawerOpen, setIsUpgradeDrawerOpen] = useState(false);
   const { hasQuotesRemaining, quotesRemaining, profile, initGuestSession } = useUser();
   const { selectedLocation } = useLocation2();
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const isBuyerRole = checkBuyerRole(user?.role);
   const isGuest = profile.isGuest || localStorage.getItem('quoteme_token') === null;
   const [isCreatingQuote, setIsCreatingQuote] = useState(false);
@@ -129,8 +129,10 @@ export function StartNewQuotePage() {
   const [backgroundAction, setBackgroundAction] = useState<'match' | 'skip' | null>(null);
   const backgroundPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Draft limit state (Fix 131)
+  // Draft limit state (Fix 131 + Fix 139)
   const [draftLimitReached, setDraftLimitReached] = useState(false);
+  const [unlimitedDraftsEnabled, setUnlimitedDraftsEnabled] = useState(false);
+  const [enablingUnlimited, setEnablingUnlimited] = useState(false);
 
   // Catalog state
   const [catalogs, setCatalogs] = useState<CatalogSummary[]>([]);
@@ -804,18 +806,48 @@ export function StartNewQuotePage() {
           )}
         </div>
 
-        {/* Fix 131: Draft limit block */}
-        {draftLimitReached && (
+        {/* Fix 131 + Fix 139: Draft limit block */}
+        {draftLimitReached && !unlimitedDraftsEnabled && (
           <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
             <p className="text-sm text-amber-800">
               You have 2 quotes in progress.{' '}
               <button
                 onClick={() => navigate('/quotes')}
-                className="text-[#4A90D9] hover:text-[#3a7bc8] font-medium underline underline-offset-2"
+                className="text-[#A5CFDD] hover:text-[#7FAEC2] font-medium underline underline-offset-2"
               >
                 Go to your quotes &rarr;
               </button>
-              {' '}to finish or delete one before starting a new quote.
+              {' '}to finish or delete one, or{' '}
+              <button
+                onClick={async () => {
+                  setEnablingUnlimited(true);
+                  try {
+                    const res = await updateCurrentUser({ unlimited_drafts: true });
+                    if (res.data) {
+                      setUnlimitedDraftsEnabled(true);
+                      setDraftLimitReached(false);
+                      await refreshUser();
+                    }
+                  } catch { /* non-fatal */ }
+                  setEnablingUnlimited(false);
+                }}
+                disabled={enablingUnlimited}
+                className="text-[#A5CFDD] hover:text-[#7FAEC2] font-medium underline underline-offset-2"
+              >
+                {enablingUnlimited ? 'enabling...' : 'allow unlimited drafts'}
+              </button>
+              {' '}in your settings.
+            </p>
+          </div>
+        )}
+        {unlimitedDraftsEnabled && (
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+            <p className="text-sm text-green-800">
+              Unlimited drafts enabled. You can change this in{' '}
+              <button onClick={() => navigate('/settings')} className="text-[#A5CFDD] hover:text-[#7FAEC2] font-medium underline underline-offset-2">
+                Settings
+              </button>
+              {' '}anytime.
             </p>
           </div>
         )}

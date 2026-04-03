@@ -35,6 +35,7 @@ export interface User {
     logo_url?: string;
   } | null;
   rep_settings?: RepSettings;
+  unlimited_drafts?: boolean;
 }
 
 export interface SignUpData {
@@ -398,6 +399,7 @@ export interface UpdateUserData {
   phone?: string;
   avatar_url?: string;
   rep_settings?: RepSettings;
+  unlimited_drafts?: boolean;
 }
 
 export async function updateCurrentUser(data: UpdateUserData): Promise<ApiResponse<User>> {
