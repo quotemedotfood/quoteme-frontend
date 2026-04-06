@@ -183,12 +183,13 @@ export function StartNewQuotePage() {
   // Fix 131: Check draft limit on mount for authenticated users
   useEffect(() => {
     if (isGuest) return;
+    if (user?.unlimited_drafts) return;
     getQuotes({ status: 'draft' }).then(res => {
       if (res.data && res.data.length >= 2) {
         setDraftLimitReached(true);
       }
     });
-  }, [isGuest]);
+  }, [isGuest, user?.unlimited_drafts]);
 
   // Load Google Fonts
   useEffect(() => {
