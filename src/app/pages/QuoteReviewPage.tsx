@@ -527,33 +527,14 @@ export function QuoteReviewPage() {
 
               <div className="border-t border-gray-100" />
 
-              {/* Send via Text */}
-              <div className="space-y-3">
+              {/* Send via Text — Coming Soon */}
+              <div className="space-y-3 opacity-50">
                 <div className="flex items-center gap-2">
                   <MessageSquare className="w-4 h-4 text-[#A5CFDD]" />
                   <h3 className="text-sm font-semibold text-[#2A2A2A]">Send via Text</h3>
+                  <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">Coming Soon</span>
                 </div>
-                <div>
-                  <Label className="text-xs text-gray-500 mb-1 block">Recipient Phone</Label>
-                  <Input
-                    type="tel"
-                    placeholder="+1 (555) 000-0000"
-                    value={sendPhone}
-                    onChange={(e) => setSendPhone(e.target.value)}
-                    className="bg-gray-50"
-                  />
-                </div>
-                <Button
-                  onClick={handleSendText}
-                  disabled={sendingText || !sendPhone.trim()}
-                  className="w-full bg-[#A5CFDD] hover:bg-[#7FAEC2] text-white"
-                >
-                  {sendingText ? (
-                    <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Sending...</>
-                  ) : (
-                    <><MessageSquare className="w-4 h-4 mr-2" /> Send Text</>
-                  )}
-                </Button>
+                <p className="text-xs text-gray-400">Text messaging will be available soon.</p>
               </div>
 
               <div className="border-t border-gray-100" />

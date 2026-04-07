@@ -967,12 +967,12 @@ export function ExportFinalizePage() {
 
                 <Button
                   variant="outline"
-                  className="w-full justify-start border-[#A5CFDD] text-[#A5CFDD] h-12"
-                  disabled={!isFinalized || sendingSms}
-                  onClick={handleSendSms}
+                  className="w-full justify-start border-gray-200 text-gray-400 h-12 cursor-not-allowed"
+                  disabled
                 >
                   <MessageSquare className="w-4 h-4 mr-3" />
-                  {sendingSms ? 'Sending...' : smsSent ? 'Text Sent!' : 'Text Quote to Chef'}
+                  Text Quote to Chef
+                  <span className="ml-auto text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">Coming Soon</span>
                 </Button>
 
                 {effectiveOpenQuote && (
