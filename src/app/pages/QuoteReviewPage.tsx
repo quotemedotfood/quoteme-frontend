@@ -170,7 +170,7 @@ export function QuoteReviewPage() {
     setSendingText(true);
     setSendSuccess(null);
     try {
-      const res = await sendQuoteSms(quoteId);
+      const res = await sendQuoteSms(quoteId, sendPhone.trim());
       if (res.error) throw new Error(res.error);
       setSendSuccess(`Quote texted to ${sendPhone}`);
     } catch (e: any) {
