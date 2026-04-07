@@ -1025,7 +1025,7 @@ export function ExportFinalizePage() {
       )}
 
       {/* Success Drawer */}
-      <Drawer open={showSuccessDrawer} onOpenChange={setShowSuccessDrawer} direction="right">
+      <Drawer open={showSuccessDrawer} onOpenChange={setShowSuccessDrawer} direction="right" handleOnly>
         <DrawerContent>
           <div className="w-full h-full p-6 flex flex-col">
             <DrawerHeader className="px-0">
@@ -1140,7 +1140,7 @@ export function ExportFinalizePage() {
       </Dialog>
 
       {/* Email Quote Drawer */}
-      <Drawer open={showEmailDrawer} onOpenChange={setShowEmailDrawer} direction="right">
+      <Drawer open={showEmailDrawer} onOpenChange={setShowEmailDrawer} direction="right" handleOnly>
         <DrawerContent className="w-full sm:w-[500px]">
           <div className="w-full h-full flex flex-col">
             <DrawerHeader className="border-b border-gray-200">
@@ -1195,7 +1195,7 @@ export function ExportFinalizePage() {
       </Drawer>
 
       {/* Edit Quote Details Drawer */}
-      <Drawer open={showEditDrawer} onOpenChange={setShowEditDrawer} direction="right">
+      <Drawer open={showEditDrawer} onOpenChange={setShowEditDrawer} direction="right" handleOnly>
         <DrawerContent className="w-full sm:w-[500px]">
           <div className="w-full h-full flex flex-col">
             <div className="p-6 border-b border-gray-200 flex justify-between items-center bg-white sticky top-0 z-10">
