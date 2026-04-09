@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Link } from 'react-router';
-import { Search, Plus, ArrowUpDown, ArrowUp, ArrowDown, UserCheck } from 'lucide-react';
+import { Search, Plus, ArrowUpDown, ArrowUp, ArrowDown, UserCheck, Download } from 'lucide-react';
 import { Input } from '../../components/ui/input';
 import { Button } from '../../components/ui/button';
 import {
@@ -11,7 +11,13 @@ import {
   TableHead,
   TableCell,
 } from '../../components/ui/table';
-import { getAdminDistributors, createDistributor, impersonateUser, AdminDistributor } from '../../services/adminApi';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from '../../components/ui/sheet';
+import { getAdminDistributors, createDistributor, impersonateUser, downloadDistributorExport, AdminDistributor } from '../../services/adminApi';
 import SubcategoryExclusionDrawer from '../../components/SubcategoryExclusionDrawer';
 import {
   getAdminSubcategoryExclusions,
@@ -39,6 +45,10 @@ export function QMAdminDistributors() {
   const [exclusionDistributorId, setExclusionDistributorId] = useState<string | null>(null);
   const [exclusionData, setExclusionData] = useState<SubcategoryExclusionsResponse | null>(null);
   const [exclusionLoading, setExclusionLoading] = useState(false);
+  const [exportDrawerOpen, setExportDrawerOpen] = useState(false);
+  const [exportDistributor, setExportDistributor] = useState<AdminDistributor | null>(null);
+  const [exporting, setExporting] = useState<string | null>(null);
+  const [exportError, setExportError] = useState<string | null>(null);
 
   async function handleImpersonate(userId: string, userName: string) {
     setImpersonating(userId);
@@ -62,6 +72,18 @@ export function QMAdminDistributors() {
     if (res.data) setExclusionData(res.data);
     setExclusionLoading(false);
   }, []);
+
+  const handleExport = async (type: 'catalog' | 'quotes' | 'reps') => {
+    if (!exportDistributor) return;
+    setExporting(type);
+    setExportError(null);
+    try {
+      await downloadDistributorExport(exportDistributor.id, type);
+    } catch (e: any) {
+      setExportError(e.message || 'Download failed');
+    }
+    setExporting(null);
+  };
 
   const saveExclusions = useCallback(async (actions: { confirm?: string[]; exclude?: string[]; include?: string[]; confirm_all?: boolean }) => {
     if (!exclusionDistributorId) return;
@@ -252,6 +274,13 @@ export function QMAdminDistributors() {
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-2">
                         <button
+                          onClick={() => { setExportDistributor(d); setExportDrawerOpen(true); setExportError(null); }}
+                          className="text-xs px-1.5 py-1 border border-gray-300 rounded hover:bg-gray-50"
+                          title="Download exports"
+                        >
+                          <Download size={13} />
+                        </button>
+                        <button
                           onClick={() => loadExclusions(d.id)}
                           className="text-xs px-2 py-1 border border-gray-300 rounded hover:bg-gray-50"
                         >
@@ -288,6 +317,57 @@ export function QMAdminDistributors() {
         onSave={saveExclusions}
         loading={exclusionLoading}
       />
+
+      {/* Export Drawer */}
+      <Sheet open={exportDrawerOpen} onOpenChange={setExportDrawerOpen}>
+        <SheetContent side="right">
+          <SheetHeader>
+            <SheetTitle style={{ fontFamily: "'Playfair Display', serif" }}>
+              Export — {exportDistributor?.name}
+            </SheetTitle>
+          </SheetHeader>
+          <div className="flex flex-col gap-3 px-1">
+            <p className="text-sm text-gray-500">Download an Excel file for this distributor.</p>
+            {exportError && <p className="text-sm text-red-500">{exportError}</p>}
+            <button
+              onClick={() => handleExport('catalog')}
+              disabled={!!exporting}
+              className="flex items-center gap-3 px-4 py-3 rounded-lg border border-gray-200 hover:bg-gray-50 text-left"
+            >
+              <Download size={16} className="text-[#7FAEC2] shrink-0" />
+              <div>
+                <p className="text-sm font-medium text-[#2A2A2A]">Catalog</p>
+                <p className="text-xs text-gray-400">{exportDistributor?.product_count ?? 0} products</p>
+              </div>
+              {exporting === 'catalog' && <span className="ml-auto text-xs text-gray-400">Downloading...</span>}
+            </button>
+            <button
+              onClick={() => handleExport('quotes')}
+              disabled={!!exporting}
+              className="flex items-center gap-3 px-4 py-3 rounded-lg border border-gray-200 hover:bg-gray-50 text-left"
+            >
+              <Download size={16} className="text-[#7FAEC2] shrink-0" />
+              <div>
+                <p className="text-sm font-medium text-[#2A2A2A]">Quotes</p>
+                <p className="text-xs text-gray-400">All quote names & details</p>
+              </div>
+              {exporting === 'quotes' && <span className="ml-auto text-xs text-gray-400">Downloading...</span>}
+            </button>
+            <button
+              onClick={() => handleExport('reps')}
+              disabled={!!exporting}
+              className="flex items-center gap-3 px-4 py-3 rounded-lg border border-gray-200 hover:bg-gray-50 text-left"
+            >
+              <Download size={16} className="text-[#7FAEC2] shrink-0" />
+              <div>
+                <p className="text-sm font-medium text-[#2A2A2A]">Reps</p>
+                <p className="text-xs text-gray-400">{exportDistributor?.rep_count ?? 0} reps</p>
+              </div>
+              {exporting === 'reps' && <span className="ml-auto text-xs text-gray-400">Downloading...</span>}
+            </button>
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

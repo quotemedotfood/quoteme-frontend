@@ -234,6 +234,30 @@ export async function createDistributor(data: {
   });
 }
 
+export function getAdminDistributorExportUrl(distributorId: string, type: 'catalog' | 'quotes' | 'reps'): string {
+  return `${API_BASE_URL}/api/v1/admin/distributors/${distributorId}/export?type=${type}`;
+}
+
+export async function downloadDistributorExport(distributorId: string, type: 'catalog' | 'quotes' | 'reps'): Promise<void> {
+  const token = getAuthToken();
+  const response = await fetch(getAdminDistributorExportUrl(distributorId, type), {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({ error: 'Download failed' }));
+    throw new Error(err.error || 'Download failed');
+  }
+  const blob = await response.blob();
+  const disposition = response.headers.get('content-disposition');
+  const filename = disposition?.match(/filename="?(.+?)"?$/)?.[1] || `export-${type}.xlsx`;
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export interface AdminRestaurantDetail {
   id: string;
   name: string;
