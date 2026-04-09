@@ -333,7 +333,7 @@ export function QuoteBuilderPage() {
             </button>
             <div className="min-w-0">
               <h1 className="text-xl text-[#4F4F4F]">Quote Builder</h1>
-              <p className="text-sm text-gray-500 truncate">Step 3 of 4 - Total Components: {items.length}</p>
+              <p className="text-sm text-gray-500 truncate">Total Components: {items.length}</p>
               {inputMode === 'concept_only' && (
                 <p className="text-xs text-amber-600 font-medium mt-0.5">Concept-based starting quote</p>
               )}
