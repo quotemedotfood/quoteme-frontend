@@ -76,6 +76,7 @@ export function useGooglePlaces(
 ) {
   const [ready, setReady] = useState(scriptLoaded);
   const [error, setError] = useState<string | null>(null);
+  const [inputElement, setInputElement] = useState<HTMLInputElement | null>(null);
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
   const onSelectRef = useRef(onSelect);
   onSelectRef.current = onSelect;
@@ -90,10 +91,25 @@ export function useGooglePlaces(
       .catch((e) => setError(e.message));
   }, []);
 
+  // Poll for the input element since refs don't trigger re-renders
+  useEffect(() => {
+    if (inputRef.current) {
+      setInputElement(inputRef.current);
+      return;
+    }
+    const interval = setInterval(() => {
+      if (inputRef.current) {
+        setInputElement(inputRef.current);
+        clearInterval(interval);
+      }
+    }, 100);
+    return () => clearInterval(interval);
+  }, [inputRef]);
+
   const typesKey = options?.types?.join(',') || 'address';
 
   useEffect(() => {
-    if (!ready || !inputRef.current) return;
+    if (!ready || !inputElement) return;
 
     // Clean up previous autocomplete if the input element changed
     if (autocompleteRef.current) {
@@ -101,7 +117,7 @@ export function useGooglePlaces(
       autocompleteRef.current = null;
     }
 
-    const autocomplete = new google.maps.places.Autocomplete(inputRef.current, {
+    const autocomplete = new google.maps.places.Autocomplete(inputElement, {
       types: options?.types || ['address'],
       componentRestrictions: { country: 'us' },
       fields: ['address_components', 'formatted_address'],
@@ -120,7 +136,7 @@ export function useGooglePlaces(
       google.maps.event.clearInstanceListeners(autocomplete);
       autocompleteRef.current = null;
     };
-  }, [ready, inputRef, typesKey]);
+  }, [ready, inputElement, typesKey]);
 
   return { ready: ready && !!GOOGLE_MAPS_API_KEY, error };
 }
