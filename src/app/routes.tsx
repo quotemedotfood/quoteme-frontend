@@ -25,6 +25,7 @@ import { QMAdminConferenceCommand } from "./pages/admin/QMAdminConferenceCommand
 import { QMAdminUsers } from "./pages/admin/QMAdminUsers";
 import { QMAdminBrands } from "./pages/admin/QMAdminBrands";
 import { QMAdminMatchingEngine } from "./pages/admin/QMAdminMatchingEngine";
+import { QuotePreviewPage } from "./pages/QuotePreviewPage";
 import { PaywallPage } from "./pages/PaywallPage";
 import { OnboardingConfirmPage } from "./pages/OnboardingConfirmPage";
 import { DistributorHomePage } from "./pages/DistributorHomePage";
@@ -53,6 +54,10 @@ export const router = createBrowserRouter([
       {
         path: "reset-password",
         element: demo ? <Navigate to="/" replace /> : <ResetPasswordPage />,
+      },
+      {
+        path: "quotes/:id/preview",
+        Component: QuotePreviewPage,
       },
       {
         path: "qm-admin",

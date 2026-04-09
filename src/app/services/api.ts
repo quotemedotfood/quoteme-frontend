@@ -973,10 +973,13 @@ export async function updateQuote(id: string, updates: any): Promise<ApiResponse
   });
 }
 
-export async function sendQuote(id: string, recipientEmail?: string): Promise<ApiResponse<any>> {
+export async function sendQuote(id: string, recipientEmail?: string, note?: string): Promise<ApiResponse<any>> {
   const options: RequestInit = { method: 'POST' };
-  if (recipientEmail) {
-    options.body = JSON.stringify({ recipient_email: recipientEmail });
+  const body: Record<string, string> = {};
+  if (recipientEmail) body.recipient_email = recipientEmail;
+  if (note) body.note = note;
+  if (Object.keys(body).length > 0) {
+    options.body = JSON.stringify(body);
   }
   return fetchWithAuth(`/api/v1/quotes/${id}/send_quote`, options);
 }
