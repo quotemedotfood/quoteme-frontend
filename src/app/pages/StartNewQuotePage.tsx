@@ -1407,7 +1407,15 @@ export function StartNewQuotePage() {
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-gray-400 italic py-2">No catalogs uploaded yet</p>
+              <div className="border border-amber-200 rounded-lg p-4 bg-amber-50">
+                <div className="flex items-center gap-3">
+                  <span className="text-amber-500 text-lg">&#9888;</span>
+                  <div>
+                    <p className="text-sm font-medium text-[#2A2A2A]">Demo Catalog Active</p>
+                    <p className="text-xs text-gray-500">Upload your own catalog to create quotes that count toward your plan.</p>
+                  </div>
+                </div>
+              </div>
             )}
           </div>
 

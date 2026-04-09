@@ -22,8 +22,8 @@ export function AuthSyncProvider({ children }: AuthSyncProviderProps) {
         distributorLogo: user.distributor?.logo_url || user.rep_settings?.company_logo_url || null,
         isGuest: false,
         plan: 'free',
-        quotesUsed: 0,
-        quotesLimit: 5,
+        quotesUsed: user.quotes_used ?? 0,
+        quotesLimit: user.quotes_limit ?? 5,
         hasPaidSubscription: false,
       });
     } else if (!user) {

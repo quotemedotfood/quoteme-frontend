@@ -200,11 +200,11 @@ function BuyerDashboard() {
             )}
           </div>
 
-          {/* Recent Quotes */}
+          {/* Quote History */}
           <div>
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-lg font-semibold text-[#2A2A2A]" style={{ fontFamily: "'Playfair Display', serif" }}>
-                Recent Quotes
+                Quote History
               </h2>
               {quotes.length > 5 && (
                 <button onClick={() => navigate('/quotes')} className="text-xs text-[#7FAEC2] hover:underline">
@@ -318,11 +318,11 @@ function RepDashboard() {
 
       {!loading && (
         <div className="grid gap-8 md:grid-cols-2">
-          {/* Recent Quotes */}
+          {/* Quote History */}
           <div>
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-lg font-semibold text-[#2A2A2A]" style={{ fontFamily: "'Playfair Display', serif" }}>
-                Recent Quotes
+                Quote History
               </h2>
               {quotes.length > 5 && (
                 <button onClick={() => navigate('/quotes')} className="text-xs text-[#7FAEC2] hover:underline">
