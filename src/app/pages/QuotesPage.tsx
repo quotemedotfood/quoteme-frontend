@@ -1,12 +1,12 @@
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
-import { Search, Eye, Download, ArrowUpDown, ArrowUp, ArrowDown, SlidersHorizontal, RefreshCw, Loader2, Trash2, Pencil, FileSpreadsheet } from 'lucide-react';
+import { Search, Eye, Download, ArrowUpDown, ArrowUp, ArrowDown, SlidersHorizontal, RefreshCw, Loader2, Trash2, Pencil, FileSpreadsheet, FileText } from 'lucide-react';
 import { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { SwipeableCard } from '../components/SwipeableCard';
 import { BottomSheet } from '../components/BottomSheet';
 import { MobilePullToRefresh } from '../components/MobilePullToRefresh';
-import { getQuotes, requoteQuote, downloadQuotePdf, downloadOrderGuide, deleteQuote, type QuoteListItem, type GetQuotesParams } from '../services/api';
+import { getQuotes, requoteQuote, downloadQuotePdf, downloadQuoteCsv, downloadOrderGuide, deleteQuote, type QuoteListItem, type GetQuotesParams } from '../services/api';
 
 export function QuotesPage() {
   const navigate = useNavigate();
@@ -91,6 +91,22 @@ export function QuotesPage() {
       const a = document.createElement('a');
       a.href = url;
       a.download = `quote-${quoteId}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+  };
+
+  const handleDownloadCsv = async (quoteId: string) => {
+    const result = await downloadQuoteCsv(quoteId);
+    if (result.error) {
+      setError(`CSV download failed: ${result.error}`);
+      return;
+    }
+    if (result.blob) {
+      const url = URL.createObjectURL(result.blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `quote-${quoteId}.csv`;
       a.click();
       URL.revokeObjectURL(url);
     }
@@ -363,6 +379,13 @@ export function QuotesPage() {
                         PDF
                       </button>
                       <button
+                        className="flex items-center gap-1.5 text-xs text-gray-600 hover:text-[#F2993D] transition-colors"
+                        onClick={() => handleDownloadCsv(quote.id)}
+                      >
+                        <FileText className="w-3.5 h-3.5" />
+                        CSV
+                      </button>
+                      <button
                         className="flex items-center gap-1.5 text-xs text-[#F9A64B] hover:text-[#E8953A] transition-colors"
                         onClick={() => handleDownloadOrderGuide(quote.id)}
                       >
@@ -517,6 +540,13 @@ export function QuotesPage() {
                             onClick={() => handleDownloadPdf(quote.id)}
                           >
                             <Download className="w-4 h-4 text-gray-600" />
+                          </button>
+                          <button
+                            className="p-1 hover:bg-gray-100 rounded transition-colors"
+                            title="Download CSV"
+                            onClick={() => handleDownloadCsv(quote.id)}
+                          >
+                            <FileText className="w-4 h-4 text-gray-600" />
                           </button>
                           <button
                             className="p-1 hover:bg-orange-50 rounded transition-colors"

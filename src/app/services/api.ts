@@ -927,6 +927,45 @@ export async function getQuote(id: string): Promise<ApiResponse<QuoteResponse>> 
   return fetchWithAuth(`/api/v1/quotes/${id}`);
 }
 
+// Public quote preview types and fetch (no auth required)
+export interface QuotePreviewLine {
+  id: string;
+  product: string;
+  brand: string;
+  pack_size: string;
+  quantity: number;
+  unit_price_cents: number;
+  unit_price: string;
+  line_total_cents: number;
+  line_total: string;
+}
+
+export interface QuotePreviewResponse {
+  id: string;
+  restaurant: string | null;
+  rep: string | null;
+  distributor: string | null;
+  date: string | null;
+  total_cents: number;
+  total: string;
+  note: string | null;
+  lines: QuotePreviewLine[];
+}
+
+export async function getQuotePreview(id: string): Promise<ApiResponse<QuotePreviewResponse>> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/v1/quotes/${id}/preview`);
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      return { error: errorData.error || `HTTP ${response.status}` };
+    }
+    const data = await response.json();
+    return { data };
+  } catch (err: any) {
+    return { error: err.message || 'Network error' };
+  }
+}
+
 export async function updateQuote(id: string, updates: any): Promise<ApiResponse<QuoteResponse>> {
   return fetchWithAuth(`/api/v1/quotes/${id}`, {
     method: 'PATCH',
@@ -969,6 +1008,33 @@ export async function downloadQuotePdf(id: string): Promise<{ blob?: Blob; error
     const endpoint = token
       ? `${API_BASE_URL}/api/v1/quotes/${id}/pdf`
       : `${API_BASE_URL}/api/v1/guest/quotes/${id}/pdf`;
+    const response = await fetch(endpoint, { headers });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      return { error: errorData.error || `HTTP ${response.status}` };
+    }
+    const blob = await response.blob();
+    return { blob };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : 'Network error' };
+  }
+}
+
+export async function downloadQuoteCsv(id: string): Promise<{ blob?: Blob; error?: string }> {
+  const token = getAuthToken();
+  const guestToken = getGuestToken();
+  const headers: Record<string, string> = {};
+
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  } else if (guestToken) {
+    headers['X-Guest-Token'] = guestToken;
+  }
+
+  try {
+    const endpoint = token
+      ? `${API_BASE_URL}/api/v1/quotes/${id}/csv`
+      : `${API_BASE_URL}/api/v1/guest/quotes/${id}/csv`;
     const response = await fetch(endpoint, { headers });
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
