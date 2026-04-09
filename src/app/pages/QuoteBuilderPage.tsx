@@ -2,12 +2,13 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { ArrowLeft, Save, Filter, Plus, Minus, Edit, ChevronUp, ChevronDown, ArrowUpDown, ArrowUp, ArrowDown, Loader2, X, Trash2 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useUser } from '../contexts/UserContext';
 import { isDemoMode } from '../utils/demoMode';
 import { formatProductName } from '../utils/format';
 import { getQuote, getGuestQuote, updateQuote, updateGuestQuote, addGuestQuoteLine, removeGuestQuoteLine, createStockQuote } from '../services/api';
 import { CatalogProductSearch } from '../components/CatalogProductSearch';
+import { QuoteReviewBar } from '../components/QuoteReviewBar';
 import type { CatalogSearchProduct } from '../services/api';
 import { Label } from '../components/ui/label';
 import {
@@ -84,54 +85,57 @@ export function QuoteBuilderPage() {
   const fetchQuote = (id: string) => isGuest ? getGuestQuote(id) : getQuote(id);
   const persistQuote = (id: string, updates: any) => isGuest ? updateGuestQuote(id, updates) : updateQuote(id, updates);
 
-  useEffect(() => {
+  const loadQuote = useCallback(async () => {
     if (!quoteId) {
       setError('No quote provided.');
       setLoading(false);
       return;
     }
-
-    async function loadQuote() {
-      try {
-        const res = await fetchQuote(quoteId!);
-        if (res.error || !res.data) throw new Error(res.error || 'Failed to load quote');
-        const data = res.data as any;
-        const seenProducts = new Set<string>();
-        const productItems: ProductItem[] = [];
-        for (const line of (data.lines || [])) {
-          const productId = line.product?.id || line.id;
-          if (seenProducts.has(productId)) continue;
-          seenProducts.add(productId);
-          const priceDollars = (line.unit_price_cents || 0) / 100;
-          const isUnmatched = line.availability_status === 'not_in_catalog';
-          productItems.push({
-            id: line.id,
-            dish: line.component?.source_dish || 'Unknown',
-            component: line.component?.name || 'Unknown',
-            sku: line.product?.item_number || '',
-            brand: isUnmatched ? '' : (line.product?.brand || ''),
-            product: line.product?.product || '',
-            pack: line.product?.pack_size || '',
-            category: line.category || 'Uncategorized',
-            basePrice: priceDollars,
-            currentPrice: priceDollars,
-            percentChange: 0,
-            unmatched: isUnmatched,
-            chefNote: line.chef_note,
-          });
-        }
-        setItems(productItems);
-        if (data.input_mode) setInputMode(data.input_mode);
-        if (data.detected_concept) setDetectedConcept(data.detected_concept);
-        setLoading(false);
-      } catch (e: any) {
-        setError(e.message || 'Something went wrong');
-        setLoading(false);
+    try {
+      const res = await fetchQuote(quoteId);
+      if (res.error || !res.data) throw new Error(res.error || 'Failed to load quote');
+      const data = res.data as any;
+      const seenProducts = new Set<string>();
+      const productItems: ProductItem[] = [];
+      for (const line of (data.lines || [])) {
+        const productId = line.product?.id || line.id;
+        if (seenProducts.has(productId)) continue;
+        seenProducts.add(productId);
+        const priceDollars = (line.unit_price_cents || 0) / 100;
+        const isUnmatched = line.availability_status === 'not_in_catalog';
+        productItems.push({
+          id: line.id,
+          dish: line.component?.source_dish || 'Unknown',
+          component: line.component?.name || 'Unknown',
+          sku: line.product?.item_number || '',
+          brand: isUnmatched ? '' : (line.product?.brand || ''),
+          product: line.product?.product || '',
+          pack: line.product?.pack_size || '',
+          category: line.category || 'Uncategorized',
+          basePrice: priceDollars,
+          currentPrice: priceDollars,
+          percentChange: 0,
+          unmatched: isUnmatched,
+          chefNote: line.chef_note,
+        });
       }
+      setItems(productItems);
+      if (data.input_mode) setInputMode(data.input_mode);
+      if (data.detected_concept) setDetectedConcept(data.detected_concept);
+      setLoading(false);
+    } catch (e: any) {
+      setError(e.message || 'Something went wrong');
+      setLoading(false);
     }
-
-    loadQuote();
   }, [quoteId]);
+
+  useEffect(() => {
+    loadQuote();
+  }, [loadQuote]);
+
+  const handleMatchesUpdated = useCallback(() => {
+    loadQuote();
+  }, [loadQuote]);
 
   const categories = ['all', ...Array.from(new Set(items.map(i => i.category))).sort()];
   const filteredItems = categoryFilter === 'all' ? items : items.filter(i => i.category === categoryFilter);
@@ -775,10 +779,12 @@ export function QuoteBuilderPage() {
       {/* Floating Finish Quote button */}
       <button
         onClick={() => navigate('/review', { state: { quoteId, isOpenQuote, locationId } })}
-        className="fixed bottom-6 right-6 bg-[#F9A64B] hover:bg-[#E8953A] text-white font-medium py-3 px-6 rounded-full shadow-lg text-base min-h-[48px] z-40"
+        className="fixed bottom-[68px] right-6 bg-[#F9A64B] hover:bg-[#E8953A] text-white font-medium py-3 px-6 rounded-full shadow-lg text-base min-h-[48px] z-40"
       >
         Finish Quote
       </button>
+
+      {quoteId && <QuoteReviewBar quoteId={quoteId} onMatchesUpdated={handleMatchesUpdated} />}
 
       {/* Add Product Drawer */}
       <Drawer open={addProductDrawerOpen} onOpenChange={setAddProductDrawerOpen} direction="right">
