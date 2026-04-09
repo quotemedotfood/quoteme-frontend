@@ -9,6 +9,7 @@ import { useUser } from '../contexts/UserContext';
 import { isDemoMode } from '../utils/demoMode';
 import { toTitleCase, formatProductName } from '../utils/format';
 import { MapComponentDrawer } from '../components/MapComponentDrawer';
+import { QuoteReviewBar } from '../components/QuoteReviewBar';
 import {
   createMenu,
   getMenuStatus,
@@ -435,6 +436,21 @@ export function MapIngredientsPage() {
     }
   }
 
+
+  // ─── Review bar callback ──────────────────────────────────────────────────
+
+  const handleMatchesUpdated = useCallback(async () => {
+    if (!quoteId) return;
+    try {
+      const res = await fetchQuote(quoteId);
+      if (res.error || !res.data) return;
+      const built = buildDishesFromLines((res.data as QuoteData).lines || []);
+      setDishes(built);
+      setSelectedDish(built[0] || null);
+    } catch (e) {
+      console.error('Failed to refresh after review:', e);
+    }
+  }, [quoteId]);
 
   // ─── Helpers ──────────────────────────────────────────────────────────────
 
@@ -1121,8 +1137,8 @@ export function MapIngredientsPage() {
         </div>
       )}
 
-      {/* Sticky bottom CTA - mobile and desktop */}
-      <div className="fixed bottom-0 left-0 right-0 md:left-64 bg-white border-t border-gray-200 p-4 z-40">
+      {/* Sticky bottom CTA - mobile and desktop (sits above review bar) */}
+      <div className="fixed bottom-[52px] left-0 right-0 md:left-64 bg-white border-t border-gray-200 p-4 z-40">
         {demo && (
           <p className="text-center text-xs text-gray-500 mb-2 md:hidden">
             {quotesRemaining > 0
@@ -1137,6 +1153,9 @@ export function MapIngredientsPage() {
           Adjust Pricing
         </button>
       </div>
+
+      {/* Quote review bar */}
+      {quoteId && <QuoteReviewBar quoteId={quoteId} onMatchesUpdated={handleMatchesUpdated} />}
 
     </div>
   );
