@@ -36,6 +36,8 @@ export interface User {
   } | null;
   rep_settings?: RepSettings;
   unlimited_drafts?: boolean;
+  quotes_used?: number;
+  quotes_limit?: number;
 }
 
 export interface SignUpData {

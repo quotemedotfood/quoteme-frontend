@@ -1,10 +1,22 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from './ui/sheet';
 import { useAuth } from '../contexts/AuthContext';
 import { useUser } from '../contexts/UserContext';
-import { LogIn, UserPlus, AlertCircle } from 'lucide-react';
+import { searchDistributors } from '../services/api';
+import { LogIn, UserPlus, AlertCircle, Building2 } from 'lucide-react';
+
+const PERSONAL_EMAIL_DOMAINS = [
+  'gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 'icloud.com', 'aol.com',
+  'live.com', 'msn.com', 'protonmail.com', 'mail.com', 'ymail.com', 'googlemail.com',
+  'yahoo.co.uk', 'hotmail.co.uk', 'outlook.co.uk', 'me.com', 'mac.com',
+];
+
+function isPersonalEmail(email: string): boolean {
+  const domain = email.split('@')[1]?.toLowerCase();
+  return domain ? PERSONAL_EMAIL_DOMAINS.includes(domain) : false;
+}
 
 interface AuthDrawerProps {
   isOpen: boolean;
@@ -32,6 +44,52 @@ export function AuthDrawer({ isOpen, onClose, defaultMode = 'login', onSuccess }
   const [signupLastName, setSignupLastName] = useState('');
   const [agreeToTerms, setAgreeToTerms] = useState(false);
 
+  // Distributor autocomplete
+  const [distributorQuery, setDistributorQuery] = useState('');
+  const [distributorResults, setDistributorResults] = useState<Array<{ id: string; name: string }>>([]);
+  const [selectedDistributor, setSelectedDistributor] = useState<{ id: string; name: string } | null>(null);
+  const [showDistributorDropdown, setShowDistributorDropdown] = useState(false);
+  const distributorRef = useRef<HTMLDivElement>(null);
+
+  // Work email validation
+  const [emailWarning, setEmailWarning] = useState<string | null>(null);
+
+  // Distributor search debounce
+  useEffect(() => {
+    if (distributorQuery.length < 2 || selectedDistributor) {
+      setDistributorResults([]);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      const res = await searchDistributors(distributorQuery);
+      if (res.data) {
+        setDistributorResults(res.data);
+        setShowDistributorDropdown(res.data.length > 0);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [distributorQuery, selectedDistributor]);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (distributorRef.current && !distributorRef.current.contains(e.target as Node)) {
+        setShowDistributorDropdown(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
+
+  // Email validation
+  useEffect(() => {
+    if (signupEmail && signupEmail.includes('@')) {
+      setEmailWarning(isPersonalEmail(signupEmail) ? 'Please use a work email address' : null);
+    } else {
+      setEmailWarning(null);
+    }
+  }, [signupEmail]);
+
   const resetForms = () => {
     setLoginEmail('');
     setLoginPassword('');
@@ -40,6 +98,10 @@ export function AuthDrawer({ isOpen, onClose, defaultMode = 'login', onSuccess }
     setSignupFirstName('');
     setSignupLastName('');
     setAgreeToTerms(false);
+    setDistributorQuery('');
+    setSelectedDistributor(null);
+    setDistributorResults([]);
+    setEmailWarning(null);
     setError(null);
   };
 
@@ -85,6 +147,8 @@ export function AuthDrawer({ isOpen, onClose, defaultMode = 'login', onSuccess }
         password: signupPassword,
         first_name: signupFirstName,
         last_name: signupLastName,
+        distributor_name: selectedDistributor?.name || distributorQuery.trim() || undefined,
+        claimed_distributor_id: selectedDistributor?.id || undefined,
       },
       guestToken || undefined
     );
@@ -212,15 +276,61 @@ export function AuthDrawer({ isOpen, onClose, defaultMode = 'login', onSuccess }
               </div>
 
               <div>
-                <label className="block text-sm mb-2 text-gray-700">Email</label>
+                <label className="block text-sm mb-2 text-gray-700">Work Email</label>
                 <Input
                   type="email"
-                  placeholder="your@email.com"
+                  placeholder="you@yourcompany.com"
                   value={signupEmail}
                   onChange={(e) => setSignupEmail(e.target.value)}
                   required
                   disabled={isLoading}
+                  className={emailWarning ? 'border-amber-400 focus:ring-amber-400' : ''}
                 />
+                {emailWarning && (
+                  <p className="text-xs text-amber-600 mt-1 flex items-center gap-1">
+                    <AlertCircle size={12} /> {emailWarning}
+                  </p>
+                )}
+              </div>
+
+              <div ref={distributorRef} className="relative">
+                <label className="block text-sm mb-2 text-gray-700">Distributor</label>
+                <div className="relative">
+                  <Building2 size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <Input
+                    type="text"
+                    placeholder="Search or type your distributor name"
+                    value={selectedDistributor ? selectedDistributor.name : distributorQuery}
+                    onChange={(e) => {
+                      setDistributorQuery(e.target.value);
+                      setSelectedDistributor(null);
+                    }}
+                    onFocus={() => { if (distributorResults.length > 0) setShowDistributorDropdown(true); }}
+                    disabled={isLoading}
+                    className="pl-9"
+                  />
+                </div>
+                {showDistributorDropdown && distributorResults.length > 0 && (
+                  <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-40 overflow-y-auto">
+                    {distributorResults.map((d) => (
+                      <button
+                        key={d.id}
+                        type="button"
+                        className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 text-[#2A2A2A]"
+                        onClick={() => {
+                          setSelectedDistributor(d);
+                          setDistributorQuery(d.name);
+                          setShowDistributorDropdown(false);
+                        }}
+                      >
+                        {d.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <p className="text-xs text-gray-400 mt-1">
+                  {selectedDistributor ? 'Matched to existing distributor' : distributorQuery.length > 0 ? 'New distributor — will be created on signup' : ''}
+                </p>
               </div>
 
               <div>
