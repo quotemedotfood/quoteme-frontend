@@ -272,6 +272,7 @@ export function ExportFinalizePage() {
   // Manual send inputs (for open quotes)
   const [manualEmail, setManualEmail] = useState('');
   const [manualPhone, setManualPhone] = useState('');
+  const [sendNote, setSendNote] = useState('');
 
   // Derive primary contact from quote data
   const primaryContact = quoteData?.contacts?.find(c => c.is_primary) || quoteData?.contacts?.[0] || null;
@@ -305,7 +306,7 @@ export function ExportFinalizePage() {
     setSendError(null);
     try {
       const emailToSend = manualEmail || contactEmail || undefined;
-      const res = await sendQuote(quoteId, emailToSend || undefined);
+      const res = await sendQuote(quoteId, emailToSend || undefined, sendNote || undefined);
       if (res.error) {
         setSendError(res.error);
       } else {
@@ -1168,9 +1169,11 @@ export function ExportFinalizePage() {
                 />
               </div>
               <div>
-                <Label className="text-sm font-medium text-gray-700 mb-1.5 block">Note (optional)</Label>
+                <Label className="text-sm font-medium text-gray-700 mb-1.5 block">Add a note (optional)</Label>
                 <Textarea
-                  placeholder="Add a personal note..."
+                  placeholder="Include a personal message with your quote..."
+                  value={sendNote}
+                  onChange={(e) => setSendNote(e.target.value)}
                   className="border-gray-300 min-h-[100px]"
                 />
               </div>
