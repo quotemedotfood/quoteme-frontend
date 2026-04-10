@@ -24,7 +24,7 @@ export function AuthSyncProvider({ children }: AuthSyncProviderProps) {
         plan: 'free',
         quotesUsed: user.quotes_used ?? 0,
         quotesLimit: user.quotes_limit ?? 5,
-        hasPaidSubscription: false,
+        hasPaidSubscription: user.has_paid_subscription || false,
       });
     } else if (!user) {
       lastSyncedUserId.current = null;
