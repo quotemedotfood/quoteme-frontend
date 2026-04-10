@@ -1081,3 +1081,19 @@ export async function adminBulkUpdateCategory(catalogId: string, productIds: str
     body: JSON.stringify({ catalog_id: catalogId, product_ids: productIds, category }),
   });
 }
+
+// ============= ADMIN HEALTH =============
+
+export interface HealthCheck {
+  overall: 'healthy' | 'degraded';
+  timestamp: string;
+  services: Record<string, {
+    name: string;
+    status: 'ok' | 'warning' | 'error';
+    message: string;
+  }>;
+}
+
+export async function getAdminHealth(): Promise<ApiResponse<HealthCheck>> {
+  return fetchWithAuth('/api/v1/admin/health');
+}

@@ -22,6 +22,7 @@ import { QMAdminUnassociatedReps } from "./pages/admin/QMAdminUnassociatedReps";
 import { QMAdminRestaurants } from "./pages/admin/QMAdminRestaurants";
 import { QMAdminRestaurantDetailPage } from "./pages/admin/QMAdminRestaurantDetail";
 import { QMAdminConferenceCommand } from "./pages/admin/QMAdminConferenceCommand";
+import { QMAdminHealth } from "./pages/admin/QMAdminHealth";
 import { QMAdminUsers } from "./pages/admin/QMAdminUsers";
 import { QMAdminBrands } from "./pages/admin/QMAdminBrands";
 import { QMAdminMatchingEngine } from "./pages/admin/QMAdminMatchingEngine";
@@ -74,6 +75,7 @@ export const router = createBrowserRouter([
           { path: "matching-engine", Component: QMAdminMatchingEngine },
           { path: "brands", Component: QMAdminBrands },
           { path: "conference-command", Component: QMAdminConferenceCommand },
+          { path: "health", Component: QMAdminHealth },
         ],
       },
       {
