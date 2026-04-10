@@ -394,30 +394,26 @@ export function AuthPage() {
           </div>
         </button>
 
-        {/* Restaurant / Chef */}
-        <button
-          onClick={() => { setSelectedRole('buyer'); switchView('signup'); }}
-          className="group flex items-center gap-4 rounded-lg border-2 bg-white px-5 py-4 text-left transition-all hover:shadow-md"
-          style={{ borderColor: '#7FAEC2' }}
-        >
-          <div
-            className="flex size-11 items-center justify-center rounded-full"
-            style={{ backgroundColor: '#E8F2F7' }}
-          >
-            <ChefHat className="size-5" style={{ color: '#7FAEC2' }} />
+        {/* Restaurant / Chef - coming soon */}
+        <div className="flex cursor-not-allowed items-center gap-4 rounded-lg border-2 border-gray-200 bg-gray-50 px-5 py-4 opacity-60">
+          <div className="flex size-11 items-center justify-center rounded-full bg-gray-100">
+            <ChefHat className="size-5 text-gray-400" />
           </div>
           <div className="flex-1">
-            <p
-              className="font-semibold"
-              style={{ color: '#2A2A2A' }}
-            >
-              I'm a Restaurant
-            </p>
-            <p className="text-sm" style={{ color: '#4F4F4F' }}>
+            <div className="flex items-center gap-2">
+              <p className="font-semibold text-gray-400">I'm a Restaurant</p>
+              <span
+                className="text-xs font-medium"
+                style={{ color: '#7FAEC2' }}
+              >
+                Coming Soon
+              </span>
+            </div>
+            <p className="text-sm text-gray-400">
               Request and compare quotes from distributors
             </p>
           </div>
-        </button>
+        </div>
 
         {/* Brand - coming soon */}
         <div className="flex cursor-not-allowed items-center gap-4 rounded-lg border-2 border-gray-200 bg-gray-50 px-5 py-4 opacity-60">
