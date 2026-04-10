@@ -196,6 +196,7 @@ export async function inviteAdminUser(data: {
   last_name: string;
   email: string;
   role: string;
+  distributor_id?: string;
 }): Promise<ApiResponse<AdminUser>> {
   return fetchWithAuth('/api/v1/admin/users', {
     method: 'POST',
@@ -227,6 +228,9 @@ export async function createDistributor(data: {
   name: string;
   email_domain?: string;
   region?: string;
+  admin_email?: string;
+  admin_first_name?: string;
+  admin_last_name?: string;
 }): Promise<ApiResponse<AdminDistributorDetail>> {
   return fetchWithAuth('/api/v1/admin/distributors', {
     method: 'POST',

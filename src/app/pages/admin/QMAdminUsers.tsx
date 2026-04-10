@@ -14,7 +14,9 @@ import {
   getAdminUsers,
   updateAdminUser,
   inviteAdminUser,
+  getAdminDistributors,
   AdminUser,
+  AdminDistributor,
 } from '../../services/adminApi';
 
 type SortField = 'name' | 'email' | 'status' | 'last_login_at' | 'created_at';
@@ -64,6 +66,8 @@ export function QMAdminUsers() {
   const [inviteRole, setInviteRole] = useState('quoteme_admin');
   const [inviting, setInviting] = useState(false);
   const [inviteError, setInviteError] = useState<string | null>(null);
+  const [distributors, setDistributors] = useState<AdminDistributor[]>([]);
+  const [inviteDistributorId, setInviteDistributorId] = useState('');
 
   // Action loading state
   const [actionLoading, setActionLoading] = useState<string | null>(null);
@@ -71,7 +75,7 @@ export function QMAdminUsers() {
   async function loadUsers() {
     setLoading(true);
     setError(null);
-    const res = await getAdminUsers({ role: 'quoteme_admin' });
+    const res = await getAdminUsers({});
     if (res.data) setUsers(res.data);
     else setError(res.error || 'Failed to load users');
     setLoading(false);
@@ -79,6 +83,9 @@ export function QMAdminUsers() {
 
   useEffect(() => {
     loadUsers();
+    getAdminDistributors().then(res => {
+      if (res.data) setDistributors(res.data);
+    });
   }, []);
 
   const toggleSort = (field: SortField) => {
@@ -156,6 +163,7 @@ export function QMAdminUsers() {
       last_name: inviteLastName.trim(),
       email: inviteEmail.trim(),
       role: inviteRole,
+      distributor_id: inviteDistributorId || undefined,
     });
     if (res.error) {
       setInviteError(res.error);
@@ -166,6 +174,7 @@ export function QMAdminUsers() {
     setInviteLastName('');
     setInviteEmail('');
     setInviteRole('quoteme_admin');
+    setInviteDistributorId('');
     setShowInvite(false);
     setInviting(false);
     loadUsers();
@@ -194,14 +203,14 @@ export function QMAdminUsers() {
           className="text-2xl font-bold text-[#2A2A2A]"
           style={{ fontFamily: "'Playfair Display', serif" }}
         >
-          Admin Users
+          Users
         </h1>
         <Button
           onClick={() => setShowInvite(true)}
           className="bg-[#7FAEC2] hover:bg-[#6a9ab0] text-white"
         >
           <UserPlus size={16} />
-          Invite Admin
+          Create User
         </Button>
       </div>
 
@@ -214,7 +223,7 @@ export function QMAdminUsers() {
                 className="text-lg font-bold text-[#2A2A2A]"
                 style={{ fontFamily: "'Playfair Display', serif" }}
               >
-                Invite Admin
+                Create User
               </h2>
               <button
                 onClick={() => {
@@ -263,8 +272,26 @@ export function QMAdminUsers() {
                 >
                   <option value="quoteme_admin">QM Admin</option>
                   <option value="distributor_admin">Distributor Admin</option>
+                  <option value="rep">Rep</option>
                 </select>
               </div>
+              {(inviteRole === 'rep' || inviteRole === 'distributor_admin') && (
+                <div>
+                  <label className="block text-sm font-medium text-[#4F4F4F] mb-1">
+                    Distributor {inviteRole === 'rep' ? '(optional)' : ''}
+                  </label>
+                  <select
+                    value={inviteDistributorId}
+                    onChange={(e) => setInviteDistributorId(e.target.value)}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white"
+                  >
+                    <option value="">— None —</option>
+                    {distributors.map(d => (
+                      <option key={d.id} value={d.id}>{d.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
               {inviteError && <p className="text-sm text-red-500">{inviteError}</p>}
               <div className="flex justify-end gap-2 pt-2">
                 <Button

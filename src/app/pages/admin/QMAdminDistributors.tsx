@@ -39,6 +39,9 @@ export function QMAdminDistributors() {
   const [newName, setNewName] = useState('');
   const [newDomain, setNewDomain] = useState('');
   const [newRegion, setNewRegion] = useState('');
+  const [newAdminEmail, setNewAdminEmail] = useState('');
+  const [newAdminFirstName, setNewAdminFirstName] = useState('');
+  const [newAdminLastName, setNewAdminLastName] = useState('');
   const [creating, setCreating] = useState(false);
   const [impersonating, setImpersonating] = useState<string | null>(null);
   const [exclusionDrawerOpen, setExclusionDrawerOpen] = useState(false);
@@ -149,6 +152,9 @@ export function QMAdminDistributors() {
       name: newName.trim(),
       email_domain: newDomain.trim() || undefined,
       region: newRegion.trim() || undefined,
+      admin_email: newAdminEmail.trim() || undefined,
+      admin_first_name: newAdminFirstName.trim() || undefined,
+      admin_last_name: newAdminLastName.trim() || undefined,
     });
     setCreating(false);
     if (res.data) {
@@ -156,6 +162,9 @@ export function QMAdminDistributors() {
       setNewName('');
       setNewDomain('');
       setNewRegion('');
+      setNewAdminEmail('');
+      setNewAdminFirstName('');
+      setNewAdminLastName('');
       loadDistributors();
     } else {
       setError(res.error || 'Failed to create distributor');
@@ -197,6 +206,23 @@ export function QMAdminDistributors() {
             <div className="flex-1 min-w-[120px]">
               <label className="text-xs text-gray-500 mb-1 block">Region</label>
               <Input value={newRegion} onChange={(e) => setNewRegion(e.target.value)} placeholder="Northeast" />
+            </div>
+            <div className="w-full pt-2">
+              <p className="text-xs text-gray-400 mb-2">Distributor Admin (optional)</p>
+              <div className="flex flex-wrap gap-3">
+                <div className="flex-1 min-w-[180px]">
+                  <label className="text-xs text-gray-500 mb-1 block">Admin Email</label>
+                  <Input value={newAdminEmail} onChange={(e) => setNewAdminEmail(e.target.value)} placeholder="admin@distributor.com" />
+                </div>
+                <div className="flex-1 min-w-[120px]">
+                  <label className="text-xs text-gray-500 mb-1 block">First Name</label>
+                  <Input value={newAdminFirstName} onChange={(e) => setNewAdminFirstName(e.target.value)} placeholder="First" />
+                </div>
+                <div className="flex-1 min-w-[120px]">
+                  <label className="text-xs text-gray-500 mb-1 block">Last Name</label>
+                  <Input value={newAdminLastName} onChange={(e) => setNewAdminLastName(e.target.value)} placeholder="Last" />
+                </div>
+              </div>
             </div>
             <Button onClick={handleCreate} disabled={creating || !newName.trim()} className="bg-[#7FAEC2] hover:bg-[#6A9AB0] text-white">
               {creating ? 'Creating...' : 'Create'}
