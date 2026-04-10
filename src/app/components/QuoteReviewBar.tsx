@@ -14,6 +14,7 @@ export function QuoteReviewBar({ quoteId, onMatchesUpdated }: QuoteReviewBarProp
   const [comment, setComment] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [rulesCreated, setRulesCreated] = useState<number | null>(null);
+  const [rulesSummary, setRulesSummary] = useState<string[]>([]);
 
   if (state === 'dismissed') return null;
 
@@ -26,6 +27,7 @@ export function QuoteReviewBar({ quoteId, onMatchesUpdated }: QuoteReviewBarProp
     setState('expanded');
     setError(null);
     setRulesCreated(null);
+    setRulesSummary([]);
   };
 
   const handleSubmit = async () => {
@@ -42,6 +44,7 @@ export function QuoteReviewBar({ quoteId, onMatchesUpdated }: QuoteReviewBarProp
     }
 
     setRulesCreated(result.data?.rules_created ?? 0);
+    setRulesSummary(result.data?.rules_summary ?? []);
     setComment('');
     onMatchesUpdated();
     setState('idle');
@@ -53,7 +56,6 @@ export function QuoteReviewBar({ quoteId, onMatchesUpdated }: QuoteReviewBarProp
     setError(null);
   };
 
-  // Submitting state
   if (state === 'submitting') {
     return (
       <div className="fixed bottom-0 left-0 right-0 md:left-64 z-40 bg-white border-t border-gray-200 p-4">
@@ -65,7 +67,6 @@ export function QuoteReviewBar({ quoteId, onMatchesUpdated }: QuoteReviewBarProp
     );
   }
 
-  // Expanded state (textarea visible)
   if (state === 'expanded') {
     return (
       <div className="fixed bottom-0 left-0 right-0 md:left-64 z-40 bg-white border-t border-gray-200 shadow-lg">
@@ -99,14 +100,16 @@ export function QuoteReviewBar({ quoteId, onMatchesUpdated }: QuoteReviewBarProp
     );
   }
 
-  // Idle state — teal bar with thumbs up/down
   return (
     <div className="fixed bottom-0 left-0 right-0 md:left-64 z-40">
       {rulesCreated !== null && rulesCreated > 0 && (
-        <div className="bg-green-50 border-t border-green-200 px-4 py-2 text-center">
-          <span className="text-xs text-green-700">
-            Updated {rulesCreated} matching rule{rulesCreated !== 1 ? 's' : ''} and refreshed results
-          </span>
+        <div className="bg-green-50 border-t border-green-200 px-4 py-3 text-center">
+          <p className="text-xs font-medium text-green-800 mb-1">
+            Applied {rulesCreated} rule{rulesCreated !== 1 ? 's' : ''}:
+          </p>
+          <p className="text-xs text-green-700">
+            {rulesSummary.join(' \u00b7 ')}
+          </p>
         </div>
       )}
       <div className="bg-[#7FAEC2] px-4 py-3">

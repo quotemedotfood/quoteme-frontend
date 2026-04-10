@@ -1180,7 +1180,7 @@ export async function reviewQuote(
   quoteId: string,
   rating: 'positive' | 'negative',
   comment?: string
-): Promise<ApiResponse<{ quote: QuoteResponse; rules_created: number }>> {
+): Promise<ApiResponse<{ quote: QuoteResponse; rules_created: number; rules_summary: string[] }>> {
   return fetchWithAuth(`/api/v1/quotes/${quoteId}/review`, {
     method: 'POST',
     body: JSON.stringify({ rating, comment }),
