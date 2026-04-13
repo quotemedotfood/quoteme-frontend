@@ -222,13 +222,13 @@ export function ExportFinalizePage() {
   // PDF error state
   const [pdfError, setPdfError] = useState<string | null>(null);
 
-  // Open PDF preview modal
+  // Open PDF preview modal — always fetch fresh to avoid caching issues
   const handleOpenPdfPreview = useCallback(async () => {
     if (!quoteId) return;
-    // Reuse existing blob if we already fetched it
+    // Revoke any existing blob URL before fetching a new one
     if (pdfBlobUrl) {
-      setShowPdfModal(true);
-      return;
+      URL.revokeObjectURL(pdfBlobUrl);
+      setPdfBlobUrl(null);
     }
     setLoadingPdfPreview(true);
     setPdfError(null);
@@ -1096,7 +1096,7 @@ export function ExportFinalizePage() {
 
       {/* PDF Preview Modal */}
       <Dialog open={showPdfModal} onOpenChange={setShowPdfModal}>
-        <DialogContent className="max-w-4xl w-[95vw] h-[90vh] p-0 flex flex-col">
+        <DialogContent className="max-w-[85vw] w-[85vw] h-[90vh] p-0 flex flex-col">
           <DialogHeader className="px-6 pt-6 pb-2 shrink-0">
             <DialogTitle className="text-lg text-[#2A2A2A]">Quote PDF Preview</DialogTitle>
           </DialogHeader>
