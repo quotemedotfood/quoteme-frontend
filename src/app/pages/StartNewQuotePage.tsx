@@ -754,10 +754,10 @@ export function StartNewQuotePage() {
               <div className="mt-1 w-2 h-2 rounded-full bg-[#A5CFDD] animate-pulse shrink-0" />
               <div className="flex-1">
                 <p className="text-sm font-medium text-[#2A2A2A]">
-                  This is a big menu! We're processing it in the background.
+                  That's a big menu, we are working on it now.
                 </p>
                 <p className="text-xs text-gray-500 mt-1">
-                  You'll get a notification when it's ready. You can navigate away.
+                  We will notify you when it's ready.
                 </p>
                 {/* Pulsing teal bar */}
                 <div className="mt-3 h-1.5 rounded-full bg-gray-100 overflow-hidden">
