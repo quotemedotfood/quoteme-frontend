@@ -754,7 +754,7 @@ export function StartNewQuotePage() {
               <div className="mt-1 w-2 h-2 rounded-full bg-[#A5CFDD] animate-pulse shrink-0" />
               <div className="flex-1">
                 <p className="text-sm font-medium text-[#2A2A2A]">
-                  That's a big menu, we are working on it now.
+                  Menu looks good, we're working on it now.
                 </p>
                 <p className="text-xs text-gray-500 mt-1">
                   We will notify you when it's ready.
