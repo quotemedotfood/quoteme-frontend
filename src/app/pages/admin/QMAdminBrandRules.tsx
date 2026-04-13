@@ -159,6 +159,8 @@ export function QMAdminBrandRules() {
   const [showAddModal, setShowAddModal] = useState(false);
 
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [parentPickerId, setParentPickerId] = useState<string | null>(null);
+  const [parentSearch, setParentSearch] = useState('');
 
   const lockCount = rules.filter((r) => r.rule_type === 'lock').length;
   const biasCount = rules.filter((r) => r.rule_type === 'bias').length;
@@ -227,6 +229,22 @@ export function QMAdminBrandRules() {
     }
     setSeedLoading(false);
   }
+
+  async function handleSetParent(childId: string, parentId: string | null) {
+    const res = await updateAdminBrandRule(childId, { parent_brand_id: parentId } as any);
+    if (res.data) {
+      setRules((prev) => prev.map((r) => (r.id === childId ? res.data! : r)));
+    }
+    setParentPickerId(null);
+    setParentSearch('');
+  }
+
+  async function handleRemoveParent(childId: string) {
+    handleSetParent(childId, null);
+  }
+
+  // Canonical brands (no parent) for the parent picker
+  const canonicalBrands = rules.filter((r) => !(r as any).parent_brand_id);
 
   const displayedRules = rules;
 
@@ -359,6 +377,7 @@ export function QMAdminBrandRules() {
             <TableHeader>
               <TableRow className="bg-gray-50">
                 <TableHead className="font-semibold text-[#2A2A2A]">Brand Name</TableHead>
+                <TableHead className="font-semibold text-[#2A2A2A]">Parent</TableHead>
                 <TableHead className="font-semibold text-[#2A2A2A]">Rule Type</TableHead>
                 <TableHead className="font-semibold text-[#2A2A2A]">Category</TableHead>
                 <TableHead className="font-semibold text-[#2A2A2A]">Products</TableHead>
@@ -370,7 +389,7 @@ export function QMAdminBrandRules() {
             <TableBody>
               {displayedRules.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center text-sm text-gray-400 py-10">
+                  <TableCell colSpan={8} className="text-center text-sm text-gray-400 py-10">
                     No brand rules found.
                   </TableCell>
                 </TableRow>
@@ -378,7 +397,66 @@ export function QMAdminBrandRules() {
               {displayedRules.map((rule) => (
                 <TableRow key={rule.id} className="hover:bg-gray-50/60 transition-colors">
                   {/* Brand Name */}
-                  <TableCell className="font-medium text-[#2A2A2A]">{rule.brand_name}</TableCell>
+                  <TableCell className="font-medium text-[#2A2A2A]">
+                    {(rule as any).parent_brand_name && (
+                      <span className="text-xs text-gray-400 mr-1">↳</span>
+                    )}
+                    {rule.brand_name}
+                    {(rule as any).child_brands?.length > 0 && (
+                      <span className="text-xs text-gray-400 ml-1">({(rule as any).child_brands.length} variants)</span>
+                    )}
+                  </TableCell>
+
+                  {/* Parent — set or remove */}
+                  <TableCell>
+                    {parentPickerId === rule.id ? (
+                      <div className="relative">
+                        <Input
+                          autoFocus
+                          className="h-7 text-xs w-32"
+                          placeholder="Search parent..."
+                          value={parentSearch}
+                          onChange={(e) => setParentSearch(e.target.value)}
+                          onKeyDown={(e) => { if (e.key === 'Escape') { setParentPickerId(null); setParentSearch(''); } }}
+                        />
+                        <div className="absolute z-10 top-8 left-0 w-48 bg-white border border-gray-200 rounded-lg shadow-lg max-h-40 overflow-y-auto">
+                          {canonicalBrands
+                            .filter((b) => b.id !== rule.id && b.brand_name.toLowerCase().includes(parentSearch.toLowerCase()))
+                            .slice(0, 8)
+                            .map((b) => (
+                              <button
+                                key={b.id}
+                                onClick={() => handleSetParent(rule.id, b.id)}
+                                className="block w-full text-left px-3 py-1.5 text-xs hover:bg-gray-50 text-[#2A2A2A]"
+                              >
+                                {b.brand_name}
+                              </button>
+                            ))}
+                          {canonicalBrands.filter((b) => b.id !== rule.id && b.brand_name.toLowerCase().includes(parentSearch.toLowerCase())).length === 0 && (
+                            <p className="px-3 py-2 text-xs text-gray-400">No matches</p>
+                          )}
+                        </div>
+                      </div>
+                    ) : (rule as any).parent_brand_name ? (
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs text-[#7FAEC2] font-medium">{(rule as any).parent_brand_name}</span>
+                        <button
+                          onClick={() => handleRemoveParent(rule.id)}
+                          className="text-xs text-gray-400 hover:text-red-500"
+                          title="Remove parent"
+                        >
+                          &times;
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => { setParentPickerId(rule.id); setParentSearch(''); }}
+                        className="text-xs text-gray-400 hover:text-[#7FAEC2]"
+                      >
+                        Set parent
+                      </button>
+                    )}
+                  </TableCell>
 
                   {/* Rule Type — click to cycle */}
                   <TableCell>
