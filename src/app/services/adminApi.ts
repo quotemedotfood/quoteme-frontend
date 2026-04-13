@@ -1082,6 +1082,64 @@ export async function adminBulkUpdateCategory(catalogId: string, productIds: str
   });
 }
 
+// ============= BRAND RULES =============
+
+export interface BrandRule {
+  id: string;
+  brand_name: string;
+  rule_type: 'lock' | 'bias' | 'none';
+  category: string;
+  is_active: boolean;
+  notes: string | null;
+  product_count: number;
+  category_distribution: Record<string, number>;
+  last_audited_at: string | null;
+  created_at: string;
+}
+
+export interface BrandAuditResult {
+  total_brands: number;
+  locks: number;
+  biases: number;
+  brands: Array<{
+    brand: string;
+    product_count: number;
+    categories: string[];
+    suggested_type: string;
+    suggested_category: string;
+    existing_rule: BrandRule | null;
+  }>;
+}
+
+export async function getAdminBrandRules(params?: { rule_type?: string; q?: string }): Promise<ApiResponse<BrandRule[]>> {
+  const query = new URLSearchParams();
+  if (params?.rule_type) query.set('rule_type', params.rule_type);
+  if (params?.q) query.set('q', params.q);
+  const qs = query.toString();
+  return fetchWithAuth(`/api/v1/admin/brand-rules${qs ? '?' + qs : ''}`);
+}
+
+export async function createAdminBrandRule(data: { brand_name: string; rule_type: string; category: string; notes?: string }): Promise<ApiResponse<BrandRule>> {
+  return fetchWithAuth('/api/v1/admin/brand-rules', { method: 'POST', body: JSON.stringify(data) });
+}
+
+export async function updateAdminBrandRule(id: string, data: Partial<BrandRule>): Promise<ApiResponse<BrandRule>> {
+  return fetchWithAuth(`/api/v1/admin/brand-rules/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+}
+
+export async function deleteAdminBrandRule(id: string): Promise<ApiResponse<{ id: string; deleted: boolean }>> {
+  return fetchWithAuth(`/api/v1/admin/brand-rules/${id}`, { method: 'DELETE' });
+}
+
+export async function auditBrandRules(distributorId?: string): Promise<ApiResponse<BrandAuditResult>> {
+  const body = distributorId ? JSON.stringify({ distributor_id: distributorId }) : '{}';
+  return fetchWithAuth('/api/v1/admin/brand-rules/audit', { method: 'POST', body });
+}
+
+export async function seedBrandRules(): Promise<ApiResponse<{ seeded: number; total: number }>> {
+  return fetchWithAuth('/api/v1/admin/brand-rules/seed', { method: 'POST' });
+}
+
 // ============= ADMIN HEALTH =============
 
 export interface HealthCheck {

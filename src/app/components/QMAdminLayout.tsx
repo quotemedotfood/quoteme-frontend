@@ -10,6 +10,7 @@ import {
   Tag,
   Cpu,
   Activity,
+  ShieldCheck,
 } from 'lucide-react';
 import logoSquare from '/src/assets/e549e7d27b183e98e791f43494c715b8cc6ce7e9.png';
 import { useAuth } from '../contexts/AuthContext';
@@ -23,6 +24,7 @@ const navItems = [
   { icon: UtensilsCrossed, label: 'Restaurants', path: '/qm-admin/restaurants' },
   { icon: Cpu, label: 'Matching', path: '/qm-admin/matching-engine' },
   { icon: Tag, label: 'Brands', path: '/qm-admin/brands' },
+  { icon: ShieldCheck, label: 'Brand Rules', path: '/qm-admin/brand-rules' },
   { icon: Radio, label: 'Command', path: '/qm-admin/conference-command' },
   { icon: Activity, label: 'Health', path: '/qm-admin/health' },
 ];
