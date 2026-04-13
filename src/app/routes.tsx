@@ -38,6 +38,7 @@ import { OnboardingDocsPage } from "./pages/OnboardingDocsPage";
 import { VendorsPage } from "./pages/VendorsPage";
 import { VendorDetailPage } from "./pages/VendorDetailPage";
 import { LocationPage } from "./pages/LocationPage";
+import { ChefSignupPage } from "./pages/chef/ChefSignupPage";
 import { isDemoMode } from "./utils/demoMode";
 
 const demo = isDemoMode();
@@ -51,6 +52,10 @@ export const router = createBrowserRouter([
       {
         path: "auth",
         element: demo ? <Navigate to="/" replace /> : <AuthPage />,
+      },
+      {
+        path: "chef/signup",
+        Component: ChefSignupPage,
       },
       {
         path: "reset-password",

@@ -1,14 +1,15 @@
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
-import { ArrowLeft, Save, Filter, Plus, Minus, Edit, ChevronUp, ChevronDown, ArrowUpDown, ArrowUp, ArrowDown, Loader2, X, Trash2 } from 'lucide-react';
+import { ArrowLeft, Save, Filter, Plus, Minus, Edit, ChevronUp, ChevronDown, ArrowUpDown, ArrowUp, ArrowDown, Loader2, X, Trash2, AlertTriangle } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router';
 import { useState, useEffect, useCallback } from 'react';
 import { useUser } from '../contexts/UserContext';
 import { isDemoMode } from '../utils/demoMode';
 import { formatProductName } from '../utils/format';
-import { getQuote, getGuestQuote, updateQuote, updateGuestQuote, addGuestQuoteLine, removeGuestQuoteLine, createStockQuote } from '../services/api';
+import { getQuote, getGuestQuote, updateQuote, updateGuestQuote, addGuestQuoteLine, removeGuestQuoteLine, createStockQuote, getMoreMatches } from '../services/api';
 import { CatalogProductSearch } from '../components/CatalogProductSearch';
 import { QuoteReviewBar } from '../components/QuoteReviewBar';
+import { MapComponentDrawer } from '../components/MapComponentDrawer';
 import type { CatalogSearchProduct } from '../services/api';
 import { Label } from '../components/ui/label';
 import {
@@ -20,6 +21,21 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from '../components/ui/drawer';
+
+interface AlignmentCandidate {
+  id: string;
+  position: number;
+  tier: string;
+  score: number | null;
+  product: {
+    id: string;
+    item_number: string;
+    brand: string;
+    product: string;
+    pack_size: string;
+    category: string;
+  };
+}
 
 interface ProductItem {
   id: string;
@@ -35,6 +51,16 @@ interface ProductItem {
   percentChange: number;
   unmatched?: boolean;
   chefNote?: string | null;
+  matchScore?: number | null;
+  alignmentCandidates?: AlignmentCandidate[];
+}
+
+function getItemMatchStatus(item: ProductItem): 'Needs Your Pick' | 'Review Suggested' | null {
+  if (item.unmatched) return 'Needs Your Pick';
+  const score = item.matchScore != null ? Math.round(item.matchScore * 100) : null;
+  if (score !== null && score < 50) return 'Needs Your Pick';
+  if (score !== null && score < 70) return 'Review Suggested';
+  return null;
 }
 
 function toTitleCase(str: string): string {
@@ -77,6 +103,11 @@ export function QuoteBuilderPage() {
   const [inputMode, setInputMode] = useState<string | null>(null);
   const [detectedConcept, setDetectedConcept] = useState<string | null>(null);
 
+  // ── Attention / match drawer state ──
+  const [matchDrawerOpen, setMatchDrawerOpen] = useState(false);
+  const [matchDrawerItem, setMatchDrawerItem] = useState<ProductItem | null>(null);
+  const [attentionFilterActive, setAttentionFilterActive] = useState(false);
+
   // ── Price editing state ──
   const [editingPriceId, setEditingPriceId] = useState<string | null>(null);
   const [editingPriceValue, setEditingPriceValue] = useState('');
@@ -103,6 +134,7 @@ export function QuoteBuilderPage() {
         seenProducts.add(productId);
         const priceDollars = (line.unit_price_cents || 0) / 100;
         const isUnmatched = line.availability_status === 'not_in_catalog';
+        const bestCandidate = (line.alignment_candidates || []).find((c: AlignmentCandidate) => c.position === 1);
         productItems.push({
           id: line.id,
           dish: line.component?.source_dish || 'Unknown',
@@ -117,6 +149,8 @@ export function QuoteBuilderPage() {
           percentChange: 0,
           unmatched: isUnmatched,
           chefNote: line.chef_note,
+          matchScore: bestCandidate?.score ?? null,
+          alignmentCandidates: line.alignment_candidates || [],
         });
       }
       setItems(productItems);
@@ -138,7 +172,50 @@ export function QuoteBuilderPage() {
   }, [loadQuote]);
 
   const categories = ['all', ...Array.from(new Set(items.map(i => i.category))).sort()];
-  const filteredItems = categoryFilter === 'all' ? items : items.filter(i => i.category === categoryFilter);
+  const attentionItems = items.filter(i => getItemMatchStatus(i) !== null);
+  const filteredItems = (() => {
+    let base = categoryFilter === 'all' ? items : items.filter(i => i.category === categoryFilter);
+    if (attentionFilterActive) base = base.filter(i => getItemMatchStatus(i) !== null);
+    return base;
+  })();
+
+  const openMatchDrawer = (item: ProductItem) => {
+    setMatchDrawerItem(item);
+    setMatchDrawerOpen(true);
+  };
+
+  const handleReplaceMatchInBuilder = (componentName: string, productId: string, product?: { id: string; item_number: string; brand: string; product: string; pack_size: string; category: string }) => {
+    if (!product) return;
+    setItems(prev => prev.map(i => {
+      if (i.component !== componentName) return i;
+      return {
+        ...i,
+        sku: product.item_number,
+        brand: product.brand,
+        product: product.product,
+        pack: product.pack_size,
+        category: product.category,
+        unmatched: false,
+        matchScore: 1.0,
+      };
+    }));
+    // Persist to backend
+    if (quoteId) {
+      const item = items.find(i => i.component === componentName);
+      if (item) {
+        const candidate = item.alignmentCandidates?.find(c => c.product.id === productId);
+        const lineUpdate: any = { id: item.id };
+        if (candidate) {
+          lineUpdate.alignment_selected = candidate.position;
+        } else {
+          lineUpdate.product_id = productId;
+        }
+        persistQuote(quoteId, { lines: [lineUpdate] }).catch(console.error);
+      }
+    }
+    setMatchDrawerOpen(false);
+    setMatchDrawerItem(null);
+  };
 
   const handleSort = (column: string) => {
     if (sortColumn === column) {
@@ -424,6 +501,31 @@ export function QuoteBuilderPage() {
           </div>
         )}
 
+        {/* Attention Card */}
+        {attentionItems.length > 0 && (
+          <button
+            onClick={() => setAttentionFilterActive(prev => !prev)}
+            className={`w-full text-left rounded-lg px-4 py-3 mb-4 border flex items-center justify-between gap-3 transition-colors ${
+              attentionFilterActive
+                ? 'bg-amber-50 border-amber-300'
+                : 'bg-amber-50 border-amber-200 hover:border-amber-300'
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <AlertTriangle className="w-4 h-4 text-amber-500 flex-shrink-0" />
+              <span className="text-sm font-medium text-amber-800">
+                {attentionItems.length} item{attentionItems.length !== 1 ? 's' : ''} need{attentionItems.length === 1 ? 's' : ''} your attention
+              </span>
+              <span className="text-xs text-amber-600">
+                ({attentionItems.filter(i => i.unmatched).length} unmatched, {attentionItems.filter(i => !i.unmatched && getItemMatchStatus(i) === 'Review Suggested').length} low confidence)
+              </span>
+            </div>
+            <span className="text-xs font-medium text-amber-700 flex-shrink-0">
+              {attentionFilterActive ? 'Show all' : 'Filter to these'}
+            </span>
+          </button>
+        )}
+
         {/* Products Table/Cards */}
         <div className="bg-white rounded-lg shadow-sm overflow-hidden">
           <div className="p-4 border-b border-gray-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -479,8 +581,30 @@ export function QuoteBuilderPage() {
                   selectedItem?.id === item.id ? 'border-[#A5CFDD] bg-[#A5CFDD]/5' : ''
                 }`}
               >
-                {/* Header: Ingredient name */}
-                <h3 className="text-base font-semibold text-[#2A2A2A] mb-1">{toTitleCase(item.component)}</h3>
+                {/* Header: Ingredient name + attention tag */}
+                <div className="flex items-start justify-between gap-2 mb-1">
+                  <h3 className="text-base font-semibold text-[#2A2A2A]">{toTitleCase(item.component)}</h3>
+                  {(() => {
+                    const status = getItemMatchStatus(item);
+                    if (!status) return null;
+                    const isUnmatched = status === 'Needs Your Pick';
+                    return (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openMatchDrawer(item);
+                        }}
+                        className={`flex-shrink-0 text-xs font-medium px-2 py-0.5 rounded-full cursor-pointer transition-opacity hover:opacity-80 ${
+                          isUnmatched
+                            ? 'bg-red-100 text-red-700'
+                            : 'bg-amber-100 text-amber-700'
+                        }`}
+                      >
+                        {status}
+                      </button>
+                    );
+                  })()}
+                </div>
                 {/* Body: Product + brand */}
                 <p className={`text-sm mb-1 ${item.unmatched ? 'text-gray-400 italic' : 'text-gray-500'}`}>
                   {item.unmatched
@@ -652,7 +776,31 @@ export function QuoteBuilderPage() {
                       selectedItem?.id === item.id ? 'bg-[#A5CFDD]/10' : ''
                     }`}
                   >
-                    <td className="px-4 py-3 text-sm text-[#2A2A2A]">{toTitleCase(item.component)}</td>
+                    <td className="px-4 py-3 text-sm text-[#2A2A2A]">
+                      <div className="flex items-center gap-2">
+                        <span>{toTitleCase(item.component)}</span>
+                        {(() => {
+                          const status = getItemMatchStatus(item);
+                          if (!status) return null;
+                          const isUnmatched = status === 'Needs Your Pick';
+                          return (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openMatchDrawer(item);
+                              }}
+                              className={`flex-shrink-0 text-xs font-medium px-2 py-0.5 rounded-full cursor-pointer transition-opacity hover:opacity-80 ${
+                                isUnmatched
+                                  ? 'bg-red-100 text-red-700'
+                                  : 'bg-amber-100 text-amber-700'
+                              }`}
+                            >
+                              {status}
+                            </button>
+                          );
+                        })()}
+                      </div>
+                    </td>
                     <td className="px-4 py-3 text-sm text-[#2A2A2A]">{item.sku}</td>
                     <td className="px-4 py-3 text-sm text-[#2A2A2A]">{toTitleCase(item.brand)}</td>
                     <td className={`px-4 py-3 text-sm ${item.unmatched ? 'text-gray-400 italic' : 'text-[#2A2A2A]'}`}>
@@ -785,6 +933,36 @@ export function QuoteBuilderPage() {
       </button>
 
       {quoteId && <QuoteReviewBar quoteId={quoteId} onMatchesUpdated={handleMatchesUpdated} />}
+
+      {/* Match Selection Drawer */}
+      {matchDrawerItem && (
+        <MapComponentDrawer
+          open={matchDrawerOpen}
+          onOpenChange={(open) => {
+            setMatchDrawerOpen(open);
+            if (!open) setMatchDrawerItem(null);
+          }}
+          componentName={matchDrawerItem.component}
+          candidates={matchDrawerItem.alignmentCandidates || []}
+          onFindMoreMatches={quoteId ? async () => {
+            const res = await getMoreMatches(quoteId, matchDrawerItem.id);
+            return res.data?.candidates || [];
+          } : undefined}
+          quoteId={quoteId}
+          onReplaceMatch={handleReplaceMatchInBuilder}
+          onAddToQuote={handleReplaceMatchInBuilder}
+          onManualSelect={(componentName, product) => {
+            handleReplaceMatchInBuilder(componentName, product.id, {
+              id: product.id,
+              item_number: product.item_number,
+              brand: product.brand,
+              product: product.product,
+              pack_size: product.pack_size,
+              category: product.category,
+            });
+          }}
+        />
+      )}
 
       {/* Add Product Drawer */}
       <Drawer open={addProductDrawerOpen} onOpenChange={setAddProductDrawerOpen} direction="right">
