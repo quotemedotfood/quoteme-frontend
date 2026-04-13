@@ -182,6 +182,15 @@ export function QMAdminBrandRules() {
     return () => clearTimeout(t);
   }, [loadRules]);
 
+  // Auto-populate from catalogs on first load if no rules exist
+  const [autoAuditDone, setAutoAuditDone] = useState(false);
+  useEffect(() => {
+    if (!loading && rules.length === 0 && !autoAuditDone && !auditLoading) {
+      setAutoAuditDone(true);
+      handleRunAudit();
+    }
+  }, [loading, rules.length, autoAuditDone, auditLoading]);
+
   async function handleCycleRuleType(rule: BrandRule) {
     const next = RULE_TYPE_CYCLE[rule.rule_type] ?? 'none';
     const res = await updateAdminBrandRule(rule.id, { rule_type: next });
