@@ -266,7 +266,7 @@ export function QMAdminBrandRules() {
             className="text-2xl font-bold text-[#2A2A2A]"
             style={{ fontFamily: "'Playfair Display', serif" }}
           >
-            Brand Rules
+            Ingestion Rules
           </h1>
           <p className="text-sm text-[#4F4F4F] mt-1">
             {lockCount} lock{lockCount !== 1 ? 's' : ''} &nbsp;&middot;&nbsp; {biasCount} bias{biasCount !== 1 ? 'es' : ''}
