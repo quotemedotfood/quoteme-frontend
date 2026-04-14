@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   ChevronDown, ChevronRight, Download, Send, Trash2, ArrowUpCircle, Paperclip, X,
   Beaker, Fish, Wine, Coffee, GlassWater, Filter, BookOpen, Lock, RefreshCw,
@@ -1668,15 +1669,20 @@ const CAT_COLORS: Record<string, string> = {
 };
 
 function CatalogsTab() {
+  const [searchParams] = useSearchParams();
+  const urlCatalogId = searchParams.get('catalog_id') || '';
+  const urlBrand = searchParams.get('brand') || '';
+  const urlCategory = searchParams.get('category') || '';
+
   const [catalogs, setCatalogs] = useState<DiagnosticCatalog[]>([]);
-  const [selectedCatalogId, setSelectedCatalogId] = useState('');
+  const [selectedCatalogId, setSelectedCatalogId] = useState(urlCatalogId);
   const [stats, setStats] = useState<AdminCatalogStats | null>(null);
   const [products, setProducts] = useState<AdminCatalogProductsResponse | null>(null);
   const [loading, setLoading] = useState(false);
-  const [filterCat, setFilterCat] = useState('');
-  const [filterBrand, setFilterBrand] = useState('');
-  const [searchInput, setSearchInput] = useState('');
-  const [search, setSearch] = useState('');
+  const [filterCat, setFilterCat] = useState(urlCategory);
+  const [filterBrand, setFilterBrand] = useState(urlBrand);
+  const [searchInput, setSearchInput] = useState(urlBrand);
+  const [search, setSearch] = useState(urlBrand);
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkCat, setBulkCat] = useState('');
@@ -1687,7 +1693,16 @@ function CatalogsTab() {
 
   useEffect(() => {
     getAdminCatalogs().then(res => {
-      if (res.data?.catalogs) setCatalogs(res.data.catalogs);
+      if (res.data?.catalogs) {
+        setCatalogs(res.data.catalogs);
+        // Auto-select catalog from URL param, or first active catalog if brand filter is set
+        if (urlCatalogId) {
+          setSelectedCatalogId(urlCatalogId);
+        } else if ((urlBrand || urlCategory) && res.data.catalogs.length > 0) {
+          const active = res.data.catalogs.find((c: any) => c.status === 'active') || res.data.catalogs[0];
+          setSelectedCatalogId(active.id);
+        }
+      }
     });
   }, []);
 
@@ -2038,7 +2053,9 @@ function CatalogsTab() {
 // Main page
 // ═══════════════════════════════════════════════════════════════════════
 export function QMAdminMatchingEngine() {
-  const [tab, setTab] = useState<Tab>('training');
+  const [searchParams] = useSearchParams();
+  const initialTab = searchParams.get('tab') === 'catalogs' ? 'catalogs' : 'training';
+  const [tab, setTab] = useState<Tab>(initialTab as Tab);
   const [rules, setRules] = useState<MatchingEngineRules | null>(null);
   const [loading, setLoading] = useState(true);
   const [diagnosticsAvailable, setDiagnosticsAvailable] = useState(false);

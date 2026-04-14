@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { RefreshCw, Pencil, Trash2, Plus, Search, PlayCircle, Zap } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
@@ -139,6 +140,7 @@ function AddRuleModal({ onClose, onSaved }: AddRuleModalProps) {
 // ─── Main Page ─────────────────────────────────────────────────────────────────
 
 export function QMAdminBrandRules() {
+  const navigate = useNavigate();
   const [rules, setRules] = useState<BrandRule[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -521,13 +523,14 @@ export function QMAdminBrandRules() {
                           .sort((a, b) => b[1] - a[1])
                           .slice(0, 4)
                           .map(([cat, count]) => (
-                            <span
+                            <button
                               key={cat}
-                              className={`px-1.5 py-0.5 rounded text-xs ${categoryBadgeClass(cat)}`}
-                              title={`${cat}: ${count}`}
+                              onClick={() => navigate(`/qm-admin/matching-engine?tab=catalogs&brand=${encodeURIComponent(rule.brand_name)}&category=${encodeURIComponent(cat)}`)}
+                              className={`px-1.5 py-0.5 rounded text-xs cursor-pointer hover:ring-2 hover:ring-[#7FAEC2] hover:ring-offset-1 transition-all ${categoryBadgeClass(cat)}`}
+                              title={`View ${rule.brand_name} ${cat} products in Matching Engine`}
                             >
                               {cat} ({count})
-                            </span>
+                            </button>
                           ))}
                         {Object.keys(rule.category_distribution).length > 4 && (
                           <span className="text-xs text-gray-400">+{Object.keys(rule.category_distribution).length - 4}</span>
