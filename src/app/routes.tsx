@@ -43,6 +43,7 @@ import { ChefSignupPage } from "./pages/chef/ChefSignupPage";
 import { ChefEntryPage } from "./pages/chef/ChefEntryPage";
 import { ChefStatusPage } from "./pages/chef/ChefStatusPage";
 import { ChefQuoteReceiptPage } from "./pages/chef/ChefQuoteReceiptPage";
+import { ChefOrderGuidePage } from "./pages/chef/ChefOrderGuidePage";
 import { isDemoMode } from "./utils/demoMode";
 
 const demo = isDemoMode();
@@ -72,6 +73,10 @@ export const router = createBrowserRouter([
       {
         path: "chef/quotes/:id",
         Component: ChefQuoteReceiptPage,
+      },
+      {
+        path: "chef/order-guide/:id",
+        Component: ChefOrderGuidePage,
       },
       {
         path: "reset-password",
