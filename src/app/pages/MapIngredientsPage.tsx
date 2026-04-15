@@ -674,11 +674,11 @@ export function MapIngredientsPage() {
   return (
     <div className="flex h-screen bg-[#FFF9F3]">
       {/* Left Sidebar */}
-      <div className="hidden md:flex w-64 bg-white border-r border-gray-200 flex-col">
-        <div className="p-4 border-b border-gray-200">
+      <div className="hidden md:flex w-64 bg-white border-r border-gray-200 flex-col h-full min-h-0">
+        <div className="p-4 border-b border-gray-200 flex-shrink-0">
           <h3 className="text-sm font-medium text-gray-500 mb-2">DISHES</h3>
         </div>
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto min-h-0">
           {dishes.map((dish) => (
             <button
               key={dish.id}
@@ -727,16 +727,15 @@ export function MapIngredientsPage() {
               </div>
             </div>
           )}
-
-          <div className="p-4">
-            <Button
-              onClick={() => setIsAddDishDrawerOpen(true)}
-              className="w-full h-auto py-3 bg-[#7FAEC2] hover:bg-[#6A9AB0] text-white whitespace-normal text-center"
-            >
-              <Plus className="w-4 h-4 mr-2 shrink-0" />
-              Manually Add A Dish or Ingredient
-            </Button>
-          </div>
+        </div>
+        <div className="p-4 flex-shrink-0 border-t border-gray-100 pb-[112px]">
+          <Button
+            onClick={() => setIsAddDishDrawerOpen(true)}
+            className="w-full h-auto py-3 bg-[#7FAEC2] hover:bg-[#6A9AB0] text-white whitespace-normal text-center"
+          >
+            <Plus className="w-4 h-4 mr-2 shrink-0" />
+            Manually Add A Dish or Ingredient
+          </Button>
         </div>
       </div>
 
