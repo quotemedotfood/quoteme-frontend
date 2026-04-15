@@ -1728,3 +1728,59 @@ export async function markAllNotificationsRead(): Promise<ApiResponse<any>> {
     body: JSON.stringify({}),
   });
 }
+
+// ═══════════════════════════════════════════════════
+// Chef Flow API
+// ═══════════════════════════════════════════════════
+
+export async function acceptChefQuote(quoteId: string): Promise<ApiResponse<{ order_guide_id: string }>> {
+  return fetchWithGuest(`/api/v1/chef/quotes/${quoteId}/accept`, { method: 'POST' });
+}
+
+export async function sendChefQuestion(quoteId: string, message: string): Promise<ApiResponse<{ success: boolean }>> {
+  return fetchWithGuest(`/api/v1/chef/quotes/${quoteId}/question`, {
+    method: 'POST',
+    body: JSON.stringify({ message }),
+  });
+}
+
+export interface OrderGuideResponse {
+  id: string;
+  status: string;
+  effective_date: string | null;
+  order_days: string | null;
+  minimum_order_cents: number | null;
+  distributor: { name: string; phone: string | null; email: string | null } | null;
+  restaurant: { name: string; address: string | null } | null;
+  rep: { name: string; email: string | null; phone: string | null } | null;
+  items: OrderGuideItemResponse[];
+  quote_id: string;
+}
+
+export interface OrderGuideItemResponse {
+  id: string;
+  category: string;
+  position: number;
+  item_number: string | null;
+  brand: string | null;
+  product_description: string;
+  pack_size: string | null;
+  quantity: number;
+  par: number;
+  notes: string | null;
+}
+
+export async function getChefOrderGuide(orderGuideId: string): Promise<ApiResponse<OrderGuideResponse>> {
+  return fetchWithGuest(`/api/v1/chef/order_guides/${orderGuideId}`);
+}
+
+export async function updateOrderGuideItem(
+  orderGuideId: string,
+  itemId: string,
+  updates: { quantity?: number; par?: number; notes?: string }
+): Promise<ApiResponse<OrderGuideItemResponse>> {
+  return fetchWithGuest(`/api/v1/chef/order_guides/${orderGuideId}/items/${itemId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(updates),
+  });
+}
