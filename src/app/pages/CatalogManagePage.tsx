@@ -46,7 +46,9 @@ const CATEGORY_COLORS: Record<string, string> = {
 };
 
 function formatCategory(cat: string) {
-  return cat.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  const normalized = cat.replace(/_/g, ' ');
+  if (/[^\x00-\x7F]/.test(normalized)) return normalized;
+  return normalized.replace(/\b\w/g, c => c.toUpperCase());
 }
 
 export function CatalogManagePage() {

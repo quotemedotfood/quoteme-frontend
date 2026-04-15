@@ -1,5 +1,9 @@
 export function toTitleCase(str: string): string {
   if (!str) return '';
+  // If the string contains non-ASCII characters (e.g. accented culinary terms like
+  // "crème fraîche", "jalapeño"), preserve the original casing — title-casing
+  // these naively breaks the multi-byte sequences that compose accented characters.
+  if (/[^\x00-\x7F]/.test(str)) return str;
   return str.replace(/\b\w+/g, (word) => {
     const lower = word.toLowerCase();
     if (['a', 'an', 'the', 'and', 'or', 'of', 'in', 'on', 'at', 'to', 'for', 'with'].includes(lower)) {

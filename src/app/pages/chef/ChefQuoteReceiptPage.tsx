@@ -9,6 +9,7 @@ const headlineStyle: React.CSSProperties = { fontFamily: "'Playfair Display', se
 
 function toTitleCase(str: string): string {
   if (!str) return '';
+  if (/[^\x00-\x7F]/.test(str)) return str;
   return str
     .replace(/\b\w+/g, (word) => {
       const lower = word.toLowerCase();

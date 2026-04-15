@@ -65,6 +65,7 @@ function getItemMatchStatus(item: ProductItem): 'Needs Your Pick' | 'Review Sugg
 
 function toTitleCase(str: string): string {
   if (!str) return '';
+  if (/[^\x00-\x7F]/.test(str)) return str;
   return str.replace(/\b\w+/g, (word) => {
     // Keep short prepositions/articles lowercase unless first word
     const lower = word.toLowerCase();

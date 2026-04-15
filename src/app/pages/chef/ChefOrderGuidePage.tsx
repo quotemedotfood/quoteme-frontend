@@ -16,6 +16,8 @@ const headlineStyle: React.CSSProperties = { fontFamily: "'Playfair Display', se
 // ─── Helpers ────────────────────────────────────────────────────────────────────
 
 function toTitleCase(str: string): string {
+  if (!str) return '';
+  if (/[^\x00-\x7F]/.test(str)) return str;
   return str.replace(/\w\S*/g, (w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
 }
 

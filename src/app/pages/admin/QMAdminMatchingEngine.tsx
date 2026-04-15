@@ -57,7 +57,9 @@ import {
 type Tab = 'rules' | 'training' | 'concepts' | 'changelog' | 'diagnose' | 'catalogs';
 
 function toTitleCase(str: string) {
-  return str.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  const normalized = str.replace(/_/g, ' ');
+  if (/[^\x00-\x7F]/.test(normalized)) return normalized;
+  return normalized.replace(/\b\w/g, c => c.toUpperCase());
 }
 
 function TimeAgo({ date }: { date: string }) {

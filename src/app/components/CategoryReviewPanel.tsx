@@ -10,7 +10,9 @@ const CATEGORY_OPTIONS = [
 ];
 
 function titleCase(s: string) {
-  return s.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  const normalized = s.replace(/_/g, ' ');
+  if (/[^\x00-\x7F]/.test(normalized)) return normalized;
+  return normalized.replace(/\b\w/g, c => c.toUpperCase());
 }
 
 interface Props {

@@ -6,6 +6,7 @@ import logoSquare from '/src/assets/e549e7d27b183e98e791f43494c715b8cc6ce7e9.png
 
 function toTitleCase(str: string): string {
   if (!str) return '';
+  if (/[^\x00-\x7F]/.test(str)) return str;
   return str.replace(/\b\w+/g, (word) => {
     const lower = word.toLowerCase();
     if (['a', 'an', 'the', 'and', 'or', 'of', 'in', 'on', 'at', 'to', 'for', 'with'].includes(lower)) {
