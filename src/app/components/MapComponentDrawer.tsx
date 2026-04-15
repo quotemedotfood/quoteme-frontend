@@ -42,6 +42,7 @@ interface MapComponentDrawerProps {
   onManualSelect?: (componentName: string, product: CatalogSearchProduct) => void;
   onReplaceMatch?: (componentName: string, productId: string, product?: CandidateProduct) => void;
   onAddToQuote?: (componentName: string, productId: string, product?: CandidateProduct) => void;
+  isUnmatched?: boolean;
 }
 
 function tierLabel(tier: string, position: number): string {
@@ -67,6 +68,7 @@ export function MapComponentDrawer({
   onManualSelect,
   onReplaceMatch,
   onAddToQuote,
+  isUnmatched = false,
 }: MapComponentDrawerProps) {
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [notes, setNotes] = useState('');
@@ -205,9 +207,7 @@ export function MapComponentDrawer({
           )}
 
           {/* Alternate Products — single select */}
-          {allAlternates.length === 0 ? (
-            <p className="text-sm text-gray-400 italic text-center py-8">No alternate matches found</p>
-          ) : (
+          {allAlternates.length > 0 && (
             <div>
               <h3 className="text-sm font-medium text-[#2A2A2A] mb-3">
                 Alternate Products ({allAlternates.length})
@@ -268,7 +268,7 @@ export function MapComponentDrawer({
           )}
 
           {/* Find More Matches */}
-          {onFindMoreMatches && (
+          {onFindMoreMatches && !isUnmatched && (
             <div className="text-center">
               <Button
                 variant="outline"
@@ -286,12 +286,20 @@ export function MapComponentDrawer({
             </div>
           )}
 
-          {/* Manual Catalog Search */}
+          {/* Catalog Search — shown prominently for unmatched items, as secondary for matched items */}
           <div>
-            <h3 className="text-sm font-medium text-[#2A2A2A] mb-3">Search Catalog Manually</h3>
+            <h3 className="text-sm font-medium text-[#2A2A2A] mb-3">
+              {isUnmatched ? 'Search Catalog' : 'Search Catalog Manually'}
+            </h3>
+            {isUnmatched && (
+              <p className="text-xs text-gray-500 mb-3">
+                No catalog match was found automatically. Search below to find and assign a product.
+              </p>
+            )}
             <CatalogProductSearch
               quoteId={quoteId}
               onSelect={handleSelectManual}
+              initialQuery={isUnmatched ? componentName : undefined}
             />
             {manualPick && (
               <div className="mt-3 border-2 border-[#7FAEC2] rounded-lg p-4 bg-[#7FAEC2]/5">

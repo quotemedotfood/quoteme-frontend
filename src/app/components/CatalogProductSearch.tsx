@@ -7,19 +7,28 @@ interface CatalogProductSearchProps {
   quoteId?: string;
   onSelect: (product: CatalogSearchProduct) => void;
   placeholder?: string;
+  initialQuery?: string;
 }
 
 export function CatalogProductSearch({
   quoteId,
   onSelect,
   placeholder = 'Search catalog by name, brand, or item #...',
+  initialQuery,
 }: CatalogProductSearchProps) {
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState(initialQuery || '');
   const [results, setResults] = useState<CatalogSearchProduct[]>([]);
   const [loading, setLoading] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // When initialQuery changes (drawer reopened for a different ingredient), reset
+  useEffect(() => {
+    setQuery(initialQuery || '');
+    setResults([]);
+    setShowDropdown(false);
+  }, [initialQuery]);
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);

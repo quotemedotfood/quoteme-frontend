@@ -1044,7 +1044,7 @@ export function MapIngredientsPage() {
         componentName={selectedComponent}
         onApplyMapping={handleApplyMapping}
         candidates={selectedLine?.alignment_candidates || []}
-        onFindMoreMatches={quoteId && selectedLine ? async () => {
+        onFindMoreMatches={quoteId && selectedLine && (selectedLine?.alignment_candidates?.length ?? 0) > 0 ? async () => {
           const res = await getMoreMatches(quoteId, selectedLine.id);
           return res.data?.candidates || [];
         } : undefined}
@@ -1054,6 +1054,7 @@ export function MapIngredientsPage() {
         }}
         onReplaceMatch={handleReplaceMatch}
         onAddToQuote={handleAddToQuote}
+        isUnmatched={!selectedLine?.product && (selectedLine?.alignment_candidates?.length ?? 0) === 0}
       />
 
       {/* Mobile Dish List Drawer */}
