@@ -63,6 +63,10 @@ export const router = createBrowserRouter([
         Component: ChefSignupPage,
       },
       {
+        path: "chef",
+        Component: ChefEntryPage,
+      },
+      {
         path: "chef/entry",
         Component: ChefEntryPage,
       },
