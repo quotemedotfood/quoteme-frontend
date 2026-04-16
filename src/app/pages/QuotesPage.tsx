@@ -3,9 +3,7 @@ import { Input } from '../components/ui/input';
 import { Search, Eye, Download, ArrowUpDown, ArrowUp, ArrowDown, SlidersHorizontal, RefreshCw, Loader2, Trash2, Pencil, FileSpreadsheet, FileText } from 'lucide-react';
 import { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router';
-import { SwipeableCard } from '../components/SwipeableCard';
 import { BottomSheet } from '../components/BottomSheet';
-import { MobilePullToRefresh } from '../components/MobilePullToRefresh';
 import { getQuotes, requoteQuote, downloadQuotePdf, downloadQuoteCsv, downloadOrderGuide, deleteQuote, type QuoteListItem, type GetQuotesParams } from '../services/api';
 
 export function QuotesPage() {
@@ -318,94 +316,87 @@ export function QuotesPage() {
           </div>
         )}
 
-        {/* Mobile Pull-to-Refresh Card List */}
+        {/* Mobile Card List */}
         {!loading && !error && sortedQuotes.length > 0 && (
-          <MobilePullToRefresh onRefresh={handleRefresh}>
-            <div className="space-y-3">
-              {sortedQuotes.map((quote, index) => (
-                <SwipeableCard
-                  key={quote.id}
-                  onEdit={() => handleEditQuote(quote.id)}
-                  onDelete={() => setConfirmDeleteId(quote.id)}
-                  className="rounded-lg border border-gray-200 shadow-sm p-4"
-                  bounceHint={index === 0}
-                >
-                  <div className="flex justify-between items-start mb-2">
-                    <div>
-                      <h3 className="text-sm font-medium text-[#2A2A2A]">
-                        {quote.restaurant || quote.working_label || 'Untitled Quote'}
-                      </h3>
-                      <p className="text-xs text-gray-500 mt-0.5">
-                        {quote.line_count} item{quote.line_count !== 1 ? 's' : ''}
-                      </p>
-                    </div>
-                    {getStatusBadge(quote.status)}
+          <div className="md:hidden space-y-3">
+            {sortedQuotes.map((quote) => (
+              <div
+                key={quote.id}
+                className="bg-white rounded-lg border border-gray-200 shadow-sm p-4"
+              >
+                <div className="flex justify-between items-start mb-2">
+                  <div>
+                    <h3 className="text-sm font-medium text-[#2A2A2A]">
+                      {quote.restaurant || quote.working_label || 'Untitled Quote'}
+                    </h3>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      {quote.line_count} item{quote.line_count !== 1 ? 's' : ''}
+                    </p>
                   </div>
+                  {getStatusBadge(quote.status)}
+                </div>
 
-                  <div className="flex justify-between items-end mt-3">
-                    <div className="text-sm">
-                      <p className="text-gray-500 text-xs mb-0.5">Date</p>
-                      <p className="text-[#2A2A2A]">{formatDate(quote.created_at)}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-gray-500 text-xs mb-0.5">Total</p>
-                      <p className="text-[#2A2A2A] font-medium">
-                        {formatCurrency(quote.total_cents)}
-                      </p>
-                    </div>
+                <div className="flex justify-between items-end mt-3">
+                  <div className="text-sm">
+                    <p className="text-gray-500 text-xs mb-0.5">Date</p>
+                    <p className="text-[#2A2A2A]">{formatDate(quote.created_at)}</p>
                   </div>
+                  <div className="text-right">
+                    <p className="text-gray-500 text-xs mb-0.5">Total</p>
+                    <p className="text-[#2A2A2A] font-medium">
+                      {formatCurrency(quote.total_cents)}
+                    </p>
+                  </div>
+                </div>
 
-                  <div className="flex justify-between items-center mt-4 pt-3 border-t border-gray-50">
-                    <button
-                      className="flex items-center gap-1.5 text-xs font-medium text-[#7FAEC2] hover:text-[#6A9AB0] transition-colors"
-                      onClick={() => handleEditQuote(quote.id)}
-                    >
-                      <Pencil className="w-3.5 h-3.5" />
-                      Edit Quote
-                    </button>
-                    <div className="flex gap-3">
-                      <button
-                        className="flex items-center gap-1.5 text-xs text-gray-600 hover:text-[#F2993D] transition-colors"
-                        onClick={() => handleViewQuote(quote.id)}
-                      >
-                        <Eye className="w-3.5 h-3.5" />
-                        View
-                      </button>
-                      <button
-                        className="flex items-center gap-1.5 text-xs text-gray-600 hover:text-[#F2993D] transition-colors"
-                        onClick={() => handleDownloadPdf(quote.id)}
-                      >
-                        <Download className="w-3.5 h-3.5" />
-                        PDF
-                      </button>
-                      <button
-                        className="flex items-center gap-1.5 text-xs text-gray-600 hover:text-[#F2993D] transition-colors"
-                        onClick={() => handleDownloadCsv(quote.id)}
-                      >
-                        <FileText className="w-3.5 h-3.5" />
-                        CSV
-                      </button>
-                      <button
-                        className="flex items-center gap-1.5 text-xs text-[#F9A64B] hover:text-[#E8953A] transition-colors"
-                        onClick={() => handleDownloadOrderGuide(quote.id)}
-                      >
-                        <FileSpreadsheet className="w-3.5 h-3.5" />
-                        Order Guide
-                      </button>
-                      <button
-                        className="flex items-center gap-1.5 text-xs text-gray-600 hover:text-[#F2993D] transition-colors disabled:opacity-50"
-                        onClick={() => handleRequote(quote.id)}
-                        disabled={requotingId === quote.id}
-                      >
-                        <RefreshCw className={`w-3.5 h-3.5 ${requotingId === quote.id ? 'animate-spin' : ''}`} />
-                        Requote
-                      </button>
-                    </div>
-                  </div>
-                </SwipeableCard>
-              ))}
-            </div>
-          </MobilePullToRefresh>
+                <div className="flex flex-wrap items-center gap-3 mt-4 pt-3 border-t border-gray-100">
+                  <button
+                    className="flex items-center gap-1.5 text-xs text-gray-600 hover:text-[#F2993D] transition-colors"
+                    onClick={() => handleViewQuote(quote.id)}
+                  >
+                    <Eye className="w-3.5 h-3.5" />
+                    View
+                  </button>
+                  <button
+                    className="flex items-center gap-1.5 text-xs text-gray-600 hover:text-[#F2993D] transition-colors"
+                    onClick={() => handleDownloadPdf(quote.id)}
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    PDF
+                  </button>
+                  <button
+                    className="flex items-center gap-1.5 text-xs text-gray-600 hover:text-[#F2993D] transition-colors"
+                    onClick={() => handleDownloadCsv(quote.id)}
+                  >
+                    <FileText className="w-3.5 h-3.5" />
+                    CSV
+                  </button>
+                  <button
+                    className="flex items-center gap-1.5 text-xs text-[#F9A64B] hover:text-[#E8953A] transition-colors"
+                    onClick={() => handleDownloadOrderGuide(quote.id)}
+                  >
+                    <FileSpreadsheet className="w-3.5 h-3.5" />
+                    Order Guide
+                  </button>
+                  <button
+                    className="flex items-center gap-1.5 text-xs text-gray-600 hover:text-[#F2993D] transition-colors disabled:opacity-50"
+                    onClick={() => handleRequote(quote.id)}
+                    disabled={requotingId === quote.id}
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${requotingId === quote.id ? 'animate-spin' : ''}`} />
+                    Requote
+                  </button>
+                  <button
+                    className="flex items-center gap-1.5 text-xs text-red-400 hover:text-red-600 transition-colors ml-auto"
+                    onClick={() => setConfirmDeleteId(quote.id)}
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    Delete
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
         )}
 
         {/* Desktop Main Content Card */}
@@ -563,15 +554,13 @@ export function QuotesPage() {
                           >
                             <RefreshCw className={`w-4 h-4 text-gray-600 ${requotingId === quote.id ? 'animate-spin' : ''}`} />
                           </button>
-                          {quote.status === 'draft' && (
-                            <button
-                              className="p-1 hover:bg-red-50 rounded transition-colors"
-                              title="Delete"
-                              onClick={() => setConfirmDeleteId(quote.id)}
-                            >
-                              <Trash2 className="w-4 h-4 text-red-400" />
-                            </button>
-                          )}
+                          <button
+                            className="p-1 hover:bg-red-50 rounded transition-colors"
+                            title="Delete"
+                            onClick={() => setConfirmDeleteId(quote.id)}
+                          >
+                            <Trash2 className="w-4 h-4 text-red-400" />
+                          </button>
                         </div>
                       </td>
                     </tr>
