@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
+import { ExclusionRulesPanel } from '../../components/ExclusionRulesPanel';
 import {
   getMatchingEngineRules,
   getMatchingEngineLogs,
@@ -54,7 +55,7 @@ import {
   type AdminCatalogProductsResponse,
 } from '../../services/adminApi';
 
-type Tab = 'rules' | 'training' | 'concepts' | 'changelog' | 'diagnose' | 'catalogs';
+type Tab = 'rules' | 'training' | 'concepts' | 'changelog' | 'diagnose' | 'catalogs' | 'exclusions';
 
 function toTitleCase(str: string) {
   const normalized = str.replace(/_/g, ' ');
@@ -2082,6 +2083,7 @@ export function QMAdminMatchingEngine() {
     { key: 'concepts', label: 'Menu Concepts' },
     { key: 'changelog', label: 'Change Log' },
     ...(diagnosticsAvailable ? [{ key: 'diagnose' as Tab, label: 'Diagnose' }] : []),
+    { key: 'exclusions' as Tab, label: 'Exclusions' },
     { key: 'catalogs' as Tab, label: 'Catalogs' },
   ];
 
@@ -2114,6 +2116,7 @@ export function QMAdminMatchingEngine() {
       {tab === 'changelog' && <ChangeLogTab />}
       {tab === 'diagnose' && <DiagnoseTab />}
       {tab === 'catalogs' && <CatalogsTab />}
+      {tab === 'exclusions' && <ExclusionRulesPanel />}
     </div>
   );
 }
