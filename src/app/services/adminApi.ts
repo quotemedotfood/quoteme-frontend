@@ -1182,3 +1182,83 @@ export interface HealthHistory {
 export async function getAdminHealthHistory(): Promise<ApiResponse<HealthHistory>> {
   return fetchWithAuth('/api/v1/admin/health/history');
 }
+
+// ============= EXCLUSION RULES =============
+
+export interface ExclusionRule {
+  id: string;
+  word: string;
+  from_category: string;
+  to_category: string;
+  source: 'manual' | 'suggested' | 'approved';
+  active: boolean;
+  products_affected: number;
+  confidence: number;
+  created_at: string;
+}
+
+export interface AuditLogEntry {
+  id: string;
+  product_name: string;
+  from_category: string;
+  to_category: string;
+  rule_word: string;
+  applied_by: string;
+  created_at: string;
+}
+
+export interface ExclusionRulesResponse {
+  active_rules: Record<string, ExclusionRule[]>;
+  suggested_rules: ExclusionRule[];
+  recent_audit_log: AuditLogEntry[];
+}
+
+export async function getExclusionRules(): Promise<ApiResponse<ExclusionRulesResponse>> {
+  return fetchWithAuth('/api/v1/admin/exclusion_rules');
+}
+
+export async function createExclusionRule(data: {
+  word: string;
+  from_category: string;
+  to_category: string;
+  apply_now?: boolean;
+}): Promise<ApiResponse<ExclusionRule>> {
+  return fetchWithAuth('/api/v1/admin/exclusion_rules', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateExclusionRule(
+  id: string,
+  data: { word?: string; from_category?: string; to_category?: string }
+): Promise<ApiResponse<ExclusionRule>> {
+  return fetchWithAuth(`/api/v1/admin/exclusion_rules/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteExclusionRule(id: string): Promise<ApiResponse<{ message: string }>> {
+  return fetchWithAuth(`/api/v1/admin/exclusion_rules/${id}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function approveExclusionRule(id: string): Promise<ApiResponse<ExclusionRule>> {
+  return fetchWithAuth(`/api/v1/admin/exclusion_rules/${id}/approve`, {
+    method: 'POST',
+  });
+}
+
+export async function rejectExclusionRule(id: string): Promise<ApiResponse<{ message: string }>> {
+  return fetchWithAuth(`/api/v1/admin/exclusion_rules/${id}/reject`, {
+    method: 'POST',
+  });
+}
+
+export async function applyAllExclusionRules(): Promise<ApiResponse<{ moved: number; log: AuditLogEntry[] }>> {
+  return fetchWithAuth('/api/v1/admin/exclusion_rules/apply_all', {
+    method: 'POST',
+  });
+}
