@@ -181,15 +181,17 @@ export function StartNewQuotePage() {
   }, [liquorDemo]);
 
   // Fix 131: Check draft limit on mount for authenticated users
+  // Skip for admins and users who enabled unlimited drafts
   useEffect(() => {
     if (isGuest) return;
     if (user?.unlimited_drafts) return;
+    if (user?.role === 'quoteme_admin' || user?.role === 'distributor_admin') return;
     getQuotes({ status: 'draft' }).then(res => {
       if (res.data && res.data.length >= 2) {
         setDraftLimitReached(true);
       }
     });
-  }, [isGuest, user?.unlimited_drafts]);
+  }, [isGuest, user?.unlimited_drafts, user?.role]);
 
   // Load Google Fonts
   useEffect(() => {
