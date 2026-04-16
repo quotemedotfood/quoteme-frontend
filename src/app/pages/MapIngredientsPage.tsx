@@ -179,8 +179,11 @@ export function MapIngredientsPage() {
   const isOpenQuote: boolean = (location.state as any)?.isOpenQuote || false;
   const locationId: string | undefined = (location.state as any)?.locationId;
 
+  // Also read quoteId from URL query params (for email links)
+  const urlQuoteId = new URLSearchParams(location.search).get('quoteId');
+
   // ── Core state ──
-  const [quoteId, setQuoteId] = useState<string | null>(routerQuoteId || null);
+  const [quoteId, setQuoteId] = useState<string | null>(routerQuoteId || urlQuoteId || null);
   const [menuId, setMenuId] = useState<string | null>(routerMenuId || null);
   const [dishes, setDishes] = useState<Dish[]>([]);
   const [selectedDish, setSelectedDish] = useState<Dish | null>(null);
