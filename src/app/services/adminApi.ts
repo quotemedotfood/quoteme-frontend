@@ -204,6 +204,12 @@ export async function inviteAdminUser(data: {
   });
 }
 
+export async function resendInvite(userId: string): Promise<ApiResponse<{ message: string }>> {
+  return fetchWithAuth(`/api/v1/admin/users/${userId}/resend_invite`, {
+    method: 'POST',
+  });
+}
+
 export async function assignDistributor(
   userId: string,
   distributorId: string

@@ -14,6 +14,7 @@ import {
   getAdminUsers,
   updateAdminUser,
   inviteAdminUser,
+  resendInvite,
   getAdminDistributors,
   AdminUser,
   AdminDistributor,
@@ -150,6 +151,17 @@ export function QMAdminUsers() {
     const res = await updateAdminUser(userId, { status: newStatus });
     if (res.data) {
       setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, status: newStatus } : u)));
+    }
+    setActionLoading(null);
+  }
+
+  async function handleResendInvite(userId: string, email: string) {
+    setActionLoading(userId);
+    const res = await resendInvite(userId);
+    if (res.data) {
+      alert(`Invite resent to ${email}`);
+    } else {
+      alert(res.error || 'Failed to resend invite');
     }
     setActionLoading(null);
   }
@@ -445,6 +457,17 @@ export function QMAdminUsers() {
                               Archive
                             </Button>
                           </>
+                        )}
+                        {!u.last_login_at && u.status === 'active' && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={actionLoading === u.id}
+                            onClick={() => handleResendInvite(u.id, u.email)}
+                            className="text-blue-600 border-blue-300 hover:bg-blue-50"
+                          >
+                            Resend Invite
+                          </Button>
                         )}
                         {u.status === 'archived' && (
                           <Button
