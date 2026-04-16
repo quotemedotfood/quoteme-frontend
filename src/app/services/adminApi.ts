@@ -1143,7 +1143,7 @@ export async function seedBrandRules(): Promise<ApiResponse<{ seeded: number; to
 // ============= ADMIN HEALTH =============
 
 export interface HealthCheck {
-  overall: 'healthy' | 'degraded';
+  overall: 'healthy' | 'degraded' | 'unhealthy';
   timestamp: string;
   services: Record<string, {
     name: string;
@@ -1154,4 +1154,25 @@ export interface HealthCheck {
 
 export async function getAdminHealth(): Promise<ApiResponse<HealthCheck>> {
   return fetchWithAuth('/api/v1/admin/health');
+}
+
+export interface HealthHistoryEntry {
+  status: 'ok' | 'warning' | 'error';
+  message: string;
+  checked_at: string;
+}
+
+export interface HealthServiceHistory {
+  name: string;
+  current_status: 'ok' | 'warning' | 'error';
+  history: HealthHistoryEntry[];
+  last_incident: string | null;
+}
+
+export interface HealthHistory {
+  services: Record<string, HealthServiceHistory>;
+}
+
+export async function getAdminHealthHistory(): Promise<ApiResponse<HealthHistory>> {
+  return fetchWithAuth('/api/v1/admin/health/history');
 }
