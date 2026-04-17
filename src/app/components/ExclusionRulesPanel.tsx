@@ -293,14 +293,60 @@ export function ExclusionRulesPanel() {
         <div key={cat} className="border border-dashed border-gray-300 rounded-lg px-4 py-3">
           <div className="flex items-center justify-between">
             <span className="text-sm text-gray-500 capitalize">{cat} — no rules yet</span>
-            <button
-              onClick={() => { setAddingTo(cat); setNewWord(''); setNewToCategory('dry_goods'); setExpandedCategories(prev => ({ ...prev, [cat]: true })); }}
-              className="flex items-center gap-1 text-xs text-[#7FAEC2] hover:text-[#6A9AB0] font-medium"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              Add exclusion
-            </button>
+            {addingTo !== cat && (
+              <button
+                onClick={() => { setAddingTo(cat); setNewWord(''); setNewToCategory('dry_goods'); }}
+                className="flex items-center gap-1 text-xs text-[#7FAEC2] hover:text-[#6A9AB0] font-medium"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Add exclusion
+              </button>
+            )}
           </div>
+          {addingTo === cat && (
+            <div className="flex items-center gap-2 mt-3">
+              <Input
+                value={newWord}
+                onChange={(e) => setNewWord(e.target.value)}
+                placeholder="Word..."
+                className="w-36 h-8 text-sm"
+                autoFocus
+                onKeyDown={(e) => { if (e.key === 'Enter') handleAddRule(cat); }}
+              />
+              <span className="text-xs text-gray-400">&rarr;</span>
+              <select
+                value={newToCategory}
+                onChange={(e) => setNewToCategory(e.target.value)}
+                className="border border-gray-300 rounded px-2 py-1 text-sm h-8"
+              >
+                {CATEGORIES.filter(c => c !== cat).map(c => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+              <label className="flex items-center gap-1 text-xs text-gray-500">
+                <input
+                  type="checkbox"
+                  checked={applyNow}
+                  onChange={(e) => setApplyNow(e.target.checked)}
+                />
+                Apply now
+              </label>
+              <Button
+                size="sm"
+                onClick={() => handleAddRule(cat)}
+                disabled={saving || !newWord.trim()}
+                className="bg-[#7FAEC2] hover:bg-[#6A9AB0] text-white h-8 px-3"
+              >
+                {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Save'}
+              </Button>
+              <button
+                onClick={() => { setAddingTo(null); setNewWord(''); }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          )}
         </div>
       ))}
 
