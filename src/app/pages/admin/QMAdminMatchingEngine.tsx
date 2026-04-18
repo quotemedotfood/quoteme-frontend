@@ -55,7 +55,7 @@ import {
   type AdminCatalogProductsResponse,
 } from '../../services/adminApi';
 
-type Tab = 'rules' | 'training' | 'concepts' | 'changelog' | 'diagnose' | 'catalogs' | 'exclusions';
+type Tab = 'rules' | 'synonyms' | 'training' | 'concepts' | 'changelog' | 'diagnose' | 'catalogs' | 'exclusions';
 
 function toTitleCase(str: string) {
   const normalized = str.replace(/_/g, ' ');
@@ -2053,6 +2053,85 @@ function CatalogsTab() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
+// Synonyms Tab
+// ═══════════════════════════════════════════════════════════════════════
+function SynonymsTab({ rules }: { rules: MatchingEngineRules | null }) {
+  const [search, setSearch] = useState('');
+
+  if (!rules) {
+    return <p className="text-sm text-gray-400">Loading synonyms…</p>;
+  }
+
+  const families = rules.synonym_families ?? [];
+
+  const filtered = search.trim()
+    ? families.filter(sf =>
+        sf.canonical_name.toLowerCase().includes(search.toLowerCase()) ||
+        sf.synonyms.some(s => s.toLowerCase().includes(search.toLowerCase()))
+      )
+    : families;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-3">
+        <div className="relative flex-1 max-w-sm">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Search families or synonyms…"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="w-full pl-8 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#7FAEC2]"
+          />
+        </div>
+        <span className="text-xs text-gray-400">{filtered.length} of {families.length} families</span>
+      </div>
+
+      {filtered.length === 0 ? (
+        <p className="text-sm text-gray-400 italic py-6 text-center">No synonym families found.</p>
+      ) : (() => {
+        // Group by category
+        const grouped: Record<string, typeof filtered> = {};
+        filtered.forEach(sf => {
+          const cat = sf.category || 'uncategorized';
+          if (!grouped[cat]) grouped[cat] = [];
+          grouped[cat].push(sf);
+        });
+        const categoryOrder = ['produce', 'cheese', 'dairy', 'meat', 'poultry', 'seafood', 'dry_goods', 'bakery', 'prepared', 'frozen', 'beverage', 'non_food', 'other', 'uncategorized'];
+        const sortedCategories = Object.keys(grouped).sort((a, b) => {
+          const ai = categoryOrder.indexOf(a);
+          const bi = categoryOrder.indexOf(b);
+          return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+        });
+
+        return (
+          <div className="space-y-3">
+            {sortedCategories.map(cat => (
+              <details key={cat} open={sortedCategories.length <= 5 || cat !== 'uncategorized'}>
+                <summary className="cursor-pointer px-4 py-2.5 bg-gray-50 rounded-lg border border-gray-200 flex items-center justify-between hover:bg-gray-100 transition-colors">
+                  <span className="text-sm font-semibold text-[#2A2A2A] capitalize">{cat.replace('_', ' ')}</span>
+                  <span className="text-xs text-gray-400">{grouped[cat].length} families</span>
+                </summary>
+                <div className="border border-gray-200 border-t-0 rounded-b-lg bg-white divide-y divide-gray-50 mt-0">
+                  {grouped[cat].map(sf => (
+                    <div key={sf.id} className="px-4 py-2.5 hover:bg-gray-50 transition-colors">
+                      <span className="font-medium text-sm text-[#2A2A2A]">{toTitleCase(sf.canonical_name)}</span>
+                      {sf.synonyms.length > 0 && (
+                        <p className="text-xs text-gray-500 mt-0.5">{sf.synonyms.map(toTitleCase).join(' · ')}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </details>
+            ))}
+          </div>
+        );
+      })()}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════
 // Main page
 // ═══════════════════════════════════════════════════════════════════════
 export function QMAdminMatchingEngine() {
@@ -2079,11 +2158,12 @@ export function QMAdminMatchingEngine() {
 
   const tabs: Array<{ key: Tab; label: string }> = [
     { key: 'rules', label: 'Rules' },
+    { key: 'synonyms', label: 'Synonyms' },
     { key: 'training', label: 'Training Chat' },
     { key: 'concepts', label: 'Menu Concepts' },
     { key: 'changelog', label: 'Change Log' },
     ...(diagnosticsAvailable ? [{ key: 'diagnose' as Tab, label: 'Diagnose' }] : []),
-    { key: 'exclusions' as Tab, label: 'Exclusions' },
+    { key: 'exclusions' as Tab, label: 'Corpus Intelligence' },
     { key: 'catalogs' as Tab, label: 'Catalogs' },
   ];
 
@@ -2111,6 +2191,7 @@ export function QMAdminMatchingEngine() {
 
       {/* Tab content */}
       {tab === 'rules' && <RulesTab rules={rules} onRefresh={loadRules} />}
+      {tab === 'synonyms' && <SynonymsTab rules={rules} />}
       {tab === 'training' && <TrainingTab />}
       {tab === 'concepts' && <ConceptsTab />}
       {tab === 'changelog' && <ChangeLogTab />}
