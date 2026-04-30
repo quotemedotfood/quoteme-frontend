@@ -222,12 +222,96 @@ export async function assignDistributor(
 
 // ============= ADMIN DISTRIBUTORS =============
 
-export async function getAdminDistributors(): Promise<ApiResponse<AdminDistributor[]>> {
-  return fetchWithAuth('/api/v1/admin/distributors');
+// Ingested/registered/claimed distributor shape (new endpoints)
+export interface IngestedDistributor {
+  id: string;
+  name: string;
+  display_name: string | null;
+  primary_state: string | null;
+  service_states: string[];
+  source: 'ingested' | 'registered' | 'claimed';
+  catalog_state: 'discovery' | 'provisional' | 'verified';
+  product_count: number;
+  distributor_opt_out: boolean;
+  headquarters_city: string | null;
+  logo_url: string | null;
+  serves_metros: string[];
+  description: string | null;
+  region_tags: string[];
+}
+
+export interface IngestedDistributorDetail extends IngestedDistributor {
+  catalog_summary: {
+    product_count: number;
+    top_categories: string[];
+    last_updated_at: string;
+    catalog_state: string;
+  } | null;
+}
+
+export interface IngestedDistributorUpdateData {
+  display_name?: string;
+  service_states?: string[];
+  logo_url?: string | null;
+  serves_metros?: string[];
+  description?: string | null;
+  region_tags?: string[];
+}
+
+export async function getAdminDistributors(params?: {
+  state?: string;
+  catalog_state?: string;
+  source?: string;
+  q?: string;
+}): Promise<ApiResponse<AdminDistributor[]>> {
+  const searchParams = new URLSearchParams();
+  if (params?.state) searchParams.set('state', params.state);
+  if (params?.catalog_state) searchParams.set('catalog_state', params.catalog_state);
+  if (params?.source) searchParams.set('source', params.source);
+  if (params?.q) searchParams.set('q', params.q);
+  const qs = searchParams.toString();
+  return fetchWithAuth(`/api/v1/admin/distributors${qs ? `?${qs}` : ''}`);
 }
 
 export async function getAdminDistributor(id: string): Promise<ApiResponse<AdminDistributorDetail>> {
   return fetchWithAuth(`/api/v1/admin/distributors/${id}`);
+}
+
+export async function getIngestedDistributors(params?: {
+  state?: string;
+  catalog_state?: string;
+  source?: string;
+  q?: string;
+}): Promise<ApiResponse<IngestedDistributor[]>> {
+  const searchParams = new URLSearchParams();
+  if (params?.state) searchParams.set('state', params.state);
+  if (params?.catalog_state) searchParams.set('catalog_state', params.catalog_state);
+  if (params?.source) searchParams.set('source', params.source);
+  if (params?.q) searchParams.set('q', params.q);
+  const qs = searchParams.toString();
+  return fetchWithAuth(`/api/v1/admin/distributors${qs ? `?${qs}` : ''}`);
+}
+
+export async function getIngestedDistributor(id: string): Promise<ApiResponse<IngestedDistributorDetail>> {
+  return fetchWithAuth(`/api/v1/admin/distributors/${id}`);
+}
+
+export async function updateIngestedDistributor(
+  id: string,
+  data: IngestedDistributorUpdateData
+): Promise<ApiResponse<IngestedDistributorDetail>> {
+  return fetchWithAuth(`/api/v1/admin/distributors/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function optOutDistributor(id: string): Promise<ApiResponse<{ status: string }>> {
+  return fetchWithAuth(`/api/v1/admin/distributors/${id}/opt_out`, { method: 'POST' });
+}
+
+export async function optInDistributor(id: string): Promise<ApiResponse<{ status: string }>> {
+  return fetchWithAuth(`/api/v1/admin/distributors/${id}/opt_in`, { method: 'POST' });
 }
 
 export async function createDistributor(data: {
