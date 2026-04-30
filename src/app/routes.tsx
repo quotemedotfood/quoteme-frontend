@@ -27,6 +27,7 @@ import { QMAdminUsers } from "./pages/admin/QMAdminUsers";
 import { QMAdminBrands } from "./pages/admin/QMAdminBrands";
 import { QMAdminMatchingEngine } from "./pages/admin/QMAdminMatchingEngine";
 import { QMAdminBrandRules } from "./pages/admin/QMAdminBrandRules";
+import { QMAdminReviewQueueList, QMAdminReviewQueueDetail } from "./pages/admin/QMAdminReviewQueue";
 import { QuotePreviewPage } from "./pages/QuotePreviewPage";
 import { PaywallPage } from "./pages/PaywallPage";
 import { OnboardingConfirmPage } from "./pages/OnboardingConfirmPage";
@@ -107,6 +108,8 @@ export const router = createBrowserRouter([
           { path: "brand-rules", Component: QMAdminBrandRules },
           { path: "conference-command", Component: QMAdminConferenceCommand },
           { path: "health", Component: QMAdminHealth },
+          { path: "review-queue", Component: QMAdminReviewQueueList },
+          { path: "review-queue/:id", Component: QMAdminReviewQueueDetail },
         ],
       },
       {

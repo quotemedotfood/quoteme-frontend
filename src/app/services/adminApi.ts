@@ -1262,3 +1262,79 @@ export async function applyAllExclusionRules(): Promise<ApiResponse<{ moved: num
     method: 'POST',
   });
 }
+
+// ============= REVIEW QUEUE =============
+
+export interface ReviewSubmission {
+  id: string;
+  submission_type: 'knowledge_gap' | 'compound_classification';
+  status: 'pending' | 'approved' | 'rejected';
+  source_data: Record<string, unknown>;
+  submitted_by: string;
+  submitted_at: string;
+  reviewed_by_user_id: string | null;
+  reviewed_at: string | null;
+  review_notes: string | null;
+  resolved_data: Record<string, unknown> | null;
+}
+
+export interface KnowledgeGapSourceData {
+  component_text: string;
+  suggested_canonical: string;
+  suggested_category: string;
+  suggested_form_type?: string;
+  rep_notes?: string;
+}
+
+export interface CompoundClassificationSourceData {
+  cluster_label_id: string;
+  canonical_product: string;
+  suggested_type: 'modified' | 'true_compound' | 'identity' | 'non_compound';
+  confidence: number;
+  reasoning: string;
+}
+
+export async function getReviewSubmissions(params: {
+  type?: string;
+  status?: string;
+}): Promise<ApiResponse<ReviewSubmission[]>> {
+  const query = new URLSearchParams();
+  if (params.type) query.set('type', params.type);
+  if (params.status) query.set('status', params.status);
+  const qs = query.toString();
+  return fetchWithAuth(`/api/v1/admin/review_submissions${qs ? `?${qs}` : ''}`);
+}
+
+export async function getReviewSubmission(id: string): Promise<ApiResponse<ReviewSubmission>> {
+  return fetchWithAuth(`/api/v1/admin/review_submissions/${id}`);
+}
+
+export async function approveReviewSubmission(
+  id: string,
+  body: { edited_data?: object; review_notes?: string }
+): Promise<ApiResponse<ReviewSubmission>> {
+  return fetchWithAuth(`/api/v1/admin/review_submissions/${id}/approve`, {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+}
+
+export async function rejectReviewSubmission(
+  id: string,
+  body: { review_notes?: string }
+): Promise<ApiResponse<ReviewSubmission>> {
+  return fetchWithAuth(`/api/v1/admin/review_submissions/${id}/reject`, {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+}
+
+export async function updateReviewSubmission(
+  id: string,
+  body: { source_data: object }
+): Promise<ApiResponse<ReviewSubmission>> {
+  return fetchWithAuth(`/api/v1/admin/review_submissions/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(body),
+  });
+}
