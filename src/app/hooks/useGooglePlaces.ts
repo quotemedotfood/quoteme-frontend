@@ -9,6 +9,7 @@ export interface ParsedAddress {
   state: string;
   zip: string;
   formatted: string;
+  placeId: string;
 }
 
 let scriptLoaded = false;
@@ -62,6 +63,7 @@ function parsePlace(place: google.maps.places.PlaceResult): ParsedAddress {
     state: get('administrative_area_level_1', true),
     zip: get('postal_code'),
     formatted: place.formatted_address || addressLine1,
+    placeId: place.place_id || '',
   };
 }
 
@@ -120,7 +122,7 @@ export function useGooglePlaces(
     const autocomplete = new google.maps.places.Autocomplete(inputElement, {
       types: options?.types || ['address'],
       componentRestrictions: { country: 'us' },
-      fields: ['address_components', 'formatted_address'],
+      fields: ['address_components', 'formatted_address', 'place_id'],
     });
 
     autocomplete.addListener('place_changed', () => {
