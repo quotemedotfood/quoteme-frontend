@@ -29,6 +29,9 @@ export function CreateRestaurantPage() {
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [googlePlaceId, setGooglePlaceId] = useState('');
+  const [pickedFormatted, setPickedFormatted] = useState('');
+  const [pickedLat, setPickedLat] = useState<number | null>(null);
+  const [pickedLng, setPickedLng] = useState<number | null>(null);
 
   // UI state
   const [submitting, setSubmitting] = useState(false);
@@ -39,7 +42,7 @@ export function CreateRestaurantPage() {
 
   // Google Places autocomplete
   const autocompleteRef = useRef<HTMLInputElement | null>(null);
-  useGooglePlaces(
+  const { error: placesError } = useGooglePlaces(
     autocompleteRef,
     (addr) => {
       setAddress(addr.addressLine1);
@@ -48,6 +51,9 @@ export function CreateRestaurantPage() {
       setState(addr.state);
       setZip(addr.zip);
       setGooglePlaceId(addr.placeId);
+      setPickedFormatted(addr.formatted);
+      setPickedLat(addr.lat);
+      setPickedLng(addr.lng);
     },
     { types: ['establishment', 'geocode'] },
   );
@@ -148,6 +154,9 @@ export function CreateRestaurantPage() {
                 setPhone('');
                 setEmail('');
                 setGooglePlaceId('');
+                setPickedFormatted('');
+                setPickedLat(null);
+                setPickedLng(null);
               }}
               className="w-full px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 text-[#4F4F4F]"
             >
@@ -232,6 +241,21 @@ export function CreateRestaurantPage() {
             className="mt-1"
             autoComplete="off"
           />
+          {placesError && (
+            <p className="mt-1 text-xs text-amber-600">
+              Address autocomplete unavailable: {placesError}. You can still fill in the fields manually.
+            </p>
+          )}
+          {pickedFormatted && (
+            <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded-md text-xs text-green-800">
+              <p className="font-medium">Picked: {pickedFormatted}</p>
+              {pickedLat !== null && pickedLng !== null && (
+                <p className="mt-0.5 text-green-700">
+                  Coordinates: {pickedLat.toFixed(6)}, {pickedLng.toFixed(6)}
+                </p>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Address Line 1 */}

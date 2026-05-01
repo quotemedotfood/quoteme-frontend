@@ -10,6 +10,8 @@ export interface ParsedAddress {
   zip: string;
   formatted: string;
   placeId: string;
+  lat: number | null;
+  lng: number | null;
 }
 
 let scriptLoaded = false;
@@ -56,6 +58,10 @@ function parsePlace(place: google.maps.places.PlaceResult): ParsedAddress {
   const addressLine1 = streetNumber ? `${streetNumber} ${route}` : route;
   const subpremise = get('subpremise');
 
+  const loc = place.geometry?.location;
+  const lat = typeof loc?.lat === 'function' ? loc.lat() : null;
+  const lng = typeof loc?.lng === 'function' ? loc.lng() : null;
+
   return {
     addressLine1,
     addressLine2: subpremise ? `#${subpremise}` : '',
@@ -64,6 +70,8 @@ function parsePlace(place: google.maps.places.PlaceResult): ParsedAddress {
     zip: get('postal_code'),
     formatted: place.formatted_address || addressLine1,
     placeId: place.place_id || '',
+    lat,
+    lng,
   };
 }
 
@@ -122,7 +130,7 @@ export function useGooglePlaces(
     const autocomplete = new google.maps.places.Autocomplete(inputElement, {
       types: options?.types || ['address'],
       componentRestrictions: { country: 'us' },
-      fields: ['address_components', 'formatted_address', 'place_id'],
+      fields: ['address_components', 'formatted_address', 'place_id', 'geometry'],
     });
 
     autocomplete.addListener('place_changed', () => {
