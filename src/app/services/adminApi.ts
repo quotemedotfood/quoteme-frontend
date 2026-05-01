@@ -1504,3 +1504,77 @@ export async function listClusterLabels(
   const qs = params.toString();
   return fetchWithAuth(`/api/v1/admin/cluster_labels${qs ? `?${qs}` : ''}`);
 }
+
+// ============= RESTAURANT CREATE =============
+
+export interface Restaurant {
+  id: string;
+  name: string;
+  address: string | null;
+  address_2: string | null;
+  city: string | null;
+  state: string | null;
+  zip: string | null;
+  phone: string | null;
+  email: string | null;
+  distributor_id: string;
+  restaurant_group_id: string | null;
+  google_place_id: string | null;
+  address_verified: boolean;
+  test_seeded: boolean;
+  status: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateRestaurantInput {
+  name: string;
+  city: string;
+  state: string;
+  address?: string;
+  address_2?: string;
+  zip?: string;
+  phone?: string;
+  email?: string;
+  google_place_id?: string;
+  restaurant_group_id?: string;
+  distributor_id?: string; // only QM admin needs this
+}
+
+export interface DuplicateRestaurantError {
+  error: string;
+  existing_id: string;
+}
+
+export async function createRestaurant(
+  input: CreateRestaurantInput
+): Promise<ApiResponse<Restaurant> & { duplicateId?: string }> {
+  const token = localStorage.getItem('quoteme_token');
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/v1/admin/restaurants`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ restaurant: input }),
+    });
+
+    if (response.status === 409) {
+      const body: DuplicateRestaurantError = await response.json().catch(() => ({ error: 'Duplicate restaurant', existing_id: '' }));
+      return { error: body.error || 'Duplicate restaurant', duplicateId: body.existing_id };
+    }
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      return { error: errorData.error || `Request failed (${response.status})` };
+    }
+
+    const data: Restaurant = await response.json();
+    return { data };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : 'Network error' };
+  }
+}

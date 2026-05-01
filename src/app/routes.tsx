@@ -45,6 +45,7 @@ import { ChefEntryPage } from "./pages/chef/ChefEntryPage";
 import { ChefStatusPage } from "./pages/chef/ChefStatusPage";
 import { ChefQuoteReceiptPage } from "./pages/chef/ChefQuoteReceiptPage";
 import { ChefOrderGuidePage } from "./pages/chef/ChefOrderGuidePage";
+import { CreateRestaurantPage } from "./pages/CreateRestaurantPage";
 import { isDemoMode } from "./utils/demoMode";
 
 const demo = isDemoMode();
@@ -137,6 +138,7 @@ export const router = createBrowserRouter([
           { path: "distributor-admin/invite", Component: RepInvitePage },
           { path: "distributor-admin/reps", Component: DistributorRepsPage },
           { path: "distributor-admin/onboarding-docs", Component: OnboardingDocsPage },
+          { path: "distributor-admin/restaurants/new", Component: CreateRestaurantPage },
           { path: "distributor-admin", Component: DistributorHomePage },
           { path: "liquor", Component: StartNewQuotePage },
           { path: "liquor/*", Component: StartNewQuotePage },
