@@ -3,8 +3,8 @@
  * Displays a paginated, filterable list of cluster labels with bulk edit support.
  */
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useNavigate } from 'react-router';
-import { Clock, Star, AlertTriangle, TrendingDown, RotateCcw } from 'lucide-react';
+import { useNavigate, useSearchParams } from 'react-router';
+import { Clock, Star, AlertTriangle, TrendingDown, RotateCcw, ArrowUp, ArrowDown } from 'lucide-react';
 import {
   listClusterLabels,
   bulkUpdateClusterLabels,
@@ -54,6 +54,69 @@ const REASON_OPTIONS: ReasonOption[] = [
 
 const BULK_CAP = 100;
 const PER_PAGE = 50;
+
+// ─── Sort ─────────────────────────────────────────────────────────────────────
+
+type SortCol =
+  | 'canonical_product'
+  | 'category'
+  | 'form_type'
+  | 'compound_type'
+  | 'confidence'
+  | 'status'
+  | 'created_via'
+  | 'last_edited';
+
+type SortDir = 'asc' | 'desc';
+
+const DEFAULT_SORT_COL: SortCol = 'last_edited';
+const DEFAULT_SORT_DIR: SortDir = 'desc';
+
+function parseSortParam(raw: string | null): { col: SortCol; dir: SortDir } {
+  if (!raw) return { col: DEFAULT_SORT_COL, dir: DEFAULT_SORT_DIR };
+  const VALID_COLS: SortCol[] = [
+    'canonical_product', 'category', 'form_type', 'compound_type',
+    'confidence', 'status', 'created_via', 'last_edited',
+  ];
+  const VALID_DIRS: SortDir[] = ['asc', 'desc'];
+  const lastUnderscore = raw.lastIndexOf('_');
+  if (lastUnderscore === -1) return { col: DEFAULT_SORT_COL, dir: DEFAULT_SORT_DIR };
+  const col = raw.slice(0, lastUnderscore) as SortCol;
+  const dir = raw.slice(lastUnderscore + 1) as SortDir;
+  if (VALID_COLS.includes(col) && VALID_DIRS.includes(dir)) return { col, dir };
+  return { col: DEFAULT_SORT_COL, dir: DEFAULT_SORT_DIR };
+}
+
+interface SortableThProps {
+  col: SortCol;
+  label: string;
+  currentCol: SortCol;
+  currentDir: SortDir;
+  onSort: (col: SortCol) => void;
+  className?: string;
+}
+
+function SortableTh({ col, label, currentCol, currentDir, onSort, className = '' }: SortableThProps) {
+  const active = currentCol === col;
+  return (
+    <th
+      className={`px-3 py-2 cursor-pointer select-none hover:text-[#7FAEC2] transition-colors whitespace-nowrap ${active ? 'text-[#7FAEC2]' : ''} ${className}`}
+      onClick={() => onSort(col)}
+      title={`Sort by ${label}`}
+    >
+      <span className="inline-flex items-center gap-1">
+        {label}
+        {active ? (
+          currentDir === 'asc'
+            ? <ArrowUp size={12} className="text-[#7FAEC2]" />
+            : <ArrowDown size={12} className="text-[#7FAEC2]" />
+        ) : (
+          <span className="w-3 inline-block" />
+        )}
+      </span>
+    </th>
+  );
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -577,6 +640,12 @@ function BulkEditModal({ selectedIds, onClose, onSuccess }: BulkEditModalProps) 
 
 export function ClusterListTab() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Sort — initialized from URL ?sort= param
+  const initialSort = parseSortParam(searchParams.get('sort'));
+  const [sortCol, setSortCol] = useState<SortCol>(initialSort.col);
+  const [sortDir, setSortDir] = useState<SortDir>(initialSort.dir);
 
   // Filters
   const [q, setQ] = useState('');
@@ -625,6 +694,7 @@ export function ClusterListTab() {
       recently_edited: recentlyEdited || undefined,
       page,
       per_page: PER_PAGE,
+      sort: `${sortCol}_${sortDir}`,
       ...overrideFilters,
     };
 
@@ -644,13 +714,13 @@ export function ClusterListTab() {
     } else {
       setError(res.error || 'Failed to load cluster labels.');
     }
-  }, [q, category, formType, compoundType, createdVia, hasBeenEdited, recentlyEdited, page]);
+  }, [q, category, formType, compoundType, createdVia, hasBeenEdited, recentlyEdited, page, sortCol, sortDir]);
 
-  // Fetch on mount and whenever non-text filters or page changes
+  // Fetch on mount and whenever non-text filters, page, or sort changes
   useEffect(() => {
     fetchData();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [category, formType, compoundType, createdVia, hasBeenEdited, recentlyEdited, page]);
+  }, [category, formType, compoundType, createdVia, hasBeenEdited, recentlyEdited, page, sortCol, sortDir]);
 
   // ── Text input with debounce ──────────────────────────────────────────────
 
@@ -712,6 +782,24 @@ export function ClusterListTab() {
     setRecentlyEdited(false);
     setActiveCard(null);
     setPage(1);
+  }
+
+  // ── Sort ──────────────────────────────────────────────────────────────────
+
+  function handleSort(col: SortCol) {
+    const newDir: SortDir =
+      sortCol === col ? (sortDir === 'asc' ? 'desc' : 'asc') : 'asc';
+    setSortCol(col);
+    setSortDir(newDir);
+    setPage(1);
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.set('sort', `${col}_${newDir}`);
+        return next;
+      },
+      { replace: true }
+    );
   }
 
   // ── Selection helpers ─────────────────────────────────────────────────────
@@ -944,15 +1032,15 @@ export function ClusterListTab() {
                     title="Select all visible"
                   />
                 </th>
-                <th className="px-3 py-2">Canonical</th>
-                <th className="px-3 py-2">Category</th>
-                <th className="px-3 py-2">Form type</th>
-                <th className="px-3 py-2">Compound</th>
-                <th className="px-3 py-2">Confidence</th>
-                <th className="px-3 py-2">Status</th>
-                <th className="px-3 py-2">Created via</th>
+                <SortableTh col="canonical_product" label="Canonical" currentCol={sortCol} currentDir={sortDir} onSort={handleSort} />
+                <SortableTh col="category" label="Category" currentCol={sortCol} currentDir={sortDir} onSort={handleSort} />
+                <SortableTh col="form_type" label="Form type" currentCol={sortCol} currentDir={sortDir} onSort={handleSort} />
+                <SortableTh col="compound_type" label="Compound" currentCol={sortCol} currentDir={sortDir} onSort={handleSort} />
+                <SortableTh col="confidence" label="Confidence" currentCol={sortCol} currentDir={sortDir} onSort={handleSort} />
+                <SortableTh col="status" label="Status" currentCol={sortCol} currentDir={sortDir} onSort={handleSort} />
+                <SortableTh col="created_via" label="Created via" currentCol={sortCol} currentDir={sortDir} onSort={handleSort} />
                 <th className="px-3 py-2">Flags</th>
-                <th className="px-3 py-2">Last edited</th>
+                <SortableTh col="last_edited" label="Last edited" currentCol={sortCol} currentDir={sortDir} onSort={handleSort} />
                 <th className="px-3 py-2">Action</th>
               </tr>
             </thead>

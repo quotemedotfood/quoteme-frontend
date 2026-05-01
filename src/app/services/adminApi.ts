@@ -1444,6 +1444,7 @@ export interface ClusterLabelListFilters {
   recently_edited?: boolean;
   page?: number;
   per_page?: number;
+  sort?: string; // e.g. 'canonical_product_asc', 'last_edited_desc'
 }
 
 export interface BulkUpdatePayload {
@@ -1501,6 +1502,7 @@ export async function listClusterLabels(
   if (filters.recently_edited) params.set('recently_edited', 'true');
   if (filters.page) params.set('page', String(filters.page));
   if (filters.per_page) params.set('per_page', String(filters.per_page));
+  if (filters.sort) params.set('sort', filters.sort);
   const qs = params.toString();
   return fetchWithAuth(`/api/v1/admin/cluster_labels${qs ? `?${qs}` : ''}`);
 }

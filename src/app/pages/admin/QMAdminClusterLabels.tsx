@@ -1,3 +1,8 @@
+// TODO: This file has improved error handling for the cluster_label admin tool.
+// The same pattern (shape guards + friendlyError mapping) should be extracted
+// to a shared admin error helper and applied across all admin pages.
+// Tracked separately — see Moose's smoke-test feedback 2026-05-01.
+
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router';
 import { Button } from '../../components/ui/button';
@@ -66,6 +71,19 @@ const REASON_OPTIONS: ReasonOption[] = [
 ];
 
 const UUID_REGEX = /^[0-9a-f-]{36}$/i;
+
+// ─── Error helpers ─────────────────────────────────────────────────────────────
+
+function friendlyError(err: string | undefined): string {
+  if (!err) return 'An unknown error occurred.';
+  if (err.toLowerCase().includes('failed to fetch') || err.toLowerCase().includes('network')) {
+    return 'Network error — could not reach the server. Check your connection and retry.';
+  }
+  if (err.includes('500')) {
+    return 'Server error — your change was not saved. Try again or contact support if it persists.';
+  }
+  return err; // 422 messages from the API are already user-readable
+}
 
 // ─── High-impact banner ────────────────────────────────────────────────────────
 
@@ -477,19 +495,30 @@ export function QMAdminClusterLabels() {
     });
     setSaving(false);
 
-    if (res.data) {
-      setDetail(res.data);
-      setSuccessMsg('Cluster label updated. Audit log written.');
-      resetEditForm();
-      setPendingWarnings(null);
-      setPendingPayloadRef(null);
-    } else if (res.warnings && res.warnings.length > 0) {
+    if (res.error) {
+      setApiError(friendlyError(res.error));
+      return;
+    }
+
+    if (res.warnings && res.warnings.length > 0) {
       // Soft-validation: show dialog
       setPendingWarnings(res.warnings);
       setPendingPayloadRef({ fields, reasonCode: code, reason: reasonText });
-    } else {
-      setApiError(res.error || 'Unknown error from API.');
+      return;
     }
+
+    // Shape guard: verify the response has the expected wrapped structure
+    if (!res.data || !res.data.cluster_label) {
+      setApiError('Save returned an unexpected response shape. The change may have persisted — refresh the page to verify.');
+      console.error('[ClusterLabels] Unexpected response shape from updateClusterLabelV2:', res);
+      return;
+    }
+
+    setDetail(res.data);
+    setSuccessMsg('Cluster label updated. Audit log written.');
+    resetEditForm();
+    setPendingWarnings(null);
+    setPendingPayloadRef(null);
   }
 
   function handleWarningsCancel() {
@@ -519,7 +548,7 @@ export function QMAdminClusterLabels() {
       setDetail(res.data);
       setSuccessMsg('Rollback applied.');
     } else {
-      setRevertError(res.error || 'Rollback failed.');
+      setRevertError(friendlyError(res.error || 'Rollback failed.'));
     }
   }
 
