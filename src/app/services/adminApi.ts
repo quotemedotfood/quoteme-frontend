@@ -1289,6 +1289,56 @@ export interface ClusterLabelUpdate {
   identity_flags?: Record<string, unknown>;
 }
 
+export type ClusterLabelReasonCode =
+  | 'misclassified_category'
+  | 'wrong_form_type'
+  | 'identity_lock_fix'
+  | 'compound_type_correction'
+  | 'admin_seeded_truth'
+  | 'merge_consolidation'
+  | 'admin_rollback'
+  | 'other';
+
+export interface ClusterLabelHighImpact {
+  is_high_impact: boolean;
+  member_count: number;
+  product_count: number;
+  is_umbrella: boolean;
+  reasons: string[];
+}
+
+export interface ClusterLabelAuditLogEntry {
+  id: string;
+  field_name: string;
+  old_value: string | null;
+  new_value: string | null;
+  reason: string | null;
+  reason_code: ClusterLabelReasonCode | null;
+  changed_at: string;
+  changed_by_user_id: string;
+  before_snapshot: Record<string, unknown>;
+  after_snapshot: Record<string, unknown>;
+}
+
+export interface ClusterLabelDetail {
+  cluster_label: ClusterLabel;
+  high_impact: ClusterLabelHighImpact;
+  recent_audit_logs: ClusterLabelAuditLogEntry[];
+}
+
+export interface ClusterLabelUpdatePayload {
+  fields: ClusterLabelUpdate;
+  reason_code: ClusterLabelReasonCode;
+  reason?: string;
+  confirm_warnings?: boolean;
+}
+
+export interface ClusterLabelWarning {
+  field: string;
+  message: string;
+}
+
+// v1 — kept for backward compatibility
 export async function updateClusterLabel(
   id: string,
   fields: ClusterLabelUpdate,
@@ -1297,5 +1347,58 @@ export async function updateClusterLabel(
   return fetchWithAuth(`/api/v1/admin/cluster_labels/${id}`, {
     method: 'PATCH',
     body: JSON.stringify({ cluster_label: fields, reason }),
+  });
+}
+
+export async function getClusterLabel(id: string): Promise<ApiResponse<ClusterLabelDetail>> {
+  return fetchWithAuth(`/api/v1/admin/cluster_labels/${id}`);
+}
+
+// fetchWithAuth returns { error } on non-2xx, discarding other fields like `warnings`.
+// For the soft-validation path we need to retain `warnings` from the 422 body.
+// This wrapper reads the raw response body and surfaces both error and warnings.
+export async function updateClusterLabelV2(
+  id: string,
+  payload: ClusterLabelUpdatePayload
+): Promise<ApiResponse<ClusterLabelDetail> & { warnings?: ClusterLabelWarning[] }> {
+  const token = localStorage.getItem('quoteme_token');
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/v1/admin/cluster_labels/${id}`, {
+      method: 'PATCH',
+      headers,
+      body: JSON.stringify({
+        cluster_label: payload.fields,
+        reason_code: payload.reason_code,
+        reason: payload.reason,
+        confirm_warnings: payload.confirm_warnings,
+      }),
+    });
+
+    const body = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      return {
+        error: body.error || `Request failed (${response.status})`,
+        warnings: body.warnings || undefined,
+      };
+    }
+
+    return { data: body as ClusterLabelDetail };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : 'Network error' };
+  }
+}
+
+export async function rollbackClusterLabel(
+  id: string,
+  auditLogId: string,
+  reason?: string
+): Promise<ApiResponse<ClusterLabelDetail>> {
+  return fetchWithAuth(`/api/v1/admin/cluster_labels/${id}/rollback`, {
+    method: 'POST',
+    body: JSON.stringify({ audit_log_id: auditLogId, reason }),
   });
 }
