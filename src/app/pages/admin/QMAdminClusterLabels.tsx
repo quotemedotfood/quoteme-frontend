@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import {
@@ -286,6 +287,8 @@ function AuditLogTable({ logs, onRevert }: AuditLogTableProps) {
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export function QMAdminClusterLabels() {
+  const [searchParams] = useSearchParams();
+
   // Load state
   const [labelId, setLabelId]         = useState('');
   const [loading, setLoading]         = useState(false);
@@ -318,6 +321,29 @@ export function QMAdminClusterLabels() {
   const [revertTarget, setRevertTarget] = useState<ClusterLabelAuditLogEntry | null>(null);
   const [reverting, setReverting]       = useState(false);
   const [revertError, setRevertError]   = useState<string | null>(null);
+
+  // ── Auto-load from URL ?id= param ─────────────────────────────────────────
+
+  useEffect(() => {
+    const urlId = searchParams.get('id');
+    if (urlId && UUID_REGEX.test(urlId.trim())) {
+      setLabelId(urlId.trim());
+      // Trigger load directly using the URL id, bypassing the stale labelId state
+      (async () => {
+        setLoadError(null);
+        setDetail(null);
+        setLoading(true);
+        const res = await getClusterLabel(urlId.trim());
+        setLoading(false);
+        if (res.data) {
+          setDetail(res.data);
+        } else {
+          setLoadError(res.error || 'Unknown error loading cluster label.');
+        }
+      })();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   // ── Load ──────────────────────────────────────────────────────────────────
 

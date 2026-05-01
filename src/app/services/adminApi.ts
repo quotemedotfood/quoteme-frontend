@@ -1402,3 +1402,63 @@ export async function rollbackClusterLabel(
     body: JSON.stringify({ audit_log_id: auditLogId, reason }),
   });
 }
+
+export interface ClusterLabelListRow {
+  id: string;
+  canonical_product: string | null;
+  category: string | null;
+  form_type: string | null;
+  compound_type: 'identity' | 'modified' | 'true' | null;
+  confidence: number | null;
+  status: string;
+  created_via: string;
+  identity_flags_count: number;
+  last_edited: string;
+  has_been_edited: boolean;
+}
+
+export interface ClusterLabelListPriorityCounts {
+  recently_edited: number;
+  umbrella: number;
+  high_product_count: number;
+  low_confidence: number;
+  recently_rolled_back: number;
+}
+
+export interface ClusterLabelListResponse {
+  rows: ClusterLabelListRow[];
+  page: number;
+  per_page: number;
+  total_count: number;
+  total_pages: number;
+  priority_counts: ClusterLabelListPriorityCounts;
+}
+
+export interface ClusterLabelListFilters {
+  q?: string;
+  category?: string;
+  form_type?: string;
+  compound_type?: 'identity' | 'modified' | 'true' | 'null';
+  created_via?: string;
+  has_been_edited?: boolean;
+  recently_edited?: boolean;
+  page?: number;
+  per_page?: number;
+}
+
+export async function listClusterLabels(
+  filters: ClusterLabelListFilters = {}
+): Promise<ApiResponse<ClusterLabelListResponse>> {
+  const params = new URLSearchParams();
+  if (filters.q) params.set('q', filters.q);
+  if (filters.category) params.set('category', filters.category);
+  if (filters.form_type) params.set('form_type', filters.form_type);
+  if (filters.compound_type) params.set('compound_type', filters.compound_type);
+  if (filters.created_via) params.set('created_via', filters.created_via);
+  if (filters.has_been_edited) params.set('has_been_edited', 'true');
+  if (filters.recently_edited) params.set('recently_edited', 'true');
+  if (filters.page) params.set('page', String(filters.page));
+  if (filters.per_page) params.set('per_page', String(filters.per_page));
+  const qs = params.toString();
+  return fetchWithAuth(`/api/v1/admin/cluster_labels${qs ? `?${qs}` : ''}`);
+}
