@@ -9,6 +9,7 @@ import {
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { ExclusionRulesPanel } from '../../components/ExclusionRulesPanel';
+import { ClusterListTab } from './_clusterListTab';
 import {
   getMatchingEngineRules,
   getMatchingEngineLogs,
@@ -55,7 +56,7 @@ import {
   type AdminCatalogProductsResponse,
 } from '../../services/adminApi';
 
-type Tab = 'rules' | 'synonyms' | 'training' | 'concepts' | 'changelog' | 'diagnose' | 'catalogs' | 'exclusions';
+type Tab = 'rules' | 'synonyms' | 'training' | 'concepts' | 'changelog' | 'diagnose' | 'catalogs' | 'exclusions' | 'cluster_list';
 
 function toTitleCase(str: string) {
   const normalized = str.replace(/_/g, ' ');
@@ -2164,6 +2165,7 @@ export function QMAdminMatchingEngine() {
     { key: 'changelog', label: 'Change Log' },
     ...(diagnosticsAvailable ? [{ key: 'diagnose' as Tab, label: 'Diagnose' }] : []),
     { key: 'exclusions' as Tab, label: 'Corpus Intelligence' },
+    { key: 'cluster_list' as Tab, label: 'Cluster List' },
     { key: 'catalogs' as Tab, label: 'Catalogs' },
   ];
 
@@ -2198,6 +2200,7 @@ export function QMAdminMatchingEngine() {
       {tab === 'diagnose' && <DiagnoseTab />}
       {tab === 'catalogs' && <CatalogsTab />}
       {tab === 'exclusions' && <ExclusionRulesPanel />}
+      {tab === 'cluster_list' && <ClusterListTab />}
     </div>
   );
 }

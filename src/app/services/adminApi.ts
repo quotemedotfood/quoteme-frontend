@@ -1289,6 +1289,56 @@ export interface ClusterLabelUpdate {
   identity_flags?: Record<string, unknown>;
 }
 
+export type ClusterLabelReasonCode =
+  | 'misclassified_category'
+  | 'wrong_form_type'
+  | 'identity_lock_fix'
+  | 'compound_type_correction'
+  | 'admin_seeded_truth'
+  | 'merge_consolidation'
+  | 'admin_rollback'
+  | 'other';
+
+export interface ClusterLabelHighImpact {
+  is_high_impact: boolean;
+  member_count: number;
+  product_count: number;
+  is_umbrella: boolean;
+  reasons: string[];
+}
+
+export interface ClusterLabelAuditLogEntry {
+  id: string;
+  field_name: string;
+  old_value: string | null;
+  new_value: string | null;
+  reason: string | null;
+  reason_code: ClusterLabelReasonCode | null;
+  changed_at: string;
+  changed_by_user_id: string;
+  before_snapshot: Record<string, unknown>;
+  after_snapshot: Record<string, unknown>;
+}
+
+export interface ClusterLabelDetail {
+  cluster_label: ClusterLabel;
+  high_impact: ClusterLabelHighImpact;
+  recent_audit_logs: ClusterLabelAuditLogEntry[];
+}
+
+export interface ClusterLabelUpdatePayload {
+  fields: ClusterLabelUpdate;
+  reason_code: ClusterLabelReasonCode;
+  reason?: string;
+  confirm_warnings?: boolean;
+}
+
+export interface ClusterLabelWarning {
+  field: string;
+  message: string;
+}
+
+// v1 — kept for backward compatibility
 export async function updateClusterLabel(
   id: string,
   fields: ClusterLabelUpdate,
@@ -1298,4 +1348,159 @@ export async function updateClusterLabel(
     method: 'PATCH',
     body: JSON.stringify({ cluster_label: fields, reason }),
   });
+}
+
+export async function getClusterLabel(id: string): Promise<ApiResponse<ClusterLabelDetail>> {
+  return fetchWithAuth(`/api/v1/admin/cluster_labels/${id}`);
+}
+
+// fetchWithAuth returns { error } on non-2xx, discarding other fields like `warnings`.
+// For the soft-validation path we need to retain `warnings` from the 422 body.
+// This wrapper reads the raw response body and surfaces both error and warnings.
+export async function updateClusterLabelV2(
+  id: string,
+  payload: ClusterLabelUpdatePayload
+): Promise<ApiResponse<ClusterLabelDetail> & { warnings?: ClusterLabelWarning[] }> {
+  const token = localStorage.getItem('quoteme_token');
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/v1/admin/cluster_labels/${id}`, {
+      method: 'PATCH',
+      headers,
+      body: JSON.stringify({
+        cluster_label: payload.fields,
+        reason_code: payload.reason_code,
+        reason: payload.reason,
+        confirm_warnings: payload.confirm_warnings,
+      }),
+    });
+
+    const body = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      return {
+        error: body.error || `Request failed (${response.status})`,
+        warnings: body.warnings || undefined,
+      };
+    }
+
+    return { data: body as ClusterLabelDetail };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : 'Network error' };
+  }
+}
+
+export async function rollbackClusterLabel(
+  id: string,
+  auditLogId: string,
+  reason?: string
+): Promise<ApiResponse<ClusterLabelDetail>> {
+  return fetchWithAuth(`/api/v1/admin/cluster_labels/${id}/rollback`, {
+    method: 'POST',
+    body: JSON.stringify({ audit_log_id: auditLogId, reason }),
+  });
+}
+
+export interface ClusterLabelListRow {
+  id: string;
+  canonical_product: string | null;
+  category: string | null;
+  form_type: string | null;
+  compound_type: 'identity' | 'modified' | 'true' | null;
+  confidence: number | null;
+  status: string;
+  created_via: string;
+  identity_flags_count: number;
+  last_edited: string;
+  has_been_edited: boolean;
+}
+
+export interface ClusterLabelListPriorityCounts {
+  recently_edited: number;
+  umbrella: number;
+  high_product_count: number;
+  low_confidence: number;
+  recently_rolled_back: number;
+}
+
+export interface ClusterLabelListResponse {
+  rows: ClusterLabelListRow[];
+  page: number;
+  per_page: number;
+  total_count: number;
+  total_pages: number;
+  priority_counts: ClusterLabelListPriorityCounts;
+}
+
+export interface ClusterLabelListFilters {
+  q?: string;
+  category?: string;
+  form_type?: string;
+  compound_type?: 'identity' | 'modified' | 'true' | 'null';
+  created_via?: string;
+  has_been_edited?: boolean;
+  recently_edited?: boolean;
+  page?: number;
+  per_page?: number;
+}
+
+export interface BulkUpdatePayload {
+  ids: string[];
+  updates: {
+    category?: string | null;
+    form_type?: string | null;
+    compound_type?: 'identity' | 'modified' | 'true' | null;
+    identity_flags?: Record<string, unknown>;
+  };
+  reason_code: ClusterLabelReasonCode;
+  reason?: string;
+  confirm_warnings?: boolean;
+}
+
+export interface BulkUpdateResult {
+  updated: { id: string; fields_changed: string[] }[];
+  unchanged: string[];
+  failed: { id: string; error: string }[];
+}
+
+export interface BulkUpdateWarning {
+  id: string;
+  field: string;
+  message: string;
+}
+
+export async function bulkUpdateClusterLabels(
+  payload: BulkUpdatePayload
+): Promise<ApiResponse<BulkUpdateResult> & { warnings?: BulkUpdateWarning[] }> {
+  const token = localStorage.getItem('quoteme_token');
+  const res = await fetch(`${API_BASE_URL}/api/v1/admin/cluster_labels/bulk_update`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(payload),
+  });
+  const body = await res.json().catch(() => ({}));
+  if (res.ok) return { data: body };
+  return body; // includes error + warnings if present
+}
+
+export async function listClusterLabels(
+  filters: ClusterLabelListFilters = {}
+): Promise<ApiResponse<ClusterLabelListResponse>> {
+  const params = new URLSearchParams();
+  if (filters.q) params.set('q', filters.q);
+  if (filters.category) params.set('category', filters.category);
+  if (filters.form_type) params.set('form_type', filters.form_type);
+  if (filters.compound_type) params.set('compound_type', filters.compound_type);
+  if (filters.created_via) params.set('created_via', filters.created_via);
+  if (filters.has_been_edited) params.set('has_been_edited', 'true');
+  if (filters.recently_edited) params.set('recently_edited', 'true');
+  if (filters.page) params.set('page', String(filters.page));
+  if (filters.per_page) params.set('per_page', String(filters.per_page));
+  const qs = params.toString();
+  return fetchWithAuth(`/api/v1/admin/cluster_labels${qs ? `?${qs}` : ''}`);
 }
