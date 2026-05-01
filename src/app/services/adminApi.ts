@@ -1446,6 +1446,48 @@ export interface ClusterLabelListFilters {
   per_page?: number;
 }
 
+export interface BulkUpdatePayload {
+  ids: string[];
+  updates: {
+    category?: string | null;
+    form_type?: string | null;
+    compound_type?: 'identity' | 'modified' | 'true' | null;
+    identity_flags?: Record<string, unknown>;
+  };
+  reason_code: ClusterLabelReasonCode;
+  reason?: string;
+  confirm_warnings?: boolean;
+}
+
+export interface BulkUpdateResult {
+  updated: { id: string; fields_changed: string[] }[];
+  unchanged: string[];
+  failed: { id: string; error: string }[];
+}
+
+export interface BulkUpdateWarning {
+  id: string;
+  field: string;
+  message: string;
+}
+
+export async function bulkUpdateClusterLabels(
+  payload: BulkUpdatePayload
+): Promise<ApiResponse<BulkUpdateResult> & { warnings?: BulkUpdateWarning[] }> {
+  const token = localStorage.getItem('quoteme_token');
+  const res = await fetch(`${API_BASE_URL}/api/v1/admin/cluster_labels/bulk_update`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(payload),
+  });
+  const body = await res.json().catch(() => ({}));
+  if (res.ok) return { data: body };
+  return body; // includes error + warnings if present
+}
+
 export async function listClusterLabels(
   filters: ClusterLabelListFilters = {}
 ): Promise<ApiResponse<ClusterLabelListResponse>> {

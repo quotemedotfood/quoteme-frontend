@@ -88,14 +88,19 @@ function HighImpactBanner({ hi }: { hi: ClusterLabelDetail['high_impact'] }) {
 // ─── Summary card ─────────────────────────────────────────────────────────────
 
 function SummaryCard({ label }: { label: ClusterLabel }) {
+  const [flagsOpen, setFlagsOpen] = useState(false);
+
   const rows: [string, string][] = [
-    ['ID',             label.id],
-    ['Canonical',      label.canonical_product ?? '—'],
-    ['Category',       label.category ?? '—'],
-    ['Form type',      label.form_type ?? '—'],
-    ['Compound type',  label.compound_type ?? '—'],
-    ['Status',         label.status],
+    ['Canonical',     label.canonical_product ?? '—'],
+    ['Category',      label.category ?? '—'],
+    ['Form type',     label.form_type ?? '—'],
+    ['Compound type', label.compound_type ?? '—'],
+    ['Confidence',    label.confidence !== null ? `${Math.round(label.confidence * 100)}%` : '—'],
+    ['Status',        label.status],
+    ['Created via',   (label as unknown as { created_via?: string }).created_via ?? '—'],
   ];
+
+  const flagKeys = Object.keys(label.identity_flags ?? {});
 
   return (
     <div className="mb-5 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
@@ -110,12 +115,20 @@ function SummaryCard({ label }: { label: ClusterLabel }) {
           </>
         ))}
       </dl>
-      {Object.keys(label.identity_flags ?? {}).length > 0 && (
-        <div className="mt-2">
-          <p className="text-xs font-medium text-[#4F4F4F] mb-1">Identity flags</p>
-          <pre className="text-xs font-mono text-[#2A2A2A] bg-white border border-gray-200 rounded p-2 overflow-x-auto whitespace-pre-wrap break-all">
-            {JSON.stringify(label.identity_flags, null, 2)}
-          </pre>
+      {flagKeys.length > 0 && (
+        <div className="mt-3">
+          <button
+            type="button"
+            onClick={() => setFlagsOpen((o) => !o)}
+            className="text-xs font-medium text-[#7FAEC2] underline underline-offset-2 hover:text-[#5a8fa8]"
+          >
+            {flagsOpen ? 'Hide identity flags' : `Show identity flags (${flagKeys.length})`}
+          </button>
+          {flagsOpen && (
+            <pre className="mt-2 max-h-48 overflow-y-auto text-xs font-mono text-[#2A2A2A] bg-white border border-gray-200 rounded p-2 overflow-x-auto whitespace-pre-wrap break-all">
+              {JSON.stringify(label.identity_flags, null, 2)}
+            </pre>
+          )}
         </div>
       )}
     </div>
@@ -536,7 +549,8 @@ export function QMAdminClusterLabels() {
           <Input
             value={labelId}
             onChange={(e) => setLabelId(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleLoad(); } }}
+            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); if (UUID_REGEX.test(labelId.trim())) handleLoad(); } }}
+            onBlur={() => { if (UUID_REGEX.test(labelId.trim())) handleLoad(); }}
             placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
             spellCheck={false}
             className="flex-1"
@@ -592,7 +606,11 @@ export function QMAdminClusterLabels() {
                   onChange={(e) => setCategory(e.target.value)}
                   className="w-full border border-gray-200 rounded-md px-3 py-2 text-sm text-[#2A2A2A] bg-white focus:outline-none focus:ring-2 focus:ring-[#7FAEC2]"
                 >
-                  <option value="">(no change)</option>
+                  <option value="">
+                    {detail?.cluster_label.category
+                      ? `(no change — currently ${detail.cluster_label.category})`
+                      : '(no change)'}
+                  </option>
                   {CATEGORY_OPTIONS.map((c) => (
                     <option key={c} value={c}>{c}</option>
                   ))}
@@ -609,7 +627,11 @@ export function QMAdminClusterLabels() {
                   onChange={(e) => setFormType(e.target.value)}
                   className="w-full border border-gray-200 rounded-md px-3 py-2 text-sm text-[#2A2A2A] bg-white focus:outline-none focus:ring-2 focus:ring-[#7FAEC2]"
                 >
-                  <option value="">(no change)</option>
+                  <option value="">
+                    {detail?.cluster_label.form_type
+                      ? `(no change — currently ${detail.cluster_label.form_type})`
+                      : '(no change)'}
+                  </option>
                   {FORM_TYPE_OPTIONS.map((f) => (
                     <option key={f} value={f}>{f}</option>
                   ))}
@@ -626,7 +648,11 @@ export function QMAdminClusterLabels() {
                   onChange={(e) => setCompoundType(e.target.value)}
                   className="w-full border border-gray-200 rounded-md px-3 py-2 text-sm text-[#2A2A2A] bg-white focus:outline-none focus:ring-2 focus:ring-[#7FAEC2]"
                 >
-                  <option value="">(no change)</option>
+                  <option value="">
+                    {detail?.cluster_label.compound_type
+                      ? `(no change — currently ${detail.cluster_label.compound_type})`
+                      : '(no change)'}
+                  </option>
                   <option value="identity">identity</option>
                   <option value="modified">modified</option>
                   <option value="true">true</option>
