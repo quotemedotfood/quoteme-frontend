@@ -1262,3 +1262,40 @@ export async function applyAllExclusionRules(): Promise<ApiResponse<{ moved: num
     method: 'POST',
   });
 }
+
+// ============= CLUSTER LABELS =============
+
+export interface ClusterLabel {
+  id: string;
+  cluster_id: string | null;
+  canonical_product: string | null;
+  product_family: string | null;
+  category: string | null;
+  form_type: string | null;
+  compound_type: 'identity' | 'modified' | 'true' | null;
+  identity_flags: Record<string, unknown>;
+  confidence: number | null;
+  status: string;
+  prompt_version: string;
+  model_id: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ClusterLabelUpdate {
+  category?: string | null;
+  form_type?: string | null;
+  compound_type?: 'identity' | 'modified' | 'true' | null;
+  identity_flags?: Record<string, unknown>;
+}
+
+export async function updateClusterLabel(
+  id: string,
+  fields: ClusterLabelUpdate,
+  reason?: string
+): Promise<ApiResponse<ClusterLabel>> {
+  return fetchWithAuth(`/api/v1/admin/cluster_labels/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ cluster_label: fields, reason }),
+  });
+}
