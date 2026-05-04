@@ -124,6 +124,8 @@ export interface AdminRestaurant {
   created_at: string;
   admin_user_id: string | null;
   admin_user_name: string | null;
+  restaurant_admin_id: string | null;
+  restaurant_admin_name: string | null;
 }
 
 export interface ConferenceLead {
@@ -1579,4 +1581,37 @@ export async function createRestaurant(
   } catch (err) {
     return { error: err instanceof Error ? err.message : 'Network error' };
   }
+}
+
+// ============= RESTAURANT ADMIN ASSIGNMENT =============
+
+export interface AssignRestaurantAdminNewUserInput {
+  email: string;
+  first_name: string;
+  last_name: string;
+}
+
+export interface AssignRestaurantAdminResult {
+  restaurant_admin: { id: string; email: string; name: string };
+  previous_admin_user_id: string | null;
+}
+
+export async function assignRestaurantAdminNewUser(
+  restaurantId: string,
+  user: AssignRestaurantAdminNewUserInput
+): Promise<ApiResponse<AssignRestaurantAdminResult>> {
+  return fetchWithAuth(`/api/v1/admin/restaurants/${restaurantId}/restaurant_admin`, {
+    method: 'POST',
+    body: JSON.stringify({ user }),
+  });
+}
+
+export async function assignRestaurantAdminExistingUser(
+  restaurantId: string,
+  userId: string
+): Promise<ApiResponse<AssignRestaurantAdminResult>> {
+  return fetchWithAuth(`/api/v1/admin/restaurants/${restaurantId}/restaurant_admin`, {
+    method: 'POST',
+    body: JSON.stringify({ user_id: userId }),
+  });
 }
