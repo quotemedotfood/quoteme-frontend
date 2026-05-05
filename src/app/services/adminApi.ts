@@ -1615,3 +1615,68 @@ export async function assignRestaurantAdminExistingUser(
     body: JSON.stringify({ user_id: userId }),
   });
 }
+
+// ============= KNOWLEDGE GAP REVIEW QUEUE =============
+
+export interface KnowledgeGapSubmissionSourceData {
+  component_text: string;
+  frequency_count: number;
+  sample_quote_ids?: string[];
+  first_seen?: string;
+  last_seen?: string;
+  suggested_canonical?: string | null;
+  suggested_category?: string | null;
+  suggested_form_type?: string | null;
+  suggested_compound_type?: 'identity' | 'modified' | 'true' | null;
+  commonly_finished_flag?: boolean | null;
+  rep_notes?: string | null;
+  llm_suggestion?: unknown;
+  [key: string]: unknown;
+}
+
+export interface KnowledgeGapSubmission {
+  id: string;
+  submission_type: 'knowledge_gap';
+  status: 'pending' | 'approved' | 'rejected';
+  source_data: KnowledgeGapSubmissionSourceData;
+  submitted_by: string | null;
+  submitted_at: string;
+  reviewed_by_user_id: string | null;
+  reviewed_at: string | null;
+  review_notes: string | null;
+  resolved_data: Record<string, unknown> | null;
+}
+
+export type KnowledgeGapEditedData = {
+  suggested_canonical?: string;
+  suggested_category?: string;
+  suggested_form_type?: string;
+  suggested_compound_type?: 'identity' | 'modified' | 'true' | null;
+};
+
+export async function listKnowledgeGapSubmissions(
+  status: 'pending' | 'approved' | 'rejected' = 'pending'
+): Promise<ApiResponse<KnowledgeGapSubmission[]>> {
+  return fetchWithAuth(`/api/v1/admin/knowledge_gap_submissions?status=${status}`);
+}
+
+export async function approveKnowledgeGapSubmission(
+  id: string,
+  editedData?: KnowledgeGapEditedData,
+  reviewNotes?: string
+): Promise<ApiResponse<KnowledgeGapSubmission>> {
+  return fetchWithAuth(`/api/v1/admin/knowledge_gap_submissions/${id}/approve`, {
+    method: 'POST',
+    body: JSON.stringify({ edited_data: editedData, review_notes: reviewNotes }),
+  });
+}
+
+export async function rejectKnowledgeGapSubmission(
+  id: string,
+  reviewNotes?: string
+): Promise<ApiResponse<KnowledgeGapSubmission>> {
+  return fetchWithAuth(`/api/v1/admin/knowledge_gap_submissions/${id}/reject`, {
+    method: 'POST',
+    body: JSON.stringify({ review_notes: reviewNotes }),
+  });
+}
