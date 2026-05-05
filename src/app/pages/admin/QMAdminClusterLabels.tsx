@@ -3,7 +3,7 @@
 // to a shared admin error helper and applied across all admin pages.
 // Tracked separately — see Moose's smoke-test feedback 2026-05-01.
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
@@ -315,6 +315,173 @@ function AuditLogTable({ logs, onRevert }: AuditLogTableProps) {
   );
 }
 
+// ─── Tag input (inline, minimal) ──────────────────────────────────────────────
+
+interface TagInputProps {
+  tags: string[];
+  onChange: (tags: string[]) => void;
+  placeholder?: string;
+}
+
+function TagInput({ tags, onChange, placeholder = 'Type and press Enter or comma' }: TagInputProps) {
+  const [inputVal, setInputVal] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  function addTag(raw: string) {
+    const trimmed = raw.trim();
+    if (!trimmed) return;
+    if (!tags.includes(trimmed)) {
+      onChange([...tags, trimmed]);
+    }
+    setInputVal('');
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault();
+      addTag(inputVal);
+    } else if (e.key === 'Backspace' && inputVal === '' && tags.length > 0) {
+      onChange(tags.slice(0, -1));
+    }
+  }
+
+  function handleBlur() {
+    if (inputVal.trim()) addTag(inputVal);
+  }
+
+  function removeTag(index: number) {
+    onChange(tags.filter((_, i) => i !== index));
+  }
+
+  return (
+    <div
+      className="flex flex-wrap gap-1.5 border border-gray-200 rounded-md px-2 py-1.5 bg-white focus-within:ring-2 focus-within:ring-[#7FAEC2] min-h-[38px] cursor-text"
+      onClick={() => inputRef.current?.focus()}
+    >
+      {tags.map((tag, i) => (
+        <span
+          key={i}
+          className="inline-flex items-center gap-1 bg-[#EAF3F8] text-[#2A5F7A] text-xs font-medium rounded px-2 py-0.5"
+        >
+          {tag}
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); removeTag(i); }}
+            className="text-[#5a8fa8] hover:text-[#2A5F7A] leading-none"
+            aria-label={`Remove ${tag}`}
+          >
+            x
+          </button>
+        </span>
+      ))}
+      <input
+        ref={inputRef}
+        type="text"
+        value={inputVal}
+        onChange={(e) => setInputVal(e.target.value)}
+        onKeyDown={handleKeyDown}
+        onBlur={handleBlur}
+        placeholder={tags.length === 0 ? placeholder : ''}
+        className="flex-1 min-w-[120px] text-sm text-[#2A2A2A] bg-transparent outline-none placeholder:text-gray-400"
+        spellCheck={false}
+      />
+    </div>
+  );
+}
+
+// ─── Umbrella section ─────────────────────────────────────────────────────────
+
+interface UmbrellaSectionProps {
+  isUmbrella: boolean;
+  umbrellaCategory: string;
+  umbrellaChildren: string[];
+  onIsUmbrellaChange: (v: boolean) => void;
+  onUmbrellaCategoryChange: (v: string) => void;
+  onUmbrellaChildrenChange: (v: string[]) => void;
+}
+
+function UmbrellaSection({
+  isUmbrella,
+  umbrellaCategory,
+  umbrellaChildren,
+  onIsUmbrellaChange,
+  onUmbrellaCategoryChange,
+  onUmbrellaChildrenChange,
+}: UmbrellaSectionProps) {
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <div className="border border-gray-200 rounded-lg">
+      <button
+        type="button"
+        onClick={() => setExpanded((o) => !o)}
+        className="w-full flex items-center justify-between px-4 py-3 text-sm text-[#4F4F4F] hover:bg-gray-50 rounded-lg transition-colors"
+      >
+        <span className="font-medium text-[#2A2A2A]">Umbrella term metadata</span>
+        <span className="text-xs text-[#7FAEC2] font-medium">
+          {expanded ? 'Hide' : 'Show umbrella term metadata'}
+        </span>
+      </button>
+
+      {expanded && (
+        <div className="px-4 pb-4 space-y-4 border-t border-gray-100 pt-4">
+          <p className="text-xs text-[#4F4F4F]">
+            Identity flags for terms that span multiple sub-concepts. Justin's children-list lock per term is pending; do not seed without authorization.
+          </p>
+
+          {/* is_umbrella toggle */}
+          <div className="flex items-start gap-3">
+            <input
+              id="umbrella-is-umbrella"
+              type="checkbox"
+              checked={isUmbrella}
+              onChange={(e) => onIsUmbrellaChange(e.target.checked)}
+              className="mt-0.5 h-4 w-4 rounded border-gray-300 accent-[#7FAEC2] cursor-pointer"
+            />
+            <label htmlFor="umbrella-is-umbrella" className="text-sm text-[#2A2A2A] cursor-pointer leading-snug">
+              This canonical is an umbrella term covering multiple sub-concepts
+            </label>
+          </div>
+
+          {/* umbrella_category */}
+          <div>
+            <label className="block text-sm font-medium text-[#4F4F4F] mb-1">
+              Umbrella category
+            </label>
+            <input
+              type="text"
+              value={umbrellaCategory}
+              onChange={(e) => onUmbrellaCategoryChange(e.target.value)}
+              placeholder="e.g. protein, produce, sauce"
+              className="w-full border border-gray-200 rounded-md px-3 py-2 text-sm text-[#2A2A2A] bg-white focus:outline-none focus:ring-2 focus:ring-[#7FAEC2]"
+              spellCheck={false}
+            />
+            <p className="text-xs text-[#4F4F4F] mt-1">
+              Free-text. Justin's enumerated list is pending.
+            </p>
+          </div>
+
+          {/* umbrella_children */}
+          <div>
+            <label className="block text-sm font-medium text-[#4F4F4F] mb-1">
+              Umbrella children
+            </label>
+            <TagInput
+              tags={umbrellaChildren}
+              onChange={onUmbrellaChildrenChange}
+              placeholder="Type a child term and press Enter or comma"
+            />
+            <p className="text-xs text-[#4F4F4F] mt-1">
+              Each chip is one child term. Press Enter or comma to add. Backspace removes the last chip.
+              Do not seed without Justin's authorization.
+            </p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export function QMAdminClusterLabels() {
@@ -334,6 +501,16 @@ export function QMAdminClusterLabels() {
   const [reasonCode, setReasonCode]           = useState<ClusterLabelReasonCode | ''>('');
   const [reason, setReason]                   = useState('');
 
+  // Umbrella fields (read from identity_flags, written back as partial merge)
+  const [isUmbrella, setIsUmbrella]               = useState(false);
+  const [umbrellaCategory, setUmbrellaCategory]   = useState('');
+  const [umbrellaChildren, setUmbrellaChildren]   = useState<string[]>([]);
+
+  // Loaded umbrella baseline (for change detection)
+  const [loadedIsUmbrella, setLoadedIsUmbrella]           = useState(false);
+  const [loadedUmbrellaCategory, setLoadedUmbrellaCategory] = useState('');
+  const [loadedUmbrellaChildren, setLoadedUmbrellaChildren] = useState<string[]>([]);
+
   // Submit state
   const [saving, setSaving]               = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
@@ -352,6 +529,25 @@ export function QMAdminClusterLabels() {
   const [revertTarget, setRevertTarget] = useState<ClusterLabelAuditLogEntry | null>(null);
   const [reverting, setReverting]       = useState(false);
   const [revertError, setRevertError]   = useState<string | null>(null);
+
+  // ── Sync umbrella fields when detail loads ────────────────────────────────
+
+  useEffect(() => {
+    if (!detail) return;
+    const flags = detail.cluster_label.identity_flags ?? {};
+    const loadedIU   = flags['is_umbrella'] === true;
+    const loadedUC   = typeof flags['umbrella_category'] === 'string' ? flags['umbrella_category'] : '';
+    const rawChildren = flags['umbrella_children'];
+    const loadedUCh  = Array.isArray(rawChildren) ? (rawChildren as string[]).filter((c) => typeof c === 'string') : [];
+
+    setLoadedIsUmbrella(loadedIU);
+    setLoadedUmbrellaCategory(loadedUC);
+    setLoadedUmbrellaChildren(loadedUCh);
+
+    setIsUmbrella(loadedIU);
+    setUmbrellaCategory(loadedUC);
+    setUmbrellaChildren(loadedUCh);
+  }, [detail]);
 
   // ── Auto-load from URL ?id= param ─────────────────────────────────────────
 
@@ -414,6 +610,10 @@ export function QMAdminClusterLabels() {
     setValidationError(null);
     setApiError(null);
     setSuccessMsg(null);
+    // Reset umbrella fields to loaded baseline
+    setIsUmbrella(loadedIsUmbrella);
+    setUmbrellaCategory(loadedUmbrellaCategory);
+    setUmbrellaChildren(loadedUmbrellaChildren);
   }
 
   // ── Validate ──────────────────────────────────────────────────────────────
@@ -429,6 +629,7 @@ export function QMAdminClusterLabels() {
         : (compoundType as ClusterLabelUpdate['compound_type']);
     }
 
+    // Raw JSON identity flags (existing textarea field)
     if (identityFlagsRaw.trim() !== '') {
       try {
         const parsed = JSON.parse(identityFlagsRaw.trim());
@@ -441,6 +642,20 @@ export function QMAdminClusterLabels() {
         setValidationError('Identity flags is not valid JSON.');
         return null;
       }
+    }
+
+    // Umbrella fields — only include changed keys (additive merge on BE)
+    const umbrellaIsUmbrellaChanged  = isUmbrella !== loadedIsUmbrella;
+    const umbrellaCategoryChanged    = umbrellaCategory !== loadedUmbrellaCategory;
+    const umbrellaChildrenChanged    =
+      JSON.stringify(umbrellaChildren) !== JSON.stringify(loadedUmbrellaChildren);
+
+    if (umbrellaIsUmbrellaChanged || umbrellaCategoryChanged || umbrellaChildrenChanged) {
+      const newIdentityFlags: Record<string, unknown> = { ...(fields.identity_flags ?? {}) };
+      if (umbrellaIsUmbrellaChanged)  newIdentityFlags['is_umbrella']        = isUmbrella;
+      if (umbrellaCategoryChanged)    newIdentityFlags['umbrella_category']   = umbrellaCategory;
+      if (umbrellaChildrenChanged)    newIdentityFlags['umbrella_children']   = umbrellaChildren;
+      fields.identity_flags = newIdentityFlags;
     }
 
     if (Object.keys(fields).length === 0) {
@@ -706,6 +921,16 @@ export function QMAdminClusterLabels() {
                   Leave empty to skip. Existing keys are preserved unless explicitly overwritten.
                 </p>
               </div>
+
+              {/* Umbrella term metadata */}
+              <UmbrellaSection
+                isUmbrella={isUmbrella}
+                umbrellaCategory={umbrellaCategory}
+                umbrellaChildren={umbrellaChildren}
+                onIsUmbrellaChange={setIsUmbrella}
+                onUmbrellaCategoryChange={setUmbrellaCategory}
+                onUmbrellaChildrenChange={setUmbrellaChildren}
+              />
 
               {/* Reason code (required) */}
               <div>
