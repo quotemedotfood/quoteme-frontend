@@ -1723,3 +1723,58 @@ export async function searchClusterLabelParents(
     `/api/v1/admin/knowledge_gap_submissions/parent_search?q=${encodeURIComponent(query)}&limit=${limit}`
   );
 }
+
+// ── Knowledge Gap Filler v2.1 ─────────────────────────────────────────────────
+
+export interface BulkApproveAsTailItem {
+  id: string;
+  parent_cluster_label_id: string;
+  review_notes?: string;
+}
+
+export interface BulkApproveAsTailResponse {
+  approved: string[];
+  failed: Array<{ id: string; error: string }>;
+}
+
+export async function bulkApproveAsTail(
+  approvals: BulkApproveAsTailItem[]
+): Promise<ApiResponse<BulkApproveAsTailResponse>> {
+  return fetchWithAuth('/api/v1/admin/knowledge_gap_submissions/bulk_approve_as_tail', {
+    method: 'POST',
+    body: JSON.stringify({ approvals }),
+  });
+}
+
+export interface KnowledgeGapHistoryRow {
+  id: string;
+  candidate_text: string | null;
+  action: 'approved_as_tail' | 'approved_as_new_head' | 'rejected';
+  parent_canonical: string | null;
+  parent_cluster_label_id: string | null;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  review_notes: string | null;
+}
+
+export interface KnowledgeGapHistoryResponse {
+  history: KnowledgeGapHistoryRow[];
+  total_count: number;
+}
+
+export async function listKnowledgeGapHistory(
+  limit: number = 25,
+  offset: number = 0
+): Promise<ApiResponse<KnowledgeGapHistoryResponse>> {
+  return fetchWithAuth(
+    `/api/v1/admin/knowledge_gap_submissions/history?limit=${limit}&offset=${offset}`
+  );
+}
+
+export async function undoKnowledgeGapTail(
+  submissionId: string
+): Promise<ApiResponse<KnowledgeGapSubmission>> {
+  return fetchWithAuth(`/api/v1/admin/knowledge_gap_submissions/${submissionId}/undo_tail`, {
+    method: 'POST',
+  });
+}
