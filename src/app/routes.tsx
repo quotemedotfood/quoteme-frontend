@@ -28,7 +28,6 @@ import { QMAdminBrands } from "./pages/admin/QMAdminBrands";
 import { QMAdminMatchingEngine } from "./pages/admin/QMAdminMatchingEngine";
 import { QMAdminBrandRules } from "./pages/admin/QMAdminBrandRules";
 import { QMAdminClusterLabels } from "./pages/admin/QMAdminClusterLabels";
-import { QMAdminKnowledgeGaps } from "./pages/admin/QMAdminKnowledgeGaps";
 import { QMAdminKnowledgeGapFiller } from "./pages/admin/QMAdminKnowledgeGapFiller";
 import { QuotePreviewPage } from "./pages/QuotePreviewPage";
 import { PaywallPage } from "./pages/PaywallPage";
@@ -110,7 +109,7 @@ export const router = createBrowserRouter([
           { path: "brands", Component: QMAdminBrands },
           { path: "brand-rules", Component: QMAdminBrandRules },
           { path: "cluster-labels", Component: QMAdminClusterLabels },
-          { path: "knowledge-gaps", Component: QMAdminKnowledgeGaps },
+          { path: "knowledge-gaps", element: <Navigate to="/qm-admin/knowledge-gap-filler" replace /> },
           { path: "knowledge-gap-filler", Component: QMAdminKnowledgeGapFiller },
           { path: "conference-command", Component: QMAdminConferenceCommand },
           { path: "health", Component: QMAdminHealth },
