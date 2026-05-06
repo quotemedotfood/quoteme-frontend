@@ -1680,3 +1680,46 @@ export async function rejectKnowledgeGapSubmission(
     body: JSON.stringify({ review_notes: reviewNotes }),
   });
 }
+
+// ── Knowledge Gap Filler V2 ────────────────────────────────────────────────────
+
+export interface KnowledgeGapSubmissionV2 extends KnowledgeGapSubmission {
+  // source_data shape extended with placement + parent fields
+}
+
+export interface ParentClusterLabelResult {
+  id: string;
+  canonical_product: string;
+  category: string | null;
+}
+
+export async function approveKnowledgeGapAsTail(
+  id: string,
+  parentClusterLabelId: string,
+  reviewNotes?: string
+): Promise<ApiResponse<KnowledgeGapSubmission>> {
+  return fetchWithAuth(`/api/v1/admin/knowledge_gap_submissions/${id}/approve_as_tail`, {
+    method: 'POST',
+    body: JSON.stringify({ parent_cluster_label_id: parentClusterLabelId, review_notes: reviewNotes }),
+  });
+}
+
+export async function setKnowledgeGapPlacement(
+  id: string,
+  placement: 'tail_to_existing_head' | 'new_head',
+  suggestedParentId?: string
+): Promise<ApiResponse<KnowledgeGapSubmission>> {
+  return fetchWithAuth(`/api/v1/admin/knowledge_gap_submissions/${id}/set_placement`, {
+    method: 'POST',
+    body: JSON.stringify({ placement, suggested_parent_id: suggestedParentId }),
+  });
+}
+
+export async function searchClusterLabelParents(
+  query: string,
+  limit: number = 20
+): Promise<ApiResponse<ParentClusterLabelResult[]>> {
+  return fetchWithAuth(
+    `/api/v1/admin/knowledge_gap_submissions/parent_search?q=${encodeURIComponent(query)}&limit=${limit}`
+  );
+}
