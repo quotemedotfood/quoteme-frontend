@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Pencil } from 'lucide-react';
+import { Pencil, ArrowUp, ArrowDown, ChevronDown, ChevronRight, Undo2 } from 'lucide-react';
 import {
   KnowledgeGapSubmission,
   KnowledgeGapEditedData,
+  KnowledgeGapHistoryRow,
   ParentClusterLabelResult,
   listKnowledgeGapSubmissions,
   approveKnowledgeGapSubmission,
@@ -10,6 +11,9 @@ import {
   approveKnowledgeGapAsTail,
   setKnowledgeGapPlacement,
   searchClusterLabelParents,
+  bulkApproveAsTail,
+  listKnowledgeGapHistory,
+  undoKnowledgeGapTail,
 } from '../../services/adminApi';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -34,6 +38,7 @@ const COMPOUND_TYPE_OPTIONS = [
 ] as const;
 
 const PAGE_SIZE = 50;
+const HISTORY_PAGE_SIZE = 25;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -199,14 +204,17 @@ function ParentDropdown({ initialParentId, initialParentCanonical, onSelect, dis
   );
 }
 
-// ── Table 1: Tails Queue ──────────────────────────────────────────────────────
+// ── Table 1: Tails Queue row ──────────────────────────────────────────────────
 
 interface TailRowProps {
   sub: KnowledgeGapSubmission;
+  selected: boolean;
+  onToggleSelect: (id: string) => void;
   onActionComplete: (updated: KnowledgeGapSubmission, action: 'tail_approved' | 'moved_to_head') => void;
+  onParentSelected: (id: string, parent: ParentClusterLabelResult | null) => void;
 }
 
-function TailRow({ sub, onActionComplete }: TailRowProps) {
+function TailRow({ sub, selected, onToggleSelect, onActionComplete, onParentSelected }: TailRowProps) {
   const sd = sub.source_data as Record<string, unknown>;
   const componentText = String(sd['component_text'] ?? '');
   const suggestedParentId = sd['suggested_parent_id'] as string | null;
@@ -217,6 +225,11 @@ function TailRow({ sub, onActionComplete }: TailRowProps) {
   const [selectedParent, setSelectedParent] = useState<ParentClusterLabelResult | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  function handleParentSelect(parent: ParentClusterLabelResult | null) {
+    setSelectedParent(parent);
+    onParentSelected(sub.id, parent);
+  }
 
   async function handleAddAsTail() {
     if (!selectedParent) return;
@@ -238,7 +251,16 @@ function TailRow({ sub, onActionComplete }: TailRowProps) {
   }
 
   return (
-    <tr className="border-b border-blue-50 hover:bg-blue-50/30">
+    <tr className={`border-b border-blue-50 hover:bg-blue-50/30 ${selected ? 'bg-blue-50' : ''}`}>
+      <td className="px-3 py-2 align-middle">
+        <input
+          type="checkbox"
+          checked={selected}
+          onChange={() => onToggleSelect(sub.id)}
+          className="w-3.5 h-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+          aria-label={`Select ${componentText}`}
+        />
+      </td>
       <td className="px-3 py-2 text-sm font-mono text-[#2A2A2A] break-all align-top min-w-[140px]">
         {componentText}
       </td>
@@ -246,7 +268,7 @@ function TailRow({ sub, onActionComplete }: TailRowProps) {
         <ParentDropdown
           initialParentId={suggestedParentId ?? null}
           initialParentCanonical={suggestedParentCanonical ?? (suggestedParentId ? null : null)}
-          onSelect={setSelectedParent}
+          onSelect={handleParentSelect}
           disabled={submitting}
         />
         {!selectedParent && (
@@ -270,9 +292,11 @@ function TailRow({ sub, onActionComplete }: TailRowProps) {
             type="button"
             onClick={handleMoveToHead}
             disabled={submitting}
-            className="px-3 py-1 rounded text-xs font-semibold bg-gray-100 text-[#4F4F4F] hover:bg-gray-200 transition-colors disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
+            aria-label="Move to new HEAD queue"
+            className="px-2 py-1 rounded text-xs font-semibold bg-gray-100 text-[#4F4F4F] hover:bg-gray-200 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 whitespace-nowrap"
           >
-            Move to New HEAD
+            <ArrowDown size={12} />
+            New HEAD
           </button>
         </div>
         {error && (
@@ -338,7 +362,6 @@ function HeadRow({ sub, onActionComplete }: HeadRowProps) {
   }
 
   function handleDefer() {
-    // Defer: hide row locally; no server call. Row will reappear on next page load.
     setDeferred(true);
     onActionComplete(sub, 'deferred');
   }
@@ -477,9 +500,11 @@ function HeadRow({ sub, onActionComplete }: HeadRowProps) {
             type="button"
             onClick={handleMoveToTail}
             disabled={submitting}
-            className="px-2.5 py-1 rounded text-xs font-semibold bg-gray-100 text-[#4F4F4F] hover:bg-gray-200 transition-colors disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
+            aria-label="Move to tails queue"
+            className="px-2.5 py-1 rounded text-xs font-semibold bg-gray-100 text-[#4F4F4F] hover:bg-gray-200 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1 whitespace-nowrap"
           >
-            Move to Tails
+            <ArrowUp size={12} />
+            Tails
           </button>
           {error && (
             <p className="text-xs text-red-600">{error}</p>
@@ -508,13 +533,14 @@ interface TableSectionProps {
   renderRow: (sub: KnowledgeGapSubmission) => React.ReactNode;
   columns: string[];
   emptyLabel: string;
+  actionBar?: React.ReactNode;
 }
 
 function TableSection({
   title, description, accentClass, headerBgClass,
   items, totalCount, page, onPageChange,
   search, onSearchChange, loading, loadError,
-  renderRow, columns, emptyLabel,
+  renderRow, columns, emptyLabel, actionBar,
 }: TableSectionProps) {
   const totalPages = Math.ceil(totalCount / PAGE_SIZE);
 
@@ -539,6 +565,8 @@ function TableSection({
           <span className="text-xs text-[#4F4F4F] shrink-0">{totalCount} item{totalCount !== 1 ? 's' : ''}</span>
         </div>
       </div>
+
+      {actionBar}
 
       {loadError && (
         <div className="bg-red-50 border-t border-red-200 px-5 py-3 text-sm text-red-700">
@@ -604,6 +632,195 @@ function TableSection({
   );
 }
 
+// ── History section ───────────────────────────────────────────────────────────
+
+interface HistorySectionProps {
+  onRefreshPending: () => void;
+}
+
+function HistorySection({ onRefreshPending }: HistorySectionProps) {
+  const [open, setOpen] = useState(false);
+  const [rows, setRows] = useState<KnowledgeGapHistoryRow[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
+  const [offset, setOffset] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [undoingId, setUndoingId] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+
+  async function loadHistory(newOffset: number, append: boolean) {
+    setLoading(true);
+    setLoadError(null);
+    const res = await listKnowledgeGapHistory(HISTORY_PAGE_SIZE, newOffset);
+    setLoading(false);
+    if (res.error) { setLoadError(res.error); return; }
+    if (res.data) {
+      setTotalCount(res.data.total_count);
+      setRows((prev) => append ? [...prev, ...res.data!.history] : res.data!.history);
+      setOffset(newOffset + res.data.history.length);
+    }
+  }
+
+  useEffect(() => {
+    if (open && rows.length === 0) {
+      loadHistory(0, false);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  function showToast(msg: string) {
+    setToast(msg);
+    setTimeout(() => setToast(null), 3000);
+  }
+
+  async function handleUndo(row: KnowledgeGapHistoryRow) {
+    const confirmed = window.confirm(
+      `Undo tail approval? This removes "${row.candidate_text}" from the parent cluster and returns the submission to pending.`
+    );
+    if (!confirmed) return;
+
+    setUndoingId(row.id);
+    const res = await undoKnowledgeGapTail(row.id);
+    setUndoingId(null);
+
+    if (res.error) {
+      showToast(`Undo failed: ${res.error}`);
+      return;
+    }
+
+    // Remove from history list and refetch pending queue
+    setRows((prev) => prev.filter((r) => r.id !== row.id));
+    setTotalCount((c) => c - 1);
+    onRefreshPending();
+    showToast('Tail approval undone. Submission returned to pending.');
+  }
+
+  function actionClass(action: KnowledgeGapHistoryRow['action']): string {
+    if (action === 'approved_as_tail') return 'text-green-700 bg-green-50';
+    if (action === 'approved_as_new_head') return 'text-blue-700 bg-blue-50';
+    return 'text-red-700 bg-red-50';
+  }
+
+  function actionLabel(action: KnowledgeGapHistoryRow['action']): string {
+    if (action === 'approved_as_tail') return 'tail';
+    if (action === 'approved_as_new_head') return 'new HEAD';
+    return 'rejected';
+  }
+
+  return (
+    <div className="rounded-xl border-2 border-gray-200 overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center justify-between px-5 py-4 bg-gray-50 hover:bg-gray-100 transition-colors text-left"
+      >
+        <div>
+          <h2 className="text-base font-bold text-[#2A2A2A]" style={{ fontFamily: "'Playfair Display', serif" }}>
+            History
+          </h2>
+          <p className="text-xs text-[#4F4F4F] mt-0.5">Resolved submissions (approved and rejected). Tail approvals can be undone here.</p>
+        </div>
+        <div className="shrink-0 ml-4">
+          {open ? <ChevronDown size={16} className="text-[#4F4F4F]" /> : <ChevronRight size={16} className="text-[#4F4F4F]" />}
+        </div>
+      </button>
+
+      {open && (
+        <div className="bg-white">
+          {toast && (
+            <div className="px-5 py-2 bg-blue-50 border-b border-blue-100 text-sm text-blue-700">
+              {toast}
+            </div>
+          )}
+
+          {loadError && (
+            <div className="px-5 py-3 bg-red-50 border-b border-red-200 text-sm text-red-700">
+              {loadError}
+            </div>
+          )}
+
+          {loading && rows.length === 0 && (
+            <div className="px-5 py-8 text-center text-sm text-[#4F4F4F]">Loading...</div>
+          )}
+
+          {!loading && rows.length === 0 && !loadError && (
+            <div className="px-5 py-8 text-center text-sm text-[#4F4F4F]">No resolved submissions yet.</div>
+          )}
+
+          {rows.length > 0 && (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-gray-50 border-b border-gray-100">
+                    {['Candidate', 'Action', 'Parent HEAD', 'Reviewer', 'Timestamp', 'Notes', ''].map((col) => (
+                      <th key={col} className="px-3 py-2 text-left text-xs font-semibold text-[#4F4F4F] uppercase tracking-wide whitespace-nowrap">
+                        {col}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((row) => (
+                    <tr key={row.id} className="border-b border-gray-50 hover:bg-gray-50/40">
+                      <td className="px-3 py-2 text-xs font-mono text-[#2A2A2A] break-all max-w-[160px]">
+                        {row.candidate_text ?? '(unknown)'}
+                      </td>
+                      <td className="px-3 py-2">
+                        <span className={`text-xs font-semibold px-1.5 py-0.5 rounded ${actionClass(row.action)}`}>
+                          {actionLabel(row.action)}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2 text-xs text-[#4F4F4F]">
+                        {row.parent_canonical ?? <span className="text-gray-300">-</span>}
+                      </td>
+                      <td className="px-3 py-2 text-xs text-[#4F4F4F]">
+                        {row.reviewed_by ?? <span className="text-gray-300">-</span>}
+                      </td>
+                      <td className="px-3 py-2 text-xs text-[#4F4F4F] whitespace-nowrap">
+                        {row.reviewed_at ? new Date(row.reviewed_at).toLocaleString() : '-'}
+                      </td>
+                      <td className="px-3 py-2 text-xs text-[#4F4F4F] max-w-[160px] truncate" title={row.review_notes ?? undefined}>
+                        {row.review_notes ?? <span className="text-gray-300">-</span>}
+                      </td>
+                      <td className="px-3 py-2">
+                        {row.action === 'approved_as_tail' && (
+                          <button
+                            type="button"
+                            onClick={() => handleUndo(row)}
+                            disabled={undoingId === row.id}
+                            aria-label="Undo tail approval"
+                            className="p-1 rounded text-gray-400 hover:text-orange-600 hover:bg-orange-50 transition-colors disabled:opacity-40"
+                            title="Undo tail approval"
+                          >
+                            <Undo2 size={14} />
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {rows.length < totalCount && (
+            <div className="px-5 py-3 border-t border-gray-100">
+              <button
+                type="button"
+                onClick={() => loadHistory(offset, true)}
+                disabled={loading}
+                className="px-4 py-1.5 rounded text-xs font-medium border border-gray-200 text-[#4F4F4F] hover:bg-gray-50 disabled:opacity-40"
+              >
+                {loading ? 'Loading...' : `Load more (${totalCount - rows.length} remaining)`}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export function QMAdminKnowledgeGapFiller() {
@@ -619,6 +836,15 @@ export function QMAdminKnowledgeGapFiller() {
   const [headSearch, setHeadSearch] = useState('');
   const [headPage, setHeadPage] = useState(1);
 
+  // Multi-select state for tail queue
+  const [selectedTailIds, setSelectedTailIds] = useState<Set<string>>(new Set());
+  // Map from submission id to the currently-selected parent in its dropdown
+  const [tailParentMap, setTailParentMap] = useState<Map<string, ParentClusterLabelResult>>(new Map());
+
+  // Bulk action state
+  const [bulkSubmitting, setBulkSubmitting] = useState(false);
+  const [bulkToast, setBulkToast] = useState<string | null>(null);
+
   async function loadSubmissions() {
     setLoading(true);
     setLoadError(null);
@@ -626,6 +852,8 @@ export function QMAdminKnowledgeGapFiller() {
     setLoading(false);
     if (res.error) { setLoadError(res.error); return; }
     setAllSubmissions(res.data ?? []);
+    // Clear selection when reloading
+    setSelectedTailIds(new Set());
   }
 
   useEffect(() => { loadSubmissions(); }, []);
@@ -665,11 +893,91 @@ export function QMAdminKnowledgeGapFiller() {
   const pagedTail = filteredTail.slice((tailPage - 1) * PAGE_SIZE, tailPage * PAGE_SIZE);
   const pagedHead = filteredHead.slice((headPage - 1) * PAGE_SIZE, headPage * PAGE_SIZE);
 
+  // Multi-select helpers
+  const visibleTailIds = pagedTail.map((s) => s.id);
+  const allVisibleSelected = visibleTailIds.length > 0 && visibleTailIds.every((id) => selectedTailIds.has(id));
+  const someVisibleSelected = visibleTailIds.some((id) => selectedTailIds.has(id));
+  const indeterminate = someVisibleSelected && !allVisibleSelected;
+
+  function handleToggleTailId(id: string) {
+    setSelectedTailIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) { next.delete(id); } else { next.add(id); }
+      return next;
+    });
+  }
+
+  function handleSelectAllVisible(checked: boolean) {
+    setSelectedTailIds((prev) => {
+      const next = new Set(prev);
+      if (checked) {
+        visibleTailIds.forEach((id) => next.add(id));
+      } else {
+        visibleTailIds.forEach((id) => next.delete(id));
+      }
+      return next;
+    });
+  }
+
+  function handleParentSelected(subId: string, parent: ParentClusterLabelResult | null) {
+    setTailParentMap((prev) => {
+      const next = new Map(prev);
+      if (parent) { next.set(subId, parent); } else { next.delete(subId); }
+      return next;
+    });
+  }
+
+  function showBulkToast(msg: string) {
+    setBulkToast(msg);
+    setTimeout(() => setBulkToast(null), 4000);
+  }
+
+  async function handleBulkApprove() {
+    const approvals = Array.from(selectedTailIds)
+      .map((id) => {
+        const parent = tailParentMap.get(id);
+        if (!parent) return null;
+        return { id, parent_cluster_label_id: parent.id };
+      })
+      .filter((a): a is { id: string; parent_cluster_label_id: string } => a !== null);
+
+    if (approvals.length === 0) {
+      showBulkToast('No rows have a parent selected. Select parents first.');
+      return;
+    }
+
+    setBulkSubmitting(true);
+    const res = await bulkApproveAsTail(approvals);
+    setBulkSubmitting(false);
+
+    if (res.error) {
+      showBulkToast(`Bulk approve failed: ${res.error}`);
+      return;
+    }
+
+    if (res.data) {
+      const { approved, failed } = res.data;
+      // Remove approved from local state
+      setAllSubmissions((prev) => prev.filter((s) => !approved.includes(s.id)));
+      setSelectedTailIds((prev) => {
+        const next = new Set(prev);
+        approved.forEach((id) => next.delete(id));
+        return next;
+      });
+
+      if (failed.length > 0) {
+        showBulkToast(`Approved ${approved.length}, failed ${failed.length}: ${failed.map((f) => f.error).join(', ')}`);
+      } else {
+        showBulkToast(`Approved ${approved.length} tail${approved.length !== 1 ? 's' : ''} successfully.`);
+      }
+    }
+  }
+
   function handleTailAction(updated: KnowledgeGapSubmission, action: 'tail_approved' | 'moved_to_head') {
     if (action === 'tail_approved') {
       setAllSubmissions((prev) => prev.filter((s) => s.id !== updated.id));
+      setSelectedTailIds((prev) => { const n = new Set(prev); n.delete(updated.id); return n; });
     } else {
-      // moved_to_head: update placement in source_data
       setAllSubmissions((prev) =>
         prev.map((s) => s.id === updated.id ? updated : s)
       );
@@ -681,7 +989,6 @@ export function QMAdminKnowledgeGapFiller() {
     action: 'approved' | 'rejected' | 'deferred' | 'moved_to_tail'
   ) {
     if (action === 'deferred') {
-      // Deferred: hide locally (no server call). Will reappear on reload.
       setAllSubmissions((prev) => prev.filter((s) => s.id !== updated.id));
     } else {
       setAllSubmissions((prev) =>
@@ -696,6 +1003,52 @@ export function QMAdminKnowledgeGapFiller() {
       }
     }
   }
+
+  // Bulk selection action bar for Tails Queue
+  const tailActionBar = selectedTailIds.size > 0 ? (
+    <div className="bg-blue-50 border-t border-blue-100 px-5 py-2.5 flex items-center gap-3">
+      {bulkToast && (
+        <span className="text-xs text-blue-700 font-medium">{bulkToast}</span>
+      )}
+      {!bulkToast && (
+        <>
+          <span className="text-xs text-blue-700 font-medium">{selectedTailIds.size} selected</span>
+          <button
+            type="button"
+            onClick={handleBulkApprove}
+            disabled={bulkSubmitting}
+            className="px-3 py-1 rounded text-xs font-semibold bg-blue-600 text-white hover:bg-blue-700 transition-colors disabled:opacity-40"
+          >
+            {bulkSubmitting ? 'Approving...' : `Approve ${selectedTailIds.size} as tail`}
+          </button>
+          <button
+            type="button"
+            onClick={() => setSelectedTailIds(new Set())}
+            disabled={bulkSubmitting}
+            className="px-3 py-1 rounded text-xs font-medium border border-blue-300 text-blue-600 hover:bg-blue-100 transition-colors disabled:opacity-40"
+          >
+            Clear selection
+          </button>
+        </>
+      )}
+    </div>
+  ) : bulkToast ? (
+    <div className="bg-blue-50 border-t border-blue-100 px-5 py-2 text-xs text-blue-700">{bulkToast}</div>
+  ) : undefined;
+
+  // Header checkbox for select-all
+  const tailSelectAllHeader = (
+    <th className="px-3 py-2 w-8">
+      <input
+        type="checkbox"
+        checked={allVisibleSelected}
+        ref={(el) => { if (el) el.indeterminate = indeterminate; }}
+        onChange={(e) => handleSelectAllVisible(e.target.checked)}
+        className="w-3.5 h-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+        aria-label="Select all visible"
+      />
+    </th>
+  );
 
   return (
     <div className="p-6 max-w-7xl">
@@ -713,29 +1066,74 @@ export function QMAdminKnowledgeGapFiller() {
 
       <div className="space-y-8">
         {/* Table 1: Tails Queue */}
-        <TableSection
-          title="Tails Queue"
-          description="Terms where Haiku suggests tailing to an existing corpus HEAD. Select the parent and click Add as tail."
-          accentClass="border-blue-200"
-          headerBgClass="bg-blue-50"
-          items={pagedTail}
-          totalCount={filteredTail.length}
-          page={tailPage}
-          onPageChange={setTailPage}
-          search={tailSearch}
-          onSearchChange={(s) => { setTailSearch(s); setTailPage(1); }}
-          loading={loading}
-          loadError={loadError}
-          columns={['Candidate', 'Suggested Parent HEAD', 'Confidence', 'Actions']}
-          emptyLabel="No tail submissions pending."
-          renderRow={(sub) => (
-            <TailRow
-              key={sub.id}
-              sub={sub}
-              onActionComplete={handleTailAction}
-            />
+        <div className={`rounded-xl border-2 border-blue-200 overflow-hidden`}>
+          <div className="bg-blue-50 px-5 py-4">
+            <h2 className="text-base font-bold text-[#2A2A2A]" style={{ fontFamily: "'Playfair Display', serif" }}>
+              Tails Queue
+            </h2>
+            <p className="text-xs text-[#4F4F4F] mt-0.5">Terms where Haiku suggests tailing to an existing corpus HEAD. Select the parent and click Add as tail.</p>
+          </div>
+
+          <div className="bg-white px-5 py-3 border-t border-gray-100">
+            <div className="flex items-center gap-3">
+              <input
+                type="text"
+                value={tailSearch}
+                onChange={(e) => { setTailSearch(e.target.value); setTailPage(1); }}
+                placeholder="Filter by candidate string..."
+                className="flex-1 border border-gray-200 rounded px-3 py-1.5 text-sm text-[#2A2A2A] focus:outline-none focus:ring-1 focus:ring-[#7FAEC2]"
+              />
+              <span className="text-xs text-[#4F4F4F] shrink-0">{filteredTail.length} item{filteredTail.length !== 1 ? 's' : ''}</span>
+            </div>
+          </div>
+
+          {tailActionBar}
+
+          {loadError && (
+            <div className="bg-red-50 border-t border-red-200 px-5 py-3 text-sm text-red-700">{loadError}</div>
           )}
-        />
+          {loading && (
+            <div className="bg-white px-5 py-6 text-center text-sm text-[#4F4F4F]">Loading...</div>
+          )}
+          {!loading && pagedTail.length === 0 && !loadError && (
+            <div className="bg-white px-5 py-10 text-center text-sm text-[#4F4F4F]">No tail submissions pending.</div>
+          )}
+          {!loading && pagedTail.length > 0 && (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-gray-50 border-b border-gray-100">
+                    {tailSelectAllHeader}
+                    {['Candidate', 'Suggested Parent HEAD', 'Confidence', 'Actions'].map((col) => (
+                      <th key={col} className="px-3 py-2 text-left text-xs font-semibold text-[#4F4F4F] uppercase tracking-wide whitespace-nowrap">
+                        {col}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {pagedTail.map((sub) => (
+                    <TailRow
+                      key={sub.id}
+                      sub={sub}
+                      selected={selectedTailIds.has(sub.id)}
+                      onToggleSelect={handleToggleTailId}
+                      onActionComplete={handleTailAction}
+                      onParentSelected={handleParentSelected}
+                    />
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          {Math.ceil(filteredTail.length / PAGE_SIZE) > 1 && (
+            <div className="bg-white border-t border-gray-100 px-5 py-3 flex items-center gap-2">
+              <button type="button" onClick={() => setTailPage((p) => p - 1)} disabled={tailPage <= 1} className="px-3 py-1 rounded text-xs font-medium border border-gray-200 text-[#4F4F4F] hover:bg-gray-50 disabled:opacity-40">Prev</button>
+              <span className="text-xs text-[#4F4F4F]">Page {tailPage} of {Math.ceil(filteredTail.length / PAGE_SIZE)}</span>
+              <button type="button" onClick={() => setTailPage((p) => p + 1)} disabled={tailPage >= Math.ceil(filteredTail.length / PAGE_SIZE)} className="px-3 py-1 rounded text-xs font-medium border border-gray-200 text-[#4F4F4F] hover:bg-gray-50 disabled:opacity-40">Next</button>
+            </div>
+          )}
+        </div>
 
         {/* Table 2: New HEAD Queue */}
         <TableSection
@@ -761,6 +1159,9 @@ export function QMAdminKnowledgeGapFiller() {
             />
           )}
         />
+
+        {/* History section */}
+        <HistorySection onRefreshPending={loadSubmissions} />
       </div>
     </div>
   );
