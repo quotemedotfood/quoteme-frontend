@@ -1637,7 +1637,7 @@ export interface KnowledgeGapSubmissionSourceData {
 export interface KnowledgeGapSubmission {
   id: string;
   submission_type: 'knowledge_gap';
-  status: 'pending' | 'approved' | 'rejected';
+  status: 'pending' | 'approved' | 'archived';
   source_data: KnowledgeGapSubmissionSourceData;
   submitted_by: string | null;
   submitted_at: string;
@@ -1655,9 +1655,12 @@ export type KnowledgeGapEditedData = {
 };
 
 export async function listKnowledgeGapSubmissions(
-  status: 'pending' | 'approved' | 'rejected' = 'pending'
+  status: 'pending' | 'approved' | 'archived' = 'pending',
+  includeArchived?: boolean
 ): Promise<ApiResponse<KnowledgeGapSubmission[]>> {
-  return fetchWithAuth(`/api/v1/admin/knowledge_gap_submissions?status=${status}`);
+  const params = new URLSearchParams({ status });
+  if (includeArchived) params.set('include_archived', 'true');
+  return fetchWithAuth(`/api/v1/admin/knowledge_gap_submissions?${params.toString()}`);
 }
 
 export async function approveKnowledgeGapSubmission(
@@ -1671,13 +1674,23 @@ export async function approveKnowledgeGapSubmission(
   });
 }
 
-export async function rejectKnowledgeGapSubmission(
+// Renamed from rejectKnowledgeGapSubmission (v2.2 archive semantics).
+// G4: this function only appears on KGF surfaces -- safe to rename.
+export async function archiveKnowledgeGapSubmission(
   id: string,
   reviewNotes?: string
 ): Promise<ApiResponse<KnowledgeGapSubmission>> {
-  return fetchWithAuth(`/api/v1/admin/knowledge_gap_submissions/${id}/reject`, {
+  return fetchWithAuth(`/api/v1/admin/knowledge_gap_submissions/${id}/archive`, {
     method: 'POST',
     body: JSON.stringify({ review_notes: reviewNotes }),
+  });
+}
+
+export async function restoreKnowledgeGapSubmission(
+  id: string
+): Promise<ApiResponse<KnowledgeGapSubmission>> {
+  return fetchWithAuth(`/api/v1/admin/knowledge_gap_submissions/${id}/restore`, {
+    method: 'POST',
   });
 }
 
@@ -1746,10 +1759,39 @@ export async function bulkApproveAsTail(
   });
 }
 
+export interface BulkArchiveResponse {
+  archived: string[];
+  failed: Array<{ id: string; error: string }>;
+}
+
+export async function bulkArchiveKnowledgeGap(
+  ids: string[],
+  reviewNotes?: string
+): Promise<ApiResponse<BulkArchiveResponse>> {
+  return fetchWithAuth('/api/v1/admin/knowledge_gap_submissions/bulk_archive', {
+    method: 'POST',
+    body: JSON.stringify({ ids, review_notes: reviewNotes }),
+  });
+}
+
+export interface BulkMoveToHeadResponse {
+  moved: string[];
+  failed: Array<{ id: string; error: string }>;
+}
+
+export async function bulkMoveToHead(
+  ids: string[]
+): Promise<ApiResponse<BulkMoveToHeadResponse>> {
+  return fetchWithAuth('/api/v1/admin/knowledge_gap_submissions/bulk_move_to_head', {
+    method: 'POST',
+    body: JSON.stringify({ ids }),
+  });
+}
+
 export interface KnowledgeGapHistoryRow {
   id: string;
   candidate_text: string | null;
-  action: 'approved_as_tail' | 'approved_as_new_head' | 'rejected';
+  action: 'approved_as_tail' | 'approved_as_new_head' | 'archived';
   parent_canonical: string | null;
   parent_cluster_label_id: string | null;
   reviewed_by: string | null;

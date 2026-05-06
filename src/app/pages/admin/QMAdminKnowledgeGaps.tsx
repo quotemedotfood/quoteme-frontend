@@ -4,7 +4,7 @@ import {
   KnowledgeGapEditedData,
   listKnowledgeGapSubmissions,
   approveKnowledgeGapSubmission,
-  rejectKnowledgeGapSubmission,
+  archiveKnowledgeGapSubmission,
 } from '../../services/adminApi';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -50,7 +50,7 @@ const COMPOUND_TYPE_OPTIONS = [
   { value: 'true', label: 'true' },
 ] as const;
 
-type StatusFilter = 'pending' | 'approved' | 'rejected';
+type StatusFilter = 'pending' | 'approved' | 'archived';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -216,7 +216,7 @@ function SubmissionCard({ sub, onActionComplete }: SubmissionCardProps) {
     setSuccessMsg(null);
     setSubmitting(true);
 
-    const res = await rejectKnowledgeGapSubmission(
+    const res = await archiveKnowledgeGapSubmission(
       sub.id,
       reviewNotes.trim() || undefined
     );
@@ -226,7 +226,7 @@ function SubmissionCard({ sub, onActionComplete }: SubmissionCardProps) {
       setError(res.error);
       return;
     }
-    setSuccessMsg('Rejected.');
+    setSuccessMsg('Archived.');
     if (res.data) onActionComplete(res.data);
   }
 
@@ -395,7 +395,7 @@ function SubmissionCard({ sub, onActionComplete }: SubmissionCardProps) {
                 disabled={submitting}
                 className="px-4 py-2 rounded-md text-sm font-semibold text-red-600 border border-red-200 hover:bg-red-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {submitting ? 'Saving...' : 'Reject'}
+                {submitting ? 'Saving...' : 'Archive'}
               </button>
             </div>
           )}
@@ -429,7 +429,7 @@ export function QMAdminKnowledgeGaps() {
   const [tabCounts, setTabCounts] = useState<Record<StatusFilter, number | null>>({
     pending: null,
     approved: null,
-    rejected: null,
+    archived: null,
   });
 
   async function loadTab(status: StatusFilter) {
@@ -470,7 +470,7 @@ export function QMAdminKnowledgeGaps() {
   const TABS: { key: StatusFilter; label: string }[] = [
     { key: 'pending', label: 'Pending' },
     { key: 'approved', label: 'Approved' },
-    { key: 'rejected', label: 'Rejected' },
+    { key: 'archived', label: 'Archived' },
   ];
 
   return (
