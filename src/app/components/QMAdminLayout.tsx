@@ -12,7 +12,6 @@ import {
   Activity,
   ShieldCheck,
   Layers,
-  AlertTriangle,
   BrainCircuit,
 } from 'lucide-react';
 import logoSquare from '/src/assets/e549e7d27b183e98e791f43494c715b8cc6ce7e9.png';
@@ -29,7 +28,6 @@ const navItems = [
   { icon: Tag, label: 'Brands', path: '/qm-admin/brands' },
   { icon: ShieldCheck, label: 'Ingestion Rules', path: '/qm-admin/brand-rules' },
   { icon: Layers, label: 'Cluster Labels', path: '/qm-admin/cluster-labels' },
-  { icon: AlertTriangle, label: 'Knowledge Gaps', path: '/qm-admin/knowledge-gaps' },
   { icon: BrainCircuit, label: 'Gap Filler', path: '/qm-admin/knowledge-gap-filler' },
   { icon: Radio, label: 'Command', path: '/qm-admin/conference-command' },
   { icon: Activity, label: 'Health', path: '/qm-admin/health' },
