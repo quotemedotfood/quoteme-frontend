@@ -605,8 +605,14 @@ function TailRow({ sub, selected, onToggleSelect, onActionComplete, onParentSele
           aria-label={`Select ${componentText}`}
         />
       </td>
-      <td className="px-3 py-2 text-sm font-mono text-[#2A2A2A] break-all align-top min-w-[140px]">
-        {componentText}
+      {/* Candidate (Item 2: truncate + tooltip) */}
+      <td className="px-3 py-2 align-top" style={{ minWidth: '140px', maxWidth: '200px' }}>
+        <span
+          className="block text-sm font-mono text-[#2A2A2A] truncate"
+          title={componentText.length > 24 ? componentText : undefined}
+        >
+          {componentText}
+        </span>
       </td>
       <td className="px-3 py-2 align-top min-w-[220px]">
         <ParentDropdown
@@ -622,8 +628,9 @@ function TailRow({ sub, selected, onToggleSelect, onActionComplete, onParentSele
       <td className="px-3 py-2 align-top text-center">
         <ConfidenceBadge confidence={confidence} />
       </td>
-      <td className="px-3 py-2 align-top">
-        <div className="flex items-center gap-1 flex-wrap">
+      {/* Actions (Item 2: min-w, flex-nowrap so emojis never wrap) */}
+      <td className="px-3 py-2 align-top" style={{ minWidth: '100px' }}>
+        <div className="flex items-center gap-1 flex-nowrap">
           {/* Approve as tail */}
           <button
             type="button"
@@ -673,18 +680,158 @@ function TailRow({ sub, selected, onToggleSelect, onActionComplete, onParentSele
   );
 }
 
+// ── Head search modal (Item 3: 🔍 search-existing-HEAD on HEAD rows) ──────────
+//
+// Reuses PortalDropdownList + searchClusterLabelParents (same infra as Tails).
+// createPortal import is from react-dom (line 2) -- verified correct.
+
+interface HeadSearchModalProps {
+  candidateText: string;
+  onSelect: (parent: ParentClusterLabelResult) => void;
+  onClose: () => void;
+}
+
+function HeadSearchModal({ candidateText, onSelect, onClose }: HeadSearchModalProps) {
+  const [query, setQuery] = useState(candidateText);
+  const [results, setResults] = useState<ParentClusterLabelResult[]>([]);
+  const [loading, setLoading] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Auto-search on mount with the candidate text pre-populated
+  useEffect(() => {
+    inputRef.current?.focus();
+    if (candidateText.trim()) {
+      doSearch(candidateText);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const doSearch = useCallback(async (q: string) => {
+    if (!q.trim()) { setResults([]); return; }
+    setLoading(true);
+    const res = await searchClusterLabelParents(q, 20);
+    setLoading(false);
+    if (res.data) setResults(res.data);
+  }, []);
+
+  function handleInput(e: React.ChangeEvent<HTMLInputElement>) {
+    const val = e.target.value;
+    setQuery(val);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => doSearch(val), 250);
+  }
+
+  // Close on Escape or outside click (portal-mounted div)
+  useEffect(() => {
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose();
+    }
+    document.addEventListener('keydown', handleKey);
+    return () => document.removeEventListener('keydown', handleKey);
+  }, [onClose]);
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/30"
+      onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+        <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+          <div>
+            <p className="text-xs font-semibold text-[#2A2A2A] uppercase tracking-wide">Search existing HEAD</p>
+            <p className="text-xs text-[#4F4F4F] mt-0.5 truncate max-w-[320px]" title={candidateText}>
+              Candidate: <span className="font-mono">{candidateText}</span>
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 text-lg leading-none px-1"
+            aria-label="Close"
+          >
+            x
+          </button>
+        </div>
+        <div className="px-4 py-3">
+          <div className="relative">
+            <input
+              ref={inputRef}
+              type="text"
+              value={query}
+              onChange={handleInput}
+              placeholder="Search corpus..."
+              className="w-full border border-gray-200 rounded px-3 py-2 text-sm text-[#2A2A2A] focus:outline-none focus:ring-1 focus:ring-[#7FAEC2]"
+              spellCheck={false}
+            />
+            {loading && (
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">...</span>
+            )}
+          </div>
+          {results.length > 0 && (
+            <div className="mt-2 border border-gray-100 rounded-md max-h-52 overflow-auto">
+              {results.map((r) => (
+                <button
+                  key={r.id}
+                  type="button"
+                  onClick={() => onSelect(r)}
+                  className="w-full text-left px-3 py-2 text-xs hover:bg-[#EAF3F8] flex items-center justify-between gap-2 border-b border-gray-50 last:border-0"
+                >
+                  <span className="font-medium text-[#2A2A2A]">{r.canonical_product}</span>
+                  {r.category && <span className="text-[#4F4F4F] shrink-0">{r.category}</span>}
+                </button>
+              ))}
+            </div>
+          )}
+          {!loading && results.length === 0 && query.trim() && (
+            <p className="mt-2 text-xs text-gray-400 text-center py-2">No results. This is likely a new HEAD.</p>
+          )}
+        </div>
+        <div className="px-4 py-2 border-t border-gray-100 text-xs text-gray-400">
+          Click a result to tail-and-approve. Press Esc or click outside to dismiss without changing.
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
 // ── Table 2: HEAD Queue row ───────────────────────────────────────────────────
+
+// Helper: extract close_parent_matches from llm_suggestion source_data
+interface CloseParentMatch {
+  cluster_label_id: string;
+  canonical_term: string;
+  confidence: number;
+}
+
+function getCloseParentMatches(sd: KnowledgeGapSubmission['source_data']): CloseParentMatch[] {
+  const llm = getLlmSuggestion(sd);
+  if (!llm) return [];
+  const matches = llm['close_parent_matches'];
+  if (!Array.isArray(matches)) return [];
+  return matches.filter(
+    (m): m is CloseParentMatch =>
+      typeof m === 'object' && m !== null &&
+      typeof (m as Record<string, unknown>)['cluster_label_id'] === 'string' &&
+      typeof (m as Record<string, unknown>)['canonical_term'] === 'string' &&
+      typeof (m as Record<string, unknown>)['confidence'] === 'number'
+  );
+}
 
 interface HeadRowProps {
   sub: KnowledgeGapSubmission;
+  selected: boolean;
+  onToggleSelect: (id: string) => void;
   onActionComplete: (updated: KnowledgeGapSubmission, action: 'approved' | 'archived' | 'deferred' | 'moved_to_tail') => void;
 }
 
-function HeadRow({ sub, onActionComplete }: HeadRowProps) {
+function HeadRow({ sub, selected, onToggleSelect, onActionComplete }: HeadRowProps) {
   const sd = sub.source_data as Record<string, unknown>;
   const llm = getLlmSuggestion(sub.source_data);
   const componentText = String(sd['component_text'] ?? '');
   const confidence = getConfidence(sub.source_data);
+  const closeParentMatches = getCloseParentMatches(sub.source_data);
 
   const [canonical, setCanonical] = useState(String(llm?.['suggested_canonical'] ?? ''));
   const [category, setCategory] = useState(String(llm?.['suggested_category'] ?? ''));
@@ -697,6 +844,7 @@ function HeadRow({ sub, onActionComplete }: HeadRowProps) {
   const [deferred, setDeferred] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showSearchModal, setShowSearchModal] = useState(false);
 
   const haiku_category = String(llm?.['suggested_category'] ?? '');
   const haiku_form_type = String(llm?.['suggested_form_type'] ?? '');
@@ -741,141 +889,211 @@ function HeadRow({ sub, onActionComplete }: HeadRowProps) {
     if (res.data) onActionComplete(res.data, 'moved_to_tail');
   }
 
+  // Called from both HeadSearchModal and close_parent_matches pills
+  async function handleTailAndApprove(parentId: string) {
+    setError(null);
+    setSubmitting(true);
+    setShowSearchModal(false);
+    const res = await approveKnowledgeGapAsTail(sub.id, parentId);
+    setSubmitting(false);
+    if (res.error) { setError(res.error); return; }
+    if (res.data) onActionComplete(res.data, 'approved');
+  }
+
   if (deferred) return null;
 
   return (
-    <tr className="border-b border-green-50 hover:bg-green-50/30">
-      {/* Candidate */}
-      <td className="px-3 py-2 text-sm font-mono text-[#2A2A2A] break-all align-top min-w-[120px]">
-        {componentText}
-      </td>
-
-      {/* Canonical */}
-      <td className="px-2 py-2 align-top min-w-[160px]">
-        <div className="flex items-center gap-1">
+    <>
+      {showSearchModal && (
+        <HeadSearchModal
+          candidateText={componentText}
+          onSelect={(parent) => handleTailAndApprove(parent.id)}
+          onClose={() => setShowSearchModal(false)}
+        />
+      )}
+      <tr className={`border-b border-green-50 hover:bg-green-50/30 ${selected ? 'bg-green-50' : ''}`}>
+        {/* Checkbox (Item 1) */}
+        <td className="px-3 py-2 align-middle w-8">
           <input
-            type="text"
-            value={canonical}
-            onChange={(e) => { setCanonical(e.target.value); setCanonicalEdited(true); }}
-            disabled={submitting}
-            placeholder="Canonical..."
-            className="w-full border border-gray-200 rounded px-2 py-1 text-xs text-[#2A2A2A] bg-white focus:outline-none focus:ring-1 focus:ring-[#7FAEC2] disabled:bg-gray-50"
-            spellCheck={false}
+            type="checkbox"
+            checked={selected}
+            onChange={() => onToggleSelect(sub.id)}
+            className="w-3.5 h-3.5 rounded border-gray-300 text-green-600 focus:ring-green-500"
+            aria-label={`Select ${componentText}`}
           />
-          <div className="flex items-center gap-0.5 shrink-0">
-            {canonicalEdited
-              ? <Pencil size={10} className="text-[#7FAEC2]" />
-              : <ConfidenceDot confidence={confidence} />
-            }
-          </div>
-        </div>
-      </td>
+        </td>
 
-      {/* Category (portal select) */}
-      <td className="px-2 py-2 align-top min-w-[120px]">
-        <div className="flex items-center gap-1">
-          <PortalSelect
-            value={category}
-            onChange={(v) => { setCategory(v); setCategoryEdited(v !== haiku_category); }}
-            disabled={submitting}
-            options={CATEGORY_OPTIONS as unknown as string[]}
-            placeholder="(category)"
-            className={categoryEdited ? 'border-[#7FAEC2]' : 'border-gray-200'}
-          />
-          <div className="shrink-0">
-            {categoryEdited
-              ? <Pencil size={10} className="text-[#7FAEC2]" />
-              : <ConfidenceDot confidence={confidence} />
-            }
-          </div>
-        </div>
-      </td>
+        {/* Candidate (Item 2: truncate at 24 chars, tooltip for full name) */}
+        <td className="px-3 py-2 align-top" style={{ minWidth: '140px', maxWidth: '200px' }}>
+          <span
+            className="block text-sm font-mono text-[#2A2A2A] truncate"
+            title={componentText.length > 24 ? componentText : undefined}
+          >
+            {componentText}
+          </span>
+          {/* close_parent_matches pills (Item 3 stretch) */}
+          {closeParentMatches.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-1">
+              {closeParentMatches.map((m) => {
+                const isLowConf = m.confidence < 0.7;
+                return (
+                  <button
+                    key={m.cluster_label_id}
+                    type="button"
+                    onClick={() => handleTailAndApprove(m.cluster_label_id)}
+                    disabled={submitting}
+                    title={`Tail to "${m.canonical_term}" (similarity ${Math.round(m.confidence * 100)}%) -- click to tail-and-approve`}
+                    className={`text-[10px] px-1.5 py-0.5 rounded border transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+                      isLowConf
+                        ? 'border-gray-200 text-gray-400 bg-gray-50 hover:bg-gray-100'
+                        : 'border-blue-200 text-blue-600 bg-blue-50 hover:bg-blue-100'
+                    }`}
+                  >
+                    {m.canonical_term}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </td>
 
-      {/* Form type (portal select) */}
-      <td className="px-2 py-2 align-top min-w-[130px]">
-        <div className="flex items-center gap-1">
-          <PortalSelect
-            value={formType}
-            onChange={(v) => { setFormType(v); setFormTypeEdited(v !== haiku_form_type); }}
-            disabled={submitting}
-            options={FORM_TYPE_OPTIONS as unknown as string[]}
-            placeholder="(form type)"
-            className={formTypeEdited ? 'border-[#7FAEC2]' : 'border-gray-200'}
-          />
-          <div className="shrink-0">
-            {formTypeEdited
-              ? <Pencil size={10} className="text-[#7FAEC2]" />
-              : <ConfidenceDot confidence={confidence} />
-            }
+        {/* Canonical */}
+        <td className="px-2 py-2 align-top min-w-[160px]">
+          <div className="flex items-center gap-1">
+            <input
+              type="text"
+              value={canonical}
+              onChange={(e) => { setCanonical(e.target.value); setCanonicalEdited(true); }}
+              disabled={submitting}
+              placeholder="Canonical..."
+              className="w-full border border-gray-200 rounded px-2 py-1 text-xs text-[#2A2A2A] bg-white focus:outline-none focus:ring-1 focus:ring-[#7FAEC2] disabled:bg-gray-50"
+              spellCheck={false}
+            />
+            <div className="flex items-center gap-0.5 shrink-0">
+              {canonicalEdited
+                ? <Pencil size={10} className="text-[#7FAEC2]" />
+                : <ConfidenceDot confidence={confidence} />
+              }
+            </div>
           </div>
-        </div>
-      </td>
+        </td>
 
-      {/* Compound type (portal select) */}
-      <td className="px-2 py-2 align-top min-w-[110px]">
-        <div className="flex items-center gap-1">
-          <PortalSelect
-            value={compoundType}
-            onChange={(v) => { setCompoundType(v); setCompoundTypeEdited(v !== haiku_compound_type); }}
-            disabled={submitting}
-            options={COMPOUND_TYPE_OPTIONS as unknown as Array<{ value: string; label: string }>}
-            placeholder="(none)"
-            className={compoundTypeEdited ? 'border-[#7FAEC2]' : 'border-gray-200'}
-          />
-          <div className="shrink-0">
-            {compoundTypeEdited
-              ? <Pencil size={10} className="text-[#7FAEC2]" />
-              : <ConfidenceDot confidence={confidence} />
-            }
+        {/* Category (portal select) */}
+        <td className="px-2 py-2 align-top min-w-[120px]">
+          <div className="flex items-center gap-1">
+            <PortalSelect
+              value={category}
+              onChange={(v) => { setCategory(v); setCategoryEdited(v !== haiku_category); }}
+              disabled={submitting}
+              options={CATEGORY_OPTIONS as unknown as string[]}
+              placeholder="(category)"
+              className={categoryEdited ? 'border-[#7FAEC2]' : 'border-gray-200'}
+            />
+            <div className="shrink-0">
+              {categoryEdited
+                ? <Pencil size={10} className="text-[#7FAEC2]" />
+                : <ConfidenceDot confidence={confidence} />
+              }
+            </div>
           </div>
-        </div>
-      </td>
+        </td>
 
-      {/* Actions (single-line emoji row) */}
-      <td className="px-2 py-2 align-top">
-        <div className="flex items-center gap-1 flex-wrap">
-          <button
-            type="button"
-            onClick={handleApprove}
-            disabled={submitting}
-            title="Approve as new HEAD"
-            className="text-base leading-none hover:scale-110 transition-transform disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            {submitting ? '...' : '✅'}
-          </button>
-          <button
-            type="button"
-            onClick={handleArchive}
-            disabled={submitting}
-            title="Archive (noise/garbage, recoverable)"
-            className="text-base leading-none hover:scale-110 transition-transform disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            📦
-          </button>
-          <button
-            type="button"
-            onClick={handleDefer}
-            disabled={submitting}
-            title="Defer (reappears in queue later)"
-            className="text-base leading-none hover:scale-110 transition-transform disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            ❓
-          </button>
-          <button
-            type="button"
-            onClick={handleMoveToTail}
-            disabled={submitting}
-            title="Move to Tails Queue"
-            className="text-base leading-none hover:scale-110 transition-transform disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            ⬆️
-          </button>
-        </div>
-        {error && (
-          <p className="text-xs text-red-600 mt-1">{error}</p>
-        )}
-      </td>
-    </tr>
+        {/* Form type (portal select) */}
+        <td className="px-2 py-2 align-top min-w-[130px]">
+          <div className="flex items-center gap-1">
+            <PortalSelect
+              value={formType}
+              onChange={(v) => { setFormType(v); setFormTypeEdited(v !== haiku_form_type); }}
+              disabled={submitting}
+              options={FORM_TYPE_OPTIONS as unknown as string[]}
+              placeholder="(form type)"
+              className={formTypeEdited ? 'border-[#7FAEC2]' : 'border-gray-200'}
+            />
+            <div className="shrink-0">
+              {formTypeEdited
+                ? <Pencil size={10} className="text-[#7FAEC2]" />
+                : <ConfidenceDot confidence={confidence} />
+              }
+            </div>
+          </div>
+        </td>
+
+        {/* Compound type (portal select) -- Item 2: sufficient width, no wrap */}
+        <td className="px-2 py-2 align-top" style={{ minWidth: '120px', maxWidth: '160px' }}>
+          <div className="flex items-center gap-1">
+            <PortalSelect
+              value={compoundType}
+              onChange={(v) => { setCompoundType(v); setCompoundTypeEdited(v !== haiku_compound_type); }}
+              disabled={submitting}
+              options={COMPOUND_TYPE_OPTIONS as unknown as Array<{ value: string; label: string }>}
+              placeholder="(none)"
+              className={compoundTypeEdited ? 'border-[#7FAEC2]' : 'border-gray-200'}
+            />
+            <div className="shrink-0">
+              {compoundTypeEdited
+                ? <Pencil size={10} className="text-[#7FAEC2]" />
+                : <ConfidenceDot confidence={confidence} />
+              }
+            </div>
+          </div>
+        </td>
+
+        {/* Actions (Item 2: min-w to hold 5 emojis no-wrap; Item 3: 🔍 5th button) */}
+        <td className="px-2 py-2 align-top" style={{ minWidth: '120px' }}>
+          <div className="flex items-center gap-1 flex-nowrap">
+            <button
+              type="button"
+              onClick={handleApprove}
+              disabled={submitting}
+              title="Approve as new HEAD"
+              className="text-base leading-none hover:scale-110 transition-transform disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {submitting ? '...' : '✅'}
+            </button>
+            <button
+              type="button"
+              onClick={handleArchive}
+              disabled={submitting}
+              title="Archive (noise/garbage, recoverable)"
+              className="text-base leading-none hover:scale-110 transition-transform disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              📦
+            </button>
+            <button
+              type="button"
+              onClick={handleDefer}
+              disabled={submitting}
+              title="Defer (reappears in queue later)"
+              className="text-base leading-none hover:scale-110 transition-transform disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              ❓
+            </button>
+            <button
+              type="button"
+              onClick={handleMoveToTail}
+              disabled={submitting}
+              title="Move to Tails Queue"
+              className="text-base leading-none hover:scale-110 transition-transform disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              ⬆️
+            </button>
+            {/* Item 3: search existing HEAD */}
+            <button
+              type="button"
+              onClick={() => setShowSearchModal(true)}
+              disabled={submitting}
+              title="Search for existing HEAD to tail to instead"
+              className="text-base leading-none hover:scale-110 transition-transform disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              🔍
+            </button>
+          </div>
+          {error && (
+            <p className="text-xs text-red-600 mt-1">{error}</p>
+          )}
+        </td>
+      </tr>
+    </>
   );
 }
 
@@ -1056,8 +1274,13 @@ function HistorySection({ onRefreshPending }: HistorySectionProps) {
                       key={row.id}
                       className={`border-b border-gray-50 hover:bg-gray-50/40 ${row.action === 'archived' ? 'opacity-60' : ''}`}
                     >
-                      <td className="px-3 py-2 text-xs font-mono text-[#2A2A2A] break-all max-w-[160px]">
-                        {row.candidate_text ?? '(unknown)'}
+                      <td className="px-3 py-2 align-top" style={{ minWidth: '120px', maxWidth: '200px' }}>
+                        <span
+                          className="block text-xs font-mono text-[#2A2A2A] truncate"
+                          title={(row.candidate_text ?? '').length > 24 ? (row.candidate_text ?? '') : undefined}
+                        >
+                          {row.candidate_text ?? '(unknown)'}
+                        </span>
                       </td>
                       <td className="px-3 py-2">
                         <span className={`text-xs font-semibold px-1.5 py-0.5 rounded ${actionClass(row.action)}`}>
@@ -1802,6 +2025,8 @@ export function QMAdminKnowledgeGapFiller() {
                         <HeadRow
                           key={sub.id}
                           sub={sub}
+                          selected={selectedHeadIds.has(sub.id)}
+                          onToggleSelect={handleToggleHeadId}
                           onActionComplete={handleHeadAction}
                         />
                       ))}
