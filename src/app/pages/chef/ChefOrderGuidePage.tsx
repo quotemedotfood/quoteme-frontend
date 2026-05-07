@@ -191,6 +191,138 @@ function CategorySection({ category, items, orderGuideId }: CategoryProps) {
   );
 }
 
+// ─── NeedsRepRow ─────────────────────────────────────────────────────────────────
+// Same debounced PATCH inputs as OrderGuideRow; no order/cart affordances.
+
+function NeedsRepRow({ item, orderGuideId }: RowProps) {
+  const [saving, setSaving] = useState(false);
+  const debounceRef = { qty: null as ReturnType<typeof setTimeout> | null, par: null as ReturnType<typeof setTimeout> | null };
+
+  const handleChange = useCallback(
+    (field: 'quantity' | 'par', raw: string) => {
+      const value = raw === '' ? 0 : parseInt(raw, 10);
+      if (isNaN(value)) return;
+
+      const key = field === 'quantity' ? 'qty' : 'par';
+      if (debounceRef[key]) clearTimeout(debounceRef[key]!);
+
+      debounceRef[key] = setTimeout(async () => {
+        setSaving(true);
+        await updateOrderGuideItem(orderGuideId, item.id, { [field]: value });
+        setSaving(false);
+      }, 800);
+    },
+    [orderGuideId, item.id] // eslint-disable-line react-hooks/exhaustive-deps
+  );
+
+  const inputClass =
+    'w-full text-center text-sm border border-[#E0E0E0] rounded px-1 py-1 bg-white focus:outline-none focus:border-[#E5A84B] ' +
+    '[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ' +
+    'print:border-transparent print:bg-transparent';
+
+  return (
+    <div className="grid grid-cols-12 gap-x-2 items-center py-2 border-b border-[#F5F5F5] last:border-0 print:border-[#E0E0E0]">
+      {/* Ingredient name — italic, spans item#/brand/description columns */}
+      <div className="col-span-9 sm:col-span-7">
+        <span className="text-sm text-[#4F4F4F] italic leading-snug">
+          {toTitleCase(item.product_description)}
+        </span>
+      </div>
+
+      {/* Contact Rep badge */}
+      <div className="col-span-3 sm:col-span-2 flex items-center">
+        <span
+          className="text-[10px] font-semibold px-2 py-0.5 rounded-full text-white whitespace-nowrap print:hidden"
+          style={{ backgroundColor: '#F39839' }}
+        >
+          Contact Rep
+        </span>
+        {/* Print-friendly text instead of badge */}
+        <span className="hidden print:inline text-[10px] text-[#9E9E9E] italic">Contact Rep</span>
+      </div>
+
+      {/* Qty input */}
+      <div className="col-span-2 sm:col-span-1">
+        <input
+          type="number"
+          min={0}
+          defaultValue={item.quantity > 0 ? item.quantity : ''}
+          placeholder="0"
+          className={inputClass}
+          onChange={(e) => handleChange('quantity', e.target.value)}
+        />
+      </div>
+
+      {/* Par input */}
+      <div className="col-span-2 sm:col-span-1">
+        <input
+          type="number"
+          min={0}
+          defaultValue={item.par > 0 ? item.par : ''}
+          placeholder="0"
+          className={inputClass}
+          onChange={(e) => handleChange('par', e.target.value)}
+        />
+      </div>
+
+      {/* Saving indicator */}
+      <div className="col-span-1 flex justify-center print:hidden">
+        <SavingIndicator saving={saving} />
+      </div>
+    </div>
+  );
+}
+
+// ─── NeedsRepSection ─────────────────────────────────────────────────────────────
+
+interface NeedsRepSectionProps {
+  items: OrderGuideItemResponse[];
+  orderGuideId: string;
+}
+
+function NeedsRepSection({ items, orderGuideId }: NeedsRepSectionProps) {
+  if (items.length === 0) return null;
+
+  const sorted = [...items].sort((a, b) => a.position - b.position);
+
+  return (
+    // break-before-page ensures a clean page break before this section when printing
+    <section className="mb-8 print:mb-6 break-before-page">
+      {/* Muted background container */}
+      <div className="bg-[#FAFAFA] rounded-lg px-4 py-5 border border-[#F0F0F0]">
+        <h2 className="text-[11px] font-semibold tracking-widest uppercase text-[#9E9E9E] mb-3 border-b border-[#E8E8E8] pb-2">
+          Handled by Rep
+        </h2>
+
+        <p className="text-xs text-[#9E9E9E] mb-4 print:hidden">
+          These ingredients were not found in the distributor catalog. Your rep will source them for you.
+        </p>
+
+        {/* Column headers */}
+        <div className="grid grid-cols-12 gap-x-2 mb-1 hidden sm:grid">
+          <div className="col-span-7">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-[#BDBDBD]">Ingredient</span>
+          </div>
+          <div className="col-span-2">
+            {/* spacer for Contact Rep badge column */}
+          </div>
+          <div className="col-span-1 text-center">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-[#BDBDBD]">Qty</span>
+          </div>
+          <div className="col-span-1 text-center">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-[#BDBDBD]">Par</span>
+          </div>
+          <div className="col-span-1" />
+        </div>
+
+        {sorted.map((item) => (
+          <NeedsRepRow key={item.id} item={item} orderGuideId={orderGuideId} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
 // ─── ChefOrderGuidePage ─────────────────────────────────────────────────────────
 
 export function ChefOrderGuidePage() {
@@ -272,7 +404,12 @@ export function ChefOrderGuidePage() {
 
   // ── Data ─────────────────────────────────────────────────────────────────────
 
-  const grouped = groupByCategory(guide.items);
+  // Split items by status: matched items go into category sections, needs_rep items
+  // go into the dedicated "Handled by Rep" section below.
+  const matchedItems  = guide.items.filter((i) => i.status === 'matched');
+  const needsRepItems = guide.items.filter((i) => i.status === 'needs_rep');
+
+  const grouped = groupByCategory(matchedItems);
   const categoryKeys = Object.keys(grouped).sort();
 
   const effectiveDate = guide.effective_date
@@ -383,8 +520,8 @@ export function ChefOrderGuidePage() {
           </button>
         </div>
 
-        {/* ── Category sections ───────────────────────────────────────────────── */}
-        {categoryKeys.length === 0 ? (
+        {/* ── Matched category sections ───────────────────────────────────────── */}
+        {categoryKeys.length === 0 && needsRepItems.length === 0 ? (
           <p className="text-[#9E9E9E] text-sm">No items in this order guide yet.</p>
         ) : (
           categoryKeys.map((cat) => (
@@ -396,6 +533,9 @@ export function ChefOrderGuidePage() {
             />
           ))
         )}
+
+        {/* ── Handled by Rep section (only rendered when needsRepItems exist) ── */}
+        <NeedsRepSection items={needsRepItems} orderGuideId={guide.id} />
       </div>
 
       {/* ── Print styles ────────────────────────────────────────────────────── */}
@@ -412,6 +552,9 @@ export function ChefOrderGuidePage() {
           input[type="number"]::-webkit-inner-spin-button {
             -webkit-appearance: none;
             margin: 0;
+          }
+          .break-before-page {
+            break-before: page;
           }
         }
       `}</style>

@@ -1759,6 +1759,8 @@ export interface OrderGuideResponse {
 
 export interface OrderGuideItemResponse {
   id: string;
+  /** 'matched' = has a catalog product; 'needs_rep' = no catalog match, rep must source */
+  status: 'matched' | 'needs_rep';
   category: string;
   position: number;
   item_number: string | null;
