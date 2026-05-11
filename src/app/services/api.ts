@@ -1771,7 +1771,7 @@ export interface OrderGuideItemResponse {
 }
 
 export async function getChefOrderGuide(orderGuideId: string): Promise<ApiResponse<OrderGuideResponse>> {
-  return fetchWithGuest(`/api/v1/chef/order_guides/${orderGuideId}`);
+  return fetchWithAuth(`/api/v1/chef/order_guides/${orderGuideId}`);
 }
 
 export async function updateOrderGuideItem(
@@ -1779,7 +1779,7 @@ export async function updateOrderGuideItem(
   itemId: string,
   updates: { quantity?: number; par?: number; notes?: string }
 ): Promise<ApiResponse<OrderGuideItemResponse>> {
-  return fetchWithGuest(`/api/v1/chef/order_guides/${orderGuideId}/items/${itemId}`, {
+  return fetchWithAuth(`/api/v1/chef/order_guides/${orderGuideId}/items/${itemId}`, {
     method: 'PATCH',
     body: JSON.stringify(updates),
   });
