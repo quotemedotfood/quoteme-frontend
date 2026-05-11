@@ -29,6 +29,7 @@ import { QMAdminMatchingEngine } from "./pages/admin/QMAdminMatchingEngine";
 import { QMAdminBrandRules } from "./pages/admin/QMAdminBrandRules";
 import { QMAdminClusterLabels } from "./pages/admin/QMAdminClusterLabels";
 import { QMAdminKnowledgeGapFiller } from "./pages/admin/QMAdminKnowledgeGapFiller";
+import { SentryTestPage } from "./pages/admin/SentryTestPage";
 import { QuotePreviewPage } from "./pages/QuotePreviewPage";
 import { PaywallPage } from "./pages/PaywallPage";
 import { OnboardingConfirmPage } from "./pages/OnboardingConfirmPage";
@@ -113,6 +114,9 @@ export const router = createBrowserRouter([
           { path: "knowledge-gap-filler", Component: QMAdminKnowledgeGapFiller },
           { path: "conference-command", Component: QMAdminConferenceCommand },
           { path: "health", Component: QMAdminHealth },
+          // Hidden verification route: navigate here post-deploy to confirm
+          // Sentry captures FE exceptions. Remove once verified.
+          { path: "sentry-test", Component: SentryTestPage },
         ],
       },
       {
