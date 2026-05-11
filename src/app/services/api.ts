@@ -1784,3 +1784,51 @@ export async function updateOrderGuideItem(
     body: JSON.stringify(updates),
   });
 }
+
+// ============================================================
+// Chef Impersonation (QM Admin only)
+// ============================================================
+
+export interface ChefImpersonationResponse {
+  token: string;
+  event_id: string;
+  chef: {
+    id: string;
+    email: string;
+    first_name: string;
+    last_name: string;
+    role: string;
+  };
+}
+
+export interface ExitImpersonationResponse {
+  message: string;
+  event_id: string;
+  ended_at: string;
+}
+
+/**
+ * Step into a chef account for debugging.
+ * Returns a 1-hour JWT for the chef account plus the audit event_id.
+ * Session TTL: 1 hour (judgment call, flagged for retro).
+ */
+export async function impersonateChef(
+  chefId: string,
+  reasonText?: string
+): Promise<ApiResponse<ChefImpersonationResponse>> {
+  return fetchWithAuth<ChefImpersonationResponse>(`/api/v1/admin/impersonate_chef/${chefId}`, {
+    method: 'POST',
+    body: JSON.stringify({ reason_text: reasonText }),
+  });
+}
+
+/**
+ * Close the active impersonation session.
+ * The admin's original token must be restored client-side from localStorage.
+ */
+export async function exitImpersonation(): Promise<ApiResponse<ExitImpersonationResponse>> {
+  return fetchWithAuth<ExitImpersonationResponse>('/api/v1/admin/exit_impersonation', {
+    method: 'POST',
+    body: JSON.stringify({}),
+  });
+}
