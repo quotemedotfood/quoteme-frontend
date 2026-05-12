@@ -256,12 +256,17 @@ async function fetchWithAuth<T>(
   }
 }
 
-// Helper to make guest requests
+// Helper to make guest requests.
+// Sends X-Guest-Token when a guest token is available (preview-link flow).
+// Falls back to Bearer JWT when no guest token is present but a JWT auth
+// token exists (signed-in chef-user flow). Symmetric with the BE
+// Chef::BaseController dual-auth strategy (Path B, A2.1).
 async function fetchWithGuest<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<ApiResponse<T>> {
   const guestToken = getGuestToken();
+  const authToken = getAuthToken();
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...((options.headers as Record<string, string>) || {}),
@@ -269,6 +274,10 @@ async function fetchWithGuest<T>(
 
   if (guestToken) {
     headers['X-Guest-Token'] = guestToken;
+  } else if (authToken) {
+    // Real chef user (no guest token); fall back to Bearer JWT so the BE
+    // dual-auth path can authenticate via Devise/JWT.
+    headers['Authorization'] = `Bearer ${authToken}`;
   }
 
   try {
@@ -1771,7 +1780,7 @@ export interface OrderGuideItemResponse {
 }
 
 export async function getChefOrderGuide(orderGuideId: string): Promise<ApiResponse<OrderGuideResponse>> {
-  return fetchWithAuth(`/api/v1/chef/order_guides/${orderGuideId}`);
+  return fetchWithGuest(`/api/v1/chef/order_guides/${orderGuideId}`);
 }
 
 export async function updateOrderGuideItem(
@@ -1779,7 +1788,7 @@ export async function updateOrderGuideItem(
   itemId: string,
   updates: { quantity?: number; par?: number; notes?: string }
 ): Promise<ApiResponse<OrderGuideItemResponse>> {
-  return fetchWithAuth(`/api/v1/chef/order_guides/${orderGuideId}/items/${itemId}`, {
+  return fetchWithGuest(`/api/v1/chef/order_guides/${orderGuideId}/items/${itemId}`, {
     method: 'PATCH',
     body: JSON.stringify(updates),
   });
