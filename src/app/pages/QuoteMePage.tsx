@@ -1,7 +1,7 @@
 import { Plus, FileText, UtensilsCrossed, ArrowRight, ClipboardPaste, Store, AlertCircle, CheckCircle, Clock } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate, Navigate } from 'react-router';
 import { useAuth } from '../contexts/AuthContext';
 import { useLocation2 } from '../contexts/LocationContext';
 import { isBuyerRole } from '../utils/roles';
@@ -421,6 +421,11 @@ export function QuoteMePage() {
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
 
   if (authLoading) return null;
+
+  // Chef users have their own flow at /chef/entry. Redirect away to prevent
+  // RepDashboard from firing getQuotes/getRestaurants calls that return 403
+  // (chef has no authz on those endpoints).
+  if (user?.role === 'chef') return <Navigate to="/chef/entry" replace />;
 
   const isBuyer = isBuyerRole(user?.role);
 
