@@ -49,7 +49,9 @@ export function AuthPage() {
       case 'distributor_admin': return '/distributor-admin/';
       case 'buyer': return '/dashboard';
       case 'group_admin': return '/dashboard';
-      default: return '/dashboard';
+      case 'chef': return '/chef/entry';
+      case 'rep': return '/start-new-quote';
+      default: return '/start-new-quote';
     }
   };
 

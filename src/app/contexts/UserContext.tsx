@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
+import * as Sentry from '@sentry/react';
 import { getGuestSession } from '../services/api';
 import { isDemoMode } from '../utils/demoMode';
 
@@ -102,6 +103,8 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
           quotesLimit: 5,
           isGuest: true,
         }));
+        // Tag Sentry with anonymous guest identity using first 12 chars of token.
+        Sentry.setUser({ id: existingToken.slice(0, 12), role: 'guest_chef' });
       }
       return;
     }
@@ -115,6 +118,8 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         quotesLimit: 5,
         isGuest: true,
       }));
+      // Tag Sentry with anonymous guest identity using first 12 chars of new token.
+      Sentry.setUser({ id: response.data.token.slice(0, 12), role: 'guest_chef' });
     }
   }
 

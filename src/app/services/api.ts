@@ -256,12 +256,17 @@ async function fetchWithAuth<T>(
   }
 }
 
-// Helper to make guest requests
+// Helper to make guest requests.
+// Sends X-Guest-Token when a guest token is available (preview-link flow).
+// Falls back to Bearer JWT when no guest token is present but a JWT auth
+// token exists (signed-in chef-user flow). Symmetric with the BE
+// Chef::BaseController dual-auth strategy (Path B, A2.1).
 async function fetchWithGuest<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<ApiResponse<T>> {
   const guestToken = getGuestToken();
+  const authToken = getAuthToken();
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...((options.headers as Record<string, string>) || {}),
@@ -269,6 +274,10 @@ async function fetchWithGuest<T>(
 
   if (guestToken) {
     headers['X-Guest-Token'] = guestToken;
+  } else if (authToken) {
+    // Real chef user (no guest token); fall back to Bearer JWT so the BE
+    // dual-auth path can authenticate via Devise/JWT.
+    headers['Authorization'] = `Bearer ${authToken}`;
   }
 
   try {
@@ -1782,5 +1791,53 @@ export async function updateOrderGuideItem(
   return fetchWithGuest(`/api/v1/chef/order_guides/${orderGuideId}/items/${itemId}`, {
     method: 'PATCH',
     body: JSON.stringify(updates),
+  });
+}
+
+// ============================================================
+// Chef Impersonation (QM Admin only)
+// ============================================================
+
+export interface ChefImpersonationResponse {
+  token: string;
+  event_id: string;
+  chef: {
+    id: string;
+    email: string;
+    first_name: string;
+    last_name: string;
+    role: string;
+  };
+}
+
+export interface ExitImpersonationResponse {
+  message: string;
+  event_id: string;
+  ended_at: string;
+}
+
+/**
+ * Step into a chef account for debugging.
+ * Returns a 1-hour JWT for the chef account plus the audit event_id.
+ * Session TTL: 1 hour (judgment call, flagged for retro).
+ */
+export async function impersonateChef(
+  chefId: string,
+  reasonText?: string
+): Promise<ApiResponse<ChefImpersonationResponse>> {
+  return fetchWithAuth<ChefImpersonationResponse>(`/api/v1/admin/impersonate_chef/${chefId}`, {
+    method: 'POST',
+    body: JSON.stringify({ reason_text: reasonText }),
+  });
+}
+
+/**
+ * Close the active impersonation session.
+ * The admin's original token must be restored client-side from localStorage.
+ */
+export async function exitImpersonation(): Promise<ApiResponse<ExitImpersonationResponse>> {
+  return fetchWithAuth<ExitImpersonationResponse>('/api/v1/admin/exit_impersonation', {
+    method: 'POST',
+    body: JSON.stringify({}),
   });
 }
