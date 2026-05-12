@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import * as Sentry from '@sentry/react';
 import { User, signIn, signUp, getCurrentUser, convertGuestToUser, SignUpData, LoginData, getGuestToken } from '../services/api';
 import { isDemoMode } from '../utils/demoMode';
 
@@ -47,6 +48,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (response.data) {
       setUser(response.data);
+      // Tag Sentry events with authenticated user identity.
+      Sentry.setUser({
+        id: response.data.id,
+        email: response.data.email,
+        role: response.data.role,
+      });
     } else {
       console.warn(`[validateToken:${context}] /me failed — clearing token. Error: ${response.error}`);
       localStorage.removeItem('quoteme_token');
@@ -121,6 +128,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   function logout() {
     localStorage.removeItem('quoteme_token');
     setUser(null);
+    // Clear Sentry user context on logout.
+    Sentry.setUser(null);
   }
 
   async function refreshUser() {
