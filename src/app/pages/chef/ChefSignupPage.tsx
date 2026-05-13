@@ -69,12 +69,12 @@ function WelcomeScreen({ onNext }: { onNext: () => void }) {
           </h1>
         </div>
         <button className={primaryBtn} onClick={onNext}>
-          Get Started
+          Build my first quote
         </button>
         <p className="text-center text-sm text-[#4F4F4F] mt-4">
-          Already have an account?{' '}
+          Already with us?{' '}
           <a href="/auth" className="text-[#7FAEC2] underline">
-            Sign in
+            Continue where you left off
           </a>
         </p>
       </div>
@@ -150,9 +150,9 @@ function AccountScreen({
           className="text-2xl font-bold text-[#2A2A2A] mb-1"
           style={headlineStyle}
         >
-          Create your account
+          Tell us about you
         </h1>
-        <p className="text-[#4F4F4F] text-sm mb-6">Free to get started.</p>
+        <p className="text-[#4F4F4F] text-sm mb-6">Free. No credit card.</p>
 
         <div className="flex flex-col gap-4">
           <div className="flex gap-3">
@@ -207,7 +207,7 @@ function AccountScreen({
           )}
 
           <button className={primaryBtn} onClick={handleSubmit} disabled={submitting}>
-            {submitting ? 'Creating account…' : 'Continue'}
+            {submitting ? 'Saving…' : 'Continue'}
           </button>
 
           <button className={secondaryBtn} onClick={onBack}>
@@ -477,7 +477,7 @@ function ProposalsScreen({
         {error && <p className="text-sm text-red-500 text-center mb-4">{error}</p>}
 
         <button className={primaryBtn} onClick={handleFinish} disabled={submitting}>
-          {submitting ? 'Saving…' : 'Finish setup'}
+          {submitting ? 'Saving…' : 'Save and continue'}
         </button>
 
         <button className={secondaryBtn + ' mt-3'} onClick={onBack}>
