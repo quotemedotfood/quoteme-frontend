@@ -72,7 +72,12 @@ export interface GuestSession {
 
 export interface GuestQuote {
   raw_text: string;
-  name: string;
+  // Optional restaurant name. When omitted, BE falls back to the chef's
+  // existing RestaurantContact (authenticated chef) or the demo
+  // distributor's restaurant (guest). Sending a literal placeholder
+  // string here (e.g. "My Restaurant") creates a Restaurant with that
+  // literal name and surfaces as the OG header — see P0-11.
+  name?: string;
 }
 
 export interface GuestConvertData {
