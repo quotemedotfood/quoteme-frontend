@@ -597,10 +597,23 @@ export async function getDemoDistributor(type: 'food' | 'liquor' = 'food'): Prom
   }
 }
 
-export async function createGuestQuote(quoteData: GuestQuote, distributorId?: string): Promise<ApiResponse<GuestQuoteCreateResponse>> {
+// distributorId / catalogId are optional. When absent, BE resolves the
+// target via ChefDistributorResolutionService for authenticated chefs, or
+// the active demo distributor for guest sessions. The previous hardcoded
+// Summit UUID fallback is gone (V2 W3); chefs with real distributor
+// relationships will now route to their own catalog instead of the demo.
+export async function createGuestQuote(
+  quoteData: GuestQuote,
+  distributorId?: string,
+  catalogId?: string,
+): Promise<ApiResponse<GuestQuoteCreateResponse>> {
+  const body: Record<string, unknown> = { ...quoteData };
+  if (distributorId) body.distributor_id = distributorId;
+  if (catalogId) body.catalog_id = catalogId;
+
   return fetchWithGuest('/api/v1/guest/quotes', {
     method: 'POST',
-    body: JSON.stringify({ ...quoteData, distributor_id: distributorId || '88c1038d-6b3b-4cc0-ba35-32c32f435f91' }),
+    body: JSON.stringify(body),
   });
 }
 
