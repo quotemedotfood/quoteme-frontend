@@ -59,6 +59,7 @@ export function ChefQuoteReceiptPage() {
   const [sending, setSending] = useState(false);
   const [questionSent, setQuestionSent] = useState(false);
   const [accepting, setAccepting] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -75,21 +76,31 @@ export function ChefQuoteReceiptPage() {
 
   async function handleAccept() {
     if (!id) return;
+    setActionError(null);
     setAccepting(true);
     const res = await acceptChefQuote(id);
+    if (res.error) {
+      setActionError(res.error);
+      setAccepting(false);
+      return;
+    }
     if (res.data?.order_guide_id) {
       navigate(`/chef/order-guide/${res.data.order_guide_id}`);
     } else {
-      // Accepted but no order guide yet — stay and show success state
       setAccepting(false);
     }
   }
 
   async function handleSendQuestion() {
     if (!id || !questionText.trim()) return;
+    setActionError(null);
     setSending(true);
-    await sendChefQuestion(id, questionText.trim());
+    const res = await sendChefQuestion(id, questionText.trim());
     setSending(false);
+    if (res.error) {
+      setActionError(res.error);
+      return;
+    }
     setQuestionSent(true);
     setQuestionOpen(false);
     setQuestionText('');
@@ -239,6 +250,14 @@ export function ChefQuoteReceiptPage() {
           {questionSent && (
             <p className="text-sm text-green-600 mb-1">
               Your question has been sent. Your rep will be in touch.
+            </p>
+          )}
+
+          {/* Action error — surfaced on accept/question failure so the chef
+              sees a real problem instead of a silent drop. */}
+          {actionError && (
+            <p className="text-sm text-red-600 mb-1">
+              We couldn't complete that action ({actionError}). Please try again or contact your rep directly.
             </p>
           )}
 
