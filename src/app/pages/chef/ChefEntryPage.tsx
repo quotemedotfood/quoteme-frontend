@@ -268,7 +268,7 @@ export function ChefEntryPage() {
             onClick={handleSubmit}
             disabled={!hasContent || submitting}
           >
-            {submitting ? 'Submitting…' : 'Build my quote'}
+            {submitting ? 'Sending…' : 'Build my quote'}
           </button>
         </div>
       </div>

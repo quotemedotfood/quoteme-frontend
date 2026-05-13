@@ -300,7 +300,7 @@ export function ChefQuoteReceiptPage() {
             disabled={accepting}
             className="w-full bg-[#2A2A2A] hover:bg-[#1A1A1A] text-white rounded-lg px-6 py-3.5 text-base font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {accepting ? 'Setting up your order guide…' : 'Looks good'}
+            {accepting ? 'Building your order guide…' : 'Looks good'}
           </button>
 
           {/* I have questions */}
@@ -318,7 +318,7 @@ export function ChefQuoteReceiptPage() {
               silent reload (was navigate(-1)). */}
           {savedForLater ? (
             <p className="text-sm text-[#4F4F4F] px-6 py-2.5 text-center">
-              Saved. You can return to this quote from the email your rep sent.
+              Saved. You can return to this quote anytime.
             </p>
           ) : (
             <button
