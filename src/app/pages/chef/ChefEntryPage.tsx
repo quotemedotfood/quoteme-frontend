@@ -127,6 +127,15 @@ export function ChefEntryPage() {
     }
   }
 
+  // P0-12: take over the screen with the status-page visual the moment the
+  // chef clicks "Build my quote" — no waiting for the POST response before
+  // showing feedback. When the response returns, we navigate(replace) to
+  // /chef/status/<id>; the chef perceives zero transition because
+  // ChefStatusPage renders the identical layout.
+  if (submitting) {
+    return <BuildingQuoteOverlay />;
+  }
+
   return (
     <div className={pageWrap}>
       <div className={card}>
@@ -272,6 +281,77 @@ export function ChefEntryPage() {
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+// ─── BuildingQuoteOverlay ────────────────────────────────────────────────────
+// Visual carbon-copy of ChefStatusPage so the chef perceives zero transition
+// between submit-click and the status page. Used while the POST is in flight
+// (we don't yet have a quote_id to navigate to). Stage messages tick from the
+// moment the click registers; after navigate() resolves to /chef/status/<id>
+// the timer restarts there — close enough that the chef doesn't notice.
+
+const STATUS_STAGES: Array<{ at: number; message: string }> = [
+  { at: 0, message: 'Reading your menu' },
+  { at: 8, message: 'Matching ingredients' },
+  { at: 18, message: 'Building your quote' },
+  { at: 35, message: 'Almost there' },
+  { at: 50, message: 'So close' },
+];
+
+function stageFor(elapsedSec: number): string {
+  let current = STATUS_STAGES[0].message;
+  for (const stage of STATUS_STAGES) {
+    if (elapsedSec >= stage.at) current = stage.message;
+  }
+  return current;
+}
+
+function BuildingQuoteOverlay() {
+  const [dots, setDots] = useState('');
+  const [elapsed, setElapsed] = useState(0);
+  const dotsRef = useRef(0);
+  const startedAtRef = useRef<number>(Date.now());
+
+  useEffect(() => {
+    const states = ['', '.', '..', '...'];
+    const interval = setInterval(() => {
+      dotsRef.current = (dotsRef.current + 1) % states.length;
+      setDots(states[dotsRef.current]);
+    }, 500);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setElapsed(Math.floor((Date.now() - startedAtRef.current) / 1000));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const stageMessage = stageFor(elapsed);
+
+  return (
+    <div className="min-h-screen bg-white flex flex-col items-center justify-center p-6">
+      <div className="w-full max-w-sm flex flex-col items-center text-center gap-6">
+        <div
+          className="w-12 h-12 rounded-full border-4 border-[#E0E0E0] border-t-[#E5A84B]"
+          style={{ animation: 'spin 1s linear infinite' }}
+        />
+        <div>
+          <h1
+            className="text-2xl font-bold text-[#2A2A2A] mb-2"
+            style={headlineStyle}
+          >
+            {stageMessage}{dots}
+          </h1>
+          <p className="text-[#4F4F4F] text-base">
+            This usually takes about 30 seconds.
+          </p>
+        </div>
+      </div>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 }
