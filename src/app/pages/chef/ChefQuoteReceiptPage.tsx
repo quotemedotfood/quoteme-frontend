@@ -60,6 +60,7 @@ export function ChefQuoteReceiptPage() {
   const [questionSent, setQuestionSent] = useState(false);
   const [accepting, setAccepting] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [savedForLater, setSavedForLater] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -312,13 +313,21 @@ export function ChefQuoteReceiptPage() {
             </button>
           )}
 
-          {/* Save for later */}
-          <button
-            onClick={() => navigate(-1)}
-            className="w-full text-[#9E9E9E] hover:text-[#4F4F4F] px-6 py-2.5 text-sm font-medium transition-colors"
-          >
-            Save for later
-          </button>
+          {/* Save for later — quote is already persisted server-side, so this
+              is an explicit confirmation rather than a save action. No
+              silent reload (was navigate(-1)). */}
+          {savedForLater ? (
+            <p className="text-sm text-[#4F4F4F] px-6 py-2.5 text-center">
+              Saved. You can return to this quote from the email your rep sent.
+            </p>
+          ) : (
+            <button
+              onClick={() => setSavedForLater(true)}
+              className="w-full text-[#9E9E9E] hover:text-[#4F4F4F] px-6 py-2.5 text-sm font-medium transition-colors"
+            >
+              Save for later
+            </button>
+          )}
 
         </div>
       </div>

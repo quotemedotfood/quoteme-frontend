@@ -272,11 +272,16 @@ async function fetchWithGuest<T>(
     ...((options.headers as Record<string, string>) || {}),
   };
 
+  // Send BOTH when both are present so a signed-in chef who still has a
+  // leftover guest token can be recognized as a chef by BE dual-auth
+  // (Chef::BaseController and GuestQuotesController#current_chef_user_from_jwt
+  // both prefer chef identity when both tokens arrive). Without this, the
+  // X-Guest-Token wins and the chef is invisible — quotes get linked to
+  // distributor.restaurants.first and action endpoints 404.
   if (guestToken) {
     headers['X-Guest-Token'] = guestToken;
-  } else if (authToken) {
-    // Real chef user (no guest token); fall back to Bearer JWT so the BE
-    // dual-auth path can authenticate via Devise/JWT.
+  }
+  if (authToken) {
     headers['Authorization'] = `Bearer ${authToken}`;
   }
 

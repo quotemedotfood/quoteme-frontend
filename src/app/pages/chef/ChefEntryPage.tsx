@@ -1,7 +1,13 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { createGuestQuote } from '../../services/api';
 import { useUser } from '../../contexts/UserContext';
+
+// Session-scoped marker for the most recently submitted quote. Survives
+// back/forward navigation within the tab (which is the bug case — browser
+// bfcache restores the page state, leaving the form editable). Cleared on
+// tab close.
+const RECENT_QUOTE_KEY = 'chef_recent_quote_id';
 
 // ─── Shared styles ─────────────────────────────────────────────────────────────
 
@@ -29,8 +35,18 @@ export function ChefEntryPage() {
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
   const hasContent = pasteText.trim().length > 0 || selectedFile !== null;
-  const textareaDisabled = selectedFile !== null;
-  const fileDisabled = pasteText.trim().length > 0;
+  const textareaDisabled = selectedFile !== null || submitting;
+  const fileDisabled = pasteText.trim().length > 0 || submitting;
+
+  // If the chef arrived back on this page via browser back from /chef/status/<id>,
+  // forward them to that status page instead of letting them re-edit/re-submit
+  // the menu they already sent. (Browser bfcache restores form state on back-nav;
+  // useState wouldn't.) The marker is cleared once the chef explicitly starts a
+  // new menu from scratch.
+  useEffect(() => {
+    const recentId = sessionStorage.getItem(RECENT_QUOTE_KEY);
+    if (recentId) navigate(`/chef/status/${recentId}`, { replace: true });
+  }, [navigate]);
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0] ?? null;
@@ -82,6 +98,7 @@ export function ChefEntryPage() {
         }
 
         const data = await response.json();
+        sessionStorage.setItem(RECENT_QUOTE_KEY, data.quote_id);
         navigate(`/chef/status/${data.quote_id}`);
         return;
       } else {
@@ -96,6 +113,7 @@ export function ChefEntryPage() {
           return;
         }
 
+        sessionStorage.setItem(RECENT_QUOTE_KEY, res.data!.quote_id);
         navigate(`/chef/status/${res.data!.quote_id}`);
       }
     } catch (err) {
@@ -133,7 +151,10 @@ export function ChefEntryPage() {
               value={restaurantName}
               onChange={(e) => setRestaurantName(e.target.value)}
               placeholder="e.g. The Blue Apron"
-              className="border border-[#E0E0E0] rounded-lg px-4 py-2.5 text-sm text-[#2A2A2A] placeholder-[#BDBDBD] focus:outline-none focus:ring-2 focus:ring-[#E5A84B]/40 focus:border-[#E5A84B]"
+              disabled={submitting}
+              className={`border border-[#E0E0E0] rounded-lg px-4 py-2.5 text-sm text-[#2A2A2A] placeholder-[#BDBDBD] focus:outline-none focus:ring-2 focus:ring-[#E5A84B]/40 focus:border-[#E5A84B] ${
+                submitting ? 'opacity-40 cursor-not-allowed bg-[#F9F9F9]' : ''
+              }`}
             />
           </div>
 
