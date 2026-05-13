@@ -102,10 +102,14 @@ export function ChefEntryPage() {
         navigate(`/chef/status/${data.quote_id}`);
         return;
       } else {
-        // Text paste path
+        // Text paste path — restaurant name is optional. When blank, omit it
+        // so BE falls back to the chef's existing RestaurantContact instead
+        // of creating a Restaurant literally named "My Restaurant" that
+        // later surfaces as the OG header (P0-11).
+        const trimmedName = restaurantName.trim();
         res = await createGuestQuote({
           raw_text: pasteText.trim(),
-          name: restaurantName.trim() || 'My Restaurant',
+          ...(trimmedName ? { name: trimmedName } : {}),
         });
 
         if (res.error) {
