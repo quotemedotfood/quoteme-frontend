@@ -53,6 +53,7 @@ export function ChefQuoteReceiptPage() {
   const [quote, setQuote] = useState<QuoteResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [errorStatus, setErrorStatus] = useState<number | null>(null);
 
   const [questionOpen, setQuestionOpen] = useState(false);
   const [questionText, setQuestionText] = useState('');
@@ -68,6 +69,7 @@ export function ChefQuoteReceiptPage() {
     getGuestQuote(id).then((res) => {
       if (res.error) {
         setError(res.error);
+        setErrorStatus(res.status ?? null);
       } else if (res.data) {
         setQuote(res.data);
       }
@@ -122,11 +124,24 @@ export function ChefQuoteReceiptPage() {
   }
 
   // ── Error ──────────────────────────────────────────────────────────────────
-
+  // Status-aware copy. The receipt endpoint can return:
+  //   401 → auth expired or chef arrived without a valid magic-link session
+  //   404 → quote actually missing (rare; ID typo or quote deleted)
+  //   any other → generic retry. Base44-compliant: no banned verbs, framing
+  //   as an operational document, no SaaS-funnel "sign in" language.
   if (error || !quote) {
+    const { title, body } = receiptErrorCopy(errorStatus);
     return (
       <div className="min-h-screen bg-white flex items-center justify-center px-6">
-        <p className="text-[#4F4F4F] text-base">Quote not found.</p>
+        <div className="max-w-md text-center">
+          <h1
+            className="text-2xl font-semibold text-[#2A2A2A] mb-3"
+            style={{ fontFamily: "'Playfair Display', serif" }}
+          >
+            {title}
+          </h1>
+          <p className="text-[#4F4F4F] text-sm leading-relaxed">{body}</p>
+        </div>
       </div>
     );
   }
@@ -333,4 +348,29 @@ export function ChefQuoteReceiptPage() {
       </div>
     </div>
   );
+}
+
+// Status-coded error copy for the receipt mount. Per Base44 Guardrails:
+// no "sign in", "log in", "create account" verbs in chef-facing surfaces.
+// 401 → likely a stale/missing magic-link session, route the chef back to
+//        their rep (only durable recovery path — the chef has no password).
+// 404 → quote actually missing (ID typo, deleted record).
+// other → generic retry.
+function receiptErrorCopy(status: number | null): { title: string; body: string } {
+  if (status === 401) {
+    return {
+      title: "We couldn't open this quote.",
+      body: "Your link may have expired or moved on. Ask your rep for a fresh quote link — they can resend in a moment.",
+    };
+  }
+  if (status === 404) {
+    return {
+      title: "This quote isn't available.",
+      body: "The quote may have been removed or the link is mistyped. Reach out to your rep if you need a new copy.",
+    };
+  }
+  return {
+    title: "Something went wrong.",
+    body: "Try again in a moment, or reach out to your rep if it keeps happening.",
+  };
 }
