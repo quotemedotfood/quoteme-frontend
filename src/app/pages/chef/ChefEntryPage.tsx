@@ -189,7 +189,11 @@ export function ChefEntryPage() {
           busy={submitting}
           onPickExisting={(r) => {
             setMultiRestaurantPrompt(null);
-            submitQuote({ nameOverride: r.name });
+            // confirm_new_restaurant unconditionally bypasses the guard so a
+            // stale `restaurantName` closure can't fall through to the typed
+            // name. resolve_restaurant_for_quote still matches r.name → the
+            // existing record (case-insensitive); no new Restaurant is created.
+            submitQuote({ nameOverride: r.name, confirmNew: true });
           }}
           onCreateNew={(typedName) => {
             setMultiRestaurantPrompt(null);

@@ -151,7 +151,7 @@ export function ChefQuoteReceiptPage() {
   const matchedLines = quote.lines.filter(
     (l) => l.availability_status === 'available' && l.product,
   );
-  const hasUnmatched = quote.lines.some(
+  const unmatchedLines = quote.lines.filter(
     (l) => l.availability_status === 'not_in_catalog' || !l.product,
   );
 
@@ -252,11 +252,32 @@ export function ChefQuoteReceiptPage() {
           ))}
         </div>
 
-        {/* ── 3. Gap acknowledgment ─────────────────────────────────────── */}
-        {hasUnmatched && (
-          <p className="text-sm italic text-[#BDBDBD] mb-8">
-            Some items will be handled directly by your rep.
-          </p>
+        {/* ── 3. Items your rep will handle ─────────────────────────────── */}
+        {/* Justin's law: every typed ingredient surfaces — matched as products
+            above, unmatched here. No silent drops, no generic legend that
+            hides what the chef actually sent. */}
+        {unmatchedLines.length > 0 && (
+          <div className="mb-8">
+            <p
+              className="text-xs font-semibold text-[#9E9E9E] tracking-widest uppercase mb-3 pb-2 border-b border-[#F0F0F0]"
+            >
+              Items your rep will handle
+            </p>
+            <div className="flex flex-col gap-3">
+              {unmatchedLines.map((line) => (
+                <div key={line.id} className="flex items-start justify-between gap-4">
+                  <span className="text-[#2A2A2A] text-base font-medium leading-snug">
+                    {toTitleCase(line.component?.name || line.category || 'Item')}
+                  </span>
+                  {line.category && line.component?.name && (
+                    <span className="text-sm text-[#9E9E9E] whitespace-nowrap shrink-0 mt-0.5">
+                      {toTitleCase(line.category)}
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
         )}
 
         {/* ── 4. Decision actions ───────────────────────────────────────── */}
