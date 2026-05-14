@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router';
 import { consumeChefMagicLink } from '../../services/api';
 import type { ChefMagicLinkConsumeResponse } from '../../services/api';
 import { useUser } from '../../contexts/UserContext';
+import { useAuth } from '../../contexts/AuthContext';
 
 // V2 W4 — Justin/Moose lock: the page IS the quote arrival. No greeting,
 // no "welcome", no account framing. Lead with rep + distributor + the
@@ -64,6 +65,7 @@ export function ChefWelcomePage() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const { syncWithAuthUser } = useUser();
+  const { refreshUser } = useAuth();
 
   const token = params.get('token') || '';
 
@@ -88,6 +90,12 @@ export function ChefWelcomePage() {
         // Persist JWT (existing auth pattern) so subsequent /api/v1/chef/*
         // calls authenticate as this chef.
         localStorage.setItem('quoteme_token', res.data.jwt);
+        // V2 P0-A/B fix: AuthContext was only validating on app boot, so
+        // newly-stored JWTs from the magic-link flow left user as null
+        // → DashboardRoleRouter fell through to rep dashboard and rep
+        // sidebar. Forcing a /me roundtrip here populates AuthContext.user
+        // with role: 'chef' before the chef navigates onward.
+        await refreshUser();
         // Tell UserContext we're an authenticated chef (not guest).
         const u = res.data.user;
         const fullName = [u.first_name, u.last_name].filter(Boolean).join(' ') || u.email;
@@ -109,7 +117,7 @@ export function ChefWelcomePage() {
     })();
 
     return () => { cancelled = true; };
-  }, [token, syncWithAuthUser]);
+  }, [token, syncWithAuthUser, refreshUser]);
 
   // ── Loading ────────────────────────────────────────────────────────────────
   if (state === 'loading') {

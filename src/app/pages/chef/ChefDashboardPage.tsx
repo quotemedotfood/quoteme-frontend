@@ -75,10 +75,10 @@ export function ChefDashboardPage() {
   const limit = data?.free_tier_limit ?? 5;
   const questionsWithText = quotes.filter((q) => q.latest_question);
 
+  // RootLayout renders the ChefTopbar for chef-role users; this page no
+  // longer needs its own header chrome.
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: C.warmPaper, color: C.charcoal }}>
-      <Header />
-
+    <div className="flex flex-col" style={{ color: C.charcoal }}>
       <div className="flex-1">
         <div className="max-w-2xl mx-auto px-5 pt-6 pb-12">
           {state === 'loading' && <LoadingRow />}
@@ -105,19 +105,6 @@ export function ChefDashboardPage() {
 }
 
 // ─── Subcomponents ────────────────────────────────────────────────────────
-
-function Header() {
-  return (
-    <div
-      className="flex items-center justify-between px-5 py-3 bg-white"
-      style={{ borderBottom: `1px solid ${C.softLine}` }}
-    >
-      <span style={{ ...serif, fontSize: 18, fontWeight: 600, color: C.charcoal, lineHeight: 1 }}>
-        QuoteMe
-      </span>
-    </div>
-  );
-}
 
 function QuoteCount({ count, limit }: { count: number; limit: number }) {
   const remaining = Math.max(0, limit - count);
