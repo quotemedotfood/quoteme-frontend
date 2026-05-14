@@ -85,6 +85,55 @@ export interface GuestConvertData {
   user: SignUpData;
 }
 
+// ─── Chef magic-link consume ────────────────────────────────────────────────
+// V2 W4: response shape the consume endpoint returns when a chef arrives via
+// rep email. The `quote` envelope payload is everything ChefWelcomePage
+// needs to render the TO/FROM/QUOTE blocks on first paint — no second
+// roundtrip required.
+
+export interface ChefMagicLinkConsumeResponse {
+  jwt: string;
+  user: {
+    id: string;
+    email: string;
+    role: string;
+    first_name: string | null;
+    last_name: string | null;
+  };
+  quote: {
+    id: string;
+    label: string;
+    created_at: string;
+    sent_at: string | null;
+    status: string;
+    item_count: number;
+    category_count: number;
+    total_cents: number;
+    rep: {
+      name: string;
+      first_name: string | null;
+      email: string;
+      phone: string | null;
+    } | null;
+    distributor: {
+      name: string;
+      short_name: string;
+    } | null;
+    restaurant: {
+      name: string;
+      city: string | null;
+      state: string | null;
+    } | null;
+  };
+  redirect: string;
+}
+
+export interface ChefMagicLinkConsumeError {
+  error: "invalid_token" | "expired" | "role_conflict" | string;
+  message?: string;
+  existing_role?: string;
+}
+
 // Menu create response
 export interface MenuCreateResponse {
   menu_id: string;
@@ -1767,6 +1816,43 @@ export async function markAllNotificationsRead(): Promise<ApiResponse<any>> {
 
 export async function acceptChefQuote(quoteId: string): Promise<ApiResponse<{ order_guide_id: string }>> {
   return fetchWithGuest(`/api/v1/chef/quotes/${quoteId}/accept`, { method: 'POST' });
+}
+
+// V2 W4 — magic-link consume. Unauthenticated by design; the token IS the
+// credential. Returns a JWT + the full quote envelope payload that
+// ChefWelcomePage uses to paint the TO/FROM/QUOTE blocks on first arrival.
+//
+// Uses a plain fetch (not fetchWithGuest / fetchWithAuth) because:
+//   1. The chef has no JWT yet — this call IS what issues it.
+//   2. A leftover guest token from a prior session must NOT bleed into the
+//      magic-link consume request; the token in the URL is authoritative.
+export async function consumeChefMagicLink(
+  token: string,
+): Promise<ApiResponse<ChefMagicLinkConsumeResponse>> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/v1/chef/magic_links/consume`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token }),
+    });
+
+    if (!response.ok) {
+      const errorBody: ChefMagicLinkConsumeError = await response.json().catch(() => ({ error: `HTTP ${response.status}` }));
+      return {
+        error: errorBody.error || `HTTP ${response.status}`,
+        error_code: errorBody.error,
+        data: undefined,
+      };
+    }
+
+    const data: ChefMagicLinkConsumeResponse = await response.json();
+    return { data, token: data.jwt };
+  } catch (err) {
+    return {
+      error: err instanceof Error ? err.message : 'Network error',
+      data: undefined,
+    };
+  }
 }
 
 export async function sendChefQuestion(quoteId: string, message: string): Promise<ApiResponse<{ success: boolean }>> {
