@@ -1900,6 +1900,35 @@ export async function getChefDistributors(): Promise<ApiResponse<ChefDistributor
   return fetchWithGuest(`/api/v1/chef/distributors`);
 }
 
+// V2 W4 inc 4 — chef-scoped reverse-chron quote list. Per-row carries the
+// dashboard's display fields + latest_question for the "previous questions"
+// strip, in one round-trip.
+export interface ChefQuoteRow {
+  id: string;
+  label: string;
+  status: string;
+  created_at: string;
+  sent_at: string | null;
+  item_count: number;
+  total_cents: number;
+  distributor: { id: string; name: string } | null;
+  restaurant: { id: string; name: string } | null;
+  rep: { name: string; first_name: string | null } | null;
+  has_order_guide: boolean;
+  order_guide_id: string | null;
+  latest_question: string | null;
+}
+
+export interface ChefQuotesIndexResponse {
+  quotes: ChefQuoteRow[];
+  count: number;
+  free_tier_limit: number;
+}
+
+export async function getChefQuotes(): Promise<ApiResponse<ChefQuotesIndexResponse>> {
+  return fetchWithGuest(`/api/v1/chef/quotes`);
+}
+
 export async function sendChefQuestion(quoteId: string, message: string): Promise<ApiResponse<{ success: boolean }>> {
   return fetchWithGuest(`/api/v1/chef/quotes/${quoteId}/question`, {
     method: 'POST',

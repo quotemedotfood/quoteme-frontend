@@ -4,6 +4,7 @@ import { RootLayout } from "./components/RootLayout";
 import { QMAdminLayout } from "./components/QMAdminLayout";
 import { CustomersPage } from "./pages/CustomersPage";
 import { QuoteMePage } from "./pages/QuoteMePage";
+import { DashboardRoleRouter } from "./components/DashboardRoleRouter";
 import { StartNewQuotePage } from "./pages/StartNewQuotePage";
 import { QuoteBuilderPage } from "./pages/QuoteBuilderPage";
 import { SettingsPage } from "./pages/SettingsPage";
@@ -136,7 +137,7 @@ export const router = createBrowserRouter([
         children: [
           { index: true, Component: StartNewQuotePage },
           ...(demo ? [] : [
-            { path: "dashboard", Component: QuoteMePage },
+            { path: "dashboard", Component: DashboardRoleRouter },
             { path: "customers", Component: CustomersPage },
             { path: "vendors", Component: VendorsPage },
             { path: "vendors/:id", Component: VendorDetailPage },
