@@ -145,7 +145,7 @@ export function MultiRestaurantConfirmModal({
                 className="mt-3 inline-flex items-center gap-1"
                 style={{ ...sans, fontSize: 12, color: C.gray700, fontWeight: 500 }}
               >
-                Use {firstWord(r.name)}
+                Use {r.name}
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={C.gray700} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <line x1="5" y1="12" x2="19" y2="12" />
                   <polyline points="12 5 19 12 12 19" />
@@ -203,6 +203,3 @@ export function MultiRestaurantConfirmModal({
   );
 }
 
-function firstWord(s: string): string {
-  return s.trim().split(/\s+/)[0] || s;
-}
