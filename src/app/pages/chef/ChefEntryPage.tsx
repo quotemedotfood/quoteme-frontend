@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { createGuestQuote } from '../../services/api';
 import { useUser } from '../../contexts/UserContext';
+import { MultiRestaurantConfirmModal, type ExistingRestaurant } from '../../components/MultiRestaurantConfirmModal';
 
 // Session-scoped marker for the most recently submitted quote. Survives
 // back/forward navigation within the tab (which is the bug case — browser
@@ -30,6 +31,12 @@ export function ChefEntryPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // V2 W4-2 — multi-restaurant guard rail modal state. Populated when BE
+  // returns 409 with error_code "multi_restaurant_confirm_required".
+  const [multiRestaurantPrompt, setMultiRestaurantPrompt] = useState<{
+    existing_restaurants: ExistingRestaurant[];
+    typed_name: string;
+  } | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -62,36 +69,57 @@ export function ChefEntryPage() {
 
   async function handleSubmit() {
     if (!hasContent) return;
+    setError(null);
+    setMultiRestaurantPrompt(null);
+    await submitQuote();
+  }
+
+  /**
+   * Submit the quote. Used both on initial submit and on re-submit after the
+   * MultiRestaurantConfirmModal closes. `nameOverride` lets the modal force a
+   * specific restaurant name (an existing one matched exactly); `confirmNew`
+   * sets the BE bypass flag when the chef explicitly approved creating a
+   * fresh Restaurant.
+   */
+  async function submitQuote(opts: { nameOverride?: string; confirmNew?: boolean } = {}) {
     setSubmitting(true);
     setError(null);
 
     try {
-      // Ensure guest session exists
       if (!localStorage.getItem('quoteme_guest_token')) {
         await initGuestSession();
       }
 
-      let res;
-
       if (selectedFile) {
-        // File path: send as FormData
+        // File path: send as FormData (createGuestQuote is JSON-only)
         const formData = new FormData();
         formData.append('file', selectedFile);
-        if (restaurantName.trim()) {
-          formData.append('name', restaurantName.trim());
-        }
+        const sendName = opts.nameOverride ?? restaurantName.trim();
+        if (sendName) formData.append('name', sendName);
+        if (opts.confirmNew) formData.append('confirm_new_restaurant', 'true');
 
-        // createGuestQuote expects JSON body, so we call the raw endpoint directly
         const guestToken = localStorage.getItem('quoteme_guest_token');
+        const authToken = localStorage.getItem('quoteme_token');
         const API_BASE = import.meta.env.VITE_API_BASE_URL || 'https://web-production-9f6e9.up.railway.app';
         const response = await fetch(`${API_BASE}/api/v1/guest/quotes`, {
           method: 'POST',
           headers: {
             ...(guestToken ? { 'X-Guest-Token': guestToken } : {}),
+            ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
           },
           body: formData,
         });
 
+        if (response.status === 409) {
+          const body = await response.json().catch(() => ({}));
+          if (body.error === 'multi_restaurant_confirm_required') {
+            setMultiRestaurantPrompt({
+              existing_restaurants: body.existing_restaurants || [],
+              typed_name: body.typed_name || sendName,
+            });
+            return;
+          }
+        }
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
           throw new Error(errorData.error || `HTTP ${response.status}`);
@@ -101,25 +129,31 @@ export function ChefEntryPage() {
         sessionStorage.setItem(RECENT_QUOTE_KEY, data.quote_id);
         navigate(`/chef/status/${data.quote_id}`);
         return;
-      } else {
-        // Text paste path — restaurant name is optional. When blank, omit it
-        // so BE falls back to the chef's existing RestaurantContact instead
-        // of creating a Restaurant literally named "My Restaurant" that
-        // later surfaces as the OG header (P0-11).
-        const trimmedName = restaurantName.trim();
-        res = await createGuestQuote({
-          raw_text: pasteText.trim(),
-          ...(trimmedName ? { name: trimmedName } : {}),
-        });
-
-        if (res.error) {
-          setError(res.error);
-          return;
-        }
-
-        sessionStorage.setItem(RECENT_QUOTE_KEY, res.data!.quote_id);
-        navigate(`/chef/status/${res.data!.quote_id}`);
       }
+
+      // Text paste path — restaurant name is optional. When blank, omit it
+      // so BE falls back to the chef's existing RestaurantContact (P0-11).
+      const sendName = opts.nameOverride ?? restaurantName.trim();
+      const res = await createGuestQuote({
+        raw_text: pasteText.trim(),
+        ...(sendName ? { name: sendName } : {}),
+        ...(opts.confirmNew ? { confirm_new_restaurant: true } : {}),
+      });
+
+      if (res.error_code === 'multi_restaurant_confirm_required' && res.error_data) {
+        setMultiRestaurantPrompt({
+          existing_restaurants: (res.error_data.existing_restaurants as ExistingRestaurant[]) || [],
+          typed_name: (res.error_data.typed_name as string) || sendName,
+        });
+        return;
+      }
+      if (res.error) {
+        setError(res.error);
+        return;
+      }
+
+      sessionStorage.setItem(RECENT_QUOTE_KEY, res.data!.quote_id);
+      navigate(`/chef/status/${res.data!.quote_id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
     } finally {
@@ -138,6 +172,21 @@ export function ChefEntryPage() {
 
   return (
     <div className={pageWrap}>
+      {multiRestaurantPrompt && (
+        <MultiRestaurantConfirmModal
+          existingRestaurants={multiRestaurantPrompt.existing_restaurants}
+          typedName={multiRestaurantPrompt.typed_name}
+          busy={submitting}
+          onPickExisting={(r) => {
+            setMultiRestaurantPrompt(null);
+            submitQuote({ nameOverride: r.name });
+          }}
+          onCreateNew={(typedName) => {
+            setMultiRestaurantPrompt(null);
+            submitQuote({ nameOverride: typedName, confirmNew: true });
+          }}
+        />
+      )}
       <div className={card}>
         {/* Headline */}
         <div className="mb-8">

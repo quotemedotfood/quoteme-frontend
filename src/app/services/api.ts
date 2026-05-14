@@ -5,7 +5,24 @@ interface ApiResponse<T> {
   data?: T;
   error?: string;
   error_code?: string;
+  // Full structured error payload from BE (e.g. multi_restaurant_confirm_required
+  // returns existing_restaurants[] + typed_name + hint). Callers that need
+  // structured BE errors (modal display) read this. String-only callers
+  // continue to use `error`.
+  error_data?: Record<string, unknown>;
+  status?: number;
   token?: string;
+}
+
+// V2 multi-restaurant guard rail — 409 payload when an authenticated chef
+// has 2+ existing restaurant_contacts and typed a new name. See BE
+// guest_quotes_controller.rb #multi_restaurant_guard.
+export interface MultiRestaurantConfirmError {
+  error: 'multi_restaurant_confirm_required';
+  message: string;
+  typed_name: string;
+  existing_restaurants: Array<{ id: string; name: string }>;
+  hint: string;
 }
 
 // Auth Types
@@ -78,6 +95,12 @@ export interface GuestQuote {
   // string here (e.g. "My Restaurant") creates a Restaurant with that
   // literal name and surfaces as the OG header — see P0-11.
   name?: string;
+  // V2 W4 increment 2 — bypass the multi-restaurant guard rail. Set true
+  // only after the chef explicitly confirms via MultiRestaurantConfirmModal
+  // that they want to create a new restaurant despite having 2+ existing
+  // contacts. BE: app/controllers/api/v1/guest_quotes_controller.rb
+  // #multi_restaurant_guard.
+  confirm_new_restaurant?: boolean;
 }
 
 export interface GuestConvertData {
@@ -349,6 +372,9 @@ async function fetchWithGuest<T>(
       const errorData = await response.json().catch(() => ({}));
       return {
         error: errorData.error || errorData.message || `HTTP ${response.status}`,
+        error_code: errorData.error,
+        error_data: errorData,
+        status: response.status,
         data: undefined,
       };
     }
