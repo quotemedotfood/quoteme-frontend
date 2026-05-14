@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
 import { createGuestQuote } from '../../services/api';
 import { useUser } from '../../contexts/UserContext';
 import { MultiRestaurantConfirmModal, type ExistingRestaurant } from '../../components/MultiRestaurantConfirmModal';
@@ -24,7 +24,13 @@ const errorText = 'text-sm text-red-500';
 
 export function ChefEntryPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { initGuestSession } = useUser();
+  // V2 W4-3 — when the chef arrives here from /chef/catalog with a
+  // distributor pre-selected, propagate the id into createGuestQuote so
+  // BE quote-resolution honors the chef's chosen distributor instead of
+  // falling back through ChefDistributorResolutionService.
+  const incomingDistributorId = searchParams.get('distributor_id');
 
   const [restaurantName, setRestaurantName] = useState('');
   const [pasteText, setPasteText] = useState('');
@@ -97,6 +103,7 @@ export function ChefEntryPage() {
         const sendName = opts.nameOverride ?? restaurantName.trim();
         if (sendName) formData.append('name', sendName);
         if (opts.confirmNew) formData.append('confirm_new_restaurant', 'true');
+        if (incomingDistributorId) formData.append('distributor_id', incomingDistributorId);
 
         const guestToken = localStorage.getItem('quoteme_guest_token');
         const authToken = localStorage.getItem('quoteme_token');
@@ -134,11 +141,14 @@ export function ChefEntryPage() {
       // Text paste path — restaurant name is optional. When blank, omit it
       // so BE falls back to the chef's existing RestaurantContact (P0-11).
       const sendName = opts.nameOverride ?? restaurantName.trim();
-      const res = await createGuestQuote({
-        raw_text: pasteText.trim(),
-        ...(sendName ? { name: sendName } : {}),
-        ...(opts.confirmNew ? { confirm_new_restaurant: true } : {}),
-      });
+      const res = await createGuestQuote(
+        {
+          raw_text: pasteText.trim(),
+          ...(sendName ? { name: sendName } : {}),
+          ...(opts.confirmNew ? { confirm_new_restaurant: true } : {}),
+        },
+        incomingDistributorId || undefined,
+      );
 
       if (res.error_code === 'multi_restaurant_confirm_required' && res.error_data) {
         setMultiRestaurantPrompt({

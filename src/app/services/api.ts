@@ -1881,6 +1881,25 @@ export async function consumeChefMagicLink(
   }
 }
 
+// V2 W2 — chef-facing distributor list. Returns all distributors the
+// authenticated chef can see (via their RestaurantContacts → Restaurants
+// → DistributorRestaurantRelationships), plus the primary distributor id
+// when one is resolved.
+export interface ChefDistributorSummary {
+  id: string;
+  name: string;
+  status: string;
+}
+
+export interface ChefDistributorsResponse {
+  primary_distributor_id: string | null;
+  distributors: ChefDistributorSummary[];
+}
+
+export async function getChefDistributors(): Promise<ApiResponse<ChefDistributorsResponse>> {
+  return fetchWithGuest(`/api/v1/chef/distributors`);
+}
+
 export async function sendChefQuestion(quoteId: string, message: string): Promise<ApiResponse<{ success: boolean }>> {
   return fetchWithGuest(`/api/v1/chef/quotes/${quoteId}/question`, {
     method: 'POST',

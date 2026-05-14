@@ -49,6 +49,7 @@ import { ChefStatusPage } from "./pages/chef/ChefStatusPage";
 import { ChefQuoteReceiptPage } from "./pages/chef/ChefQuoteReceiptPage";
 import { ChefOrderGuidePage } from "./pages/chef/ChefOrderGuidePage";
 import { ChefWelcomePage } from "./pages/chef/ChefWelcomePage";
+import { ChefCatalogSelectionPage } from "./pages/chef/ChefCatalogSelectionPage";
 import { CreateRestaurantPage } from "./pages/CreateRestaurantPage";
 import { isDemoMode } from "./utils/demoMode";
 
@@ -71,6 +72,10 @@ export const router = createBrowserRouter([
       {
         path: "chef/welcome",
         Component: ChefWelcomePage,
+      },
+      {
+        path: "chef/catalog",
+        Component: ChefCatalogSelectionPage,
       },
       {
         path: "chef",
