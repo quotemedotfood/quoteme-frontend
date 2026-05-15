@@ -12,11 +12,11 @@ const RECENT_QUOTE_KEY = 'chef_recent_quote_id';
 
 // ─── Shared styles ─────────────────────────────────────────────────────────────
 
-const pageWrap = 'min-h-screen bg-white flex flex-col items-center justify-center p-6';
+const pageWrap = 'min-h-screen bg-[#FBFAF7] flex flex-col items-center justify-center p-6';
 const card = 'w-full max-w-lg';
 const headlineStyle: React.CSSProperties = { fontFamily: "'Playfair Display', serif" };
 const primaryBtn =
-  'w-full bg-[#E5A84B] hover:bg-[#D49A3E] text-white rounded-lg px-6 py-3 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed';
+  'w-full bg-[#F9A64B] hover:bg-[#E8953A] text-white rounded-lg px-6 py-3 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed';
 const labelStyle = 'text-sm font-medium text-[#4F4F4F]';
 const errorText = 'text-sm text-red-500';
 
@@ -216,7 +216,7 @@ export function ChefEntryPage() {
         {/* Headline */}
         <div className="mb-8">
           <h1
-            className="text-3xl font-bold text-[#2A2A2A] mb-3"
+            className="text-3xl font-bold text-[#2B2B2B] mb-3"
             style={headlineStyle}
           >
             What's on your menu?
@@ -226,7 +226,7 @@ export function ChefEntryPage() {
           </p>
         </div>
 
-        <div className="flex flex-col gap-5">
+        <div className="flex flex-col gap-6">
           {/* Restaurant name (optional) */}
           <div className="flex flex-col gap-1">
             <label className={labelStyle}>
@@ -239,7 +239,10 @@ export function ChefEntryPage() {
               onChange={(e) => setRestaurantName(e.target.value)}
               placeholder="e.g. The Blue Apron"
               disabled={submitting}
-              className={`border border-[#E0E0E0] rounded-lg px-4 py-2.5 text-sm text-[#2A2A2A] placeholder-[#BDBDBD] focus:outline-none focus:ring-2 focus:ring-[#E5A84B]/40 focus:border-[#E5A84B] ${
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="words"
+              className={`border border-[#E8E8E8] rounded-lg px-4 py-2.5 text-sm text-[#2B2B2B] placeholder-[#BDBDBD] focus:outline-none focus:ring-2 focus:ring-[#2B2B2B]/10 focus:border-[#E8E8E8] ${
                 submitting ? 'opacity-40 cursor-not-allowed bg-[#F9F9F9]' : ''
               }`}
             />
@@ -257,7 +260,19 @@ export function ChefEntryPage() {
               disabled={textareaDisabled}
               placeholder="Paste your full menu here — dishes, ingredients, sections…"
               rows={8}
-              className={`border border-[#E0E0E0] rounded-lg px-4 py-3 text-sm text-[#2A2A2A] placeholder-[#BDBDBD] focus:outline-none focus:ring-2 focus:ring-[#E5A84B]/40 focus:border-[#E5A84B] resize-none leading-relaxed ${
+              // iOS Safari's QuickType bar will silently inject autofill text
+              // into a focused textarea via an `input` event, flipping
+              // pasteText non-empty before the chef has typed. That makes the
+              // fileDisabled derivation (pasteText.trim().length > 0) flip
+              // true on first mobile mount, greying the Upload + Camera
+              // buttons. These five attributes suppress every iOS autofill
+              // surface for this field.
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="off"
+              spellCheck={false}
+              data-form-type="other"
+              className={`border border-[#E8E8E8] rounded-lg px-4 py-3 text-sm text-[#2B2B2B] placeholder-[#BDBDBD] focus:outline-none focus:ring-2 focus:ring-[#2B2B2B]/10 focus:border-[#E8E8E8] resize-none leading-relaxed ${
                 textareaDisabled ? 'opacity-40 cursor-not-allowed bg-[#F9F9F9]' : 'bg-white'
               }`}
             />
@@ -322,7 +337,7 @@ export function ChefEntryPage() {
 
           {/* Selected file chip */}
           {selectedFile && (
-            <div className="flex items-center gap-2 bg-[#FDF6EC] border border-[#E5A84B]/30 rounded-lg px-4 py-2.5">
+            <div className="flex items-center gap-2 bg-white border border-[#E8E8E8] rounded-lg px-4 py-2.5">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#E5A84B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
                 <polyline points="14 2 14 8 20 8" />
@@ -415,7 +430,7 @@ function BuildingQuoteOverlay() {
         />
         <div>
           <h1
-            className="text-2xl font-bold text-[#2A2A2A] mb-2"
+            className="text-2xl font-bold text-[#2B2B2B] mb-2"
             style={headlineStyle}
           >
             {stageMessage}{dots}
