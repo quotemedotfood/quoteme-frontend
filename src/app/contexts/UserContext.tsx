@@ -157,7 +157,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     return localStorage.getItem('quoteme_guest_token');
   };
 
-  const syncWithAuthUser = (user: any) => {
+  const syncWithAuthUser = useCallback((user: any) => {
     if (user) {
       updateProfile({
         fullName: user.fullName || defaultProfile.fullName,
@@ -174,7 +174,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     } else {
       updateProfile(defaultProfile);
     }
-  };
+  }, [updateProfile]);
 
   return (
     <UserContext.Provider value={{ 

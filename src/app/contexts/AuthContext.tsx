@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import * as Sentry from '@sentry/react';
 import { User, signIn, signUp, getCurrentUser, convertGuestToUser, SignUpData, LoginData, getGuestToken } from '../services/api';
 import { isDemoMode } from '../utils/demoMode';
@@ -35,7 +35,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  async function validateToken(context: string = 'unknown') {
+  const validateToken = useCallback(async (context: string = 'unknown') => {
     const storedToken = localStorage.getItem('quoteme_token');
     console.log(`[validateToken:${context}] Token in localStorage:`, storedToken ? `${storedToken.substring(0, 20)}...` : 'MISSING');
 
@@ -59,7 +59,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem('quoteme_token');
     }
     setIsLoading(false);
-  }
+  }, []);
 
   async function login(credentials: LoginData): Promise<{ success: boolean; error?: string; error_code?: string }> {
     // Include guest token if available so backend can link guest quotes
@@ -132,9 +132,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     Sentry.setUser(null);
   }
 
-  async function refreshUser() {
+  const refreshUser = useCallback(async () => {
     await validateToken('refresh');
-  }
+  }, [validateToken]);
 
   return (
     <AuthContext.Provider
