@@ -88,7 +88,14 @@ export function ChefDashboardPage() {
 
           {state === 'ready' && quotes.length > 0 && (
             <>
-              <QuoteCount count={count} limit={limit} />
+              <div
+                className="mb-6 pb-5"
+                style={{ borderBottom: `1px solid ${C.softLine}` }}
+              >
+                <h1 style={{ ...serif, fontSize: 26, fontWeight: 600, color: C.charcoal, lineHeight: 1.15 }}>
+                  Your quotes
+                </h1>
+              </div>
               {questionsWithText.length > 0 && (
                 <PreviousQuestions
                   quotes={questionsWithText.slice(0, 3)}
@@ -106,6 +113,9 @@ export function ChefDashboardPage() {
 
 // ─── Subcomponents ────────────────────────────────────────────────────────
 
+// V2.1.0 — counter rendering temporarily suppressed; counts received-not-sent
+// semantics are wrong until chef-initiated send flow ships. Component
+// retained as the V2.5 restoration target (P-V2.5-quote-count-restored-semantics).
 function QuoteCount({ count, limit }: { count: number; limit: number }) {
   const remaining = Math.max(0, limit - count);
   return (
