@@ -54,6 +54,14 @@ export function ChefDashboardPage() {
   const [data, setData] = useState<ChefQuotesIndexResponse | null>(null);
   const [errorMsg, setErrorMsg] = useState<string>('');
 
+  // Landing on the dashboard is an intentional context-reset for the chef:
+  // any stored "most recent quote" marker is a back-navigation hint only,
+  // not a permanent state. Clear it so subsequent /chef/entry visits show
+  // the form instead of bouncing the chef back to their last quote.
+  useEffect(() => {
+    sessionStorage.removeItem('chef_recent_quote_id');
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
     (async () => {

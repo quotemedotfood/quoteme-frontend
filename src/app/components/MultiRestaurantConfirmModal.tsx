@@ -119,8 +119,7 @@ export function MultiRestaurantConfirmModal({
               className="mt-1"
               style={{ ...serif, fontSize: 22, fontWeight: 600, color: C.charcoal, lineHeight: 1.2 }}
             >
-              We have you at {existingRestaurants.length} restaurant{existingRestaurants.length === 1 ? '' : 's'} —{' '}
-              which one is this quote for?
+              Which restaurant is this quote for?
             </h2>
           </div>
         </div>
@@ -196,7 +195,7 @@ export function MultiRestaurantConfirmModal({
           style={{ ...sans, fontSize: 10.5, color: C.gray500, lineHeight: 1.4 }}
         >
           You can switch back any time from your quote history. We can't link the same quote to
-          two restaurants at once — pick one to continue.
+          two restaurants at once, so pick one to continue.
         </p>
       </div>
     </div>

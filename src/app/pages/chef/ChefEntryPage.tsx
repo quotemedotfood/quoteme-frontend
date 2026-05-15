@@ -56,9 +56,20 @@ export function ChefEntryPage() {
   // the menu they already sent. (Browser bfcache restores form state on back-nav;
   // useState wouldn't.) The marker is cleared once the chef explicitly starts a
   // new menu from scratch.
+  // Scope guard: only redirect when the chef arrived via browser-back from
+  // /chef/status (the bfcache case). Direct navigation to /chef/entry — from
+  // sidebar tap, dashboard CTA, address bar, or fresh post-login routing —
+  // must always show the form regardless of any stale sessionStorage marker.
+  // We detect "back from status" by inspecting document.referrer for the
+  // chef/status path, since react-router's location.state isn't populated on
+  // bfcache-restored navigation.
   useEffect(() => {
     const recentId = sessionStorage.getItem(RECENT_QUOTE_KEY);
-    if (recentId) navigate(`/chef/status/${recentId}`, { replace: true });
+    if (!recentId) return;
+    const fromStatusBack = /\/chef\/status\//.test(document.referrer);
+    if (fromStatusBack) {
+      navigate(`/chef/status/${recentId}`, { replace: true });
+    }
   }, [navigate]);
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
