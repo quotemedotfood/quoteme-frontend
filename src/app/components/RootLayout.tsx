@@ -14,6 +14,24 @@ export function RootLayout() {
     return <Navigate to="/auth" replace />;
   }
 
+  // Don't paint a layout until AuthContext finishes its initial /me roundtrip.
+  // Without this guard, chef users briefly see the rep AppSidebar before
+  // role-routing resolves (FOUC).
+  if (!demo && isLoading) {
+    return (
+      <div
+        className="flex min-h-screen items-center justify-center"
+        style={{ background: '#FBFAF7' }}
+      >
+        <div
+          className="w-10 h-10 rounded-full border-4 border-[#E8E8E8] border-t-[#F9A64B]"
+          style={{ animation: 'spin 1s linear infinite' }}
+        />
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+    );
+  }
+
   // V2 fix (smoke P0-A): chef-role users get a minimal layout — wordmark +
   // identity + sign-out only, no AppSidebar. Distributors/Locations/Quotes
   // routes don't exist as chef-facing surfaces in V2 scope, so showing
