@@ -1,22 +1,334 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Product Pipeline — placeholder</title>
-  <style>
-    body { margin: 0; padding: 40px; font-family: -apple-system, BlinkMacSystemFont, sans-serif; color: #2B2B2B; background: #FBFAF7; }
-    .box { max-width: 640px; margin: 80px auto; border: 1px dashed #E8E8E8; padding: 40px; border-radius: 8px; background: #fff; }
-    h1 { margin: 0 0 12px 0; font-size: 24px; font-weight: 600; }
-    p { margin: 8px 0; color: #4F4F4F; line-height: 1.5; font-size: 14px; }
-    code { background: #F3F4F6; padding: 2px 6px; border-radius: 4px; font-size: 12px; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QuoteMe Pipeline</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f9f9f7; color: #1a1a18; min-height: 100vh; }
+
+:root {
+  --bg-primary: #ffffff;
+  --bg-secondary: #f1efe8;
+  --bg-tertiary: #f9f9f7;
+  --text-primary: #1a1a18;
+  --text-secondary: #5f5e5a;
+  --text-tertiary: #888780;
+  --border: rgba(0,0,0,0.12);
+  --border-md: rgba(0,0,0,0.2);
+  --radius-md: 8px;
+  --radius-lg: 12px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-primary: #1e1e1c;
+    --bg-secondary: #2c2c2a;
+    --bg-tertiary: #141412;
+    --text-primary: #f1efe8;
+    --text-secondary: #b4b2a9;
+    --text-tertiary: #888780;
+    --border: rgba(255,255,255,0.1);
+    --border-md: rgba(255,255,255,0.18);
+  }
+}
+
+.app { padding: 1rem; min-height: 100vh; background: var(--bg-tertiary); }
+.header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem; }
+.header h1 { font-size: 18px; font-weight: 500; color: var(--text-primary); }
+.header-actions { display: flex; gap: 8px; }
+
+.tabs { display: flex; gap: 4px; margin-bottom: 1.25rem; border-bottom: 0.5px solid var(--border); }
+.tab { padding: 6px 14px; font-size: 13px; background: none; border: none; border-bottom: 2px solid transparent; cursor: pointer; color: var(--text-secondary); margin-bottom: -1px; }
+.tab.active { color: var(--text-primary); border-bottom-color: #A5CFDD; font-weight: 500; }
+
+.columns { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; align-items: start; }
+.column { background: var(--bg-secondary); border-radius: var(--radius-lg); padding: 12px; min-height: 300px; }
+.col-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.col-title { font-size: 12px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-secondary); }
+.col-count { font-size: 11px; background: var(--bg-primary); border: 0.5px solid var(--border); border-radius: 10px; padding: 1px 7px; color: var(--text-secondary); }
+
+.card { background: var(--bg-primary); border: 0.5px solid var(--border); border-radius: var(--radius-md); padding: 10px 12px; margin-bottom: 8px; cursor: pointer; }
+.card:hover { border-color: var(--border-md); }
+.card-title { font-size: 13px; font-weight: 500; color: var(--text-primary); margin-bottom: 4px; line-height: 1.4; }
+.card-meta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.badge { font-size: 11px; padding: 2px 7px; border-radius: 10px; font-weight: 500; }
+.badge-p0 { background: #FCEBEB; color: #A32D2D; }
+.badge-p1 { background: #FAEEDA; color: #854F0B; }
+.badge-p2 { background: #E6F1FB; color: #185FA5; }
+.badge-p3 { background: #F1EFE8; color: #5F5E5A; }
+.badge-chef { background: #E1F5EE; color: #0F6E56; }
+.badge-rep { background: #EEEDFE; color: #534AB7; }
+.badge-dist { background: #FAECE7; color: #993C1D; }
+.badge-brand { background: #FBEAF0; color: #993556; }
+.badge-infra { background: #F1EFE8; color: #3B6D11; }
+.card-owner { font-size: 11px; color: var(--text-tertiary); }
+
+.add-card-btn { width: 100%; text-align: left; background: none; border: none; padding: 6px 4px; font-size: 12px; color: var(--text-tertiary); cursor: pointer; border-radius: var(--radius-md); }
+.add-card-btn:hover { background: var(--bg-primary); color: var(--text-secondary); }
+.add-col-btn { font-size: 12px; background: none; border: 0.5px dashed var(--border-md); border-radius: var(--radius-md); padding: 4px 10px; cursor: pointer; color: var(--text-secondary); white-space: nowrap; margin-top: 8px; }
+
+.backlog-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; }
+.search-bar { display: flex; gap: 8px; margin-bottom: 1rem; }
+.search-bar input, .search-bar select { font-size: 13px; padding: 6px 10px; border: 0.5px solid var(--border-md); border-radius: var(--radius-md); background: var(--bg-primary); color: var(--text-primary); }
+.search-bar input { flex: 1; }
+
+.modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.35); display: flex; align-items: center; justify-content: center; z-index: 100; }
+.modal { background: var(--bg-primary); border-radius: var(--radius-lg); border: 0.5px solid var(--border); padding: 1.25rem; width: 480px; max-width: 95vw; max-height: 85vh; overflow-y: auto; }
+.modal h2 { font-size: 16px; font-weight: 500; margin-bottom: 1rem; color: var(--text-primary); }
+.modal label { font-size: 12px; color: var(--text-secondary); display: block; margin-bottom: 4px; margin-top: 12px; }
+.modal input, .modal select, .modal textarea { width: 100%; font-size: 13px; padding: 7px 10px; border: 0.5px solid var(--border-md); border-radius: var(--radius-md); background: var(--bg-primary); color: var(--text-primary); }
+.modal textarea { min-height: 80px; resize: vertical; }
+.modal-footer { display: flex; gap: 8px; justify-content: flex-end; margin-top: 1rem; }
+
+.btn { padding: 6px 14px; font-size: 13px; border-radius: var(--radius-md); cursor: pointer; border: 0.5px solid var(--border-md); background: transparent; color: var(--text-primary); }
+.btn:hover { background: var(--bg-secondary); }
+.btn-primary { background: #A5CFDD; border-color: #A5CFDD; color: #042C53; }
+.btn-primary:hover { background: #7FAEC2; border-color: #7FAEC2; }
+.btn-danger { color: #A32D2D; border-color: transparent; }
+.btn-danger:hover { background: #FCEBEB; }
+
+.status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; flex-shrink: 0; }
+.dot-todo { background: #B4B2A9; }
+.dot-inflight { background: #EF9F27; }
+.dot-done { background: #639922; }
+.dot-blocked { background: #E24B4A; }
+
+.flow-section { margin-bottom: 1.5rem; }
+.flow-header { display: flex; align-items: center; justify-content: space-between; font-size: 13px; font-weight: 500; color: var(--text-secondary); padding-bottom: 6px; border-bottom: 0.5px solid var(--border); margin-bottom: 8px; }
+.flow-steps { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.flow-step { background: var(--bg-secondary); border: 0.5px solid var(--border); border-radius: var(--radius-md); padding: 5px 10px; font-size: 12px; color: var(--text-primary); }
+.flow-arrow { font-size: 12px; color: var(--text-tertiary); }
+
+.empty-state { text-align: center; padding: 2rem; color: var(--text-tertiary); font-size: 13px; }
+.detail-section { border-top: 0.5px solid var(--border); padding-top: 12px; margin-top: 12px; }
+.detail-section h3 { font-size: 13px; font-weight: 500; color: var(--text-secondary); margin-bottom: 8px; }
+</style>
 </head>
 <body>
-  <div class="box">
-    <h1>Product Pipeline — placeholder</h1>
-    <p>Replace this file with the actual pipeline artifact HTML at <code>public/product-pipeline-artifact.html</code>.</p>
-    <p>The page route, sidebar entry, and auth guard are already wired — the iframe will pick up the new content on next deploy.</p>
-    <p>The artifact owns its own persistence layer (localStorage); no backend integration needed.</p>
+<div class="app">
+<div class="header">
+  <h1>QuoteMe pipeline</h1>
+  <div class="header-actions">
+    <button class="btn" onclick="openNewCard(null,'backlog')"><i class="ti ti-plus"></i> Add card</button>
+    <button class="btn" onclick="openNewColumn()"><i class="ti ti-layout-columns"></i> Add column</button>
   </div>
+</div>
+
+<div class="tabs">
+  <button class="tab active" onclick="switchTab('board',this)">Board</button>
+  <button class="tab" onclick="switchTab('backlog',this)">Backlog</button>
+  <button class="tab" onclick="switchTab('flows',this)">Flows</button>
+</div>
+
+<div id="tab-board"><div class="columns" id="columns-container"></div></div>
+<div id="tab-backlog" style="display:none;">
+  <div class="search-bar">
+    <input type="text" id="backlog-search" placeholder="Search backlog..." oninput="renderBacklog()">
+    <select id="backlog-filter" onchange="renderBacklog()">
+      <option value="">All areas</option>
+      <option value="chef">Chef</option>
+      <option value="rep">Rep</option>
+      <option value="dist">Distributor</option>
+      <option value="brand">Brand</option>
+      <option value="infra">Infra</option>
+    </select>
+  </div>
+  <div class="backlog-grid" id="backlog-container"></div>
+</div>
+<div id="tab-flows" style="display:none;">
+  <div id="flows-container"></div>
+  <button class="btn" onclick="openNewFlow()" style="margin-top:1rem;"><i class="ti ti-plus"></i> Add flow</button>
+</div>
+</div>
+
+<div id="modal-root"></div>
+
+<script>
+const SK = 'qm-pipeline-v2';
+const FK = 'qm-flows-v1';
+
+let state = { columns: [
+  {id:'todo',title:'To do',status:'todo'},
+  {id:'inflight',title:'In flight',status:'inflight'},
+  {id:'review',title:'Review',status:'review'},
+  {id:'done',title:'Done',status:'done'},
+], cards: [], backlog: [] };
+let flows = [];
+
+const DC = [
+  {id:'c1',title:"I'm a Restaurant button activation",priority:'p0',area:'chef',status:'done',column:'done',notes:'V2.1.0 Item 1. role=chef. FE at 742ed29, verified on test.quoteme.food.',owner:'Claudio'},
+  {id:'c2',title:'Per-line price column on quote receipt',priority:'p1',area:'chef',status:'todo',column:'todo',notes:'V2.1 Item 2. ~10-20 LOC FE. unit_price_cents in BE, FE not rendering.',owner:'Claudio'},
+  {id:'c3',title:'Chef entry redirect too aggressive',priority:'p1',area:'chef',status:'todo',column:'todo',notes:'RECENT_QUOTE_KEY in sessionStorage redirects on every /chef/entry. Fix: router-state guard + clear-on-dashboard-mount.',owner:'Claudio'},
+  {id:'c4',title:'Universal chef topbar audit',priority:'p1',area:'chef',status:'todo',column:'todo',notes:'Audit every chef route, ensure ChefTopbar present. Order guide is known gap.',owner:'Claudio'},
+  {id:'c5',title:'Hide quote count until chef-send ships',priority:'p1',area:'chef',status:'todo',column:'todo',notes:'Counts received not sent. ~5-10 LOC conditional render.',owner:'Claudio'},
+  {id:'c6',title:'Mobile bottom nav flash + P0-E consume/me loop',priority:'p1',area:'infra',status:'todo',column:'todo',notes:'Sequence: Item 7 first (useCallback), then Item 6 (render guard in RootLayout).',owner:'Claudio'},
+  {id:'c7',title:'Em dash in error copy',priority:'p2',area:'chef',status:'todo',column:'todo',notes:'Tab 2 error copy has em dash. 1-char fix + audit.',owner:'Claudio'},
+  {id:'c8',title:'Modal truncation merge',priority:'p2',area:'chef',status:'todo',column:'todo',notes:'fix-v21-modal-truncation at fa67fc1. Ready to FF-merge.',owner:'Claudio'},
+  {id:'c9',title:'Frontend Sentry env vars in Vercel',priority:'p0',area:'infra',status:'todo',column:'todo',notes:'Gates V2 announcement. VITE_SENTRY_DSN + VITE_RELEASE_SHA in Vercel prod.',owner:'Moose'},
+  {id:'c10',title:'demo.quoteme.food matching engine parity',priority:'p0',area:'infra',status:'todo',column:'todo',notes:'Item 47. Verify demo uses same engine as prod before external demos.',owner:'Claudio'},
+  {id:'c11',title:'Chef dashboard',priority:'p1',area:'chef',status:'todo',column:'todo',notes:"Moose top priority next week. Outcome funnels need Moose + Justin conversation first.",owner:''},
+  {id:'c12',title:'Order guide custom shelf order',priority:'p1',area:'chef',status:'todo',column:'todo',notes:'Justin trust mechanism. No topbar, no rep contact, no delivery days yet.',owner:''},
+  {id:'c13',title:'Catalog ingestion Phase B',priority:'p1',area:'dist',status:'todo',column:'todo',notes:'Requires catalog URLs alongside 204 distributor records.',owner:''},
+  {id:'c14',title:'Matching engine structural fixes',priority:'p1',area:'infra',status:'todo',column:'todo',notes:'43 no_retrieval failures. BLOCKING_STOPWORDS reform + pairwise chaining audit.',owner:''},
+];
+
+const DB = [
+  {id:'b1',title:'Chef detail page — distributor view',area:'chef',notes:'In chef view: detail page for distributor',priority:'p2'},
+  {id:'b2',title:'Chef detail page — rep view',area:'chef',notes:'In chef view: detail page for rep',priority:'p2'},
+  {id:'b3',title:'Chef detail page — location view',area:'chef',notes:'In chef view: detail page for location',priority:'p2'},
+  {id:'b4',title:'Chef detail page — chefs view',area:'chef',notes:'In chef view: detail page for chefs',priority:'p2'},
+  {id:'b5',title:'Rep view — customers detail page',area:'rep',notes:'In rep view: detail page for customers',priority:'p2'},
+  {id:'b6',title:'Rep view — chefs detail page',area:'rep',notes:'In rep view: detail page for chefs',priority:'p2'},
+  {id:'b7',title:'Full brand flow',area:'brand',notes:'Brand workflows, dashboard, request list routing, demand maps.',priority:'p3'},
+  {id:'b8',title:'Settings pages — all personas',area:'infra',notes:'Full settings for chef, rep, distributor admin, brand admin.',priority:'p2'},
+  {id:'b9',title:'Chef aesthetic — pick and lock',area:'chef',notes:'Single aesthetic starting with chefs. Coordinate with Desi.',priority:'p1'},
+  {id:'b10',title:'Chef-initiated quote send flow',area:'chef',notes:'Unblocks quote count restoration + Outcomes A/B.',priority:'p1'},
+  {id:'b11',title:'Question-reply mechanism',area:'chef',notes:'How does chef receive rep reply? Options: email, in-app, thread. Needs Moose + Justin.',priority:'p2'},
+  {id:'b12',title:'Geography backfill on 204 distributors',area:'dist',notes:'state=null for most. Hybrid: manual + crawler re-run.',priority:'p2'},
+  {id:'b13',title:'DistributorCanonicalizationService (Ruby port)',area:'infra',notes:'Port Python clustering to Ruby. Phase 1-3.',priority:'p2'},
+  {id:'b14',title:'Active Storage migration off test service',area:'infra',notes:'Currently on test service. Needs prod service.',priority:'p1'},
+];
+
+const DF = [
+  {id:'f1',title:'Chef quote flow (Path 1 — rep-initiated)',steps:['Rep creates quote','Chef receives magic link email','Chef views quote receipt','Chef confirms or questions','Chef converts to order guide'],status:'live'},
+  {id:'f2',title:'Chef self-signup (Path 2)',steps:['"I\'m a Restaurant" on /auth','Signup form','Routes to /dashboard','Empty state — no rep yet','Rep connection TBD'],status:'live'},
+  {id:'f3',title:'Rep quote build flow',steps:['Rep receives menu','Upload to Quote Builder','System matches to catalog','Rep validates 3-panel view','Rep sends quote'],status:'live'},
+  {id:'f4',title:'Distributor catalog ingestion',steps:['Phase A: 204 records ✓','Phase B: catalog ingestion (blocked)','Phase C: product matching (blocked)','Phase D: category strengths + state machine'],status:'partial'},
+  {id:'f5',title:'Brand flow (future)',steps:['Brand rep visits restaurant','Chef requests products','Brand rep routes to distributor','Distributor generates quote','Gap signals fire for missing SKUs'],status:'planned'},
+];
+
+async function load() {
+  try { const r = await window.parent.storage?.get(SK, true); if (r?.value) { const d = JSON.parse(r.value); state.columns = d.columns||state.columns; state.cards = d.cards||DC; state.backlog = d.backlog||DB; } else { state.cards=DC; state.backlog=DB; } } catch(e) { state.cards=DC; state.backlog=DB; }
+  try { const r2 = await window.parent.storage?.get(FK, true); if (r2?.value) { flows=JSON.parse(r2.value); } else { flows=DF; } } catch(e) { flows=DF; }
+  render();
+}
+
+async function save() {
+  try { await window.parent.storage?.set(SK, JSON.stringify({columns:state.columns,cards:state.cards,backlog:state.backlog}), true); } catch(e) {}
+  try { await window.parent.storage?.set(FK, JSON.stringify(flows), true); } catch(e) {}
+  try { localStorage.setItem(SK, JSON.stringify({columns:state.columns,cards:state.cards,backlog:state.backlog})); localStorage.setItem(FK, JSON.stringify(flows)); } catch(e) {}
+}
+
+function loadLocal() {
+  try { const d = localStorage.getItem(SK); if (d) { const p=JSON.parse(d); state.columns=p.columns||state.columns; state.cards=p.cards||DC; state.backlog=p.backlog||DB; } else { state.cards=DC; state.backlog=DB; } } catch(e) { state.cards=DC; state.backlog=DB; }
+  try { const f = localStorage.getItem(FK); if (f) { flows=JSON.parse(f); } else { flows=DF; } } catch(e) { flows=DF; }
+}
+
+function pBadge(p) { return p ? `<span class="badge badge-${p}">${p.toUpperCase()}</span>` : ''; }
+function aBadge(a) { const l={chef:'Chef',rep:'Rep',dist:'Distributor',brand:'Brand',infra:'Infra'}; return a ? `<span class="badge badge-${a}">${l[a]||a}</span>` : ''; }
+function sDot(s) { const m={todo:'todo',inflight:'inflight',review:'inflight',done:'done',blocked:'blocked',live:'done',partial:'inflight',planned:'todo'}; return `<span class="status-dot dot-${m[s]||'todo'}"></span>`; }
+
+function render() { renderBoard(); renderBacklog(); renderFlows(); }
+
+function renderBoard() {
+  const c = document.getElementById('columns-container'); if (!c) return;
+  c.innerHTML = state.columns.map(col => {
+    const cards = state.cards.filter(x => x.column===col.id);
+    return `<div class="column" ondragover="event.preventDefault()" ondrop="dropCard(event,'${col.id}')">
+      <div class="col-header"><span class="col-title">${sDot(col.status)}${col.title}</span><span class="col-count">${cards.length}</span></div>
+      ${cards.map(card=>`<div class="card" draggable="true" ondragstart="dragStart(event,'${card.id}')" onclick="openCardDetail('${card.id}','board')">
+        <div class="card-title">${card.title}</div>
+        <div class="card-meta">${pBadge(card.priority)}${aBadge(card.area)}${card.owner?`<span class="card-owner">${card.owner}</span>`:''}</div>
+      </div>`).join('')}
+      <button class="add-card-btn" onclick="openNewCard('${col.id}','board')"><i class="ti ti-plus"></i> Add card</button>
+    </div>`;
+  }).join('') + `<div><button class="add-col-btn" onclick="openNewColumn()">+ Column</button></div>`;
+}
+
+function renderBacklog() {
+  const c = document.getElementById('backlog-container'); if (!c) return;
+  const q = (document.getElementById('backlog-search')||{}).value||'';
+  const f = (document.getElementById('backlog-filter')||{}).value||'';
+  const items = state.backlog.filter(b=>(!q||b.title.toLowerCase().includes(q.toLowerCase()))&&(!f||b.area===f));
+  c.innerHTML = items.length ? items.map(b=>`<div class="card" onclick="openCardDetail('${b.id}','backlog')">
+    <div class="card-title">${b.title}</div>
+    <div class="card-meta" style="margin-top:4px;">${pBadge(b.priority)}${aBadge(b.area)}</div>
+    ${b.notes?`<div style="font-size:11px;color:var(--text-tertiary);margin-top:5px;line-height:1.4;">${b.notes.substring(0,80)}${b.notes.length>80?'…':''}</div>`:''}
+  </div>`).join('') : '<div class="empty-state">No items matching filter.</div>';
+}
+
+function renderFlows() {
+  const c = document.getElementById('flows-container'); if (!c) return;
+  const sl={live:'Live',partial:'Partial',planned:'Planned'};
+  c.innerHTML = flows.map(f=>`<div class="flow-section">
+    <div class="flow-header">
+      <span style="display:flex;align-items:center;">${sDot(f.status)}${f.title}</span>
+      <span style="display:flex;align-items:center;gap:8px;"><span style="font-size:11px;color:var(--text-tertiary);">${sl[f.status]||f.status}</span><button class="btn" style="padding:2px 8px;font-size:11px;" onclick="openFlowDetail('${f.id}')">Edit</button></span>
+    </div>
+    <div class="flow-steps">${f.steps.map((s,i)=>`<span class="flow-step">${s}</span>${i<f.steps.length-1?'<span class="flow-arrow">→</span>':''}`).join('')}</div>
+  </div>`).join('');
+}
+
+let dragId=null;
+function dragStart(e,id){dragId=id;}
+function dropCard(e,colId){e.preventDefault();if(!dragId)return;const card=state.cards.find(c=>c.id===dragId);if(card){card.column=colId;save();renderBoard();}dragId=null;}
+
+function switchTab(tab,el){
+  ['board','backlog','flows'].forEach(t=>{document.getElementById('tab-'+t).style.display=t===tab?'':'none';});
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active'); render();
+}
+
+function showModal(html){document.getElementById('modal-root').innerHTML=`<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal">${html}</div></div>`;}
+function closeModal(){document.getElementById('modal-root').innerHTML='';}
+
+function openNewCard(colId,source){
+  const isB=source==='backlog';
+  showModal(`<h2>${isB?'Add to backlog':'New card'}</h2>
+    <label>Title</label><input id="m-title" type="text" placeholder="Card title">
+    <label>Priority</label><select id="m-priority"><option value="">None</option>${['p0','p1','p2','p3'].map(p=>`<option value="${p}">${p.toUpperCase()}</option>`).join('')}</select>
+    <label>Area</label><select id="m-area"><option value="">None</option>${['chef','rep','dist','brand','infra'].map(a=>`<option value="${a}">${a.charAt(0).toUpperCase()+a.slice(1)}</option>`).join('')}</select>
+    ${!isB?`<label>Column</label><select id="m-column">${state.columns.map(c=>`<option value="${c.id}" ${c.id===colId?'selected':''}>${c.title}</option>`).join('')}</select><label>Owner</label><input id="m-owner" type="text" placeholder="Claudio, Moose, Desi...">`:'' }
+    <label>Notes</label><textarea id="m-notes" placeholder="Context, links, dependencies..."></textarea>
+    <div class="modal-footer"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveNewCard(${isB})">Add card</button></div>`);
+}
+
+function saveNewCard(isB){
+  const title=document.getElementById('m-title').value.trim(); if(!title)return;
+  const id='c'+Date.now(),priority=document.getElementById('m-priority').value,area=document.getElementById('m-area').value,notes=document.getElementById('m-notes').value;
+  if(isB){state.backlog.push({id,title,priority,area,notes});}
+  else{const column=document.getElementById('m-column').value,owner=document.getElementById('m-owner').value;state.cards.push({id,title,priority,area,column,owner,notes,status:column});}
+  save();closeModal();render();
+}
+
+function openCardDetail(id,source){
+  const isB=source==='backlog';
+  const arr=isB?state.backlog:state.cards;
+  const card=arr.find(c=>c.id===id); if(!card)return;
+  showModal(`<h2>${card.title}</h2>
+    <label>Title</label><input id="m-title" type="text" value="${(card.title||'').replace(/"/g,'&quot;')}">
+    <label>Priority</label><select id="m-priority"><option value="">None</option>${['p0','p1','p2','p3'].map(p=>`<option value="${p}" ${card.priority===p?'selected':''}>${p.toUpperCase()}</option>`).join('')}</select>
+    <label>Area</label><select id="m-area"><option value="">None</option>${['chef','rep','dist','brand','infra'].map(a=>`<option value="${a}" ${card.area===a?'selected':''}>${a.charAt(0).toUpperCase()+a.slice(1)}</option>`).join('')}</select>
+    ${!isB?`<label>Column</label><select id="m-column">${state.columns.map(c=>`<option value="${c.id}" ${card.column===c.id?'selected':''}>${c.title}</option>`).join('')}</select><label>Owner</label><input id="m-owner" type="text" value="${(card.owner||'').replace(/"/g,'&quot;')}">`:'' }
+    <label>Notes</label><textarea id="m-notes">${card.notes||''}</textarea>
+    ${!isB?`<div class="detail-section"><h3>Move to backlog</h3><button class="btn" onclick="moveToBacklog('${id}')">Move to backlog</button></div>`:`<div class="detail-section"><h3>Move to board</h3><button class="btn" onclick="moveToBoard('${id}')">Move to board</button></div>`}
+    <div class="modal-footer"><button class="btn btn-danger" onclick="deleteCard('${id}','${source}')"><i class="ti ti-trash"></i> Delete</button><button class="btn" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveCardDetail('${id}','${source}')">Save</button></div>`);
+}
+
+function saveCardDetail(id,source){
+  const isB=source==='backlog';const arr=isB?state.backlog:state.cards;const card=arr.find(c=>c.id===id);if(!card)return;
+  card.title=document.getElementById('m-title').value;card.priority=document.getElementById('m-priority').value;card.area=document.getElementById('m-area').value;card.notes=document.getElementById('m-notes').value;
+  if(!isB){card.column=document.getElementById('m-column').value;card.owner=document.getElementById('m-owner').value;}
+  save();closeModal();render();
+}
+
+function deleteCard(id,source){const isB=source==='backlog';if(isB){state.backlog=state.backlog.filter(c=>c.id!==id);}else{state.cards=state.cards.filter(c=>c.id!==id);}save();closeModal();render();}
+function moveToBacklog(id){const card=state.cards.find(c=>c.id===id);if(!card)return;state.backlog.push({id:card.id,title:card.title,priority:card.priority,area:card.area,notes:card.notes});state.cards=state.cards.filter(c=>c.id!==id);save();closeModal();render();}
+function moveToBoard(id){const item=state.backlog.find(b=>b.id===id);if(!item)return;state.cards.push({...item,column:'todo',status:'todo',owner:''});state.backlog=state.backlog.filter(b=>b.id!==id);save();closeModal();render();}
+
+function openNewColumn(){showModal(`<h2>New column</h2><label>Title</label><input id="m-col-title" type="text" placeholder="e.g. Blocked, QA"><label>Status</label><select id="m-col-status">${['todo','inflight','review','done','blocked'].map(s=>`<option value="${s}">${s.charAt(0).toUpperCase()+s.slice(1)}</option>`).join('')}</select><div class="modal-footer"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveNewColumn()">Add</button></div>`);}
+function saveNewColumn(){const title=document.getElementById('m-col-title').value.trim();if(!title)return;state.columns.push({id:'col'+Date.now(),title,status:document.getElementById('m-col-status').value});save();closeModal();renderBoard();}
+
+function openNewFlow(){showModal(`<h2>New flow</h2><label>Title</label><input id="m-flow-title" type="text"><label>Status</label><select id="m-flow-status"><option value="planned">Planned</option><option value="partial">Partial</option><option value="live">Live</option></select><label>Steps (one per line)</label><textarea id="m-flow-steps" placeholder="Step 1&#10;Step 2"></textarea><div class="modal-footer"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveNewFlow()">Add</button></div>`);}
+function saveNewFlow(){const title=document.getElementById('m-flow-title').value.trim();if(!title)return;flows.push({id:'f'+Date.now(),title,status:document.getElementById('m-flow-status').value,steps:document.getElementById('m-flow-steps').value.split('\n').map(s=>s.trim()).filter(Boolean)});save();closeModal();renderFlows();}
+function openFlowDetail(id){const flow=flows.find(f=>f.id===id);if(!flow)return;showModal(`<h2>Edit flow</h2><label>Title</label><input id="m-flow-title" type="text" value="${(flow.title||'').replace(/"/g,'&quot;')}"><label>Status</label><select id="m-flow-status">${['planned','partial','live'].map(s=>`<option value="${s}" ${flow.status===s?'selected':''}>${s.charAt(0).toUpperCase()+s.slice(1)}</option>`).join('')}</select><label>Steps (one per line)</label><textarea id="m-flow-steps">${flow.steps.join('\n')}</textarea><div class="modal-footer"><button class="btn btn-danger" onclick="deleteFlow('${id}')"><i class="ti ti-trash"></i> Delete</button><button class="btn" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveFlowDetail('${id}')">Save</button></div>`);}
+function saveFlowDetail(id){const flow=flows.find(f=>f.id===id);if(!flow)return;flow.title=document.getElementById('m-flow-title').value;flow.status=document.getElementById('m-flow-status').value;flow.steps=document.getElementById('m-flow-steps').value.split('\n').map(s=>s.trim()).filter(Boolean);save();closeModal();renderFlows();}
+function deleteFlow(id){flows=flows.filter(f=>f.id!==id);save();closeModal();renderFlows();}
+
+if (window.parent && window.parent.storage) { load(); } else { loadLocal(); render(); }
+</script>
 </body>
 </html>
