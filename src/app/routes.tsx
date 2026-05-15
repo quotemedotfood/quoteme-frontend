@@ -31,6 +31,7 @@ import { QMAdminBrandRules } from "./pages/admin/QMAdminBrandRules";
 import { QMAdminClusterLabels } from "./pages/admin/QMAdminClusterLabels";
 import { QMAdminKnowledgeGapFiller } from "./pages/admin/QMAdminKnowledgeGapFiller";
 import { QMAdminChefs } from "./pages/admin/QMAdminChefs";
+import { QMAdminProductPipeline } from "./pages/admin/QMAdminProductPipeline";
 import { SentryTestPage } from "./pages/admin/SentryTestPage";
 import { QuotePreviewPage } from "./pages/QuotePreviewPage";
 import { PaywallPage } from "./pages/PaywallPage";
@@ -125,6 +126,7 @@ export const router = createBrowserRouter([
           { path: "knowledge-gaps", element: <Navigate to="/qm-admin/knowledge-gap-filler" replace /> },
           { path: "knowledge-gap-filler", Component: QMAdminKnowledgeGapFiller },
           { path: "chefs", Component: QMAdminChefs },
+          { path: "product-pipeline", Component: QMAdminProductPipeline },
           { path: "conference-command", Component: QMAdminConferenceCommand },
           { path: "health", Component: QMAdminHealth },
           // Hidden verification route: navigate here post-deploy to confirm
