@@ -74,9 +74,11 @@ export function ChefTopbar() {
       className="flex items-center justify-between px-5 py-3 bg-white"
       style={{ borderBottom: `1px solid ${C.softLine}` }}
     >
-      <span style={{ ...serif, fontSize: 18, fontWeight: 600, color: C.charcoal, lineHeight: 1 }}>
-        QuoteMe
-      </span>
+      <img
+        src="/quoteme-wordmark.png"
+        alt="QuoteMe"
+        style={{ height: 22, width: 'auto', display: 'block' }}
+      />
 
       <div ref={wrapRef} className="relative">
         <button
