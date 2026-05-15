@@ -36,7 +36,7 @@ const BLOCKED_DOMAINS = [
 ];
 
 type AuthView = 'role-select' | 'signup' | 'signin' | 'forgot-password';
-type SelectedRole = 'rep' | 'distributor_admin' | 'buyer';
+type SelectedRole = 'rep' | 'distributor_admin' | 'buyer' | 'chef';
 
 export function AuthPage() {
   const navigate = useNavigate();
@@ -49,7 +49,7 @@ export function AuthPage() {
       case 'distributor_admin': return '/distributor-admin/';
       case 'buyer': return '/dashboard';
       case 'group_admin': return '/dashboard';
-      case 'chef': return '/chef/entry';
+      case 'chef': return '/dashboard';
       case 'rep': return '/start-new-quote';
       default: return '/start-new-quote';
     }
@@ -137,13 +137,16 @@ export function AuthPage() {
     return () => clearTimeout(timeout);
   }, [distributorName, selectedDistributor]);
 
-  const isBuyerRole = selectedRole === 'buyer' || !!inviteLocationId;
+  // Restaurant-side roles (buyer + chef) share the same signup surface:
+  // restaurant_name/city/state form, personal-email allowance, dashboard
+  // landing. Kept as `isBuyerRole` for diff minimality with prior callers.
+  const isBuyerRole =
+    selectedRole === 'buyer' || selectedRole === 'chef' || !!inviteLocationId;
 
   const validateEmail = (email: string): string | null => {
     if (!email) return 'Email is required';
     const domain = email.split('@')[1]?.toLowerCase();
     if (!domain) return 'Please enter a valid email';
-    // Buyers can use personal email
     if (!isBuyerRole && BLOCKED_DOMAINS.includes(domain)) return 'Please use your work email';
     return null;
   };
@@ -396,26 +399,27 @@ export function AuthPage() {
           </div>
         </button>
 
-        {/* Restaurant / Chef - coming soon */}
-        <div className="flex cursor-not-allowed items-center gap-4 rounded-lg border-2 border-gray-200 bg-gray-50 px-5 py-4 opacity-60">
-          <div className="flex size-11 items-center justify-center rounded-full bg-gray-100">
-            <ChefHat className="size-5 text-gray-400" />
+        {/* Restaurant / Chef - active (Path 2 self-signup) */}
+        <button
+          onClick={() => { setSelectedRole('chef'); switchView('signup'); }}
+          className="group flex items-center gap-4 rounded-lg border-2 bg-white px-5 py-4 text-left transition-all hover:shadow-md"
+          style={{ borderColor: '#7FAEC2' }}
+        >
+          <div
+            className="flex size-11 items-center justify-center rounded-full"
+            style={{ backgroundColor: '#E8F2F7' }}
+          >
+            <ChefHat className="size-5" style={{ color: '#7FAEC2' }} />
           </div>
           <div className="flex-1">
-            <div className="flex items-center gap-2">
-              <p className="font-semibold text-gray-400">I'm a Restaurant</p>
-              <span
-                className="text-xs font-medium"
-                style={{ color: '#7FAEC2' }}
-              >
-                Coming Soon
-              </span>
-            </div>
-            <p className="text-sm text-gray-400">
+            <p className="font-semibold" style={{ color: '#2A2A2A' }}>
+              I'm a Restaurant
+            </p>
+            <p className="text-sm" style={{ color: '#4F4F4F' }}>
               Request and compare quotes from distributors
             </p>
           </div>
-        </div>
+        </button>
 
         {/* Brand - coming soon */}
         <div className="flex cursor-not-allowed items-center gap-4 rounded-lg border-2 border-gray-200 bg-gray-50 px-5 py-4 opacity-60">
