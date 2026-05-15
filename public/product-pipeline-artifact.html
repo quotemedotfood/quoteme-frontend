@@ -65,6 +65,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 .badge-brand { background: #FBEAF0; color: #993556; }
 .badge-infra { background: #F1EFE8; color: #3B6D11; }
 .card-owner { font-size: 11px; color: var(--text-tertiary); }
+.card-task-id { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10px; padding: 1px 5px; border-radius: 3px; background: var(--bg-secondary); color: var(--text-secondary); border: 1px solid var(--border); }
 
 .add-card-btn { width: 100%; text-align: left; background: none; border: none; padding: 6px 4px; font-size: 12px; color: var(--text-tertiary); cursor: pointer; border-radius: var(--radius-md); }
 .add-card-btn:hover { background: var(--bg-primary); color: var(--text-secondary); }
@@ -159,20 +160,20 @@ let state = { columns: [
 let flows = [];
 
 const DC = [
-  {id:'c1',title:"I'm a Restaurant button activation",priority:'p0',area:'chef',status:'done',column:'done',notes:'V2.1.0 Item 1. role=chef. FE at 742ed29, verified on test.quoteme.food.',owner:'Claudio'},
-  {id:'c2',title:'Per-line price column on quote receipt',priority:'p1',area:'chef',status:'todo',column:'todo',notes:'V2.1 Item 2. ~10-20 LOC FE. unit_price_cents in BE, FE not rendering.',owner:'Claudio'},
-  {id:'c3',title:'Chef entry redirect too aggressive',priority:'p1',area:'chef',status:'todo',column:'todo',notes:'RECENT_QUOTE_KEY in sessionStorage redirects on every /chef/entry. Fix: router-state guard + clear-on-dashboard-mount.',owner:'Claudio'},
-  {id:'c4',title:'Universal chef topbar audit',priority:'p1',area:'chef',status:'todo',column:'todo',notes:'Audit every chef route, ensure ChefTopbar present. Order guide is known gap.',owner:'Claudio'},
-  {id:'c5',title:'Hide quote count until chef-send ships',priority:'p1',area:'chef',status:'todo',column:'todo',notes:'Counts received not sent. ~5-10 LOC conditional render.',owner:'Claudio'},
-  {id:'c6',title:'Mobile bottom nav flash + P0-E consume/me loop',priority:'p1',area:'infra',status:'todo',column:'todo',notes:'Sequence: Item 7 first (useCallback), then Item 6 (render guard in RootLayout).',owner:'Claudio'},
-  {id:'c7',title:'Em dash in error copy',priority:'p2',area:'chef',status:'todo',column:'todo',notes:'Tab 2 error copy has em dash. 1-char fix + audit.',owner:'Claudio'},
-  {id:'c8',title:'Modal truncation merge',priority:'p2',area:'chef',status:'todo',column:'todo',notes:'fix-v21-modal-truncation at fa67fc1. Ready to FF-merge.',owner:'Claudio'},
-  {id:'c9',title:'Frontend Sentry env vars in Vercel',priority:'p0',area:'infra',status:'todo',column:'todo',notes:'Gates V2 announcement. VITE_SENTRY_DSN + VITE_RELEASE_SHA in Vercel prod.',owner:'Moose'},
-  {id:'c10',title:'demo.quoteme.food matching engine parity',priority:'p0',area:'infra',status:'todo',column:'todo',notes:'Item 47. Verify demo uses same engine as prod before external demos.',owner:'Claudio'},
-  {id:'c11',title:'Chef dashboard',priority:'p1',area:'chef',status:'todo',column:'todo',notes:"Moose top priority next week. Outcome funnels need Moose + Justin conversation first.",owner:''},
-  {id:'c12',title:'Order guide custom shelf order',priority:'p1',area:'chef',status:'todo',column:'todo',notes:'Justin trust mechanism. No topbar, no rep contact, no delivery days yet.',owner:''},
-  {id:'c13',title:'Catalog ingestion Phase B',priority:'p1',area:'dist',status:'todo',column:'todo',notes:'Requires catalog URLs alongside 204 distributor records.',owner:''},
-  {id:'c14',title:'Matching engine structural fixes',priority:'p1',area:'infra',status:'todo',column:'todo',notes:'43 no_retrieval failures. BLOCKING_STOPWORDS reform + pairwise chaining audit.',owner:''},
+  {id:'c1',title:"I'm a Restaurant button activation",priority:'p0',area:'chef',status:'done',column:'done',notes:'V2.1.0 Item 1. role=chef. FE at 742ed29, verified on test.quoteme.food.',owner:'Claudio',task_id:'742ed29',claudio_notes:'Shipped to prod 2026-05-15. V2.1.0 batch 1. Chef self-signup live at /auth, lands on /dashboard empty state.'},
+  {id:'c2',title:'Per-line price column on quote receipt',priority:'p1',area:'chef',status:'todo',column:'todo',notes:'V2.1 Item 2. ~10-20 LOC FE. unit_price_cents in BE, FE not rendering.',owner:'Claudio',task_id:'P-V2.1-receipt-prices',claudio_notes:'Item 19 diagnosis confirmed: 0/18 BE prices null. FE render-only fix, never landed. Blocks Seattle Fish + revenue outreach.'},
+  {id:'c3',title:'Chef entry redirect too aggressive',priority:'p1',area:'chef',status:'done',column:'done',notes:'RECENT_QUOTE_KEY in sessionStorage redirects on every /chef/entry. Fix: router-state guard + clear-on-dashboard-mount.',owner:'Claudio',task_id:'c433825',claudio_notes:'Shipped c433825. Redirect now gated on document.referrer matching /chef/status; ChefDashboardPage clears the marker on mount.'},
+  {id:'c4',title:'Universal chef topbar audit',priority:'p1',area:'chef',status:'todo',column:'todo',notes:'Audit every chef route, ensure ChefTopbar present. Order guide is known gap.',owner:'Claudio',task_id:'P-V2.1-order-guide-topbar-missing',claudio_notes:''},
+  {id:'c5',title:'Hide quote count until chef-send ships',priority:'p1',area:'chef',status:'done',column:'done',notes:'Counts received not sent. ~5-10 LOC conditional render.',owner:'Claudio',task_id:'7d14c08',claudio_notes:'Shipped 7d14c08. Counter rendering suppressed, QuoteCount function retained as V2.1.5 restoration target.'},
+  {id:'c6',title:'Mobile bottom nav flash + P0-E consume/me loop',priority:'p1',area:'infra',status:'done',column:'done',notes:'Sequence: Item 7 first (useCallback), then Item 6 (render guard in RootLayout).',owner:'Claudio',task_id:'4f46d0e + be34606',claudio_notes:'Both shipped. 4f46d0e wraps refreshUser + syncWithAuthUser in useCallback (kills the consume/me loop). be34606 adds isLoading render guard to RootLayout (kills the FOUC).'},
+  {id:'c7',title:'Em dash in error copy',priority:'p2',area:'chef',status:'done',column:'done',notes:'Tab 2 error copy has em dash. 1-char fix + audit.',owner:'Claudio',task_id:'c433825',claudio_notes:'Shipped c433825 (bundled with Item 3). MultiRestaurantConfirmModal heading + footer reworded. Source-code comments retained — not user-facing.'},
+  {id:'c8',title:'Modal truncation merge',priority:'p2',area:'chef',status:'done',column:'done',notes:'fix-v21-modal-truncation at fa67fc1. Ready to FF-merge.',owner:'Claudio',task_id:'95e88be',claudio_notes:'Shipped 95e88be. Cherry-picked fa67fc1 onto staging. Cards now show full restaurant name (was first-word-only).'},
+  {id:'c9',title:'Frontend Sentry env vars in Vercel',priority:'p0',area:'infra',status:'todo',column:'todo',notes:'Gates V2 announcement. VITE_SENTRY_DSN + VITE_RELEASE_SHA in Vercel prod.',owner:'Moose',task_id:'Moose Vercel',claudio_notes:'Mini-dispatch surfaced. Owner=Moose, Vercel dashboard action only.'},
+  {id:'c10',title:'demo.quoteme.food matching engine parity',priority:'p0',area:'infra',status:'todo',column:'todo',notes:'Item 47. Verify demo uses same engine as prod before external demos.',owner:'Claudio',task_id:'#77 P-V2.1-demo-matching-engine-parity',claudio_notes:''},
+  {id:'c11',title:'Chef dashboard',priority:'p1',area:'chef',status:'todo',column:'todo',notes:"Moose top priority next week. Outcome funnels need Moose + Justin conversation first.",owner:'',task_id:'#78 P-V2.5-dashboard-outcome-funnels',claudio_notes:'Empty state v1 shipped with V2 launch. Four design-spec variants (no rep / no catalog / expired link / stuck processing) deferred. Outcome-funnel scoping coupled with quote-count restoration (#54).'},
+  {id:'c12',title:'Order guide custom shelf order',priority:'p1',area:'chef',status:'todo',column:'todo',notes:'Justin trust mechanism. No topbar, no rep contact, no delivery days yet.',owner:'',task_id:'#74 P-V2.5',claudio_notes:''},
+  {id:'c13',title:'Catalog ingestion Phase B',priority:'p1',area:'dist',status:'inflight',column:'inflight',notes:'Requires catalog URLs alongside 204 distributor records.',owner:'Claudio',task_id:'Phase B.1 ✓ / B.2,B.3 todo',claudio_notes:'Phase B.1 ran on prod: 126,013 brand-tags written across 15+ distributors (Lipari/Wagner/Carmela conventions). Phase B.2 (digits-allowed brands like 5-Hour Energy, Protein2O) and Phase B.3 (Latina ALL-CAPS pattern) queued.'},
+  {id:'c14',title:'Matching engine structural fixes',priority:'p1',area:'infra',status:'todo',column:'todo',notes:'43 no_retrieval failures. BLOCKING_STOPWORDS reform + pairwise chaining audit.',owner:'',task_id:'',claudio_notes:'43-failure list source CSV is on Windows host (post_stage3_corpus_run_20260424.csv) — not yet pulled into repo.'},
 ];
 
 const DB = [
@@ -231,7 +232,7 @@ function renderBoard() {
       <div class="col-header"><span class="col-title">${sDot(col.status)}${col.title}</span><span class="col-count">${cards.length}</span></div>
       ${cards.map(card=>`<div class="card" draggable="true" ondragstart="dragStart(event,'${card.id}')" onclick="openCardDetail('${card.id}','board')">
         <div class="card-title">${card.title}</div>
-        <div class="card-meta">${pBadge(card.priority)}${aBadge(card.area)}${card.owner?`<span class="card-owner">${card.owner}</span>`:''}</div>
+        <div class="card-meta">${pBadge(card.priority)}${aBadge(card.area)}${card.task_id?`<span class="card-task-id">${card.task_id}</span>`:''}${card.owner?`<span class="card-owner">${card.owner}</span>`:''}</div>
       </div>`).join('')}
       <button class="add-card-btn" onclick="openNewCard('${col.id}','board')"><i class="ti ti-plus"></i> Add card</button>
     </div>`;
@@ -279,18 +280,21 @@ function openNewCard(colId,source){
   const isB=source==='backlog';
   showModal(`<h2>${isB?'Add to backlog':'New card'}</h2>
     <label>Title</label><input id="m-title" type="text" placeholder="Card title">
+    <label>Task ID <span style="font-weight:normal;color:var(--text-tertiary);font-size:11px;">(commit, ticket, P-V2.1-* tag)</span></label><input id="m-task-id" type="text" placeholder="e.g. 7d14c08 or #75" style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace;">
     <label>Priority</label><select id="m-priority"><option value="">None</option>${['p0','p1','p2','p3'].map(p=>`<option value="${p}">${p.toUpperCase()}</option>`).join('')}</select>
     <label>Area</label><select id="m-area"><option value="">None</option>${['chef','rep','dist','brand','infra'].map(a=>`<option value="${a}">${a.charAt(0).toUpperCase()+a.slice(1)}</option>`).join('')}</select>
     ${!isB?`<label>Column</label><select id="m-column">${state.columns.map(c=>`<option value="${c.id}" ${c.id===colId?'selected':''}>${c.title}</option>`).join('')}</select><label>Owner</label><input id="m-owner" type="text" placeholder="Claudio, Moose, Desi...">`:'' }
     <label>Notes</label><textarea id="m-notes" placeholder="Context, links, dependencies..."></textarea>
+    <label>Claudio notes <span style="font-weight:normal;color:var(--text-tertiary);font-size:11px;">(status note when moved)</span></label><textarea id="m-claudio-notes" rows="2" placeholder="e.g. shipped f772cf1, blocked on Sandra seed..."></textarea>
     <div class="modal-footer"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveNewCard(${isB})">Add card</button></div>`);
 }
 
 function saveNewCard(isB){
   const title=document.getElementById('m-title').value.trim(); if(!title)return;
   const id='c'+Date.now(),priority=document.getElementById('m-priority').value,area=document.getElementById('m-area').value,notes=document.getElementById('m-notes').value;
-  if(isB){state.backlog.push({id,title,priority,area,notes});}
-  else{const column=document.getElementById('m-column').value,owner=document.getElementById('m-owner').value;state.cards.push({id,title,priority,area,column,owner,notes,status:column});}
+  const task_id=document.getElementById('m-task-id').value,claudio_notes=document.getElementById('m-claudio-notes').value;
+  if(isB){state.backlog.push({id,title,priority,area,notes,task_id,claudio_notes});}
+  else{const column=document.getElementById('m-column').value,owner=document.getElementById('m-owner').value;state.cards.push({id,title,priority,area,column,owner,notes,task_id,claudio_notes,status:column});}
   save();closeModal();render();
 }
 
@@ -300,10 +304,12 @@ function openCardDetail(id,source){
   const card=arr.find(c=>c.id===id); if(!card)return;
   showModal(`<h2>${card.title}</h2>
     <label>Title</label><input id="m-title" type="text" value="${(card.title||'').replace(/"/g,'&quot;')}">
+    <label>Task ID <span style="font-weight:normal;color:var(--text-tertiary);font-size:11px;">(commit, ticket, P-V2.1-* tag)</span></label><input id="m-task-id" type="text" value="${(card.task_id||'').replace(/"/g,'&quot;')}" style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace;">
     <label>Priority</label><select id="m-priority"><option value="">None</option>${['p0','p1','p2','p3'].map(p=>`<option value="${p}" ${card.priority===p?'selected':''}>${p.toUpperCase()}</option>`).join('')}</select>
     <label>Area</label><select id="m-area"><option value="">None</option>${['chef','rep','dist','brand','infra'].map(a=>`<option value="${a}" ${card.area===a?'selected':''}>${a.charAt(0).toUpperCase()+a.slice(1)}</option>`).join('')}</select>
     ${!isB?`<label>Column</label><select id="m-column">${state.columns.map(c=>`<option value="${c.id}" ${card.column===c.id?'selected':''}>${c.title}</option>`).join('')}</select><label>Owner</label><input id="m-owner" type="text" value="${(card.owner||'').replace(/"/g,'&quot;')}">`:'' }
     <label>Notes</label><textarea id="m-notes">${card.notes||''}</textarea>
+    <label>Claudio notes <span style="font-weight:normal;color:var(--text-tertiary);font-size:11px;">(status note when moved)</span></label><textarea id="m-claudio-notes" rows="2">${card.claudio_notes||''}</textarea>
     ${!isB?`<div class="detail-section"><h3>Move to backlog</h3><button class="btn" onclick="moveToBacklog('${id}')">Move to backlog</button></div>`:`<div class="detail-section"><h3>Move to board</h3><button class="btn" onclick="moveToBoard('${id}')">Move to board</button></div>`}
     <div class="modal-footer"><button class="btn btn-danger" onclick="deleteCard('${id}','${source}')"><i class="ti ti-trash"></i> Delete</button><button class="btn" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveCardDetail('${id}','${source}')">Save</button></div>`);
 }
@@ -311,6 +317,7 @@ function openCardDetail(id,source){
 function saveCardDetail(id,source){
   const isB=source==='backlog';const arr=isB?state.backlog:state.cards;const card=arr.find(c=>c.id===id);if(!card)return;
   card.title=document.getElementById('m-title').value;card.priority=document.getElementById('m-priority').value;card.area=document.getElementById('m-area').value;card.notes=document.getElementById('m-notes').value;
+  card.task_id=document.getElementById('m-task-id').value;card.claudio_notes=document.getElementById('m-claudio-notes').value;
   if(!isB){card.column=document.getElementById('m-column').value;card.owner=document.getElementById('m-owner').value;}
   save();closeModal();render();
 }
