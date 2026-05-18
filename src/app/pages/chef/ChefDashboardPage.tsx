@@ -21,6 +21,7 @@ import { useNavigate } from 'react-router';
 import { Lock } from 'lucide-react';
 import { getChefQuotes, type ChefQuoteRow, type ChefQuotesIndexResponse } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
+import { ChefHomeEmpty } from '../../components/chef/ChefHomeEmpty';
 
 const C = {
   charcoal: '#2B2B2B',
@@ -99,7 +100,7 @@ export function ChefDashboardPage() {
           {state === 'loading' && <LoadingRow />}
           {state === 'error' && <ErrorRow message={errorMsg} />}
 
-          {state === 'ready' && !hasQuotes && <EmptyState />}
+          {state === 'ready' && !hasQuotes && <ChefHomeEmpty />}
 
           {state === 'ready' && hasQuotes && (
             <>

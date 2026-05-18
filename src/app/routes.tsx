@@ -53,6 +53,10 @@ import { ChefOrderGuidePage } from "./pages/chef/ChefOrderGuidePage";
 import { ChefWelcomePage } from "./pages/chef/ChefWelcomePage";
 import { ChefCatalogSelectionPage } from "./pages/chef/ChefCatalogSelectionPage";
 import { ChefDashboardPage } from "./pages/chef/ChefDashboardPage";
+import { ChefDistributorsEmpty } from "./components/chef/ChefDistributorsEmpty";
+import { ChefSettingsYou } from "./components/chef/ChefSettingsYou";
+import { ChefSettingsRestaurant } from "./components/chef/ChefSettingsRestaurant";
+import { ChefSettingsBilling } from "./components/chef/ChefSettingsBilling";
 import { CreateRestaurantPage } from "./pages/CreateRestaurantPage";
 import { isDemoMode } from "./utils/demoMode";
 
@@ -168,12 +172,13 @@ export const router = createBrowserRouter([
           // Chef shell routes — rendered inside ChefTabDesktopShell when
           // user.role === 'chef' (RootLayout branches on role).
           { path: "chef/dashboard", Component: ChefDashboardPage },
-          { path: "chef/distributors", Component: ChefDashboardPage },
+          { path: "chef/distributors", Component: ChefDistributorsEmpty },
           { path: "chef/order-guides", Component: ChefDashboardPage },
-          { path: "chef/settings", Component: ChefDashboardPage },
-          { path: "chef/settings/you", Component: ChefDashboardPage },
-          { path: "chef/settings/restaurant", Component: ChefDashboardPage },
-          { path: "chef/settings/billing", Component: ChefDashboardPage },
+          // /chef/settings redirects to /chef/settings/you (A2)
+          { path: "chef/settings", element: <Navigate to="/chef/settings/you" replace /> },
+          { path: "chef/settings/you", Component: ChefSettingsYou },
+          { path: "chef/settings/restaurant", Component: ChefSettingsRestaurant },
+          { path: "chef/settings/billing", Component: ChefSettingsBilling },
         ],
       },
     ],
