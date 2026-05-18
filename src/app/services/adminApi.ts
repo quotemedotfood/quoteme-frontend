@@ -86,6 +86,7 @@ export interface AdminDistributor {
   product_count: number;
   admin_user_id: string | null;
   admin_user_name: string | null;
+  unclaimed: boolean;
 }
 
 export interface AdminDistributorDetail extends AdminDistributor {

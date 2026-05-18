@@ -50,6 +50,13 @@ export function QMAdminDistributorDetailPage() {
             <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${dist.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
               {dist.status}
             </span>
+            {dist.unclaimed && (
+              <span style={{
+                fontSize: 10, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase',
+                padding: '2px 8px', borderRadius: 999, background: '#F3F4F6', color: '#6B7280',
+                border: '1px solid #E5E7EB'
+              }}>Unclaimed</span>
+            )}
           </div>
         </div>
       </div>

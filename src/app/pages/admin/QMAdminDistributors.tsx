@@ -283,9 +283,18 @@ export function QMAdminDistributors() {
                 {filtered.map((d) => (
                   <TableRow key={d.id} className="hover:bg-gray-50">
                     <TableCell>
-                      <Link to={`/qm-admin/distributors/${d.id}`} className="font-medium text-[#7FAEC2] hover:underline">
-                        {d.name}
-                      </Link>
+                      <div className="flex items-center gap-2">
+                        <Link to={`/qm-admin/distributors/${d.id}`} className="font-medium text-[#7FAEC2] hover:underline">
+                          {d.name}
+                        </Link>
+                        {d.unclaimed && (
+                          <span style={{
+                            fontSize: 10, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase',
+                            padding: '2px 8px', borderRadius: 999, background: '#F3F4F6', color: '#6B7280',
+                            border: '1px solid #E5E7EB'
+                          }}>Unclaimed</span>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell className="text-sm text-gray-500">{d.email_domain || 'None'}</TableCell>
                     <TableCell className="text-sm text-gray-500">{d.region || 'None'}</TableCell>
