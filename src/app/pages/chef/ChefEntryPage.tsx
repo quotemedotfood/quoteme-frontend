@@ -258,7 +258,7 @@ export function ChefEntryPage() {
                 setError(null);
               }}
               disabled={textareaDisabled}
-              placeholder="Paste your full menu here — dishes, ingredients, sections…"
+              placeholder="Paste your full menu here: dishes, ingredients, sections…"
               rows={8}
               // iOS Safari's QuickType bar will silently inject autofill text
               // into a focused textarea via an `input` event, flipping

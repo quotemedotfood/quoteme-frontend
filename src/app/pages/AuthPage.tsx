@@ -344,7 +344,7 @@ export function AuthPage() {
           QuoteMe
         </h1>
         <p className="mt-2 text-sm" style={{ color: '#4F4F4F' }}>
-          Choose your role to get started
+          Choose your role
         </p>
       </div>
 
@@ -416,7 +416,7 @@ export function AuthPage() {
               I'm a Restaurant
             </p>
             <p className="text-sm" style={{ color: '#4F4F4F' }}>
-              Request and compare quotes from distributors
+              Review and accept quotes from your distributor
             </p>
           </div>
         </button>
@@ -552,7 +552,7 @@ export function AuthPage() {
               <p className="text-sm font-medium text-green-800">
                 You've been invited to join a team
               </p>
-              <p className="text-xs text-green-600">Create your account to get started</p>
+              <p className="text-xs text-green-600">Continue to your quote</p>
             </div>
           </div>
         )}
@@ -1046,7 +1046,7 @@ export function AuthPage() {
           className="font-semibold underline-offset-2 hover:underline"
           style={{ color: '#7FAEC2' }}
         >
-          Back to Sign In
+          Back
         </button>
       </p>
     </div>
