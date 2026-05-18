@@ -5,14 +5,14 @@ import { getGuestQuote } from '../../services/api';
 const headlineStyle: React.CSSProperties = { fontFamily: "'Playfair Display', serif" };
 
 // Staged progress messages — cycle by elapsed time so the chef sees the
-// system working, not a stale 30s countdown. Mirrors the rep MapIngredientsPage
-// 6-phase pattern (memory note: "So close…" after 15s of "Almost there…").
+// system working, not a stale 30s countdown. Four canonical messages per
+// QUOTEME_CHEF_FLOW_CANONICAL_V3 Part 6 Step 4. Dots animation provides
+// the trailing ellipsis affordance so strings omit it.
 const STAGES: Array<{ at: number; message: string }> = [
-  { at: 0,  message: 'Reading your menu' },
-  { at: 8,  message: 'Matching ingredients' },
-  { at: 18, message: 'Building your quote' },
-  { at: 35, message: 'Almost there' },
-  { at: 50, message: 'So close' },
+  { at:  0, message: 'Preparing your draft' },
+  { at:  8, message: 'Checking catalog coverage' },
+  { at: 18, message: 'Organizing menu components' },
+  { at: 30, message: 'Preparing distributor alignment' },
 ];
 
 function stageFor(elapsedSec: number): string {
