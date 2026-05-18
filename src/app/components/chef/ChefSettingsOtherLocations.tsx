@@ -1,5 +1,5 @@
-// ChefSettingsBilling — /dashboard/settings/billing stub
-// Full billing settings UX deferred.
+// ChefSettingsOtherLocations — /dashboard/settings/other-locations stub
+// A1-bis fix: fourth Settings sub-item missed in A1. Full UX deferred.
 
 import { Link } from 'react-router';
 
@@ -13,7 +13,7 @@ const sans: React.CSSProperties = {
   fontFamily: "'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
 };
 
-export function ChefSettingsBilling() {
+export function ChefSettingsOtherLocations() {
   return (
     <div
       className="px-6 py-8 max-w-xl mx-auto w-full"

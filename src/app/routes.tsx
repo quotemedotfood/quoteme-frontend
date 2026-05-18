@@ -3,12 +3,10 @@ import { RootWrapper } from "./components/RootWrapper";
 import { RootLayout } from "./components/RootLayout";
 import { QMAdminLayout } from "./components/QMAdminLayout";
 import { CustomersPage } from "./pages/CustomersPage";
-import { QuoteMePage } from "./pages/QuoteMePage";
 import { DashboardRoleRouter } from "./components/DashboardRoleRouter";
 import { StartNewQuotePage } from "./pages/StartNewQuotePage";
 import { QuoteBuilderPage } from "./pages/QuoteBuilderPage";
 import { SettingsPage } from "./pages/SettingsPage";
-import { QuotesPage } from "./pages/QuotesPage";
 import { MapIngredientsPage } from "./pages/MapIngredientsPage";
 import { ExportFinalizePage } from "./pages/ExportFinalizePage";
 import { QuoteReviewPage } from "./pages/QuoteReviewPage";
@@ -48,15 +46,17 @@ import { LocationPage } from "./pages/LocationPage";
 import { ChefSignupPage } from "./pages/chef/ChefSignupPage";
 import { ChefEntryPage } from "./pages/chef/ChefEntryPage";
 import { ChefStatusPage } from "./pages/chef/ChefStatusPage";
-import { ChefQuoteReceiptPage } from "./pages/chef/ChefQuoteReceiptPage";
-import { ChefOrderGuidePage } from "./pages/chef/ChefOrderGuidePage";
 import { ChefWelcomePage } from "./pages/chef/ChefWelcomePage";
-import { ChefCatalogSelectionPage } from "./pages/chef/ChefCatalogSelectionPage";
-import { ChefDashboardPage } from "./pages/chef/ChefDashboardPage";
-import { ChefDistributorsEmpty } from "./components/chef/ChefDistributorsEmpty";
 import { ChefSettingsYou } from "./components/chef/ChefSettingsYou";
 import { ChefSettingsRestaurant } from "./components/chef/ChefSettingsRestaurant";
 import { ChefSettingsBilling } from "./components/chef/ChefSettingsBilling";
+import { ChefSettingsOtherLocations } from "./components/chef/ChefSettingsOtherLocations";
+import { ChefQuotesPage } from "./pages/chef/ChefQuotesPage";
+import { ChefCatalogPage } from "./pages/chef/ChefCatalogPage";
+import { ChefQuoteDetailPage } from "./pages/chef/ChefQuoteDetailPage";
+import { ChefOrderGuideDetailPage } from "./pages/chef/ChefOrderGuideDetailPage";
+import { DashboardDistributorsPage } from "./pages/chef/DashboardDistributorsPage";
+import { DashboardOrderGuidesPage } from "./pages/chef/DashboardOrderGuidesPage";
 import { CreateRestaurantPage } from "./pages/CreateRestaurantPage";
 import { isDemoMode } from "./utils/demoMode";
 
@@ -76,13 +76,14 @@ export const router = createBrowserRouter([
         path: "chef/signup",
         Component: ChefSignupPage,
       },
+      // ─── Chef flow action routes (single-purpose, outside dashboard shell) ───
       {
         path: "chef/welcome",
         Component: ChefWelcomePage,
       },
       {
         path: "chef/catalog",
-        Component: ChefCatalogSelectionPage,
+        Component: ChefCatalogPage,
       },
       {
         path: "chef",
@@ -98,11 +99,11 @@ export const router = createBrowserRouter([
       },
       {
         path: "chef/quotes/:id",
-        Component: ChefQuoteReceiptPage,
+        Component: ChefQuoteDetailPage,
       },
       {
         path: "chef/order-guide/:id",
-        Component: ChefOrderGuidePage,
+        Component: ChefOrderGuideDetailPage,
       },
       {
         path: "reset-password",
@@ -149,7 +150,8 @@ export const router = createBrowserRouter([
             { path: "vendors", Component: VendorsPage },
             { path: "vendors/:id", Component: VendorDetailPage },
             { path: "locations", Component: LocationPage },
-            { path: "quotes", Component: QuotesPage },
+            // /quotes is now the canonical chef Quotes tab (V3 A3).
+            // Rep-flow quote list is accessible via sidebar link to /quotes.
             { path: "settings", Component: SettingsPage },
             { path: "settings/billing", Component: SettingsPage },
           ]),
@@ -169,16 +171,19 @@ export const router = createBrowserRouter([
           { path: "distributor-admin", Component: DistributorHomePage },
           { path: "liquor", Component: StartNewQuotePage },
           { path: "liquor/*", Component: StartNewQuotePage },
-          // Chef shell routes — rendered inside ChefTabDesktopShell when
-          // user.role === 'chef' (RootLayout branches on role).
-          { path: "chef/dashboard", Component: ChefDashboardPage },
-          { path: "chef/distributors", Component: ChefDistributorsEmpty },
-          { path: "chef/order-guides", Component: ChefDashboardPage },
-          // /chef/settings redirects to /chef/settings/you (A2)
-          { path: "chef/settings", element: <Navigate to="/chef/settings/you" replace /> },
-          { path: "chef/settings/you", Component: ChefSettingsYou },
-          { path: "chef/settings/restaurant", Component: ChefSettingsRestaurant },
-          { path: "chef/settings/billing", Component: ChefSettingsBilling },
+          // ─── Chef dashboard tab routes (V3 canonical — A3) ──────────────────
+          // Rendered inside ChefTabDesktopShell (NewspaperSidebar + topbar)
+          // when user.role === 'chef' (RootLayout branches on role).
+          { path: "quotes", Component: ChefQuotesPage },
+          { path: "chef/dashboard", element: <Navigate to="/quotes" replace /> },
+          // Dashboard namespace — Distributors / Order Guides / Settings
+          { path: "dashboard/distributors", Component: DashboardDistributorsPage },
+          { path: "dashboard/order-guides", Component: DashboardOrderGuidesPage },
+          { path: "dashboard/settings", element: <Navigate to="/dashboard/settings/you" replace /> },
+          { path: "dashboard/settings/you", Component: ChefSettingsYou },
+          { path: "dashboard/settings/restaurant", Component: ChefSettingsRestaurant },
+          { path: "dashboard/settings/billing", Component: ChefSettingsBilling },
+          { path: "dashboard/settings/other-locations", Component: ChefSettingsOtherLocations },
         ],
       },
     ],

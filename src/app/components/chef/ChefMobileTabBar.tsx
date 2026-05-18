@@ -28,20 +28,19 @@ const sans: React.CSSProperties = {
 };
 
 const TABS = [
-  { key: 'quotes',       label: 'Quotes',       icon: FileText, path: '/chef/dashboard' },
-  { key: 'distributors', label: 'Distributors',  icon: Truck,    path: '/chef/distributors' },
-  { key: 'settings',     label: 'Settings',      icon: Settings, path: '/chef/settings' },
+  { key: 'quotes',       label: 'Quotes',       icon: FileText, path: '/quotes' },
+  { key: 'distributors', label: 'Distributors',  icon: Truck,    path: '/dashboard/distributors' },
+  { key: 'settings',     label: 'Settings',      icon: Settings, path: '/dashboard/settings' },
 ] as const;
 
 function isTabActive(key: string, pathname: string): boolean {
   if (key === 'quotes') {
-    return pathname === '/chef/dashboard'
-      || pathname === '/dashboard'
+    return pathname === '/quotes'
       || pathname.startsWith('/chef/quotes')
-      || pathname.startsWith('/chef/order-guides');
+      || pathname.startsWith('/dashboard/order-guides');
   }
-  if (key === 'settings') return pathname === '/chef/settings' || pathname.startsWith('/chef/settings/');
-  if (key === 'distributors') return pathname === '/chef/distributors' || pathname.startsWith('/chef/distributors/');
+  if (key === 'settings') return pathname === '/dashboard/settings' || pathname.startsWith('/dashboard/settings/');
+  if (key === 'distributors') return pathname === '/dashboard/distributors' || pathname.startsWith('/dashboard/distributors/');
   return false;
 }
 

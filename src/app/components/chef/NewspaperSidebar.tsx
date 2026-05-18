@@ -7,10 +7,13 @@
 //
 // Mode persists under localStorage key 'chef_sidebar_mode'.
 //
-// Four locked destinations (per A1 dispatch):
-//   Quotes, Order Guides, Distributors, Settings
-// Settings expands to 3 sub-items (You / Restaurant / Billing) when Settings
-// is the active route prefix.
+// Four locked destinations (V3 canonical paths — A3):
+//   Quotes → /quotes
+//   Order Guides → /dashboard/order-guides
+//   Distributors → /dashboard/distributors
+//   Settings → /dashboard/settings (redirects to /dashboard/settings/you)
+// Settings expands to 4 sub-items (You / Restaurant / Billing / Other locations)
+// when Settings is the active route prefix.
 //
 // Part 13 four-test gate — all labels checked:
 //   North Star: operational, not self-explaining
@@ -54,16 +57,17 @@ type SidebarMode = 'open' | 'compact' | 'hidden';
 // ─── Nav destinations ─────────────────────────────────────────────────────────
 
 const DESTINATIONS = [
-  { key: 'quotes',       label: 'Quotes',       icon: FileText,      path: '/chef/dashboard' },
-  { key: 'order-guides', label: 'Order Guides',  icon: ClipboardList, path: '/chef/order-guides' },
-  { key: 'distributors', label: 'Distributors',  icon: Truck,         path: '/chef/distributors' },
-  { key: 'settings',     label: 'Settings',      icon: Settings,      path: '/chef/settings' },
+  { key: 'quotes',       label: 'Quotes',       icon: FileText,      path: '/quotes' },
+  { key: 'order-guides', label: 'Order Guides',  icon: ClipboardList, path: '/dashboard/order-guides' },
+  { key: 'distributors', label: 'Distributors',  icon: Truck,         path: '/dashboard/distributors' },
+  { key: 'settings',     label: 'Settings',      icon: Settings,      path: '/dashboard/settings' },
 ] as const;
 
 const SETTINGS_SUB = [
-  { key: 'you',        label: 'You',        path: '/chef/settings/you' },
-  { key: 'restaurant', label: 'Restaurant', path: '/chef/settings/restaurant' },
-  { key: 'billing',    label: 'Billing',    path: '/chef/settings/billing' },
+  { key: 'you',             label: 'You',             path: '/dashboard/settings/you' },
+  { key: 'restaurant',      label: 'Restaurant',      path: '/dashboard/settings/restaurant' },
+  { key: 'billing',         label: 'Billing',         path: '/dashboard/settings/billing' },
+  { key: 'other-locations', label: 'Other locations', path: '/dashboard/settings/other-locations' },
 ] as const;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -241,18 +245,16 @@ export function NewspaperSidebar() {
   // Determine active destination
   function isDestActive(key: string, path: string): boolean {
     if (key === 'quotes') {
-      return pathname === '/chef/dashboard'
-        || pathname === '/dashboard'
-        || pathname === '/chef/quotes'
+      return pathname === '/quotes'
         || pathname.startsWith('/chef/quotes/');
     }
-    if (key === 'settings') return pathname === '/chef/settings' || pathname.startsWith('/chef/settings/');
-    if (key === 'order-guides') return pathname === '/chef/order-guides' || pathname.startsWith('/chef/order-guides/');
-    if (key === 'distributors') return pathname === '/chef/distributors' || pathname.startsWith('/chef/distributors/');
+    if (key === 'settings') return pathname === '/dashboard/settings' || pathname.startsWith('/dashboard/settings/');
+    if (key === 'order-guides') return pathname === '/dashboard/order-guides' || pathname.startsWith('/dashboard/order-guides/');
+    if (key === 'distributors') return pathname === '/dashboard/distributors' || pathname.startsWith('/dashboard/distributors/');
     return pathname === path;
   }
 
-  const settingsIsActive = isDestActive('settings', '/chef/settings');
+  const settingsIsActive = isDestActive('settings', '/dashboard/settings');
 
   // Hidden mode: render only the floating restore button
   if (mode === 'hidden') {

@@ -1,5 +1,5 @@
-// ChefSettingsRestaurant — /chef/settings/restaurant stub
-// A3 will build the full restaurant settings UX.
+// ChefSettingsRestaurant — /dashboard/settings/restaurant stub
+// Full restaurant settings UX deferred.
 
 import { Link } from 'react-router';
 
@@ -21,7 +21,7 @@ export function ChefSettingsRestaurant() {
       style={{ ...sans, color: C.charcoal }}
     >
       <Link
-        to="/chef/settings/you"
+        to="/dashboard/settings/you"
         style={{ fontSize: 12, color: C.gray500, textDecoration: 'none', display: 'inline-block', marginBottom: 24 }}
       >
         &larr; Settings
