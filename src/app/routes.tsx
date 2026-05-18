@@ -52,6 +52,7 @@ import { ChefQuoteReceiptPage } from "./pages/chef/ChefQuoteReceiptPage";
 import { ChefOrderGuidePage } from "./pages/chef/ChefOrderGuidePage";
 import { ChefWelcomePage } from "./pages/chef/ChefWelcomePage";
 import { ChefCatalogSelectionPage } from "./pages/chef/ChefCatalogSelectionPage";
+import { ChefDashboardPage } from "./pages/chef/ChefDashboardPage";
 import { CreateRestaurantPage } from "./pages/CreateRestaurantPage";
 import { isDemoMode } from "./utils/demoMode";
 
@@ -164,6 +165,15 @@ export const router = createBrowserRouter([
           { path: "distributor-admin", Component: DistributorHomePage },
           { path: "liquor", Component: StartNewQuotePage },
           { path: "liquor/*", Component: StartNewQuotePage },
+          // Chef shell routes — rendered inside ChefTabDesktopShell when
+          // user.role === 'chef' (RootLayout branches on role).
+          { path: "chef/dashboard", Component: ChefDashboardPage },
+          { path: "chef/distributors", Component: ChefDashboardPage },
+          { path: "chef/order-guides", Component: ChefDashboardPage },
+          { path: "chef/settings", Component: ChefDashboardPage },
+          { path: "chef/settings/you", Component: ChefDashboardPage },
+          { path: "chef/settings/restaurant", Component: ChefDashboardPage },
+          { path: "chef/settings/billing", Component: ChefDashboardPage },
         ],
       },
     ],

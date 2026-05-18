@@ -1,10 +1,11 @@
-import { Outlet, Navigate } from 'react-router';
+import { Outlet, Navigate, useLocation } from 'react-router';
 import { AppSidebar } from './AppSidebar';
-import { ChefTopbar } from './ChefTopbar';
 import { AuthSyncProvider } from './AuthSyncProvider';
 import { DemoBanner } from './DemoBanner';
 import { isDemoMode } from '../utils/demoMode';
 import { useAuth } from '../contexts/AuthContext';
+import { ChefTabDesktopShell } from './chef/ChefTabDesktopShell';
+import { ChefTopbar } from './ChefTopbar';
 
 export function RootLayout() {
   const demo = isDemoMode();
@@ -32,22 +33,32 @@ export function RootLayout() {
     );
   }
 
-  // V2 fix (smoke P0-A): chef-role users get a minimal layout — wordmark +
-  // identity + sign-out only, no AppSidebar. Distributors/Locations/Quotes
-  // routes don't exist as chef-facing surfaces in V2 scope, so showing
-  // rep-flavored nav to a chef is both confusing and 404-prone. Rep flow is
-  // unchanged.
+  // V2 fix (smoke P0-A): chef-role users get their own layout with
+  // NewspaperSidebar (desktop) + ChefMobileTabBar (mobile). The
+  // /chef/welcome magic-link arrival page is excluded — it stays minimal
+  // with no sidebar chrome (per V3 Part 6 lock). Rep flow unchanged.
   const isChef = user?.role === 'chef';
+  const { pathname } = useLocation();
 
   if (isChef) {
+    // /chef/welcome is the magic-link envelope arrival page. Per V3 lock
+    // it stays minimal — no sidebar, no mobile tab bar.
+    if (pathname === '/chef/welcome') {
+      return (
+        <AuthSyncProvider>
+          <div className="flex flex-col min-h-screen bg-[#FBFAF7]">
+            <ChefTopbar />
+            <main className="flex-1 overflow-auto">
+              <Outlet />
+            </main>
+          </div>
+        </AuthSyncProvider>
+      );
+    }
+
     return (
       <AuthSyncProvider>
-        <div className="flex flex-col min-h-screen bg-[#FBFAF7]">
-          <ChefTopbar />
-          <main className="flex-1 overflow-auto">
-            <Outlet />
-          </main>
-        </div>
+        <ChefTabDesktopShell />
       </AuthSyncProvider>
     );
   }
