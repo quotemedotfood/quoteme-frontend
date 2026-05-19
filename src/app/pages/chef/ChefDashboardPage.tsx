@@ -580,37 +580,33 @@ function QuoteHistory({
       </div>
       <div className="mt-2 divide-y" style={{ borderTop: `1px solid ${C.softLine}`, borderBottom: `1px solid ${C.softLine}` }}>
         {quotes.map((q) => (
-          <button
-            key={q.id}
-            type="button"
-            onClick={() => onPick(q)}
-            className="w-full text-left bg-white px-3.5 py-3.5 transition-colors hover:bg-[#FBFAF7] flex items-center gap-3"
-          >
-            <div className="flex-1 min-w-0">
-              <div
-                className="flex items-baseline gap-2"
-                style={{ ...sans, fontSize: 14, fontWeight: 500, color: C.charcoal }}
+          <div key={q.id} className="py-3 px-1 hover:bg-gray-50">
+            {/* Label row — label + PreviewPill placeholder on left, StatusPill on right */}
+            <div className="flex items-baseline justify-between gap-3">
+              <button
+                type="button"
+                onClick={() => onPick(q)}
+                className="min-w-0 flex-1 text-left flex items-baseline gap-2 hover:opacity-80"
               >
-                <span className="truncate">{q.distributor?.name || 'Distributor'}</span>
-                <StatusPill status={q.status} hasOG={q.has_order_guide} />
-              </div>
-              <div
-                className="mt-0.5"
-                style={{ ...sans, fontSize: 11.5, color: C.gray500, lineHeight: 1.4, fontVariantNumeric: 'tabular-nums' }}
-              >
-                {q.label} · {q.item_count} {q.item_count === 1 ? 'item' : 'items'} · {formatDate(q.sent_at || q.created_at)}
-              </div>
+                <span
+                  className="truncate"
+                  style={{ ...sans, fontSize: 14, fontWeight: 500, color: C.charcoal }}
+                >
+                  {q.label}
+                </span>
+                {/* TODO: PreviewPill (B4) */}
+                {q.preview && <></>}
+              </button>
+              <StatusPill status={q.status} hasOG={q.has_order_guide} />
             </div>
+            {/* Meta line — V3 Part 3 format */}
             <div
-              className="shrink-0 text-right"
-              style={{ ...serif, fontSize: 15, fontWeight: 500, color: C.charcoal, fontVariantNumeric: 'tabular-nums' }}
+              className="mt-0.5"
+              style={{ ...sans, fontSize: 11.5, color: C.gray500, lineHeight: 1.4, fontVariantNumeric: 'tabular-nums' }}
             >
-              {money(q.total_cents)}
+              {q.quote_number} · {q.distributor?.name ?? 'Unaffiliated'} · {formatDate(q.created_at)} · {q.item_count} {q.item_count === 1 ? 'item' : 'items'} · {money(q.total_cents)}
             </div>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C.gray400} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <polyline points="9 18 15 12 9 6" />
-            </svg>
-          </button>
+          </div>
         ))}
       </div>
     </section>
