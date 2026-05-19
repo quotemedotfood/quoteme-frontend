@@ -9,6 +9,8 @@ import { StartNewQuotePage } from "./pages/StartNewQuotePage";
 import { QuoteBuilderPage } from "./pages/QuoteBuilderPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { QuotesPage } from "./pages/QuotesPage";
+import { ChefQuotesPage } from "./pages/chef/ChefQuotesPage";
+import { QuotesRoleRouter } from "./components/QuotesRoleRouter";
 import { MapIngredientsPage } from "./pages/MapIngredientsPage";
 import { ExportFinalizePage } from "./pages/ExportFinalizePage";
 import { QuoteReviewPage } from "./pages/QuoteReviewPage";
@@ -144,7 +146,9 @@ export const router = createBrowserRouter([
             { path: "vendors", Component: VendorsPage },
             { path: "vendors/:id", Component: VendorDetailPage },
             { path: "locations", Component: LocationPage },
-            { path: "quotes", Component: QuotesPage },
+            { path: "rep/quotes", Component: QuotesPage },
+            { path: "chef/quotes", Component: ChefQuotesPage },
+            { path: "quotes", Component: QuotesRoleRouter },
             { path: "settings", Component: SettingsPage },
             { path: "settings/billing", Component: SettingsPage },
           ]),

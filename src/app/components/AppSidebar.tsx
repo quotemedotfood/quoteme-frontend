@@ -121,7 +121,7 @@ export function AppSidebar() {
         { icon: <Plus size={20} />, label: "New Quote", path: "/start-new-quote", highlight: true },
         { icon: <LayoutDashboard size={20} />, label: "Dashboard", path: "/distributor-admin" },
         { icon: <Package size={20} />, label: "Catalog", path: "/distributor-admin/catalog" },
-        { icon: <FileText size={20} />, label: "Quotes", path: "/quotes" },
+        { icon: <FileText size={20} />, label: "Quotes", path: "/rep/quotes" },
         { icon: <Users size={20} />, label: "Customers", path: "/customers" },
         { icon: <PlusCircle size={20} />, label: "Add Restaurant", path: "/distributor-admin/restaurants/new" },
         { icon: <UserPlus size={20} />, label: "Reps", path: "/distributor-admin/reps" },
@@ -132,14 +132,14 @@ export function AppSidebar() {
         { icon: <Plus size={20} />, label: "New Quote", path: "/", highlight: true },
         { icon: <LayoutDashboard size={20} />, label: "Dashboard", path: "/dashboard" },
         { icon: <Store size={20} />, label: "Vendors", path: "/vendors" },
-        { icon: <FileText size={20} />, label: "Quotes", path: "/quotes" },
+        { icon: <FileText size={20} />, label: "Quotes", path: "/rep/quotes" },
         { icon: <Building2 size={20} />, label: isMultiLocation ? "Locations" : "Location", path: "/locations" },
       ]
     : [
         { icon: <Plus size={20} />, label: "New Quote", path: "/", highlight: true },
         { icon: <LayoutDashboard size={20} />, label: "Dashboard", path: "/dashboard" },
         { icon: <Users size={20} />, label: "Customers", path: "/customers" },
-        { icon: <FileText size={20} />, label: "Quotes", path: "/quotes" },
+        { icon: <FileText size={20} />, label: "Quotes", path: "/rep/quotes" },
       ];
 
   return (
@@ -229,7 +229,7 @@ export function AppSidebar() {
           <div className="flex-1 h-full bg-white border-t border-gray-200 flex justify-around items-center pb-safe">
              <MobileNavItem 
                {...navItems.find(i => i.label === 'Quotes')!} 
-               isActive={pathname === '/quotes'} 
+               isActive={pathname === '/rep/quotes'}
              />
              <MobileNavItem 
                icon={<Settings size={20} />}
