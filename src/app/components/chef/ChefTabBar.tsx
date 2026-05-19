@@ -34,7 +34,7 @@ const sans: React.CSSProperties = {
   fontFamily: "'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
 };
 
-type TabId = 'home' | 'distributors' | 'settings';
+type TabId = 'home' | 'order-guides' | 'distributors' | 'settings';
 
 interface TabDef {
   id: TabId | 'build';
@@ -95,6 +95,7 @@ export function ChefTabBar({ active = 'home', nav = () => {} }: ChefTabBarProps)
 
   const tabs: TabDef[] = [
     { id: 'home',         label: 'Quotes',       target: 'tab-home' },
+    { id: 'order-guides', label: 'Order Guides', target: 'tab-order-guides' },
     { id: 'distributors', label: 'Distributors', target: 'tab-distributors' },
     { id: 'settings',     label: 'Settings',     target: 'tab-settings' },
     { id: 'build',        label: 'Build Quote',  target: 'entry', isAction: true },

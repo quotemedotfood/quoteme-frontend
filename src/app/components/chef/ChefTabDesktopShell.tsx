@@ -32,7 +32,7 @@ const sans: React.CSSProperties = {
 };
 
 type SidebarMode = 'open' | 'collapsed' | 'hidden';
-type ActiveTab = 'home' | 'distributors' | 'settings';
+type ActiveTab = 'home' | 'order-guides' | 'distributors' | 'settings';
 
 export interface ChefTabDesktopShellProps {
   active: ActiveTab;
@@ -49,6 +49,7 @@ export interface ChefTabDesktopShellProps {
 
 const NAV_ITEMS: { id: ActiveTab; label: string; target: string }[] = [
   { id: 'home',         label: 'Quotes',       target: 'tab-home' },
+  { id: 'order-guides', label: 'Order Guides', target: 'tab-order-guides' },
   { id: 'distributors', label: 'Distributors', target: 'tab-distributors' },
   { id: 'settings',     label: 'Settings',     target: 'tab-settings' },
 ];
