@@ -344,7 +344,7 @@ export function AuthPage() {
           QuoteMe
         </h1>
         <p className="mt-2 text-sm" style={{ color: '#4F4F4F' }}>
-          Choose your role to get started
+          Choose your role
         </p>
       </div>
 
@@ -416,7 +416,7 @@ export function AuthPage() {
               I'm a Restaurant
             </p>
             <p className="text-sm" style={{ color: '#4F4F4F' }}>
-              Request and compare quotes from distributors
+              Review and accept quotes from your distributor
             </p>
           </div>
         </button>
@@ -472,7 +472,11 @@ export function AuthPage() {
           className="text-xl font-bold"
           style={{ color: '#2A2A2A' }}
         >
-          {inviteDistributorId || inviteLocationId ? 'Join your team' : 'Create your account'}
+          {inviteDistributorId || inviteLocationId
+            ? 'Join your team'
+            : selectedRole === 'chef'
+              ? 'Open your quote'
+              : 'Create your account'}
         </h2>
       </div>
 
@@ -493,7 +497,9 @@ export function AuthPage() {
               <p className="text-sm font-medium text-green-800">
                 You've been invited to join {inviteDistributor.name}
               </p>
-              <p className="text-xs text-green-600">Create your account to get started</p>
+              <p className="text-xs text-green-600">
+                {selectedRole === 'chef' ? 'Continue to your quote' : 'Create your account to get started'}
+              </p>
             </div>
           </div>
         )}
@@ -552,7 +558,7 @@ export function AuthPage() {
               <p className="text-sm font-medium text-green-800">
                 You've been invited to join a team
               </p>
-              <p className="text-xs text-green-600">Create your account to get started</p>
+              <p className="text-xs text-green-600">Continue to your quote</p>
             </div>
           </div>
         )}
@@ -841,7 +847,9 @@ export function AuthPage() {
         style={{ backgroundColor: '#7FAEC2' }}
         size="lg"
       >
-        {isSubmitting ? 'Creating Account...' : 'Create Account'}
+        {selectedRole === 'chef'
+          ? (isSubmitting ? 'Continuing...' : 'Continue')
+          : (isSubmitting ? 'Creating Account...' : 'Create Account')}
       </Button>
 
       <p className="text-center text-sm" style={{ color: '#4F4F4F' }}>
@@ -851,7 +859,7 @@ export function AuthPage() {
           className="font-semibold underline-offset-2 hover:underline"
           style={{ color: '#7FAEC2' }}
         >
-          Sign In
+          {selectedRole === 'chef' ? 'Continue where you left off' : 'Sign In'}
         </button>
       </p>
     </div>
@@ -959,7 +967,7 @@ export function AuthPage() {
             className="font-semibold underline-offset-2 hover:underline"
             style={{ color: '#7FAEC2' }}
           >
-            Sign Up
+            {selectedRole === 'chef' ? 'Open a quote' : 'Sign Up'}
           </button>
         </p>
         <button
@@ -1046,7 +1054,7 @@ export function AuthPage() {
           className="font-semibold underline-offset-2 hover:underline"
           style={{ color: '#7FAEC2' }}
         >
-          Back to Sign In
+          Back
         </button>
       </p>
     </div>

@@ -258,7 +258,7 @@ export function ChefEntryPage() {
                 setError(null);
               }}
               disabled={textareaDisabled}
-              placeholder="Paste your full menu here — dishes, ingredients, sections…"
+              placeholder="Paste your full menu here: dishes, ingredients, sections…"
               rows={8}
               // iOS Safari's QuickType bar will silently inject autofill text
               // into a focused textarea via an `input` event, flipping
@@ -381,12 +381,13 @@ export function ChefEntryPage() {
 // moment the click registers; after navigate() resolves to /chef/status/<id>
 // the timer restarts there — close enough that the chef doesn't notice.
 
+// Four canonical messages per QUOTEME_CHEF_FLOW_CANONICAL_V3 Part 6 Step 4.
+// Dots animation provides trailing ellipsis — strings omit it.
 const STATUS_STAGES: Array<{ at: number; message: string }> = [
-  { at: 0, message: 'Reading your menu' },
-  { at: 8, message: 'Matching ingredients' },
-  { at: 18, message: 'Building your quote' },
-  { at: 35, message: 'Almost there' },
-  { at: 50, message: 'So close' },
+  { at:  0, message: 'Preparing your draft' },
+  { at:  8, message: 'Checking catalog coverage' },
+  { at: 18, message: 'Organizing menu components' },
+  { at: 30, message: 'Preparing distributor alignment' },
 ];
 
 function stageFor(elapsedSec: number): string {

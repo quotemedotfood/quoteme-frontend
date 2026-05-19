@@ -65,11 +65,11 @@ function WelcomeScreen({ onNext }: { onNext: () => void }) {
             className="text-3xl font-bold text-[#2A2A2A] mb-0"
             style={headlineStyle}
           >
-            Turn your menu into a distributor-ready quote
+            Send your menu to your distributor for a quote
           </h1>
         </div>
         <button className={primaryBtn} onClick={onNext}>
-          Build my first quote
+          Continue
         </button>
         <p className="text-center text-sm text-[#4F4F4F] mt-4">
           Already with us?{' '}
