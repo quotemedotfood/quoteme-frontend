@@ -22,6 +22,8 @@ import { Lock } from 'lucide-react';
 import { getChefQuotes, type ChefQuoteRow, type ChefQuotesIndexResponse } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { PreviewPill } from '../../components/chef/PreviewPill';
+import { ChefTabBar, ChefTabDesktopShell, ChefDistributorsTab } from '../../components/chef';
+import { ChefSettingsTab } from '../../components/chef/ChefSettingsTab';
 
 const C = {
   charcoal: '#2B2B2B',
@@ -51,7 +53,7 @@ function formatDate(iso: string): string {
   catch { return ''; }
 }
 
-type Tab = 'overview' | 'distributors' | 'settings' | 'discovery';
+type Tab = 'home' | 'order-guides' | 'distributors' | 'settings';
 
 export function ChefDashboardPage() {
   const navigate = useNavigate();
@@ -59,7 +61,25 @@ export function ChefDashboardPage() {
   const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading');
   const [data, setData] = useState<ChefQuotesIndexResponse | null>(null);
   const [errorMsg, setErrorMsg] = useState<string>('');
-  const [activeTab, setActiveTab] = useState<Tab>('overview');
+  const [activeTab, setActiveTab] = useState<Tab>('home');
+  const [isDesktop, setIsDesktop] = useState<boolean>(
+    typeof window !== 'undefined' && window.matchMedia('(min-width: 768px)').matches
+  );
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const mq = window.matchMedia('(min-width: 768px)');
+    const handler = (e: MediaQueryListEvent) => setIsDesktop(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
+
+  const navTab = (target: string) => {
+    if (target === 'entry') return navigate('/chef/entry');
+    if (target === 'tab-home') return setActiveTab('home');
+    if (target === 'tab-order-guides') return setActiveTab('order-guides');
+    if (target === 'tab-distributors') return setActiveTab('distributors');
+    if (target === 'tab-settings') return setActiveTab('settings');
+  };
 
   // Landing on the dashboard is an intentional context-reset for the chef:
   // any stored "most recent quote" marker is a back-navigation hint only,
@@ -93,43 +113,89 @@ export function ChefDashboardPage() {
 
   // RootLayout renders the ChefTopbar for chef-role users; this page no
   // longer needs its own header chrome.
-  return (
-    <div className="flex flex-col" style={{ color: C.charcoal }}>
-      <div className="flex-1">
-        <div className="max-w-2xl mx-auto px-5 pt-6 pb-12">
-          {state === 'loading' && <LoadingRow />}
-          {state === 'error' && <ErrorRow message={errorMsg} />}
+  const onPickQuote = (q: ChefQuoteRow) => navigate(`/chef/quotes/${q.id}`);
 
-          {state === 'ready' && !hasQuotes && <EmptyState />}
+  const renderTab = () => {
+    if (activeTab === 'home') {
+      return (
+        <OverviewTab
+          quotes={quotes}
+          questionsWithText={questionsWithText}
+          count={count}
+          limit={limit}
+          onPick={onPickQuote}
+        />
+      );
+    }
+    if (activeTab === 'order-guides') {
+      return <OrderGuidesTab quotes={quotes} onPick={(id) => navigate(`/chef/order-guide/${id}`)} />;
+    }
+    if (activeTab === 'distributors') {
+      return <ChefDistributorsTab nav={navTab} />;
+    }
+    if (activeTab === 'settings') {
+      return <ChefSettingsTab />;
+    }
+    return null;
+  };
 
-          {state === 'ready' && hasQuotes && (
-            <>
-              {/* Tab navigation chrome — only shown when chef has quotes */}
-              <TabNav activeTab={activeTab} onSelect={setActiveTab} />
+  // Pre-quote, loading, and error states render outside the tab shell.
+  if (state === 'loading') {
+    return <div className="max-w-2xl mx-auto px-5 pt-6 pb-12"><LoadingRow /></div>;
+  }
+  if (state === 'error') {
+    return <div className="max-w-2xl mx-auto px-5 pt-6 pb-12"><ErrorRow message={errorMsg} /></div>;
+  }
+  if (!hasQuotes) {
+    return <div className="max-w-2xl mx-auto px-5 pt-6 pb-12"><EmptyState /></div>;
+  }
 
-              {activeTab === 'overview' && (
-                <OverviewTab
-                  quotes={quotes}
-                  questionsWithText={questionsWithText}
-                  count={count}
-                  limit={limit}
-                  onPick={(q) => navigate(`/chef/quotes/${q.id}`)}
-                />
-              )}
-              {activeTab === 'distributors' && (
-                <DistributorsTab quotes={quotes} />
-              )}
-              {activeTab === 'settings' && (
-                <SettingsTab user={user} />
-              )}
-              {activeTab === 'discovery' && (
-                <DiscoveryTab />
-              )}
-            </>
-          )}
-        </div>
+  // Tabbed shell — desktop wraps in ChefTabDesktopShell, mobile uses ChefTabBar at bottom.
+  return isDesktop ? (
+    <ChefTabDesktopShell active={activeTab} nav={navTab}>
+      {renderTab()}
+    </ChefTabDesktopShell>
+  ) : (
+    <div className="flex flex-col" style={{ color: C.charcoal, height: '100%' }}>
+      <div className="flex-1 overflow-auto chef-scroller">
+        <div className="max-w-2xl mx-auto px-5 pt-6 pb-12">{renderTab()}</div>
       </div>
+      <ChefTabBar active={activeTab} nav={navTab} />
     </div>
+  );
+}
+
+// ─── Order Guides tab (B6 stub — lists quotes with linked order guides) ────
+
+function OrderGuidesTab({ quotes, onPick }: { quotes: ChefQuoteRow[]; onPick: (id: string) => void }) {
+  const withOG = quotes.filter((q) => q.has_order_guide && q.order_guide_id);
+  return (
+    <>
+      <div className="mb-6 pb-5" style={{ borderBottom: `1px solid ${C.softLine}` }}>
+        <h1 style={{ ...serif, fontSize: 26, fontWeight: 600, color: C.charcoal, lineHeight: 1.15 }}>
+          Order Guides
+        </h1>
+      </div>
+      {withOG.length === 0 ? (
+        <p style={{ ...sans, fontSize: 14, color: C.gray500 }}>
+          You don't have any order guides yet. They appear here once your distributor builds one for you.
+        </p>
+      ) : (
+        <div className="divide-y" style={{ borderTop: `1px solid ${C.softLine}`, borderBottom: `1px solid ${C.softLine}` }}>
+          {withOG.map((q) => (
+            <button
+              key={q.id}
+              type="button"
+              onClick={() => onPick(q.order_guide_id!)}
+              className="w-full text-left py-3 px-1 hover:bg-gray-50 flex items-baseline justify-between gap-3"
+            >
+              <span style={{ ...sans, fontSize: 14, color: C.charcoal }}>{q.label}</span>
+              <span style={{ ...sans, fontSize: 11.5, color: C.gray500 }}>{q.distributor?.name ?? '—'}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </>
   );
 }
 
