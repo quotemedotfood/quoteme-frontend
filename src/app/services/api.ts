@@ -1905,8 +1905,10 @@ export async function getChefDistributors(): Promise<ApiResponse<ChefDistributor
 // strip, in one round-trip.
 export interface ChefQuoteRow {
   id: string;
+  quote_number: string;
   label: string;
   status: string;
+  preview: boolean;
   created_at: string;
   sent_at: string | null;
   item_count: number;
