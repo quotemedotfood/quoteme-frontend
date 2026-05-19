@@ -207,7 +207,7 @@ function BuyerDashboard() {
                 Quote History
               </h2>
               {quotes.length > 5 && (
-                <button onClick={() => navigate('/quotes')} className="text-xs text-[#7FAEC2] hover:underline">
+                <button onClick={() => navigate('/rep/quotes')} className="text-xs text-[#7FAEC2] hover:underline">
                   View all &rarr;
                 </button>
               )}
@@ -325,7 +325,7 @@ function RepDashboard() {
                 Quote History
               </h2>
               {quotes.length > 5 && (
-                <button onClick={() => navigate('/quotes')} className="text-xs text-[#7FAEC2] hover:underline">
+                <button onClick={() => navigate('/rep/quotes')} className="text-xs text-[#7FAEC2] hover:underline">
                   View all &rarr;
                 </button>
               )}

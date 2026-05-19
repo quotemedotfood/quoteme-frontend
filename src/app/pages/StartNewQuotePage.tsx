@@ -815,7 +815,7 @@ export function StartNewQuotePage() {
             <p className="text-sm text-amber-800">
               You have 2 quotes in progress.{' '}
               <button
-                onClick={() => navigate('/quotes')}
+                onClick={() => navigate('/rep/quotes')}
                 className="text-[#A5CFDD] hover:text-[#7FAEC2] font-medium underline underline-offset-2"
               >
                 Go to your quotes &rarr;
