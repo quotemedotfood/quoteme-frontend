@@ -21,6 +21,7 @@ import { useNavigate } from 'react-router';
 import { Lock } from 'lucide-react';
 import { getChefQuotes, type ChefQuoteRow, type ChefQuotesIndexResponse } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
+import { PreviewPill } from '../../components/chef/PreviewPill';
 
 const C = {
   charcoal: '#2B2B2B',
@@ -594,8 +595,7 @@ function QuoteHistory({
                 >
                   {q.label}
                 </span>
-                {/* TODO: PreviewPill (B4) */}
-                {q.preview && <></>}
+                {q.preview && <PreviewPill size="xs" />}
               </button>
               <StatusPill status={q.status} hasOG={q.has_order_guide} />
             </div>

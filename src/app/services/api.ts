@@ -200,6 +200,7 @@ export interface QuoteResponse {
   total_cents: number;
   total: string;
   created_at: string;
+  preview?: boolean;
   contacts?: QuoteContact[];
   lines: QuoteLineResponse[];
   input_mode?: string | null;
@@ -1919,6 +1920,7 @@ export interface ChefQuoteRow {
   has_order_guide: boolean;
   order_guide_id: string | null;
   latest_question: string | null;
+  preview?: boolean;
 }
 
 export interface ChefQuotesIndexResponse {
