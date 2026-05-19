@@ -21,6 +21,7 @@ import { useNavigate } from 'react-router';
 import { Lock } from 'lucide-react';
 import { getChefQuotes, type ChefQuoteRow, type ChefQuotesIndexResponse } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
+import { PreviewPill } from '../../components/chef/PreviewPill';
 
 const C = {
   charcoal: '#2B2B2B',
@@ -595,10 +596,12 @@ function QuoteHistory({
                 <StatusPill status={q.status} hasOG={q.has_order_guide} />
               </div>
               <div
-                className="mt-0.5"
+                className="mt-0.5 flex items-center gap-1.5 flex-wrap"
                 style={{ ...sans, fontSize: 11.5, color: C.gray500, lineHeight: 1.4, fontVariantNumeric: 'tabular-nums' }}
               >
-                {q.label} · {q.item_count} {q.item_count === 1 ? 'item' : 'items'} · {formatDate(q.sent_at || q.created_at)}
+                <span>{q.label}</span>
+                {q.preview && <PreviewPill size="xs" />}
+                <span>· {q.item_count} {q.item_count === 1 ? 'item' : 'items'} · {formatDate(q.sent_at || q.created_at)}</span>
               </div>
             </div>
             <div
