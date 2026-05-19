@@ -127,8 +127,8 @@ export function DistributorFollowupRow({
         role="radiogroup"
         aria-label="Distributor follow-ups preference"
         style={{
-          background: 'var(--qm-warm-paper)',
-          border: '1px solid var(--qm-soft-line)',
+          background: 'var(--background)',
+          border: '1px solid var(--border)',
           padding: 3,
         }}
       >
@@ -148,8 +148,8 @@ export function DistributorFollowupRow({
               className="px-3 py-1.5 rounded-[5px] transition-colors"
               style={{
                 background: on ? '#fff' : 'transparent',
-                color: on ? 'var(--qm-charcoal)' : 'var(--qm-gray-500)',
-                fontFamily: on ? 'var(--qm-serif)' : 'var(--qm-sans)',
+                color: on ? 'var(--foreground)' : 'var(--muted-foreground)',
+                fontFamily: on ? '"Playfair Display", Georgia, serif' : '"DM Sans", -apple-system, sans-serif',
                 fontSize: desktop ? 12.5 : 12,
                 fontWeight: 500,
                 boxShadow: on ? '0 1px 2px rgba(43,43,43,.06)' : 'none',
@@ -182,7 +182,7 @@ export function QuoteCountPill({ children, padding = '2px 10px' }: QuoteCountPil
       className="num"
       style={{
         display: 'inline-block',
-        border: '1px solid var(--qm-orange)',
+        border: '1px solid var(--primary)',
         borderRadius: 999,
         padding,
         lineHeight: 1.3,

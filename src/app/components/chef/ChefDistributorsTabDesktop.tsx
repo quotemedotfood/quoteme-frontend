@@ -229,13 +229,9 @@ export function ChefDistributorsTabDesktop({
                   {d.updated}
                 </td>
                 <td style={{ padding: '12px 0' }}>
-                  {/* TODO: wire UseDistributorForQuoteModal (B3) */}
                   <button
                     type="button"
-                    onClick={() => {
-                      setModalDist(d);
-                      console.log('UseDistributorForQuoteModal — B3 deliverable', d);
-                    }}
+                    onClick={() => setModalDist(d)}
                     style={{
                       ...sans,
                       fontSize: 12,
@@ -316,11 +312,14 @@ export function ChefDistributorsTabDesktop({
         </button>
       </div>
 
-      {/* TODO: wire UseDistributorForQuoteModal (B3)
-          When modalDist is set, mount <UseDistributorForQuoteModal> here.
+      {modalDist && (
+        <UseDistributorForQuoteModal
+          distributor={modalDist}
+          onClose={() => setModalDist(null)}
+          onContinue={() => { setModalDist(null); nav('entry'); }}
           variant="desktop"
-          onClose → setModalDist(null)
-          onContinue → setModalDist(null); nav("entry") */}
+        />
+      )}
     </ChefTabDesktopShell>
   );
 }

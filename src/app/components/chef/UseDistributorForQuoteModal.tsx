@@ -84,8 +84,8 @@ export function UseDistributorForQuoteModal({
           marginBottom: isDesktop ? 'auto' : 0,
           marginTop: isDesktop ? 'auto' : 0,
           borderRadius: isDesktop
-            ? 'var(--qm-radius-xl)'
-            : 'var(--qm-radius-lg) var(--qm-radius-lg) 0 0',
+            ? 'calc(var(--radius) + 4px)'
+            : 'var(--radius) var(--radius) 0 0',
           boxShadow: '0 -8px 32px rgba(31,26,20,.18)',
         }}
       >
@@ -114,8 +114,8 @@ export function UseDistributorForQuoteModal({
             <div
               className="mt-4 px-3.5 py-3 rounded-md"
               style={{
-                background: 'var(--qm-warm-paper)',
-                border: '1px solid var(--qm-soft-line)',
+                background: 'var(--background)',
+                border: '1px solid var(--border)',
               }}
             >
               <div className="flex items-start gap-2.5">
@@ -125,7 +125,7 @@ export function UseDistributorForQuoteModal({
                     height: 6,
                     marginTop: 6,
                     borderRadius: 999,
-                    background: 'var(--qm-warning)',
+                    background: 'var(--destructive)',
                     flexShrink: 0,
                   }}
                 />
@@ -162,7 +162,7 @@ export function UseDistributorForQuoteModal({
             'flex flex-col gap-2',
             isDesktop ? 'px-7 pb-7' : 'px-5 pb-5',
           )}
-          style={{ borderTop: '1px solid var(--qm-soft-line)', paddingTop: 14 }}
+          style={{ borderTop: '1px solid var(--border)', paddingTop: 14 }}
         >
           <button onClick={onContinue} className="qm-btn qm-btn-orange qm-btn-full">
             Continue <ArrowRight size={16} color="white" />

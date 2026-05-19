@@ -16,9 +16,9 @@ export function PreviewPill({ size = 'sm' }: PreviewPillProps) {
     <span
       className="qm-pill"
       style={{
-        background: 'var(--qm-warm-paper)',
-        color: 'var(--qm-gray-700)',
-        border: '1px solid var(--qm-soft-line)',
+        background: 'var(--background)',
+        color: 'var(--foreground)',
+        border: '1px solid var(--border)',
         fontSize,
         padding: '2px 7px',
         letterSpacing: '.06em',

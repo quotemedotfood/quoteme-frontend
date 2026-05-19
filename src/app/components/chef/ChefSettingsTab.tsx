@@ -74,7 +74,7 @@ function ChefTabBar({ active }: { active: string; nav?: NavFn }) {
   return (
     <div
       style={{
-        borderTop: '1px solid var(--qm-soft-line)',
+        borderTop: '1px solid var(--border)',
         background: '#fff',
         display: 'flex',
         height: 56,
@@ -91,7 +91,7 @@ function ChefTabBar({ active }: { active: string; nav?: NavFn }) {
             justifyContent: 'center',
             fontSize: 12,
             fontWeight: active === t.id ? 600 : 400,
-            color: active === t.id ? 'var(--qm-charcoal)' : 'var(--qm-gray-500)',
+            color: active === t.id ? 'var(--foreground)' : 'var(--muted-foreground)',
           }}
         >
           {t.label}
@@ -156,13 +156,13 @@ export function ChefSettingsTab({ state = 'with-data', nav = noopNav }: ChefSett
               style={{
                 width: 56,
                 height: 56,
-                background: empty ? 'var(--qm-warm-paper)' : '#1F1A14',
-                border: '1px solid var(--qm-soft-line)',
-                color: empty ? 'var(--qm-gray-500)' : '#FBFAF7',
+                background: empty ? 'var(--background)' : '#1F1A14',
+                border: '1px solid var(--border)',
+                color: empty ? 'var(--muted-foreground)' : '#FBFAF7',
               }}
             >
               {empty ? (
-                <ImagePlus size={20} color="var(--qm-gray-500)" />
+                <ImagePlus size={20} color="var(--muted-foreground)" />
               ) : (
                 <span className="serif font-semibold" style={{ fontSize: 18, letterSpacing: 0.4 }}>
                   H&amp;S
@@ -207,9 +207,9 @@ export function ChefSettingsTab({ state = 'with-data', nav = noopNav }: ChefSett
                   className="shrink-0 w-8 h-8 rounded-full flex items-center justify-center"
                   style={{
                     background:
-                      c.status === 'active' ? 'var(--qm-light-blue)' : 'var(--qm-warm-paper)',
+                      c.status === 'active' ? 'var(--secondary)' : 'var(--background)',
                     border:
-                      c.status === 'active' ? 'none' : '1px dashed var(--qm-soft-line)',
+                      c.status === 'active' ? 'none' : '1px dashed var(--border)',
                   }}
                 >
                   <span className="serif text-[11px] font-semibold ink">
@@ -268,7 +268,7 @@ export function ChefSettingsTab({ state = 'with-data', nav = noopNav }: ChefSett
           ) : (
             LOCATIONS.filter((l) => !l.current).map((l, i) => (
               <div key={i} className="doc-divider py-3 flex items-start gap-3">
-                <Store size={16} color="var(--qm-gray-700)" />
+                <Store size={16} color="var(--foreground)" />
                 <div className="flex-1 min-w-0">
                   <div className="text-[13px] ink leading-snug">{l.name}</div>
                   <div className="text-[11.5px] ink-faint leading-snug">
@@ -307,7 +307,7 @@ export function ChefSettingsTab({ state = 'with-data', nav = noopNav }: ChefSett
                   className="qm-pill"
                   style={{
                     background: '#F3F4F6',
-                    color: 'var(--qm-gray-700)',
+                    color: 'var(--foreground)',
                     fontSize: 10,
                     padding: '2px 8px',
                   }}
@@ -354,7 +354,7 @@ export function ChefSettingsTab({ state = 'with-data', nav = noopNav }: ChefSett
         {/* Sign out — quiet, bottom of the page */}
         <div
           className="mt-7 pt-4 flex items-center justify-between"
-          style={{ borderTop: '1px solid var(--qm-soft-line)' }}
+          style={{ borderTop: '1px solid var(--border)' }}
         >
           <div className="text-[11.5px] ink-faint">Signed in as {DEMO.chefEmail}</div>
           <button className="text-[11.5px] ink-soft underline">Sign out</button>
@@ -429,13 +429,13 @@ export function ChefSettingsTabDesktop({
                 style={{
                   width: 72,
                   height: 72,
-                  background: empty ? 'var(--qm-warm-paper)' : '#1F1A14',
-                  border: '1px solid var(--qm-soft-line)',
-                  color: empty ? 'var(--qm-gray-500)' : '#FBFAF7',
+                  background: empty ? 'var(--background)' : '#1F1A14',
+                  border: '1px solid var(--border)',
+                  color: empty ? 'var(--muted-foreground)' : '#FBFAF7',
                 }}
               >
                 {empty ? (
-                  <ImagePlus size={22} color="var(--qm-gray-500)" />
+                  <ImagePlus size={22} color="var(--muted-foreground)" />
                 ) : (
                   <span
                     className="serif font-semibold"
@@ -506,9 +506,9 @@ export function ChefSettingsTabDesktop({
                     className="shrink-0 w-9 h-9 rounded-full flex items-center justify-center"
                     style={{
                       background:
-                        c.status === 'active' ? 'var(--qm-light-blue)' : 'var(--qm-warm-paper)',
+                        c.status === 'active' ? 'var(--secondary)' : 'var(--background)',
                       border:
-                        c.status === 'active' ? 'none' : '1px dashed var(--qm-soft-line)',
+                        c.status === 'active' ? 'none' : '1px dashed var(--border)',
                     }}
                   >
                     <span className="serif text-[12px] font-semibold ink">
@@ -584,7 +584,7 @@ export function ChefSettingsTabDesktop({
             ) : (
               LOCATIONS.filter((l) => !l.current).map((l, i) => (
                 <div key={i} className="doc-divider py-3 flex items-center gap-4">
-                  <Store size={18} color="var(--qm-gray-700)" />
+                  <Store size={18} color="var(--foreground)" />
                   <div className="flex-1 min-w-0">
                     <div className="text-[13.5px] ink leading-snug">{l.name}</div>
                     <div className="text-[12px] ink-faint leading-snug">
@@ -629,7 +629,7 @@ export function ChefSettingsTabDesktop({
                     className="qm-pill"
                     style={{
                       background: '#F3F4F6',
-                      color: 'var(--qm-gray-700)',
+                      color: 'var(--foreground)',
                       fontSize: 10,
                       padding: '2px 8px',
                     }}
@@ -677,7 +677,7 @@ export function ChefSettingsTabDesktop({
           {/* Sign out */}
           <div
             className="mt-10 pt-5 flex items-center justify-between"
-            style={{ borderTop: '1px solid var(--qm-soft-line)' }}
+            style={{ borderTop: '1px solid var(--border)' }}
           >
             <div className="text-[12px] ink-faint">Signed in as {DEMO.chefEmail}</div>
             <button className="text-[12px] ink-soft underline">Sign out</button>

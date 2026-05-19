@@ -14,6 +14,7 @@
 //   • UseDistributorForQuoteModal: TODO — B3 deliverable (see below).
 
 import React, { useState } from 'react';
+import { UseDistributorForQuoteModal } from './UseDistributorForQuoteModal';
 import { MapPin, ArrowRight, Upload } from 'lucide-react';
 import { CatalogStatusBadge } from './CatalogStatusBadge';
 import { ChefTabBar } from './ChefTabBar';
@@ -225,13 +226,9 @@ export function ChefDistributorsTab({
                 {!d.affiliated && <CatalogStatusBadge status="unaffiliated" />}
               </div>
               <div className="flex items-center gap-3" style={{ marginTop: 6, fontSize: 11.5 }}>
-                {/* TODO: wire UseDistributorForQuoteModal (B3) */}
                 <button
                   type="button"
-                  onClick={() => {
-                    setModalDist(d);
-                    console.log('UseDistributorForQuoteModal — B3 deliverable', d);
-                  }}
+                  onClick={() => setModalDist(d)}
                   style={{ ...sans, fontSize: 11.5, color: C.gray700, textDecoration: 'underline', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
                 >
                   Use for a quote
@@ -291,10 +288,14 @@ export function ChefDistributorsTab({
       {/* Mobile tab bar */}
       <ChefTabBar active="distributors" nav={nav} />
 
-      {/* TODO: wire UseDistributorForQuoteModal (B3)
-          When modalDist is set, mount <UseDistributorForQuoteModal> here.
-          onClose → setModalDist(null)
-          onContinue → setModalDist(null); nav("entry") */}
+      {modalDist && (
+        <UseDistributorForQuoteModal
+          distributor={modalDist}
+          onClose={() => setModalDist(null)}
+          onContinue={() => { setModalDist(null); nav('entry'); }}
+          variant="mobile"
+        />
+      )}
     </div>
   );
 }
