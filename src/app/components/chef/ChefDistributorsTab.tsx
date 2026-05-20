@@ -17,7 +17,6 @@ import React, { useState } from 'react';
 import { UseDistributorForQuoteModal } from './UseDistributorForQuoteModal';
 import { MapPin, ArrowRight, Upload } from 'lucide-react';
 import { CatalogStatusBadge } from './CatalogStatusBadge';
-import { ChefTabBar } from './ChefTabBar';
 import {
   DEMO,
   YOUR_DISTRIBUTORS,
@@ -284,9 +283,6 @@ export function ChefDistributorsTab({
           </button>
         </div>
       </div>
-
-      {/* Mobile tab bar */}
-      <ChefTabBar active="distributors" nav={nav} />
 
       {modalDist && (
         <UseDistributorForQuoteModal
