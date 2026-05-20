@@ -106,6 +106,11 @@ export function ChefTabBar({ active = 'home', nav = () => {} }: ChefTabBarProps)
       ref={wrapRef}
       className="flex items-stretch bg-white"
       style={{
+        position: 'fixed',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        zIndex: 50,
         flex: '0 0 56px',
         borderTop: `1px solid ${C.softLine}`,
         paddingBottom: 12, // clears home indicator on iOS
