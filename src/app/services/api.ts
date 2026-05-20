@@ -1185,6 +1185,60 @@ export async function downloadOrderGuide(id: string): Promise<{ blob?: Blob; err
   }
 }
 
+export async function downloadChefOrderGuidePdf(orderGuideId: string): Promise<{ blob?: Blob; error?: string }> {
+  const token = getAuthToken();
+  const guestToken = getGuestToken();
+  const headers: Record<string, string> = {};
+
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  } else if (guestToken) {
+    headers['X-Guest-Token'] = guestToken;
+  }
+
+  try {
+    const response = await fetch(
+      `${API_BASE_URL}/api/v1/chef/order_guides/${orderGuideId}/pdf`,
+      { headers, cache: 'no-store' }
+    );
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      return { error: errorData.error || `HTTP ${response.status}` };
+    }
+    const blob = await response.blob();
+    return { blob };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : 'Network error' };
+  }
+}
+
+export async function downloadChefOrderGuideExcel(orderGuideId: string): Promise<{ blob?: Blob; error?: string }> {
+  const token = getAuthToken();
+  const guestToken = getGuestToken();
+  const headers: Record<string, string> = {};
+
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  } else if (guestToken) {
+    headers['X-Guest-Token'] = guestToken;
+  }
+
+  try {
+    const response = await fetch(
+      `${API_BASE_URL}/api/v1/chef/order_guides/${orderGuideId}/excel`,
+      { headers, cache: 'no-store' }
+    );
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      return { error: errorData.error || `HTTP ${response.status}` };
+    }
+    const blob = await response.blob();
+    return { blob };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : 'Network error' };
+  }
+}
+
 // Catalog product search — used for manual match selection
 export interface CatalogSearchProduct {
   id: string;

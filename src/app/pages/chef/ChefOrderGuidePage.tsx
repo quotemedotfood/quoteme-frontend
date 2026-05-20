@@ -3,8 +3,8 @@ import { useParams } from 'react-router';
 import {
   getChefOrderGuide,
   updateOrderGuideItem,
-  downloadOrderGuide,
-  downloadQuotePdf,
+  downloadChefOrderGuidePdf,
+  downloadChefOrderGuideExcel,
   type OrderGuideResponse,
   type OrderGuideItemResponse,
 } from '../../services/api';
@@ -216,12 +216,12 @@ export function ChefOrderGuidePage() {
   const handleDownloadExcel = useCallback(async () => {
     if (!guide) return;
     setDownloading('excel');
-    const res = await downloadOrderGuide(guide.quote_id);
+    const res = await downloadChefOrderGuideExcel(guide.id);
     if (res.blob) {
       const url = URL.createObjectURL(res.blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `order-guide-${guide.quote_id}.xlsx`;
+      a.download = `order-guide-${guide.id}.xlsx`;
       a.click();
       URL.revokeObjectURL(url);
     }
@@ -231,12 +231,12 @@ export function ChefOrderGuidePage() {
   const handleDownloadPdf = useCallback(async () => {
     if (!guide) return;
     setDownloading('pdf');
-    const res = await downloadQuotePdf(guide.quote_id);
+    const res = await downloadChefOrderGuidePdf(guide.id);
     if (res.blob) {
       const url = URL.createObjectURL(res.blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `order-guide-${guide.quote_id}.pdf`;
+      a.download = `order-guide-${guide.id}.pdf`;
       a.click();
       URL.revokeObjectURL(url);
     }
@@ -402,6 +402,7 @@ export function ChefOrderGuidePage() {
       <style>{`
         @media print {
           body { background: white; }
+          nav, header, [data-print-hide] { display: none !important; }
           input[type="number"] {
             border: none !important;
             background: transparent !important;
