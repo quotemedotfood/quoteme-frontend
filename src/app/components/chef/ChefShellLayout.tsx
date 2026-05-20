@@ -22,7 +22,7 @@ import { useEffect, useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router';
 import { ChefTabBar, ChefTabDesktopShell } from './';
 
-type ActiveTab = 'home' | 'order-guides' | 'distributors' | 'settings';
+type ActiveTab = 'home' | 'dashboard' | 'order-guides' | 'distributors' | 'settings';
 type SidebarMode = 'open' | 'collapsed' | 'hidden';
 
 function initialModeFromPath(pathname: string): SidebarMode {
@@ -39,7 +39,8 @@ function activeTabFromPath(pathname: string): ActiveTab {
   if (pathname.startsWith('/chef/quotes')) return 'home'; // Quotes destination
   if (pathname.startsWith('/chef/catalog')) return 'distributors';
   if (pathname.startsWith('/chef/settings')) return 'settings';
-  // /dashboard and anything else → home
+  // c73: /dashboard maps explicitly to 'dashboard' tab
+  if (pathname === '/dashboard' || pathname.startsWith('/dashboard')) return 'dashboard';
   return 'home';
 }
 
@@ -64,6 +65,7 @@ export function ChefShellLayout() {
   // c53-bis: pass clicked tab through navigate state to open the right tab.
   const navTab = (target: string) => {
     if (target === 'entry') return navigate('/chef/entry');
+    if (target === 'tab-dashboard') return navigate('/dashboard');
     if (target === 'tab-home') return navigate('/dashboard');
     if (target === 'tab-order-guides') return navigate('/dashboard');
     if (target === 'tab-distributors') return navigate('/dashboard');
@@ -83,7 +85,7 @@ export function ChefShellLayout() {
       <div className="flex-1 overflow-auto chef-scroller" style={{ paddingBottom: 68 }}>
         <Outlet />
       </div>
-      <ChefTabBar active={activeTab} nav={navTab} />
+      <ChefTabBar active={activeTab === 'dashboard' ? 'home' : activeTab} nav={navTab} />
     </div>
   );
 }

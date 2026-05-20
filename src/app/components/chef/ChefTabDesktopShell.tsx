@@ -14,7 +14,8 @@
 //   • CSS vars (--qm-*) → FE color constants.
 
 import React, { useState } from 'react';
-import { FileText, ClipboardList, Truck, Settings, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { FileText, ClipboardList, Truck, Settings, Home, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import quotemeLogo from '../../../assets/quoteme-logo.png';
 
 const C = {
   charcoal: '#2B2B2B',
@@ -33,7 +34,7 @@ const sans: React.CSSProperties = {
 };
 
 type SidebarMode = 'open' | 'collapsed' | 'hidden';
-type ActiveTab = 'home' | 'order-guides' | 'distributors' | 'settings';
+type ActiveTab = 'home' | 'dashboard' | 'order-guides' | 'distributors' | 'settings';
 
 export interface ChefTabDesktopShellProps {
   active: ActiveTab;
@@ -48,7 +49,9 @@ export interface ChefTabDesktopShellProps {
 // Preserves the structural contract (flex left rail, ~200px wide, collapses).
 // Full NewspaperSidebar design will be delivered in a subsequent track.
 
+// c73+c75: Dashboard added; order: BuildQuote (action), Dashboard, Quotes, OrderGuides, Distributors, Settings
 const NAV_ITEMS: { id: ActiveTab; label: string; target: string; Icon: React.ComponentType<{ size?: number; strokeWidth?: number }> }[] = [
+  { id: 'dashboard',    label: 'Dashboard',    target: 'tab-dashboard',    Icon: Home },
   { id: 'home',         label: 'Quotes',       target: 'tab-home',         Icon: FileText },
   { id: 'order-guides', label: 'Order Guides', target: 'tab-order-guides', Icon: ClipboardList },
   { id: 'distributors', label: 'Distributors', target: 'tab-distributors', Icon: Truck },
@@ -83,7 +86,7 @@ function NewspaperSidebarStub({
         zIndex: 20,
       }}
     >
-      {/* Masthead row: wordmark + toggle */}
+      {/* Masthead row: logo + toggle — c74: replaced truck+wordmark with PNG-05 lockup */}
       <div
         style={{
           display: 'flex',
@@ -92,11 +95,17 @@ function NewspaperSidebarStub({
           padding: collapsed ? '0 6px 12px' : '0 12px 12px 20px',
         }}
       >
-        {!collapsed && (
-          <div style={{ ...serif, fontSize: 17, fontWeight: 700, color: C.charcoal }}>
-            QuoteMe
-          </div>
-        )}
+        {/* c74: Full mode — logo ~130px wide; Compact mode — ~42px wide */}
+        <img
+          src={quotemeLogo}
+          alt="QuoteMe"
+          style={{
+            width: collapsed ? 42 : 130,
+            height: 'auto',
+            display: 'block',
+            flexShrink: 0,
+          }}
+        />
         {/* c65: Toggle at top, larger tap target, lucide icon */}
         <button
           type="button"
