@@ -20,9 +20,8 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { Lock } from 'lucide-react';
 import { getChefQuotes, type ChefQuoteRow, type ChefQuotesIndexResponse } from '../../services/api';
-import { useAuth } from '../../contexts/AuthContext';
 import { PreviewPill } from '../../components/chef/PreviewPill';
-import { ChefTabBar, ChefTabDesktopShell, ChefDistributorsTab } from '../../components/chef';
+import { ChefDistributorsTab } from '../../components/chef';
 import { ChefSettingsTab } from '../../components/chef/ChefSettingsTab';
 
 const C = {
@@ -57,22 +56,14 @@ type Tab = 'home' | 'order-guides' | 'distributors' | 'settings';
 
 export function ChefDashboardPage() {
   const navigate = useNavigate();
-  const { user } = useAuth();
   const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading');
   const [data, setData] = useState<ChefQuotesIndexResponse | null>(null);
   const [errorMsg, setErrorMsg] = useState<string>('');
   const [activeTab, setActiveTab] = useState<Tab>('home');
-  const [isDesktop, setIsDesktop] = useState<boolean>(
-    typeof window !== 'undefined' && window.matchMedia('(min-width: 768px)').matches
-  );
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const mq = window.matchMedia('(min-width: 768px)');
-    const handler = (e: MediaQueryListEvent) => setIsDesktop(e.matches);
-    mq.addEventListener('change', handler);
-    return () => mq.removeEventListener('change', handler);
-  }, []);
 
+  // navTab handles intra-page tab switching. The outer ChefShellLayout
+  // owns the shell chrome (sidebar / bottom bar) and handles cross-route
+  // navigation; this adapter is kept for renderTab() dispatch.
   const navTab = (target: string) => {
     if (target === 'entry') return navigate('/chef/entry');
     if (target === 'tab-home') return setActiveTab('home');
@@ -139,28 +130,14 @@ export function ChefDashboardPage() {
     return null;
   };
 
-  // Pre-quote, loading, and error states render outside the tab shell.
-  if (state === 'loading') {
-    return <div className="max-w-2xl mx-auto px-5 pt-6 pb-12"><LoadingRow /></div>;
-  }
-  if (state === 'error') {
-    return <div className="max-w-2xl mx-auto px-5 pt-6 pb-12"><ErrorRow message={errorMsg} /></div>;
-  }
-  if (!hasQuotes) {
-    return <div className="max-w-2xl mx-auto px-5 pt-6 pb-12"><EmptyState /></div>;
-  }
-
-  // Tabbed shell — desktop wraps in ChefTabDesktopShell, mobile uses ChefTabBar at bottom.
-  return isDesktop ? (
-    <ChefTabDesktopShell active={activeTab} nav={navTab}>
-      {renderTab()}
-    </ChefTabDesktopShell>
-  ) : (
-    <div className="flex flex-col" style={{ color: C.charcoal, height: '100%' }}>
-      <div className="flex-1 overflow-auto chef-scroller">
-        <div className="max-w-2xl mx-auto px-5 pt-6 pb-12">{renderTab()}</div>
-      </div>
-      <ChefTabBar active={activeTab} nav={navTab} />
+  // ChefShellLayout (the parent router layout) owns the tab chrome.
+  // This page renders content-only inside the shell's <Outlet />.
+  return (
+    <div className="max-w-2xl mx-auto px-5 pt-6 pb-12">
+      {state === 'loading' && <LoadingRow />}
+      {state === 'error' && <ErrorRow message={errorMsg} />}
+      {state === 'ready' && !hasQuotes && <EmptyState />}
+      {state === 'ready' && hasQuotes && renderTab()}
     </div>
   );
 }

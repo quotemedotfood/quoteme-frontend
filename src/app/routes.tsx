@@ -54,6 +54,7 @@ import { ChefQuoteReceiptPage } from "./pages/chef/ChefQuoteReceiptPage";
 import { ChefOrderGuidePage } from "./pages/chef/ChefOrderGuidePage";
 import { ChefWelcomePage } from "./pages/chef/ChefWelcomePage";
 import { ChefCatalogSelectionPage } from "./pages/chef/ChefCatalogSelectionPage";
+import { ChefShellLayout } from "./components/chef/ChefShellLayout";
 import { CreateRestaurantPage } from "./pages/CreateRestaurantPage";
 import { isDemoMode } from "./utils/demoMode";
 
@@ -78,10 +79,6 @@ export const router = createBrowserRouter([
         Component: ChefWelcomePage,
       },
       {
-        path: "chef/catalog",
-        Component: ChefCatalogSelectionPage,
-      },
-      {
         path: "chef",
         Component: ChefEntryPage,
       },
@@ -92,14 +89,6 @@ export const router = createBrowserRouter([
       {
         path: "chef/status/:id",
         Component: ChefStatusPage,
-      },
-      {
-        path: "chef/quotes/:id",
-        Component: ChefQuoteReceiptPage,
-      },
-      {
-        path: "chef/order-guide/:id",
-        Component: ChefOrderGuidePage,
       },
       {
         path: "reset-password",
@@ -140,14 +129,27 @@ export const router = createBrowserRouter([
         Component: RootLayout,
         children: [
           { index: true, Component: StartNewQuotePage },
+          // ── Chef shell layout — persistent tab chrome across chef sub-routes ──
+          // ChefShellLayout derives activeTab from useLocation() so sidebar/bar
+          // highlight stays in sync with direct URL navigation.
+          {
+            Component: ChefShellLayout,
+            children: [
+              ...(demo ? [] : [
+                { path: "dashboard", Component: DashboardRoleRouter },
+                { path: "chef/quotes", Component: ChefQuotesPage },
+              ]),
+              { path: "chef/quotes/:id", Component: ChefQuoteReceiptPage },
+              { path: "chef/order-guide/:id", Component: ChefOrderGuidePage },
+              { path: "chef/catalog", Component: ChefCatalogSelectionPage },
+            ],
+          },
           ...(demo ? [] : [
-            { path: "dashboard", Component: DashboardRoleRouter },
             { path: "customers", Component: CustomersPage },
             { path: "vendors", Component: VendorsPage },
             { path: "vendors/:id", Component: VendorDetailPage },
             { path: "locations", Component: LocationPage },
             { path: "rep/quotes", Component: QuotesPage },
-            { path: "chef/quotes", Component: ChefQuotesPage },
             { path: "quotes", Component: QuotesRoleRouter },
             { path: "settings", Component: SettingsPage },
             { path: "settings/billing", Component: SettingsPage },
