@@ -14,6 +14,7 @@
 //   • CSS vars (--qm-*) → FE color constants.
 
 import React, { useState } from 'react';
+import { FileText, ClipboardList, Truck, Settings, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 
 const C = {
   charcoal: '#2B2B2B',
@@ -47,11 +48,11 @@ export interface ChefTabDesktopShellProps {
 // Preserves the structural contract (flex left rail, ~200px wide, collapses).
 // Full NewspaperSidebar design will be delivered in a subsequent track.
 
-const NAV_ITEMS: { id: ActiveTab; label: string; target: string }[] = [
-  { id: 'home',         label: 'Quotes',       target: 'tab-home' },
-  { id: 'order-guides', label: 'Order Guides', target: 'tab-order-guides' },
-  { id: 'distributors', label: 'Distributors', target: 'tab-distributors' },
-  { id: 'settings',     label: 'Settings',     target: 'tab-settings' },
+const NAV_ITEMS: { id: ActiveTab; label: string; target: string; Icon: React.ComponentType<{ size?: number; strokeWidth?: number }> }[] = [
+  { id: 'home',         label: 'Quotes',       target: 'tab-home',         Icon: FileText },
+  { id: 'order-guides', label: 'Order Guides', target: 'tab-order-guides', Icon: ClipboardList },
+  { id: 'distributors', label: 'Distributors', target: 'tab-distributors', Icon: Truck },
+  { id: 'settings',     label: 'Settings',     target: 'tab-settings',     Icon: Settings },
 ];
 
 function NewspaperSidebarStub({
@@ -75,22 +76,59 @@ function NewspaperSidebarStub({
         background: C.warmPaper,
         display: 'flex',
         flexDirection: 'column',
-        padding: collapsed ? '20px 0' : '20px 0',
+        padding: '12px 0 20px',
         transition: 'width 200ms ease',
         overflow: 'hidden',
+        position: 'relative',
+        zIndex: 20,
       }}
     >
-      {/* Wordmark */}
-      {!collapsed && (
-        <div style={{ ...serif, fontSize: 17, fontWeight: 700, color: C.charcoal, padding: '0 20px 20px' }}>
-          QuoteMe
-        </div>
-      )}
+      {/* Masthead row: wordmark + toggle */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: collapsed ? 'center' : 'space-between',
+          padding: collapsed ? '0 6px 12px' : '0 12px 12px 20px',
+        }}
+      >
+        {!collapsed && (
+          <div style={{ ...serif, fontSize: 17, fontWeight: 700, color: C.charcoal }}>
+            QuoteMe
+          </div>
+        )}
+        {/* c65: Toggle at top, larger tap target, lucide icon */}
+        <button
+          type="button"
+          onClick={() => onModeChange(collapsed ? 'open' : mode === 'open' ? 'collapsed' : 'open')}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: 40,
+            height: 40,
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            borderRadius: 6,
+            color: C.gray500,
+            flexShrink: 0,
+          }}
+          onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(43,43,43,.06)'; }}
+          onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'none'; }}
+          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        >
+          {collapsed
+            ? <PanelLeftOpen size={20} strokeWidth={1.6} />
+            : <PanelLeftClose size={20} strokeWidth={1.6} />}
+        </button>
+      </div>
 
       {/* Nav items */}
       <nav style={{ flex: 1 }}>
         {NAV_ITEMS.map((item) => {
           const on = item.id === active;
+          const { Icon } = item;
           return (
             <button
               key={item.id}
@@ -99,7 +137,11 @@ function NewspaperSidebarStub({
               style={{
                 width: '100%',
                 textAlign: 'left',
-                padding: collapsed ? '10px 16px' : '10px 20px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+                padding: collapsed ? '10px 0' : '10px 20px',
+                justifyContent: collapsed ? 'center' : 'flex-start',
                 background: on ? 'rgba(43,43,43,.07)' : 'transparent',
                 border: 'none',
                 cursor: 'pointer',
@@ -110,7 +152,10 @@ function NewspaperSidebarStub({
                 borderLeft: on ? `3px solid ${C.charcoal}` : '3px solid transparent',
               }}
             >
-              {collapsed ? item.label[0] : item.label}
+              {/* c64: icon in compact mode, label in open mode */}
+              {collapsed
+                ? <Icon size={18} strokeWidth={on ? 2 : 1.6} />
+                : item.label}
             </button>
           );
         })}
@@ -139,25 +184,6 @@ function NewspaperSidebarStub({
           </button>
         </div>
       )}
-
-      {/* Collapse / expand toggle */}
-      <button
-        type="button"
-        onClick={() => onModeChange(collapsed ? 'open' : collapsed ? 'open' : mode === 'open' ? 'collapsed' : 'open')}
-        style={{
-          ...sans,
-          margin: '8px auto 0',
-          fontSize: 11,
-          color: C.gray500,
-          background: 'none',
-          border: 'none',
-          cursor: 'pointer',
-          padding: '4px 8px',
-        }}
-        aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-      >
-        {collapsed ? '›' : '‹'}
-      </button>
     </div>
   );
 }
@@ -225,7 +251,7 @@ export function ChefTabDesktopShell({
         {/* showTrust → TrustRibbon omitted; accepted by prop for future B4 wiring */}
         <div className="flex-1 overflow-auto">
           <div style={{ padding: '36px 40px' }}>
-            <div style={{ maxWidth: 880 }}>{children}</div>
+            <div style={{ maxWidth: 880, margin: '0 auto' }}>{children}</div>
           </div>
         </div>
       </div>
