@@ -5,11 +5,13 @@ import { reviewQuote } from '../services/api';
 interface QuoteReviewBarProps {
   quoteId: string;
   onMatchesUpdated: () => void;
+  noSidebarOffset?: boolean;
 }
 
 type ReviewState = 'idle' | 'expanded' | 'submitting' | 'dismissed';
 
-export function QuoteReviewBar({ quoteId, onMatchesUpdated }: QuoteReviewBarProps) {
+export function QuoteReviewBar({ quoteId, onMatchesUpdated, noSidebarOffset }: QuoteReviewBarProps) {
+  const sidebarClass = noSidebarOffset ? '' : 'md:left-64';
   const [state, setState] = useState<ReviewState>('idle');
   const [comment, setComment] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -58,7 +60,7 @@ export function QuoteReviewBar({ quoteId, onMatchesUpdated }: QuoteReviewBarProp
 
   if (state === 'submitting') {
     return (
-      <div className="fixed bottom-0 left-0 right-0 md:left-64 z-40 bg-white border-t border-gray-200 p-4">
+      <div className={`fixed bottom-0 left-0 right-0 ${sidebarClass} z-40 bg-white border-t border-gray-200 p-4`}>
         <div className="flex items-center justify-center gap-3 py-3">
           <Loader2 className="w-5 h-5 animate-spin text-[#7FAEC2]" />
           <span className="text-sm font-medium text-gray-700">Rethinking matches...</span>
@@ -69,7 +71,7 @@ export function QuoteReviewBar({ quoteId, onMatchesUpdated }: QuoteReviewBarProp
 
   if (state === 'expanded') {
     return (
-      <div className="fixed bottom-0 left-0 right-0 md:left-64 z-40 bg-white border-t border-gray-200 shadow-lg">
+      <div className={`fixed bottom-0 left-0 right-0 ${sidebarClass} z-40 bg-white border-t border-gray-200 shadow-lg`}>
         <div className="p-4 max-w-2xl mx-auto">
           <div className="flex items-center justify-between mb-3">
             <span className="text-sm font-medium text-gray-700">What should we fix?</span>
@@ -101,7 +103,7 @@ export function QuoteReviewBar({ quoteId, onMatchesUpdated }: QuoteReviewBarProp
   }
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 md:left-64 z-40">
+    <div className={`fixed bottom-0 left-0 right-0 ${sidebarClass} z-40`}>
       {rulesCreated !== null && rulesCreated > 0 && (
         <div className="bg-green-50 border-t border-green-200 px-4 py-3 text-center">
           <p className="text-xs font-medium text-green-800 mb-1">
