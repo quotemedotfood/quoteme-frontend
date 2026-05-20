@@ -123,8 +123,12 @@ export function QMAdminChefs() {
       localStorage.setItem('quoteme_chef_impersonation_event_id', res.data.event_id);
       // Swap the session token
       localStorage.setItem('quoteme_token', res.data.token);
-      // Navigate to the chef entry point
-      window.location.href = '/chef';
+      // Navigate to the chef dashboard. Previously '/chef' routed to the
+      // guest-quote create path, which 404'd on auth-mismatch polling
+      // (c51 — guest endpoint requires X-Guest-Token, impersonation issues
+      // a JWT). Dashboard is the correct landing for an already-impersonated
+      // chef session.
+      window.location.href = '/dashboard';
     } else {
       setError(res.error || 'Failed to impersonate chef');
       setImpersonatingId(null);
