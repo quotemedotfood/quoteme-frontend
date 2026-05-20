@@ -22,9 +22,9 @@ const STATUS_MAP: Record<
 > = {
   connected: {
     label: 'Connected',
-    bg: 'rgba(127,174,194,.22)',
+    bg: 'color-mix(in srgb, var(--accent) 22%, transparent)',
     fg: '#2A5F6F',
-    dot: '#7FAEC2', // --qm-hover-blue
+    dot: 'var(--accent)', // --qm-hover-blue
   },
   uploaded: {
     label: 'Uploaded',

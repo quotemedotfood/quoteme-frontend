@@ -99,7 +99,7 @@ export function ChefCatalogSelectionPage() {
                     <span>Your connected distributors</span>
                     <Pill
                       label="Connected"
-                      background="rgba(127,174,194,.2)"
+                      background="color-mix(in srgb, var(--accent) 20%, transparent)"
                       color="#2A5F6F"
                     />
                   </div>

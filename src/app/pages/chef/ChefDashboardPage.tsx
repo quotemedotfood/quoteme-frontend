@@ -663,8 +663,8 @@ function StatusPill({ status, hasOG }: { status: string; hasOG: boolean }) {
 
   if (status === 'won' && hasOG) { label = 'Ordered'; bg = '#DCFCE7'; color = '#166534'; }
   else if (status === 'won') { label = 'Accepted'; bg = '#DCFCE7'; color = '#166534'; }
-  else if (status === 'pending') { label = 'Ready'; bg = 'rgba(127,174,194,.2)'; color = '#2A5F6F'; }
-  else if (status === 'sent') { label = 'Sent'; bg = 'rgba(127,174,194,.2)'; color = '#2A5F6F'; }
+  else if (status === 'pending') { label = 'Ready'; bg = 'color-mix(in srgb, var(--accent) 20%, transparent)'; color = '#2A5F6F'; }
+  else if (status === 'sent') { label = 'Sent'; bg = 'color-mix(in srgb, var(--accent) 20%, transparent)'; color = '#2A5F6F'; }
   else if (status === 'draft') { label = 'Processing'; bg = '#FEF3C7'; color = '#92400E'; }
   else if (status === 'expired') { label = 'Expired'; bg = '#F3F4F6'; color = C.gray500; }
   else if (status === 'lost') { label = 'Closed'; bg = '#F3F4F6'; color = C.gray500; }
