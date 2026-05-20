@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router';
-import { getGuestQuote, acceptChefQuote, sendChefQuestion } from '../../services/api';
+import { getGuestQuote, getChefQuote, acceptChefQuote, sendChefQuestion } from '../../services/api';
 import type { QuoteResponse, QuoteLineResponse } from '../../services/api';
 import { PreviewPill } from '../../components/chef/PreviewPill';
 
@@ -67,7 +67,14 @@ export function ChefQuoteReceiptPage() {
   useEffect(() => {
     if (!id) return;
     setLoading(true);
-    getGuestQuote(id).then((res) => {
+    // Prefer the chef-scoped endpoint when a Bearer token is present
+    // (authenticated chef session). The chef endpoint is scoped by
+    // RestaurantContact join so existence is never leaked to wrong chefs.
+    // Fall back to the guest endpoint when only an X-Guest-Token is
+    // present (true guest preview-link arrival, no account yet).
+    const bearerToken = localStorage.getItem('quoteme_token');
+    const fetchFn = bearerToken ? getChefQuote : getGuestQuote;
+    fetchFn(id).then((res) => {
       if (res.error) {
         setError(res.error);
         setErrorStatus(res.status ?? null);
