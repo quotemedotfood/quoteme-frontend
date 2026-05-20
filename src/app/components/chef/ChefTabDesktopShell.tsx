@@ -14,12 +14,15 @@
 //   • CSS vars (--qm-*) → FE color constants.
 
 import React, { useState } from 'react';
-import { FileText, ClipboardList, Truck, Settings, Home, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { FileText, ClipboardList, Truck, Settings, Home, PanelLeftClose, PanelLeftOpen, Plus } from 'lucide-react';
 import quotemeLogo from '../../../assets/quoteme-logo.png';
 
 const C = {
   charcoal: '#2B2B2B',
-  orange: '#F9A64B',
+  // c72: Sacred Orange — canonical token is var(--primary) = #F2993D.
+  // Kept here for inline-style fallback; NOT #F9A64B (which is the legacy off-orange).
+  orange: '#F2993D',
+  orangeHover: '#E08A2E',
   warmPaper: '#FBFAF7',
   softLine: '#E8E8E8',
   gray700: '#4F4F4F',
@@ -49,7 +52,8 @@ export interface ChefTabDesktopShellProps {
 // Preserves the structural contract (flex left rail, ~200px wide, collapses).
 // Full NewspaperSidebar design will be delivered in a subsequent track.
 
-// c73+c75: Dashboard added; order: BuildQuote (action), Dashboard, Quotes, OrderGuides, Distributors, Settings
+// c73+c75: Dashboard added. Order: Dashboard, Quotes, OrderGuides, Distributors, Settings.
+// c72: Build Quote rendered separately ABOVE this list at position 2 (per locked IA).
 const NAV_ITEMS: { id: ActiveTab; label: string; target: string; Icon: React.ComponentType<{ size?: number; strokeWidth?: number }> }[] = [
   { id: 'dashboard',    label: 'Dashboard',    target: 'tab-dashboard',    Icon: Home },
   { id: 'home',         label: 'Quotes',       target: 'tab-home',         Icon: FileText },
@@ -73,7 +77,7 @@ function NewspaperSidebarStub({
   return (
     <div
       style={{
-        width: collapsed ? 52 : 200,
+        width: collapsed ? 64 : 200,
         flexShrink: 0,
         borderRight: `1px solid ${C.softLine}`,
         background: C.warmPaper,
@@ -135,6 +139,51 @@ function NewspaperSidebarStub({
 
       {/* Nav items */}
       <nav style={{ flex: 1 }}>
+        {/* c72: Build Quote — solid Sacred Orange CTA at position 2 (above Dashboard),
+            per locked IA. Desi spec did not place a Build Quote CTA in the desktop
+            sidebar (lives as a "Build new" sub-item under Quotes); IA lock supersedes.
+            Full mode: rectangle + Plus + text. Compact: INSET square + Plus only.
+            Plus icon is the ONE sidebar deviation to stroke 2 (white-on-orange contrast). */}
+        <div
+          style={{
+            padding: collapsed ? '4px 0 8px' : '4px 20px 8px',
+            display: 'flex',
+            justifyContent: collapsed ? 'center' : 'stretch',
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => onNav('entry')}
+            aria-label="Build Quote"
+            title={collapsed ? 'Build Quote' : undefined}
+            style={{
+              ...sans,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+              // Compact: INSET square matching destination icon padding (40x40) — not full bleed
+              // Full: full-width rectangle
+              width: collapsed ? 40 : '100%',
+              height: collapsed ? 40 : 'auto',
+              padding: collapsed ? 0 : '10px 14px',
+              fontSize: 13,
+              fontWeight: 600,
+              color: '#fff',
+              background: C.orange,
+              border: 'none',
+              borderRadius: 6,
+              cursor: 'pointer',
+              transition: 'background 120ms ease',
+            }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = C.orangeHover; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = C.orange; }}
+          >
+            <Plus size={collapsed ? 20 : 16} strokeWidth={2} color="#fff" />
+            {!collapsed && <span>Build Quote</span>}
+          </button>
+        </div>
+
         {NAV_ITEMS.map((item) => {
           const on = item.id === active;
           const { Icon } = item;
@@ -169,30 +218,6 @@ function NewspaperSidebarStub({
           );
         })}
       </nav>
-
-      {/* Build Quote action */}
-      {!collapsed && (
-        <div style={{ padding: '12px 20px', borderTop: `1px solid ${C.softLine}` }}>
-          <button
-            type="button"
-            onClick={() => onNav('entry')}
-            style={{
-              ...sans,
-              width: '100%',
-              padding: '8px 0',
-              fontSize: 13,
-              fontWeight: 600,
-              color: C.orange,
-              border: `1.5px solid ${C.orange}`,
-              background: 'transparent',
-              borderRadius: 6,
-              cursor: 'pointer',
-            }}
-          >
-            Build Quote
-          </button>
-        </div>
-      )}
     </div>
   );
 }
