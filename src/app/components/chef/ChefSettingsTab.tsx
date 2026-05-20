@@ -64,43 +64,6 @@ const DEMO = {
 
 function noopNav(_target: string): void {}
 
-function ChefTabBar({ active }: { active: string; nav?: NavFn }) {
-  // TODO: import { ChefTabBar } from './ChefTabBar'; when B1 lands.
-  const tabs = [
-    { id: 'home', label: 'Quotes' },
-    { id: 'distributors', label: 'Distributors' },
-    { id: 'settings', label: 'Settings' },
-  ];
-  return (
-    <div
-      style={{
-        borderTop: '1px solid var(--border)',
-        background: '#fff',
-        display: 'flex',
-        height: 56,
-        flexShrink: 0,
-      }}
-    >
-      {tabs.map((t) => (
-        <div
-          key={t.id}
-          style={{
-            flex: 1,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: 12,
-            fontWeight: active === t.id ? 600 : 400,
-            color: active === t.id ? 'var(--foreground)' : 'var(--muted-foreground)',
-          }}
-        >
-          {t.label}
-        </div>
-      ))}
-    </div>
-  );
-}
-
 function ChefTabDesktopShell({
   children,
 }: {
@@ -360,8 +323,6 @@ export function ChefSettingsTab({ state = 'with-data', nav = noopNav }: ChefSett
           <button className="text-[11.5px] ink-soft underline">Sign out</button>
         </div>
       </div>
-
-      <ChefTabBar active="settings" nav={nav} />
     </div>
   );
 }

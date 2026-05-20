@@ -13,7 +13,6 @@
 import React, { useState } from 'react';
 import { MapPin, ArrowRight } from 'lucide-react';
 import { CatalogStatusBadge } from './CatalogStatusBadge';
-import { ChefTabDesktopShell } from './ChefTabDesktopShell';
 import {
   DEMO,
   YOUR_DISTRIBUTORS,
@@ -62,7 +61,7 @@ export interface ChefDistributorsTabDesktopProps {
 export function ChefDistributorsTabDesktop({
   state = 'with-data',
   nav = () => {},
-  initialMode = 'open',
+  initialMode: _initialMode = 'open',
 }: ChefDistributorsTabDesktopProps) {
   const empty = state === 'empty';
 
@@ -70,7 +69,7 @@ export function ChefDistributorsTabDesktop({
   const [modalDist, setModalDist] = useState<AreaDistributor | null>(null);
 
   return (
-    <ChefTabDesktopShell active="distributors" nav={nav} initialMode={initialMode}>
+    <>
       {/* Page header */}
       <div>
         <h1 style={{ ...serif, fontSize: 32, fontWeight: 600, color: C.charcoal, lineHeight: 1.15 }}>
@@ -320,6 +319,6 @@ export function ChefDistributorsTabDesktop({
           variant="desktop"
         />
       )}
-    </ChefTabDesktopShell>
+    </>
   );
 }
