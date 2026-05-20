@@ -23,6 +23,16 @@ import { Outlet, useLocation, useNavigate } from 'react-router';
 import { ChefTabBar, ChefTabDesktopShell } from './';
 
 type ActiveTab = 'home' | 'order-guides' | 'distributors' | 'settings';
+type SidebarMode = 'open' | 'collapsed' | 'hidden';
+
+function initialModeFromPath(pathname: string): SidebarMode {
+  // Detail surfaces default to Compact (in-flow density)
+  if (pathname.startsWith('/chef/quotes/') && pathname !== '/chef/quotes') return 'collapsed';
+  if (pathname.startsWith('/chef/order-guide/')) return 'collapsed';
+  // Browse surfaces default to Full
+  // /dashboard, /chef/quotes (no :id), /chef/catalog
+  return 'open';
+}
 
 function activeTabFromPath(pathname: string): ActiveTab {
   if (pathname.startsWith('/chef/order-guide')) return 'order-guides';
@@ -61,7 +71,11 @@ export function ChefShellLayout() {
   };
 
   return isDesktop ? (
-    <ChefTabDesktopShell active={activeTab} nav={navTab}>
+    <ChefTabDesktopShell
+      active={activeTab}
+      nav={navTab}
+      initialMode={initialModeFromPath(location.pathname)}
+    >
       <Outlet />
     </ChefTabDesktopShell>
   ) : (
