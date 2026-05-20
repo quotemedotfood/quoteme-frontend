@@ -173,7 +173,7 @@ export function ChefQuoteReceiptPage() {
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <div className="min-h-screen bg-white flex flex-col items-center px-6 py-12">
+    <div className="flex flex-col items-center px-6 py-12">
       <div className="w-full max-w-xl">
 
         {/* ── 1. Header block ───────────────────────────────────────────── */}
