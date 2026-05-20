@@ -402,7 +402,7 @@ export function QuoteBuilderPage() {
   }
 
   return (
-    <div className="p-4 md:p-8 pb-24 bg-[#FFF9F3] min-h-screen overflow-x-hidden">
+    <div className="p-4 md:p-8 pb-52 bg-[#FFF9F3] min-h-screen overflow-x-hidden">
       <div className="max-w-7xl mx-auto w-full box-border">
         {/* Header */}
         <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
@@ -928,7 +928,7 @@ export function QuoteBuilderPage() {
       {/* Floating Finish Quote button */}
       <button
         onClick={() => navigate('/review', { state: { quoteId, isOpenQuote, locationId } })}
-        className="fixed bottom-[68px] right-6 bg-[#F9A64B] hover:bg-[#E8953A] text-white font-medium py-3 px-6 rounded-full shadow-lg text-base min-h-[48px] z-40"
+        className="fixed bottom-[80px] right-6 bg-[#F9A64B] hover:bg-[#E8953A] text-white font-medium py-3 px-6 rounded-full shadow-lg text-base min-h-[48px] z-50"
       >
         Finish Quote
       </button>
