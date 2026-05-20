@@ -933,7 +933,7 @@ export function QuoteBuilderPage() {
         Finish Quote
       </button>
 
-      {quoteId && <QuoteReviewBar quoteId={quoteId} onMatchesUpdated={handleMatchesUpdated} />}
+      {quoteId && <QuoteReviewBar quoteId={quoteId} onMatchesUpdated={handleMatchesUpdated} noSidebarOffset />}
 
       {/* Match Selection Drawer */}
       {matchDrawerItem && (
