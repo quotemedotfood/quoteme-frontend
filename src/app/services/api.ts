@@ -1895,6 +1895,15 @@ export async function markAllNotificationsRead(): Promise<ApiResponse<any>> {
 // Chef Flow API
 // ═══════════════════════════════════════════════════
 
+// GET /api/v1/chef/quotes/:id — chef-authed show endpoint.
+// Replaces getGuestQuote on ChefQuoteReceiptPage when a Bearer token is
+// present (authenticated chef session). Uses fetchWithGuest so both the
+// Authorization Bearer AND any residual X-Guest-Token are forwarded;
+// the BE Chef::BaseController prefers chef identity when both arrive.
+export async function getChefQuote(id: string): Promise<ApiResponse<QuoteResponse>> {
+  return fetchWithGuest(`/api/v1/chef/quotes/${id}`);
+}
+
 export async function acceptChefQuote(quoteId: string): Promise<ApiResponse<{ order_guide_id: string }>> {
   return fetchWithGuest(`/api/v1/chef/quotes/${quoteId}/accept`, { method: 'POST' });
 }
