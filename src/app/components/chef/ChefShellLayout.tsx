@@ -80,7 +80,7 @@ export function ChefShellLayout() {
     </ChefTabDesktopShell>
   ) : (
     <div className="flex flex-col" style={{ height: '100%' }}>
-      <div className="flex-1 overflow-auto chef-scroller">
+      <div className="flex-1 overflow-auto chef-scroller" style={{ paddingBottom: 68 }}>
         <Outlet />
       </div>
       <ChefTabBar active={activeTab} nav={navTab} />
