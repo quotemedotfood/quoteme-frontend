@@ -200,6 +200,7 @@ export interface QuoteResponse {
   total_cents: number;
   total: string;
   created_at: string;
+  preview?: boolean;
   contacts?: QuoteContact[];
   lines: QuoteLineResponse[];
   input_mode?: string | null;
@@ -1905,8 +1906,10 @@ export async function getChefDistributors(): Promise<ApiResponse<ChefDistributor
 // strip, in one round-trip.
 export interface ChefQuoteRow {
   id: string;
+  quote_number: string;
   label: string;
   status: string;
+  preview: boolean;
   created_at: string;
   sent_at: string | null;
   item_count: number;
@@ -1917,6 +1920,7 @@ export interface ChefQuoteRow {
   has_order_guide: boolean;
   order_guide_id: string | null;
   latest_question: string | null;
+  preview?: boolean;
 }
 
 export interface ChefQuotesIndexResponse {

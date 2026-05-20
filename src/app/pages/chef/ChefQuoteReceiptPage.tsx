@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import { getGuestQuote, acceptChefQuote, sendChefQuestion } from '../../services/api';
 import type { QuoteResponse, QuoteLineResponse } from '../../services/api';
+import { PreviewPill } from '../../components/chef/PreviewPill';
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -180,13 +181,16 @@ export function ChefQuoteReceiptPage() {
             </p>
           )}
 
-          {/* Headline */}
-          <h1
-            className="text-4xl font-bold text-[#2A2A2A] mb-4 leading-tight"
-            style={headlineStyle}
-          >
-            Your Quote
-          </h1>
+          {/* Headline + PreviewPill (when quote is in preview state) */}
+          <div className="flex items-center gap-2 flex-wrap mb-4">
+            <h1
+              className="text-4xl font-bold text-[#2A2A2A] leading-tight"
+              style={headlineStyle}
+            >
+              Your Quote
+            </h1>
+            {quote.preview && <PreviewPill size="xs" />}
+          </div>
 
           {/* Date */}
           <p className="text-sm text-[#9E9E9E]">
