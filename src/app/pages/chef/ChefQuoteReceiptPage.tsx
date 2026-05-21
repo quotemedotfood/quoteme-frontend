@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router';
 import { getGuestQuote, getChefQuote, acceptChefQuote, sendChefQuestion } from '../../services/api';
 import type { QuoteResponse, QuoteLineResponse } from '../../services/api';
 import { PreviewPill } from '../../components/chef/PreviewPill';
+import { ChevronDown } from 'lucide-react';
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -63,6 +64,7 @@ export function ChefQuoteReceiptPage() {
   const [accepting, setAccepting] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [savedForLater, setSavedForLater] = useState(false);
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (!id) return;
@@ -225,42 +227,62 @@ export function ChefQuoteReceiptPage() {
 
         {/* ── 2. Line items grouped by category ─────────────────────────── */}
         <div className="mb-8 flex flex-col gap-8">
-          {Array.from(grouped.entries()).map(([category, lines]) => (
-            <div key={category}>
-              {/* Category heading */}
-              <p
-                className="text-xs font-semibold text-[#9E9E9E] tracking-widest uppercase mb-3 pb-2 border-b border-[#F0F0F0]"
-              >
-                {toTitleCase(category)}
-              </p>
+          {Array.from(grouped.entries()).map(([category, lines]) => {
+            const isCollapsed = collapsedGroups.has(category);
+            return (
+              <div key={category}>
+                {/* Category heading — toggle button */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCollapsedGroups(prev => {
+                      const next = new Set(prev);
+                      next.has(category) ? next.delete(category) : next.add(category);
+                      return next;
+                    });
+                  }}
+                  className="w-full flex items-center justify-between gap-2 mb-3 pb-2 border-b border-[#F0F0F0]"
+                >
+                  <p className="text-xs font-semibold text-[#9E9E9E] tracking-widest uppercase">
+                    {toTitleCase(category)}
+                  </p>
+                  <ChevronDown
+                    size={13}
+                    className="text-[#BDBDBD] shrink-0"
+                    style={{ transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)' }}
+                  />
+                </button>
 
-              {/* Lines */}
-              <div className="flex flex-col gap-4">
-                {lines.map((line) => (
-                  <div key={line.id} className="flex items-start justify-between gap-4">
-                    {/* Left: product name + brand */}
-                    <div className="flex flex-col gap-0.5 min-w-0">
-                      <span className="text-[#2A2A2A] text-base font-medium leading-snug">
-                        {toTitleCase(line.product.product)}
-                      </span>
-                      {line.product.brand && (
-                        <span className="text-xs text-[#BDBDBD]">
-                          {toTitleCase(line.product.brand)}
-                        </span>
-                      )}
-                    </div>
+                {/* Lines — conditionally rendered */}
+                {!isCollapsed && (
+                  <div className="flex flex-col gap-4">
+                    {lines.map((line) => (
+                      <div key={line.id} className="flex items-start justify-between gap-4">
+                        {/* Left: product name + brand */}
+                        <div className="flex flex-col gap-0.5 min-w-0">
+                          <span className="text-[#2A2A2A] text-base font-medium leading-snug">
+                            {toTitleCase(line.product.product)}
+                          </span>
+                          {line.product.brand && (
+                            <span className="text-xs text-[#BDBDBD]">
+                              {toTitleCase(line.product.brand)}
+                            </span>
+                          )}
+                        </div>
 
-                    {/* Right: pack size */}
-                    {line.product.pack_size && (
-                      <span className="text-sm text-[#9E9E9E] whitespace-nowrap shrink-0 mt-0.5">
-                        {line.product.pack_size}
-                      </span>
-                    )}
+                        {/* Right: pack size */}
+                        {line.product.pack_size && (
+                          <span className="text-sm text-[#9E9E9E] whitespace-nowrap shrink-0 mt-0.5">
+                            {line.product.pack_size}
+                          </span>
+                        )}
+                      </div>
+                    ))}
                   </div>
-                ))}
+                )}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         {/* ── 3. Items your rep will handle ─────────────────────────────── */}
@@ -296,7 +318,7 @@ export function ChefQuoteReceiptPage() {
 
           {/* Question sent confirmation */}
           {questionSent && (
-            <p className="text-sm text-green-600 mb-1">
+            <p className="text-sm text-[#1F3A5F] mb-1">{ /* placeholder navy — Desi to confirm exact hex */ }
               Your question has been sent. Your rep will be in touch.
             </p>
           )}

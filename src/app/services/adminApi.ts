@@ -1091,6 +1091,13 @@ export async function adminBulkUpdateCategory(catalogId: string, productIds: str
   });
 }
 
+export async function adminBulkUpdateSubcategory(catalogId: string, productIds: string[], standard_subcategory: string): Promise<ApiResponse<{ updated: number; standard_subcategory: string }>> {
+  return fetchWithAuth('/api/v1/admin/matching-engine/catalog-bulk-update', {
+    method: 'PATCH',
+    body: JSON.stringify({ catalog_id: catalogId, product_ids: productIds, standard_subcategory }),
+  });
+}
+
 // ============= BRAND RULES =============
 
 export interface BrandRule {

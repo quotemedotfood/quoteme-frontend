@@ -44,6 +44,8 @@ interface ProductItem {
   sku: string;
   brand: string;
   product: string;
+  matched_product_name?: string | null;
+  sub_description?: string | null;
   pack: string;
   category: string;
   basePrice: number;
@@ -143,6 +145,8 @@ export function QuoteBuilderPage() {
           sku: line.product?.item_number || '',
           brand: isUnmatched ? '' : (line.product?.brand || ''),
           product: line.product?.product || '',
+          matched_product_name: (line as any).matched_product_name ?? null,
+          sub_description: (line as any).sub_description ?? null,
           pack: line.product?.pack_size || '',
           category: line.category || 'Uncategorized',
           basePrice: priceDollars,
@@ -751,6 +755,9 @@ export function QuoteBuilderPage() {
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 cursor-pointer hover:text-gray-900" onClick={() => handleSort('product')}>
                     Product {getSortIcon('product')}
                   </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-600">
+                    Sub-description
+                  </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 cursor-pointer hover:text-gray-900" onClick={() => handleSort('pack')}>
                     Pack {getSortIcon('pack')}
                   </th>
@@ -805,7 +812,10 @@ export function QuoteBuilderPage() {
                     <td className="px-4 py-3 text-sm text-[#2A2A2A]">{item.sku}</td>
                     <td className="px-4 py-3 text-sm text-[#2A2A2A]">{toTitleCase(item.brand)}</td>
                     <td className={`px-4 py-3 text-sm ${item.unmatched ? 'text-gray-400 italic' : 'text-[#2A2A2A]'}`}>
-                      {toTitleCase(item.unmatched ? item.component : item.product)}
+                      {toTitleCase(item.unmatched ? item.component : (item.matched_product_name || item.product))}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-500">
+                      {item.sub_description ? toTitleCase(item.sub_description) : '—'}
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-500">{item.pack}</td>
                     <td className="px-4 py-3 text-sm text-gray-500">{toTitleCase(item.category)}</td>
@@ -899,7 +909,7 @@ export function QuoteBuilderPage() {
                           </button>
                         </div>
                       ) : (
-                        `$${item.currentPrice.toFixed(2)}`
+                        item.unmatched && item.currentPrice === 0 ? '—' : `$${item.currentPrice.toFixed(2)}`
                       )}
                     </td>
                     {editMode && (
