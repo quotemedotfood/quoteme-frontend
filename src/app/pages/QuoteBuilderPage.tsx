@@ -52,6 +52,7 @@ interface ProductItem {
   currentPrice: number;
   percentChange: number;
   unmatched?: boolean;
+  resolution_label?: string | null;
   chefNote?: string | null;
   matchScore?: number | null;
   alignmentCandidates?: AlignmentCandidate[];
@@ -153,6 +154,7 @@ export function QuoteBuilderPage() {
           currentPrice: priceDollars,
           percentChange: 0,
           unmatched: isUnmatched,
+          resolution_label: (line as any).resolution_label ?? null,
           chefNote: line.chef_note,
           matchScore: bestCandidate?.score ?? null,
           alignmentCandidates: line.alignment_candidates || [],
@@ -616,6 +618,11 @@ export function QuoteBuilderPage() {
                     ? toTitleCase(item.component)
                     : formatProductName(item.product, item.brand)}
                 </p>
+                {item.unmatched && (
+                  <span className="inline-flex bg-amber-50 text-amber-800 border border-amber-200 px-2 py-0.5 rounded text-xs mb-1">
+                    {item.resolution_label || 'Awaiting rep review'}
+                  </span>
+                )}
 
                 <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-gray-600 mt-2 mb-3">
                    <div className="truncate"><span className="text-gray-400">Item #:</span> {item.sku}</div>
@@ -812,7 +819,14 @@ export function QuoteBuilderPage() {
                     <td className="px-4 py-3 text-sm text-[#2A2A2A]">{item.sku}</td>
                     <td className="px-4 py-3 text-sm text-[#2A2A2A]">{toTitleCase(item.brand)}</td>
                     <td className={`px-4 py-3 text-sm ${item.unmatched ? 'text-gray-400 italic' : 'text-[#2A2A2A]'}`}>
-                      {toTitleCase(item.unmatched ? item.component : (item.matched_product_name || item.product))}
+                      <div className="flex flex-col gap-1">
+                        <span>{toTitleCase(item.unmatched ? item.component : (item.matched_product_name || item.product))}</span>
+                        {item.unmatched && (
+                          <span className="inline-flex self-start bg-amber-50 text-amber-800 border border-amber-200 px-2 py-0.5 rounded text-xs">
+                            {item.resolution_label || 'Awaiting rep review'}
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-500">
                       {item.sub_description ? toTitleCase(item.sub_description) : '—'}

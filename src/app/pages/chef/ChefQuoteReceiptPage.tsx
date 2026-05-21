@@ -299,9 +299,14 @@ export function ChefQuoteReceiptPage() {
             <div className="flex flex-col gap-3">
               {unmatchedLines.map((line) => (
                 <div key={line.id} className="flex items-start justify-between gap-4">
-                  <span className="text-[#2A2A2A] text-base font-medium leading-snug">
-                    {toTitleCase(line.component?.name || line.category || 'Item')}
-                  </span>
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[#2A2A2A] text-base font-medium leading-snug">
+                      {toTitleCase(line.component?.name || line.category || 'Item')}
+                    </span>
+                    <span className="inline-flex self-start bg-amber-50 text-amber-800 border border-amber-200 px-2 py-0.5 rounded text-xs">
+                      {(line as any).resolution_label || 'Awaiting rep review'}
+                    </span>
+                  </div>
                   {line.category && line.component?.name && (
                     <span className="text-sm text-[#9E9E9E] whitespace-nowrap shrink-0 mt-0.5">
                       {toTitleCase(line.category)}
