@@ -51,6 +51,7 @@ import {
   getAdminCatalogProducts,
   adminReclassifyOthers,
   adminBulkUpdateCategory,
+  adminBulkUpdateSubcategory,
   type DiagnosticCatalog,
   type AdminCatalogStats,
   type AdminCatalogProductsResponse,
@@ -1690,6 +1691,7 @@ function CatalogsTab() {
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkCat, setBulkCat] = useState('');
+  const [bulkSubcat, setBulkSubcat] = useState('');
   const [bulkSaving, setBulkSaving] = useState(false);
   const [reclassifying, setReclassifying] = useState(false);
   const [newCatName, setNewCatName] = useState('');
@@ -1782,12 +1784,30 @@ function CatalogsTab() {
     }
   };
 
+  const allSubcats = () => {
+    const s = new Set<string>();
+    if (products?.products) {
+      products.products.forEach(p => {
+        if (p.standard_subcategory) s.add(p.standard_subcategory);
+        if (p.subcategory) s.add(p.subcategory);
+      });
+    }
+    return Array.from(s).sort();
+  };
+
   const handleBulkAssign = async () => {
-    if (!bulkCat || selected.size === 0) return;
+    if (selected.size === 0) return;
     setBulkSaving(true);
-    await adminBulkUpdateCategory(selectedCatalogId, Array.from(selected), bulkCat);
+    const ids = Array.from(selected);
+    if (bulkCat) {
+      await adminBulkUpdateCategory(selectedCatalogId, ids, bulkCat);
+    }
+    if (bulkSubcat) {
+      await adminBulkUpdateSubcategory(selectedCatalogId, ids, bulkSubcat);
+    }
     setSelected(new Set());
     setBulkCat('');
+    setBulkSubcat('');
     setBulkSaving(false);
     await loadStats(selectedCatalogId);
     loadProducts();
@@ -1922,7 +1942,7 @@ function CatalogsTab() {
                 <span className="font-medium">{selected.size} selected</span>
                 <button onClick={() => setSelected(new Set())} className="text-xs text-gray-400 hover:text-white underline">Clear</button>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <select value={bulkCat} onChange={e => {
                   if (e.target.value === '__new__') setShowNewCat(true);
                   else setBulkCat(e.target.value);
@@ -1931,7 +1951,12 @@ function CatalogsTab() {
                   {allCats().map(c => <option key={c} value={c}>{toTitleCase(c)}</option>)}
                   <option value="__new__">+ New Category</option>
                 </select>
-                <Button onClick={handleBulkAssign} disabled={bulkSaving || !bulkCat} className="bg-[#A5CFDD] hover:bg-[#7FAEC2] text-white text-xs h-8">
+                <select value={bulkSubcat} onChange={e => setBulkSubcat(e.target.value)}
+                  className="text-xs bg-white border border-gray-200 rounded px-2 py-1.5 text-[#2A2A2A]">
+                  <option value="">Subcategory...</option>
+                  {allSubcats().map(s => <option key={s} value={s}>{toTitleCase(s)}</option>)}
+                </select>
+                <Button onClick={handleBulkAssign} disabled={bulkSaving || (!bulkCat && !bulkSubcat)} className="bg-[#A5CFDD] hover:bg-[#7FAEC2] text-white text-xs h-8">
                   {bulkSaving ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Check className="w-3.5 h-3.5 mr-1" />} Apply
                 </Button>
               </div>

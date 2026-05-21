@@ -60,16 +60,16 @@ export function ChefShellLayout() {
     return () => mq.removeEventListener('change', handler);
   }, []);
 
-  // Stage 1: all tab nav routes to /dashboard. ChefDashboardPage handles
-  // intra-page tab switching via its own activeTab state.
-  // c53-bis: pass clicked tab through navigate state to open the right tab.
+  // Stage 1: all tab nav routes to /dashboard, passing the clicked tab
+  // through navigate state so ChefDashboardPage can open on the right tab.
+  // c53-bis: implemented — activeTab passed via state arg.
   const navTab = (target: string) => {
     if (target === 'entry') return navigate('/chef/entry');
-    if (target === 'tab-dashboard') return navigate('/dashboard');
-    if (target === 'tab-home') return navigate('/dashboard');
-    if (target === 'tab-order-guides') return navigate('/dashboard');
-    if (target === 'tab-distributors') return navigate('/dashboard');
-    if (target === 'tab-settings') return navigate('/dashboard');
+    if (target === 'tab-dashboard') return navigate('/dashboard', { state: { activeTab: 'home' } });
+    if (target === 'tab-home') return navigate('/dashboard', { state: { activeTab: 'home' } });
+    if (target === 'tab-order-guides') return navigate('/dashboard', { state: { activeTab: 'order-guides' } });
+    if (target === 'tab-distributors') return navigate('/dashboard', { state: { activeTab: 'distributors' } });
+    if (target === 'tab-settings') return navigate('/dashboard', { state: { activeTab: 'settings' } });
   };
 
   return isDesktop ? (

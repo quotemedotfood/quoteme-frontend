@@ -17,7 +17,7 @@
 //   Discovery    — Locked placeholder for free-tier chefs.
 
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate, useLocation } from 'react-router';
 import { Lock } from 'lucide-react';
 import { getChefQuotes, type ChefQuoteRow, type ChefQuotesIndexResponse } from '../../services/api';
 import { PreviewPill } from '../../components/chef/PreviewPill';
@@ -56,10 +56,13 @@ type Tab = 'home' | 'order-guides' | 'distributors' | 'settings';
 
 export function ChefDashboardPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading');
   const [data, setData] = useState<ChefQuotesIndexResponse | null>(null);
   const [errorMsg, setErrorMsg] = useState<string>('');
-  const [activeTab, setActiveTab] = useState<Tab>('home');
+  // Seed activeTab from router state so sidebar clicks open the right tab.
+  const initialTab = (location.state as any)?.activeTab as Tab | undefined;
+  const [activeTab, setActiveTab] = useState<Tab>(initialTab ?? 'home');
 
   // navTab handles intra-page tab switching. The outer ChefShellLayout
   // owns the shell chrome (sidebar / bottom bar) and handles cross-route

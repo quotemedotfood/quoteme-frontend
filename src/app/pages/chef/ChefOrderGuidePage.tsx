@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router';
+import { ChevronDown } from 'lucide-react';
 import {
   getChefOrderGuide,
   updateOrderGuideItem,
@@ -121,6 +122,7 @@ function OrderGuideRow({ item, orderGuideId }: RowProps) {
           placeholder="0"
           className={inputClass}
           onChange={(e) => handleChange('quantity', e.target.value)}
+          onFocus={(e) => { if (e.target.value === '0') e.target.value = ''; }}
         />
       </div>
 
@@ -133,6 +135,7 @@ function OrderGuideRow({ item, orderGuideId }: RowProps) {
           placeholder="0"
           className={inputClass}
           onChange={(e) => handleChange('par', e.target.value)}
+          onFocus={(e) => { if (e.target.value === '0') e.target.value = ''; }}
         />
       </div>
 
@@ -150,43 +153,60 @@ interface CategoryProps {
   category: string;
   items: OrderGuideItemResponse[];
   orderGuideId: string;
+  collapsed: boolean;
+  onToggle: (category: string) => void;
 }
 
-function CategorySection({ category, items, orderGuideId }: CategoryProps) {
+function CategorySection({ category, items, orderGuideId, collapsed, onToggle }: CategoryProps) {
   const sorted = [...items].sort((a, b) => a.position - b.position);
 
   return (
     <section className="mb-8 print:mb-6">
-      <h2 className="text-[11px] font-semibold tracking-widest uppercase text-[#9E9E9E] mb-3 border-b border-[#E0E0E0] pb-2">
-        {toTitleCase(category)}
-      </h2>
+      <button
+        type="button"
+        onClick={() => onToggle(category)}
+        className="w-full flex items-center justify-between gap-2 mb-3 border-b border-[#E0E0E0] pb-2"
+      >
+        <h2 className="text-[11px] font-semibold tracking-widest uppercase text-[#9E9E9E]">
+          {toTitleCase(category)}
+        </h2>
+        <ChevronDown
+          size={13}
+          className="text-[#BDBDBD] shrink-0"
+          style={{ transform: collapsed ? 'rotate(-90deg)' : 'rotate(0deg)' }}
+        />
+      </button>
 
-      {/* Column headers — hidden on mobile */}
-      <div className="grid grid-cols-12 gap-x-2 mb-1 hidden sm:grid">
-        <div className="col-span-1">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-[#BDBDBD]">Item #</span>
-        </div>
-        <div className="col-span-2">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-[#BDBDBD]">Brand</span>
-        </div>
-        <div className="col-span-4">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-[#BDBDBD]">Product</span>
-        </div>
-        <div className="col-span-2">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-[#BDBDBD]">Pack</span>
-        </div>
-        <div className="col-span-1 text-center">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-[#BDBDBD]">Qty</span>
-        </div>
-        <div className="col-span-1 text-center">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-[#BDBDBD]">Par</span>
-        </div>
-        <div className="col-span-1" />
-      </div>
+      {!collapsed && (
+        <>
+          {/* Column headers — hidden on mobile */}
+          <div className="grid grid-cols-12 gap-x-2 mb-1 hidden sm:grid">
+            <div className="col-span-1">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-[#BDBDBD]">Item #</span>
+            </div>
+            <div className="col-span-2">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-[#BDBDBD]">Brand</span>
+            </div>
+            <div className="col-span-4">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-[#BDBDBD]">Product</span>
+            </div>
+            <div className="col-span-2">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-[#BDBDBD]">Pack</span>
+            </div>
+            <div className="col-span-1 text-center">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-[#BDBDBD]">Qty</span>
+            </div>
+            <div className="col-span-1 text-center">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-[#BDBDBD]">Par</span>
+            </div>
+            <div className="col-span-1" />
+          </div>
 
-      {sorted.map((item) => (
-        <OrderGuideRow key={item.id} item={item} orderGuideId={orderGuideId} />
-      ))}
+          {sorted.map((item) => (
+            <OrderGuideRow key={item.id} item={item} orderGuideId={orderGuideId} />
+          ))}
+        </>
+      )}
     </section>
   );
 }
@@ -199,6 +219,15 @@ export function ChefOrderGuidePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [downloading, setDownloading] = useState<'excel' | 'pdf' | null>(null);
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+
+  const toggleGroup = useCallback((category: string) => {
+    setCollapsedGroups(prev => {
+      const next = new Set(prev);
+      next.has(category) ? next.delete(category) : next.add(category);
+      return next;
+    });
+  }, []);
 
   useEffect(() => {
     if (!id) return;
@@ -343,18 +372,6 @@ export function ChefOrderGuidePage() {
         {/* ── Action buttons (hidden on print) ───────────────────────────────── */}
         <div className="flex flex-wrap gap-3 mb-8 print:hidden">
           <button
-            onClick={() => window.print()}
-            className="flex items-center gap-2 px-4 py-2 border border-[#E0E0E0] rounded text-sm text-[#4F4F4F] hover:bg-[#FAFAFA] transition-colors"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="6 9 6 2 18 2 18 9" />
-              <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
-              <rect x="6" y="14" width="12" height="8" />
-            </svg>
-            Print
-          </button>
-
-          <button
             onClick={handleDownloadExcel}
             disabled={downloading === 'excel'}
             className="flex items-center gap-2 px-4 py-2 border border-[#E0E0E0] rounded text-sm text-[#4F4F4F] hover:bg-[#FAFAFA] transition-colors disabled:opacity-50"
@@ -393,6 +410,8 @@ export function ChefOrderGuidePage() {
               category={cat}
               items={grouped[cat]}
               orderGuideId={guide.id}
+              collapsed={collapsedGroups.has(cat)}
+              onToggle={toggleGroup}
             />
           ))
         )}
