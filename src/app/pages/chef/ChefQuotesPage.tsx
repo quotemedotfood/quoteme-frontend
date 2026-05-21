@@ -39,7 +39,7 @@ function StatusPill({ status, hasOG }: { status: string; hasOG: boolean }) {
   else if (status === 'pending') { label = 'Ready'; bg = 'rgba(127,174,194,.2)'; color = '#2A5F6F'; }
   else if (status === 'sent') { label = 'Sent'; bg = 'rgba(127,174,194,.2)'; color = '#2A5F6F'; }
   else if (status === 'draft') { label = 'Processing'; bg = '#FEF3C7'; color = '#92400E'; }
-  else if (status === 'expired') { label = 'Expired'; bg = '#F3F4F6'; color = C.gray500; }
+  else if (status === 'expired') { label = 'Refresh available'; bg = '#FEF3C7'; color = '#92400E'; }
   else if (status === 'lost') { label = 'Closed'; bg = '#F3F4F6'; color = C.gray500; }
 
   return (
