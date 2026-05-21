@@ -318,7 +318,7 @@ export function ChefQuoteReceiptPage() {
 
           {/* Question sent confirmation */}
           {questionSent && (
-            <p className="text-sm text-[#1F3A5F] mb-1">{ /* placeholder navy — Desi to confirm exact hex */ }
+            <p className="text-sm text-[#2A5F6F] mb-1">
               Your question has been sent. Your rep will be in touch.
             </p>
           )}
