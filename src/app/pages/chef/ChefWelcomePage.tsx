@@ -266,9 +266,11 @@ export function ChefWelcomePage() {
 // ─── ExpiredLinkScreen ─────────────────────────────────────────────────────
 // c145: shown when the backend returns error_code "expired" (token > 30 days).
 // Two clean options — no form, no account creation.
-//   Primary:   mailto: with prefilled body → rep's support inbox
+//   Primary:   mailto: with prefilled body → QuoteMe support
 //   Secondary: /chef/entry → build your own quote
-const SUPPORT_EMAIL = 'moose@tomarket.com';
+// Expired-token state has no quote loaded, so we don't know the rep yet.
+// Per Justin (2026-05-22): use generic support@quoteme.food, not "Marcus".
+const SUPPORT_EMAIL = 'support@quoteme.food';
 const MAILTO_SUBJECT = encodeURIComponent('Fresh quote link request');
 const MAILTO_BODY = encodeURIComponent(
   "Hi,\n\nThe link I received to view my quote has expired. Could you send a fresh link?\n\nThanks",
@@ -355,7 +357,7 @@ function ExpiredLinkScreen() {
               <rect x="2" y="4" width="20" height="16" rx="2" />
               <polyline points="2,4 12,13 22,4" />
             </svg>
-            Email Marcus for a fresh link
+            Email us for a fresh link
           </a>
 
           {/* Secondary: /chef/entry */}

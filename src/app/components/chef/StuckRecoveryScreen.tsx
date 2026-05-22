@@ -20,11 +20,11 @@ import { useNavigate } from 'react-router';
 // ChefEntryPage reads this key to restore text when chef arrives via path (b).
 export const MENU_DRAFT_KEY = 'quoteme_menu_draft';
 
-// Canonical support address for path (a) mailto.
-// No "marcus@" address found as a system-level contact in the codebase;
-// using the billing address found in ChefSettingsTab as the closest proxy.
-// FLAG: confirm correct support email with team before shipping.
-const SUPPORT_EMAIL = 'help@quoteme.food';
+// Canonical support address — Marcus is a demo persona, not a real inbox.
+// Per Justin's directive (2026-05-22): path (a) mailto routes to the actual
+// rep on the chef's quote (repEmail prop). When no rep is on file, path (a)
+// is hidden entirely; the tertiary "Need help?" link below falls back here.
+const SUPPORT_EMAIL = 'support@quoteme.food';
 
 const headlineStyle: React.CSSProperties = { fontFamily: "'Playfair Display', serif" };
 
@@ -33,28 +33,34 @@ const headlineStyle: React.CSSProperties = { fontFamily: "'Playfair Display', se
 export interface StuckRecoveryScreenProps {
   /** Quote ID being polled — used for mailto subject line */
   quoteId?: string;
+  /** Rep's email from quote binding. When absent, path (a) is hidden. */
+  repEmail?: string;
+  /** Rep's display name. Used in button label when path (a) is shown. */
+  repName?: string;
   /** Called when chef picks path (c) and submits an email for notification */
   onWaitItOut?: (email: string) => void;
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
-export function StuckRecoveryScreen({ quoteId, onWaitItOut }: StuckRecoveryScreenProps) {
+export function StuckRecoveryScreen({ quoteId, repEmail, repName, onWaitItOut }: StuckRecoveryScreenProps) {
   const navigate = useNavigate();
   const [notifyEmail, setNotifyEmail] = useState('');
   const [notifySent, setNotifySent] = useState(false);
   const [emailError, setEmailError] = useState<string | null>(null);
   const [activePath, setActivePath] = useState<'a' | 'b' | 'c' | null>(null);
 
-  // ── Path (a): mailto ────────────────────────────────────────────────────
-  function handleEmailSupport() {
+  // ── Path (a): mailto to the rep on the chef's quote ─────────────────────
+  // Only rendered when repEmail is on file. mailto target is data-driven.
+  function handleEmailRep() {
+    if (!repEmail) return;
     setActivePath('a');
     const savedMenu = localStorage.getItem(MENU_DRAFT_KEY) ?? '';
     const subject = encodeURIComponent('Menu needs help');
     const body = encodeURIComponent(
-      `Hi — my menu didn't finish processing. Please take a look.\n\nQuote ID: ${quoteId ?? 'unknown'}\n\n---\n${savedMenu}`,
+      `Hi${repName ? ` ${repName}` : ''} — my menu didn't finish processing. Could you take a look?\n\nQuote ID: ${quoteId ?? 'unknown'}\n\n---\n${savedMenu}`,
     );
-    window.location.href = `mailto:${SUPPORT_EMAIL}?subject=${subject}&body=${body}`;
+    window.location.href = `mailto:${repEmail}?subject=${subject}&body=${body}`;
   }
 
   // ── Path (b): try again ─────────────────────────────────────────────────
@@ -122,26 +128,28 @@ export function StuckRecoveryScreen({ quoteId, onWaitItOut }: StuckRecoveryScree
           </p>
         </div>
 
-        {/* Escape path (a) — email support */}
-        <div className="flex flex-col gap-2">
-          <button
-            type="button"
-            onClick={handleEmailSupport}
-            className={`w-full border rounded-xl px-5 py-4 text-left transition-colors ${
-              activePath === 'a'
-                ? 'border-[#E5A84B] bg-[#FFFBF5]'
-                : 'border-[#E8E8E8] hover:border-[#E5A84B] hover:bg-[#FFFBF5]'
-            }`}
-          >
-            <p className="font-medium text-[#2A2A2A] text-sm mb-0.5">
-              Send the menu directly
-            </p>
-            <p className="text-[#9E9E9E] text-xs leading-relaxed">
-              Opens your email with the menu ready to go. Someone will take
-              it from here.
-            </p>
-          </button>
-        </div>
+        {/* Escape path (a) — email the rep on the quote. Hidden when no rep on file. */}
+        {repEmail && (
+          <div className="flex flex-col gap-2">
+            <button
+              type="button"
+              onClick={handleEmailRep}
+              className={`w-full border rounded-xl px-5 py-4 text-left transition-colors ${
+                activePath === 'a'
+                  ? 'border-[#E5A84B] bg-[#FFFBF5]'
+                  : 'border-[#E8E8E8] hover:border-[#E5A84B] hover:bg-[#FFFBF5]'
+              }`}
+            >
+              <p className="font-medium text-[#2A2A2A] text-sm mb-0.5">
+                Send {repName ?? 'your rep'} the menu directly
+              </p>
+              <p className="text-[#9E9E9E] text-xs leading-relaxed">
+                Opens your email with the menu ready to go. They'll take
+                it from here.
+              </p>
+            </button>
+          </div>
+        )}
 
         {/* Escape path (b) — try again with shorter sections */}
         <div className="flex flex-col gap-2">
@@ -224,6 +232,17 @@ export function StuckRecoveryScreen({ quoteId, onWaitItOut }: StuckRecoveryScree
             </div>
           )}
         </div>
+
+        {/* Tertiary — quiet support fallback. Shown always so chef has an out. */}
+        <p className="text-center text-xs text-[#9E9E9E]">
+          Need help?{' '}
+          <a
+            href={`mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent('QuoteMe help')}`}
+            className="text-[#4F4F4F] underline underline-offset-2 hover:text-[#2A2A2A]"
+          >
+            Email {SUPPORT_EMAIL}
+          </a>
+        </p>
 
       </div>
     </div>

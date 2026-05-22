@@ -122,8 +122,11 @@ export function ChefStatusPage({ onTimeout }: ChefStatusPageProps = {}) {
   // c143 — step indices: 0=Reading, 1=Matching, 2=Building
   // currentStep tracks which step is currently active (0-based).
   // c144 — isStuck flips when the 60s stuck-timer fires; switches to StuckRecoveryScreen.
+  // repEmail/repName surface to StuckRecoveryScreen path (a) when on file.
   const [currentStep, setCurrentStep] = useState(0);
   const [distributorName, setDistributorName] = useState<string | null>(null);
+  const [repEmail, setRepEmail] = useState<string | undefined>(undefined);
+  const [repName, setRepName] = useState<string | undefined>(undefined);
   const [isStuck, setIsStuck] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const stuckTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -167,10 +170,14 @@ export function ChefStatusPage({ onTimeout }: ChefStatusPageProps = {}) {
         // Step 1 done after the first successful poll response.
         if (!firstPollDone) {
           firstPollDone = true;
-          // c143: QuoteResponse does not currently include a distributor field.
-          // If BE adds it in the future, surface it here. For now, distributorName
-          // stays null and the fallback sublabel "Aligning to your distributor catalog"
-          // is shown. OPEN QUESTION for orchestrator: add distributor to QuoteResponse.
+          // c143 + c144 — defensive read of distributor/rep fields. These ride
+          // alongside the canonical QuoteResponse shape; BE adds them via the
+          // chef-facing serializer. When absent, sublabel falls back and
+          // StuckRecoveryScreen path (a) stays hidden.
+          const distributor = (res.data as { distributor?: { name?: string; rep?: { email?: string; name?: string } } }).distributor;
+          if (distributor?.name) setDistributorName(distributor.name);
+          if (distributor?.rep?.email) setRepEmail(distributor.rep.email);
+          if (distributor?.rep?.name) setRepName(distributor.rep.name);
           setCurrentStep(1);
         }
 
@@ -222,7 +229,7 @@ export function ChefStatusPage({ onTimeout }: ChefStatusPageProps = {}) {
 
   // Transition to recovery screen once the timeout fires.
   if (isStuck) {
-    return <StuckRecoveryScreen quoteId={id} />;
+    return <StuckRecoveryScreen quoteId={id} repEmail={repEmail} repName={repName} />;
   }
 
   return (
