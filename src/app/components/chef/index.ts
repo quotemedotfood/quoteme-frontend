@@ -22,3 +22,6 @@ export {
   DEMO,
 } from './distributorsDemoData';
 export type { YourDistributor, AreaDistributor } from './distributorsDemoData';
+
+export { StuckRecoveryScreen, MENU_DRAFT_KEY } from './StuckRecoveryScreen';
+export type { StuckRecoveryScreenProps } from './StuckRecoveryScreen';

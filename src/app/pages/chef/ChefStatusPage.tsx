@@ -1,6 +1,14 @@
 import { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router';
+import { useParams, useNavigate, useLocation } from 'react-router';
 import { getGuestQuote } from '../../services/api';
+import { StuckRecoveryScreen, MENU_DRAFT_KEY } from '../../components/chef/StuckRecoveryScreen';
+
+// ─── Timeout threshold ────────────────────────────────────────────────────────
+// If the quote hasn't resolved within STUCK_AFTER_MS milliseconds, transition
+// to the stuck-state recovery UI (Screen 14). Agent A's c133 work may also
+// call the parent's onTimeout prop if this page is embedded; the timeout here
+// acts as a self-contained fallback in case ChefStatusPage is reached directly.
+const STUCK_AFTER_MS = 60_000;
 
 const headlineStyle: React.CSSProperties = { fontFamily: "'Playfair Display', serif" };
 
@@ -96,17 +104,51 @@ function StepRow({ step, state, isLast }: StepRowProps) {
   );
 }
 
-export function ChefStatusPage() {
+// ─── Props (Agent A integration surface) ─────────────────────────────────────
+// Agent A's c133 timeout work can pass `onTimeout` via router state or as a
+// prop if ChefStatusPage is ever rendered as a child component. When the
+// self-contained 60s timer fires, `onTimeout` is called first so Agent A's
+// code can run any cleanup; if absent the recovery screen renders directly.
+export interface ChefStatusPageProps {
+  /** Called when STUCK_AFTER_MS elapses without a resolved quote. */
+  onTimeout?: () => void;
+}
+
+export function ChefStatusPage({ onTimeout }: ChefStatusPageProps = {}) {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
 
   // c143 — step indices: 0=Reading, 1=Matching, 2=Building
   // currentStep tracks which step is currently active (0-based).
-  // Once the first poll responds, step 0 flips to done and step 1 goes active.
-  // Once lines appear, step 1 flips done and step 2 goes active briefly before navigate.
+  // c144 — isStuck flips when the 60s stuck-timer fires; switches to StuckRecoveryScreen.
   const [currentStep, setCurrentStep] = useState(0);
   const [distributorName, setDistributorName] = useState<string | null>(null);
+  const [isStuck, setIsStuck] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const stuckTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // c144 — restore menu draft from router state into localStorage so recovery
+  // paths (a) and (b) can retrieve it. ChefEntryPage's pasteText onChange also
+  // writes it; this is the fallback for direct navigation with raw_text in state.
+  useEffect(() => {
+    const rawText = (location.state as { raw_text?: string } | null)?.raw_text;
+    if (rawText) {
+      localStorage.setItem(MENU_DRAFT_KEY, rawText);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // c144 — 60s stuck-state timer. Fires StuckRecoveryScreen and calls any
+  // external onTimeout handler.
+  useEffect(() => {
+    stuckTimerRef.current = setTimeout(() => {
+      onTimeout?.();
+      setIsStuck(true);
+    }, STUCK_AFTER_MS);
+    return () => {
+      if (stuckTimerRef.current) clearTimeout(stuckTimerRef.current);
+    };
+  }, [onTimeout]);
 
   // Small delay so step 2→3 completes visually before navigating
   const FINAL_STEP_DISPLAY_MS = 600;
@@ -143,7 +185,14 @@ export function ChefStatusPage() {
             clearInterval(pollRef.current);
             pollRef.current = null;
           }
-          // Briefly show step 3 active before navigating
+          // c144 — quote resolved, cancel stuck timer so recovery never shows.
+          if (stuckTimerRef.current) {
+            clearTimeout(stuckTimerRef.current);
+            stuckTimerRef.current = null;
+          }
+          // c144 — clean up the saved draft now that processing succeeded.
+          localStorage.removeItem(MENU_DRAFT_KEY);
+          // c143 — briefly show step 3 active before navigating
           setCurrentStep(2);
           setTimeout(() => {
             navigate(`/chef/quotes/${id}`);
@@ -169,6 +218,11 @@ export function ChefStatusPage() {
     if (index < currentStep) return 'done';
     if (index === currentStep) return 'active';
     return 'pending';
+  }
+
+  // Transition to recovery screen once the timeout fires.
+  if (isStuck) {
+    return <StuckRecoveryScreen quoteId={id} />;
   }
 
   return (

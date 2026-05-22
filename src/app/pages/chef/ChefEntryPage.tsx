@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router';
+import { useNavigate, useSearchParams, useLocation } from 'react-router';
 import { createGuestQuote } from '../../services/api';
 import { useUser } from '../../contexts/UserContext';
 import { MultiRestaurantConfirmModal, type ExistingRestaurant } from '../../components/MultiRestaurantConfirmModal';
+import { MENU_DRAFT_KEY } from '../../components/chef/StuckRecoveryScreen';
 
 // Session-scoped marker for the most recently submitted quote. Survives
 // back/forward navigation within the tab (which is the bug case — browser
@@ -25,6 +26,7 @@ const errorText = 'text-sm text-red-500';
 export function ChefEntryPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const location = useLocation();
   const { initGuestSession } = useUser();
   // V2 W4-3 — when the chef arrives here from /chef/catalog with a
   // distributor pre-selected, propagate the id into createGuestQuote so
@@ -32,8 +34,23 @@ export function ChefEntryPage() {
   // falling back through ChefDistributorResolutionService.
   const incomingDistributorId = searchParams.get('distributor_id');
 
+  // c144 — recovery path (b): when navigated here from StuckRecoveryScreen
+  // with { restoreMenuDraft: true }, pull the saved draft from localStorage
+  // and populate the textarea. Show a soft hint about shorter sections.
+  const locationState = location.state as {
+    restoreMenuDraft?: boolean;
+    hint?: string;
+  } | null;
+  const shouldRestoreDraft = !!locationState?.restoreMenuDraft;
+  const showShorterSectionsHint = locationState?.hint === 'shorter_sections';
+
   const [restaurantName, setRestaurantName] = useState('');
-  const [pasteText, setPasteText] = useState('');
+  const [pasteText, setPasteText] = useState(() => {
+    if (shouldRestoreDraft) {
+      return localStorage.getItem(MENU_DRAFT_KEY) ?? '';
+    }
+    return '';
+  });
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -233,6 +250,17 @@ export function ChefEntryPage() {
           </p>
         </div>
 
+        {/* c144 — shorter-sections hint, shown when chef returns via recovery path (b) */}
+        {showShorterSectionsHint && (
+          <div className="mb-6 border border-[#E8E8E8] rounded-xl px-5 py-4 bg-[#FFFBF5]">
+            <p className="text-sm text-[#4F4F4F] leading-relaxed">
+              <span className="font-medium text-[#2A2A2A]">Your menu is here.</span>{' '}
+              Splitting it into smaller sections — one course or category at a time —
+              tends to work better.
+            </p>
+          </div>
+        )}
+
         <div className="flex flex-col gap-6">
           {/* Restaurant name (optional) */}
           <div className="flex flex-col gap-1">
@@ -261,8 +289,16 @@ export function ChefEntryPage() {
             <textarea
               value={pasteText}
               onChange={(e) => {
-                setPasteText(e.target.value);
+                const val = e.target.value;
+                setPasteText(val);
                 setError(null);
+                // c144 — persist draft so recovery path (a) mailto and
+                // path (b) return-to-edit both have the latest text.
+                if (val.trim()) {
+                  localStorage.setItem(MENU_DRAFT_KEY, val);
+                } else {
+                  localStorage.removeItem(MENU_DRAFT_KEY);
+                }
               }}
               disabled={textareaDisabled}
               placeholder="Paste your full menu here: dishes, ingredients, sections…"
