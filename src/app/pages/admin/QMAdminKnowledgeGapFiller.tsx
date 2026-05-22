@@ -18,7 +18,13 @@ import {
   bulkMoveToHead,
   listKnowledgeGapHistory,
   undoKnowledgeGapTail,
+  recordTailClusterDecision,
 } from '../../services/adminApi';
+
+// ── Feature flag: grouped-by-cluster view (suspected-tail clumping v1) ────────
+// Set VITE_FEATURE_CLUMP_VIEW=true in the deploy environment to activate.
+// When false (default), the component renders exactly as before.
+const FEATURE_FLAG_CLUMP_VIEW = import.meta.env.VITE_FEATURE_CLUMP_VIEW === 'true';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -1097,6 +1103,283 @@ function HeadRow({ sub, selected, onToggleSelect, onActionComplete }: HeadRowPro
   );
 }
 
+// ── Suspected-tail clumping v1: cluster data types + helpers ─────────────────
+
+interface TailCluster {
+  cluster_id: string;
+  members: KnowledgeGapSubmission[];
+  category: string;
+  // Derived summary of canonical names for display in the header
+  canonicalSummary: string;
+}
+
+function buildTailClusters(tailItems: KnowledgeGapSubmission[]): {
+  clusters: TailCluster[];
+  singletons: KnowledgeGapSubmission[];
+} {
+  const clustered = tailItems.filter((s) => s.cluster_id !== null);
+  const singletons = tailItems.filter((s) => s.cluster_id === null);
+
+  // Group by cluster_id
+  const byCluster = new Map<string, KnowledgeGapSubmission[]>();
+  for (const s of clustered) {
+    const cid = s.cluster_id!;
+    if (!byCluster.has(cid)) byCluster.set(cid, []);
+    byCluster.get(cid)!.push(s);
+  }
+
+  const clusters: TailCluster[] = [];
+  for (const [cluster_id, members] of byCluster.entries()) {
+    const category = getCategory(members[0].source_data);
+    // Summarize up to 4 canonical names from source_data component_text
+    const names = members.slice(0, 4).map((s) =>
+      String((s.source_data as Record<string, unknown>)['component_text'] ?? '')
+    );
+    const canonicalSummary = names.join(', ') + (members.length > 4 ? `, +${members.length - 4} more` : '');
+    clusters.push({ cluster_id, members, category, canonicalSummary });
+  }
+
+  // Sort clusters by size descending
+  clusters.sort((a, b) => b.members.length - a.members.length);
+  return { clusters, singletons };
+}
+
+// ── TailClusterPanel ──────────────────────────────────────────────────────────
+
+interface TailClusterPanelProps {
+  cluster: TailCluster;
+  onClusterResolved: (clusterIds: string[], decision: 'kept' | 'split' | 'rejected') => void;
+}
+
+function TailClusterPanel({ cluster, onClusterResolved }: TailClusterPanelProps) {
+  const [collapsed, setCollapsed] = useState(false);
+  const [selectedParent, setSelectedParent] = useState<ParentClusterLabelResult | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  function showToast(msg: string) {
+    setToast(msg);
+    setTimeout(() => setToast(null), 4000);
+  }
+
+  // Approve all members as tails to the selected parent, then log the decision
+  async function handleApproveAll() {
+    if (!selectedParent) {
+      setError('Select a parent cluster first.');
+      return;
+    }
+    setError(null);
+    setSubmitting(true);
+
+    const approvals = cluster.members.map((s) => ({
+      id: s.id,
+      parent_cluster_label_id: selectedParent.id,
+    }));
+
+    const approveRes = await bulkApproveAsTail(approvals);
+    setSubmitting(false);
+
+    if (approveRes.error) {
+      setError(`Approve failed: ${approveRes.error}`);
+      return;
+    }
+
+    const approved = approveRes.data?.approved ?? [];
+    const failed = approveRes.data?.failed ?? [];
+
+    // Fire-and-forget decision log — errors are console-only so they don't
+    // block the operator (the approval already succeeded)
+    recordTailClusterDecision({
+      cluster_id: cluster.cluster_id,
+      decision: 'kept',
+      submission_ids: cluster.members.map((s) => s.id),
+      threshold_used: 0.65,
+      avg_intra_similarity: null,
+      parent_cluster_label_id: selectedParent.id,
+    }).catch((err) => {
+      console.warn('[TailClusterPanel] recordTailClusterDecision failed (non-blocking):', err);
+    });
+
+    if (failed.length > 0) {
+      showToast(`Approved ${approved.length}, failed ${failed.length}: ${failed.map((f) => f.error).join(', ')}`);
+    } else {
+      showToast(`Approved ${approved.length} tail${approved.length !== 1 ? 's' : ''} in cluster.`);
+    }
+
+    // Notify parent to remove these from the cluster list
+    onClusterResolved(cluster.members.map((s) => s.id), 'kept');
+  }
+
+  // Split: record decision, revert to singleton treatment (no actual mutation)
+  async function handleSplit() {
+    setSubmitting(true);
+    recordTailClusterDecision({
+      cluster_id: cluster.cluster_id,
+      decision: 'split',
+      submission_ids: cluster.members.map((s) => s.id),
+      threshold_used: 0.65,
+      avg_intra_similarity: null,
+    }).catch((err) => {
+      console.warn('[TailClusterPanel] recordTailClusterDecision (split) failed (non-blocking):', err);
+    });
+    setSubmitting(false);
+    showToast(`Cluster split — members returned to individual review.`);
+    onClusterResolved(cluster.members.map((s) => s.id), 'split');
+  }
+
+  // Reject: record decision, then bulk-archive all members
+  async function handleReject() {
+    setSubmitting(true);
+    const ids = cluster.members.map((s) => s.id);
+
+    const archiveRes = await bulkArchiveKnowledgeGap(ids);
+    setSubmitting(false);
+
+    if (archiveRes.error) {
+      setError(`Archive failed: ${archiveRes.error}`);
+      return;
+    }
+
+    recordTailClusterDecision({
+      cluster_id: cluster.cluster_id,
+      decision: 'rejected',
+      submission_ids: ids,
+      threshold_used: 0.65,
+      avg_intra_similarity: null,
+    }).catch((err) => {
+      console.warn('[TailClusterPanel] recordTailClusterDecision (rejected) failed (non-blocking):', err);
+    });
+
+    const archived = archiveRes.data?.archived ?? [];
+    showToast(`Archived ${archived.length} submission${archived.length !== 1 ? 's' : ''} in cluster.`);
+    onClusterResolved(ids, 'rejected');
+  }
+
+  return (
+    <div className="border-2 border-indigo-200 rounded-xl overflow-hidden mb-3">
+      {/* Cluster header */}
+      <button
+        type="button"
+        onClick={() => setCollapsed((v) => !v)}
+        className="w-full flex items-start justify-between px-4 py-3 bg-indigo-50 hover:bg-indigo-100/60 transition-colors text-left"
+      >
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs font-bold text-indigo-700 uppercase tracking-wide">
+              Cluster of {cluster.members.length}
+            </span>
+            {cluster.category && (
+              <span className="text-xs text-indigo-500 bg-indigo-100 px-1.5 py-0.5 rounded">
+                {cluster.category}
+              </span>
+            )}
+          </div>
+          <p
+            className="text-xs text-[#4F4F4F] mt-0.5 truncate"
+            title={cluster.canonicalSummary}
+          >
+            {cluster.canonicalSummary}
+          </p>
+        </div>
+        <div className="shrink-0 ml-3 mt-0.5">
+          {collapsed
+            ? <ChevronRight size={14} className="text-indigo-400" />
+            : <ChevronDown size={14} className="text-indigo-400" />
+          }
+        </div>
+      </button>
+
+      {!collapsed && (
+        <>
+          {/* Member rows — reuse TailRow for individual handling */}
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-gray-50 border-b border-gray-100">
+                  {/* no checkbox col — bulk actions handled by footer */}
+                  {['Candidate', 'Suggested Parent HEAD', 'Confidence', 'Actions'].map((col) => (
+                    <th
+                      key={col}
+                      className="px-3 py-2 text-left text-xs font-semibold text-[#4F4F4F] uppercase tracking-wide whitespace-nowrap"
+                    >
+                      {col}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {cluster.members.map((sub) => (
+                  <TailRow
+                    key={sub.id}
+                    sub={sub}
+                    selected={false}
+                    onToggleSelect={() => {/* individual selection not used inside cluster panels */}}
+                    onActionComplete={() => {/* individual completions handled via footer bulk actions */}}
+                    onParentSelected={() => {/* cluster parent selected via footer */}}
+                  />
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Footer action bar */}
+          <div className="border-t border-indigo-100 bg-indigo-50/40 px-4 py-3">
+            {toast && (
+              <p className="text-xs text-indigo-700 font-medium mb-2">{toast}</p>
+            )}
+            {error && (
+              <p className="text-xs text-red-600 mb-2">{error}</p>
+            )}
+            <div className="flex flex-wrap items-end gap-3">
+              {/* Parent search + approve-all */}
+              <div className="flex-1 min-w-[200px] max-w-xs">
+                <p className="text-xs text-[#4F4F4F] mb-1 font-medium">Approve all as tail to:</p>
+                <ParentDropdown
+                  initialParentId={null}
+                  initialParentCanonical={null}
+                  onSelect={setSelectedParent}
+                  disabled={submitting}
+                />
+              </div>
+              <button
+                type="button"
+                onClick={handleApproveAll}
+                disabled={submitting || !selectedParent}
+                className="px-3 py-1.5 rounded text-xs font-semibold bg-indigo-600 text-white hover:bg-indigo-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {submitting ? '...' : `Approve all ${cluster.members.length}`}
+              </button>
+
+              {/* Split action */}
+              <button
+                type="button"
+                onClick={handleSplit}
+                disabled={submitting}
+                title="Split cluster — review members individually"
+                className="px-3 py-1.5 rounded text-xs font-semibold border border-gray-300 text-[#4F4F4F] hover:bg-gray-100 transition-colors disabled:opacity-40"
+              >
+                Split
+              </button>
+
+              {/* Reject action */}
+              <button
+                type="button"
+                onClick={handleReject}
+                disabled={submitting}
+                title="Reject cluster — archive all members"
+                className="px-3 py-1.5 rounded text-xs font-semibold border border-red-200 text-red-600 hover:bg-red-50 transition-colors disabled:opacity-40"
+              >
+                Reject all
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 // ── History section ───────────────────────────────────────────────────────────
 
 interface HistorySectionProps {
@@ -1408,13 +1691,35 @@ export function QMAdminKnowledgeGapFiller() {
     (s) => getPlacement(s.source_data) === 'new_head'
   );
 
+  // Clump view: split tailItems into clusters + singletons when flag is on
+  const { clusters: tailClusters, singletons: tailSingletons } = FEATURE_FLAG_CLUMP_VIEW
+    ? buildTailClusters(tailItems)
+    : { clusters: [], singletons: tailItems };
+
+  // Which tail items feed into the filter/paginate/table below:
+  // - flag off  → all tailItems (unchanged behaviour)
+  // - flag on   → only singletons; clusters handled by TailClusterPanel above
+  const tailItemsForTable = FEATURE_FLAG_CLUMP_VIEW ? tailSingletons : tailItems;
+
+  function handleClusterResolved(memberIds: string[], decision: 'kept' | 'split' | 'rejected') {
+    if (decision === 'kept' || decision === 'rejected') {
+      // Remove resolved members from allSubmissions entirely
+      setAllSubmissions((prev) => prev.filter((s) => !memberIds.includes(s.id)));
+    } else {
+      // Split: strip cluster_id so these members fall into the singletons bucket
+      setAllSubmissions((prev) =>
+        prev.map((s) => memberIds.includes(s.id) ? { ...s, cluster_id: null } : s)
+      );
+    }
+  }
+
   // Derive available categories for filter dropdowns
-  const tailCategories = Array.from(new Set(tailItems.map((s) => getCategory(s.source_data)).filter(Boolean))).sort();
+  const tailCategories = Array.from(new Set(tailItemsForTable.map((s) => getCategory(s.source_data)).filter(Boolean))).sort();
   const headCategories = Array.from(new Set(headItems.map((s) => getCategory(s.source_data)).filter(Boolean))).sort();
 
   // Distinct proposed parent canonicals for by-parent-HEAD tails filter
   const tailParentOptions = Array.from(new Set(
-    tailItems.map((s) => {
+    tailItemsForTable.map((s) => {
       const llm = getLlmSuggestion(s.source_data);
       return llm ? (llm['suggested_parent_head_canonical'] as string | null) : null;
     }).filter((p): p is string => Boolean(p))
@@ -1446,7 +1751,7 @@ export function QMAdminKnowledgeGapFiller() {
     return applySort(r, headSortOrder);
   }
 
-  const filteredTail = applyTailFilters(tailItems);
+  const filteredTail = applyTailFilters(tailItemsForTable);
   const filteredHead = applyHeadFilters(headItems);
 
   // Paginate
@@ -1869,6 +2174,27 @@ export function QMAdminKnowledgeGapFiller() {
                   <span className="text-xs text-[#4F4F4F] shrink-0">{filteredTail.length} item{filteredTail.length !== 1 ? 's' : ''}</span>
                 </div>
               </div>
+
+              {/* Cluster panels (flag-gated) */}
+              {FEATURE_FLAG_CLUMP_VIEW && tailClusters.length > 0 && (
+                <div className="px-4 pt-3 pb-1 bg-white border-t border-indigo-100">
+                  <p className="text-xs font-semibold text-indigo-700 mb-2 uppercase tracking-wide">
+                    Suspected Clusters — {tailClusters.length} group{tailClusters.length !== 1 ? 's' : ''}
+                  </p>
+                  {tailClusters.map((cluster) => (
+                    <TailClusterPanel
+                      key={cluster.cluster_id}
+                      cluster={cluster}
+                      onClusterResolved={handleClusterResolved}
+                    />
+                  ))}
+                  {tailSingletons.length > 0 && (
+                    <p className="text-xs text-[#4F4F4F] mt-2 mb-1 font-medium">
+                      Singletons ({tailSingletons.length})
+                    </p>
+                  )}
+                </div>
+              )}
 
               {/* Filter bar */}
               <FilterBar
