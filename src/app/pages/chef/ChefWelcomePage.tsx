@@ -134,7 +134,16 @@ export function ChefWelcomePage() {
     );
   }
 
-  // ── Error ──────────────────────────────────────────────────────────────────
+  // ── Error: expired link — designed screen (c145) ──────────────────────────
+  if (state === 'error' && errorCode === 'expired') {
+    return (
+      <PageShell>
+        <ExpiredLinkScreen />
+      </PageShell>
+    );
+  }
+
+  // ── Error: other errors ────────────────────────────────────────────────────
   if (state === 'error') {
     return (
       <PageShell>
@@ -251,6 +260,145 @@ export function ChefWelcomePage() {
         </div>
       </div>
     </PageShell>
+  );
+}
+
+// ─── ExpiredLinkScreen ─────────────────────────────────────────────────────
+// c145: shown when the backend returns error_code "expired" (token > 30 days).
+// Two clean options — no form, no account creation.
+//   Primary:   mailto: with prefilled body → rep's support inbox
+//   Secondary: /chef/entry → build your own quote
+const SUPPORT_EMAIL = 'moose@tomarket.com';
+const MAILTO_SUBJECT = encodeURIComponent('Fresh quote link request');
+const MAILTO_BODY = encodeURIComponent(
+  "Hi,\n\nThe link I received to view my quote has expired. Could you send a fresh link?\n\nThanks",
+);
+
+function ExpiredLinkScreen() {
+  return (
+    <div className="flex flex-col items-center justify-center flex-1 px-6 py-16">
+      <div className="max-w-sm w-full">
+        {/* Icon — envelope with a clock, rendered inline SVG */}
+        <div className="flex justify-center mb-7">
+          <div
+            className="flex items-center justify-center w-16 h-16 rounded-full"
+            style={{ background: '#F3F0EB' }}
+          >
+            <svg
+              width="30"
+              height="30"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke={C.charcoal}
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              {/* Envelope body */}
+              <rect x="2" y="4" width="20" height="16" rx="2" />
+              <polyline points="2,4 12,13 22,4" />
+              {/* Clock overlay — bottom-right */}
+              <circle cx="17.5" cy="16.5" r="3.5" fill={C.warmPaper} stroke={C.charcoal} strokeWidth="1.5" />
+              <polyline points="17.5,14.8 17.5,16.5 18.7,17.7" />
+            </svg>
+          </div>
+        </div>
+
+        {/* Headline */}
+        <h1
+          className="text-center"
+          style={{ ...serif, fontSize: 24, fontWeight: 600, color: C.charcoal, lineHeight: 1.25 }}
+        >
+          This link's been around the block.
+        </h1>
+
+        {/* Sub-copy */}
+        <p
+          className="mt-3 text-center"
+          style={{ ...sans, fontSize: 14, color: C.gray700, lineHeight: 1.6 }}
+        >
+          Quote links expire after 30 days. Your rep can send a fresh one in a moment.
+        </p>
+
+        {/* Divider */}
+        <div className="mt-8" style={{ borderTop: `1px solid ${C.softLine}` }} />
+
+        {/* Actions */}
+        <div className="mt-7 flex flex-col gap-3">
+          {/* Primary: mailto */}
+          <a
+            href={`mailto:${SUPPORT_EMAIL}?subject=${MAILTO_SUBJECT}&body=${MAILTO_BODY}`}
+            className="flex items-center justify-center gap-2 w-full rounded-md font-medium transition-colors no-underline"
+            style={{
+              ...sans,
+              fontSize: 15,
+              padding: '12px 18px',
+              background: C.orange,
+              color: '#fff',
+              textDecoration: 'none',
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = C.orangeHover)}
+            onMouseLeave={(e) => (e.currentTarget.style.background = C.orange)}
+          >
+            <svg
+              width="15"
+              height="15"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <rect x="2" y="4" width="20" height="16" rx="2" />
+              <polyline points="2,4 12,13 22,4" />
+            </svg>
+            Email Marcus for a fresh link
+          </a>
+
+          {/* Secondary: /chef/entry */}
+          <a
+            href="/chef/entry"
+            className="flex items-center justify-center gap-1.5 w-full rounded-md font-medium transition-colors no-underline"
+            style={{
+              ...sans,
+              fontSize: 14,
+              padding: '11px 18px',
+              background: 'transparent',
+              color: C.gray700,
+              border: `1px solid ${C.softLine}`,
+              textDecoration: 'none',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = C.gray400;
+              e.currentTarget.style.color = C.charcoal;
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = C.softLine;
+              e.currentTarget.style.color = C.gray700;
+            }}
+          >
+            Build your own quote
+            <svg
+              width="13"
+              height="13"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <line x1="5" y1="12" x2="19" y2="12" />
+              <polyline points="12 5 19 12 12 19" />
+            </svg>
+          </a>
+        </div>
+      </div>
+    </div>
   );
 }
 
