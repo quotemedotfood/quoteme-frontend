@@ -54,6 +54,9 @@ import { ChefQuoteReceiptPage } from "./pages/chef/ChefQuoteReceiptPage";
 import { ChefOrderGuidePage } from "./pages/chef/ChefOrderGuidePage";
 import { ChefWelcomePage } from "./pages/chef/ChefWelcomePage";
 import { ChefCatalogSelectionPage } from "./pages/chef/ChefCatalogSelectionPage";
+import { ChefPullEntryPage } from "./pages/chef/ChefPullEntryPage";
+import { ChefPullStatusPage } from "./pages/chef/ChefPullStatusPage";
+import { ChefPullReceiptPage } from "./pages/chef/ChefPullReceiptPage";
 import { ChefShellLayout } from "./components/chef/ChefShellLayout";
 import { ChefMenusPage } from "./pages/chef/ChefMenusPage";
 import { ChefMenuDetailPage } from "./pages/chef/ChefMenuDetailPage";
@@ -91,6 +94,18 @@ export const router = createBrowserRouter([
       {
         path: "chef/status/:id",
         Component: ChefStatusPage,
+      },
+      {
+        path: "chef/pull/entry",
+        Component: ChefPullEntryPage,
+      },
+      {
+        path: "chef/pull/status/:id",
+        Component: ChefPullStatusPage,
+      },
+      {
+        path: "chef/pull/receipt/:id",
+        Component: ChefPullReceiptPage,
       },
       {
         path: "reset-password",

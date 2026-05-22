@@ -2100,7 +2100,7 @@ export async function exitImpersonation(): Promise<ApiResponse<ExitImpersonation
 //            DELETE /api/v1/chef/menus/:id
 // ============================================================
 
-/** One row in the menus index. */
+/** One row in the menus index. Canonical shape — Pull-quote flow consumes this too. */
 export interface ChefMenuRow {
   id: string;
   name: string;
@@ -2150,6 +2150,54 @@ export interface ChefMenuItemDetail {
   source_dish: string | null;
 }
 
+// ============================================================
+// Pull-Quote flow (chef pulls a quote against a chosen distributor)
+// ============================================================
+
+// Distributor context returned on pull-quote responses.
+export interface PullQuoteDistributor {
+  id: string;
+  name: string;
+  /** True when the chef has a DistributorRestaurantRelationship with an active rep */
+  affiliated: boolean;
+  catalog_item_count?: number | null;
+  catalog_refreshed_at?: string | null;
+  rep?: {
+    name: string;
+    first_name?: string | null;
+    email: string;
+  } | null;
+}
+
+// Pull-quote create request
+export interface PullQuoteCreateRequest {
+  /** Either menu_id (saved menu) or raw_text (paste) must be present */
+  menu_id?: string;
+  raw_text?: string;
+  distributor_id: string;
+  restaurant_name?: string;
+}
+
+// Pull-quote create response
+export interface PullQuoteCreateResponse {
+  pull_quote_id: string;
+  status: string;
+}
+
+// Pull-quote status/show response
+export interface PullQuoteResponse {
+  id: string;
+  status: string;
+  created_at: string;
+  distributor: PullQuoteDistributor;
+  restaurant?: string | null;
+  lines?: QuoteLineResponse[];
+  item_count?: number;
+  total_cents?: number;
+  total?: string;
+  share_url?: string | null;
+}
+
 export async function getChefMenus(): Promise<ApiResponse<ChefMenusIndexResponse>> {
   return fetchWithGuest('/api/v1/chef/menus');
 }
@@ -2172,4 +2220,21 @@ export async function deleteChefMenu(menuId: string): Promise<ApiResponse<{ succ
   return fetchWithGuest(`/api/v1/chef/menus/${menuId}`, {
     method: 'DELETE',
   });
+}
+
+export async function createPullQuote(
+  data: PullQuoteCreateRequest,
+): Promise<ApiResponse<PullQuoteCreateResponse>> {
+  return fetchWithGuest('/api/v1/chef/pull_quotes', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function getPullQuote(id: string): Promise<ApiResponse<PullQuoteResponse>> {
+  return fetchWithGuest(`/api/v1/chef/pull_quotes/${id}`);
+}
+
+export async function sharePullQuote(id: string): Promise<ApiResponse<{ share_url: string }>> {
+  return fetchWithGuest(`/api/v1/chef/pull_quotes/${id}/share`, { method: 'POST' });
 }
