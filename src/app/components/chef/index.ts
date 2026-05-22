@@ -31,3 +31,9 @@ export type { ChefBadgePillProps, ChefType } from './ChefBadgePill';
 
 export { ChefAccountDrawer } from './ChefAccountDrawer';
 export type { ChefAccountDrawerProps } from './ChefAccountDrawer';
+
+export { SidebarHelpInput } from './SidebarHelpInput';
+export type { SidebarHelpInputProps } from './SidebarHelpInput';
+
+export { HelpDrawer } from './HelpDrawer';
+export type { HelpDrawerProps } from './HelpDrawer';
