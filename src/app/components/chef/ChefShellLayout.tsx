@@ -66,7 +66,9 @@ export function ChefShellLayout() {
   const navTab = (target: string) => {
     if (target === 'entry') return navigate('/chef/entry');
     if (target === 'tab-dashboard') return navigate('/dashboard', { state: { activeTab: 'home' } });
-    if (target === 'tab-home') return navigate('/dashboard', { state: { activeTab: 'home' } });
+    // Quotes has a dedicated route — navigate there directly (c135)
+    if (target === 'tab-home') return navigate('/chef/quotes');
+    // Order Guides, Distributors, Settings are dashboard tabs — pass activeTab via state
     if (target === 'tab-order-guides') return navigate('/dashboard', { state: { activeTab: 'order-guides' } });
     if (target === 'tab-distributors') return navigate('/dashboard', { state: { activeTab: 'distributors' } });
     if (target === 'tab-settings') return navigate('/dashboard', { state: { activeTab: 'settings' } });

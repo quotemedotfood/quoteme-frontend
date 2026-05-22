@@ -78,7 +78,7 @@ function BuyerDashboard() {
             {draftQuotes.map((q) => (
               <button
                 key={q.id}
-                onClick={() => navigate('/quote-builder', { state: { quoteId: q.id } })}
+                onClick={() => navigate(`/quote-builder?quoteId=${q.id}`)}
                 className="w-full text-left bg-red-50 border border-red-200 rounded-lg px-4 py-3 hover:shadow-sm transition-shadow flex items-center justify-between"
               >
                 <div className="min-w-0">
@@ -225,7 +225,7 @@ function BuyerDashboard() {
                   return (
                     <button
                       key={q.id}
-                      onClick={() => navigate('/quote-builder', { state: { quoteId: q.id } })}
+                      onClick={() => navigate(`/quote-builder?quoteId=${q.id}`)}
                       className="w-full text-left bg-white border border-gray-200 rounded-lg px-4 py-3 hover:shadow-sm transition-shadow flex items-center justify-between"
                     >
                       <div className="min-w-0">
@@ -343,7 +343,7 @@ function RepDashboard() {
                   return (
                     <button
                       key={q.id}
-                      onClick={() => navigate('/quote-builder', { state: { quoteId: q.id } })}
+                      onClick={() => navigate(`/quote-builder?quoteId=${q.id}`)}
                       className="w-full text-left bg-white border border-gray-200 rounded-lg px-4 py-3 hover:shadow-sm transition-shadow flex items-center justify-between"
                     >
                       <div className="min-w-0">

@@ -127,11 +127,11 @@ export function QuotesPage() {
   };
 
   const handleViewQuote = (quoteId: string) => {
-    navigate('/export-finalize', { state: { quoteId, isOpenQuote: false } });
+    navigate(`/export-finalize?quoteId=${quoteId}`);
   };
 
   const handleEditQuote = (quoteId: string) => {
-    navigate('/quote-builder', { state: { quoteId, isOpenQuote: false } });
+    navigate(`/quote-builder?quoteId=${quoteId}`);
   };
 
   const handleDeleteQuote = async (quoteId: string) => {

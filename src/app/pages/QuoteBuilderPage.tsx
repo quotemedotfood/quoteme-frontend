@@ -84,9 +84,10 @@ export function QuoteBuilderPage() {
   const location = useLocation();
   const { quotesRemaining } = useUser();
   const demo = isDemoMode();
-  const quoteId: string | undefined = (location.state as any)?.quoteId;
-  const isOpenQuote: boolean = (location.state as any)?.isOpenQuote || false;
-  const locationId: string | undefined = (location.state as any)?.locationId;
+  const searchParams = new URLSearchParams(location.search);
+  const quoteId: string | undefined = (location.state as any)?.quoteId || searchParams.get('quoteId') || undefined;
+  const isOpenQuote: boolean = (location.state as any)?.isOpenQuote || searchParams.get('isOpenQuote') === 'true' || false;
+  const locationId: string | undefined = (location.state as any)?.locationId || searchParams.get('locationId') || undefined;
 
   const [items, setItems] = useState<ProductItem[]>([]);
   const [loading, setLoading] = useState(true);

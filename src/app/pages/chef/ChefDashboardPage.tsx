@@ -64,6 +64,15 @@ export function ChefDashboardPage() {
   const initialTab = (location.state as any)?.activeTab as Tab | undefined;
   const [activeTab, setActiveTab] = useState<Tab>(initialTab ?? 'home');
 
+  // Sync activeTab when ChefShellLayout navigates to /dashboard with a
+  // different activeTab in location.state. Without this effect, useState
+  // only reads the initial value on mount, so sidebar tab clicks that
+  // land on an already-mounted /dashboard route are dead (c135).
+  useEffect(() => {
+    const incoming = (location.state as any)?.activeTab as Tab | undefined;
+    if (incoming) setActiveTab(incoming);
+  }, [location.state]);
+
   // navTab handles intra-page tab switching. The outer ChefShellLayout
   // owns the shell chrome (sidebar / bottom bar) and handles cross-route
   // navigation; this adapter is kept for renderTab() dispatch.
