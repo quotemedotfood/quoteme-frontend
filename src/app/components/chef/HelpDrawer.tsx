@@ -35,8 +35,9 @@ const C = {
   gray400: '#9CA3AF',
   orange: '#F2993D',
   orangeHover: '#E08A2E',
-  // STUB — replace with real support number before launch
-  supportPhone: '(800) 555-0182',
+  // TODO: Swap to canonical QuoteMe support number when provisioned.
+  // Currently Moose's personal line.
+  supportPhone: '+1 720-504-5127',
 } as const;
 
 const serif: React.CSSProperties = {

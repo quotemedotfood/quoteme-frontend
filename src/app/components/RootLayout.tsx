@@ -32,14 +32,14 @@ export function RootLayout() {
     );
   }
 
-  // V2 fix (smoke P0-A): chef-role users get a minimal layout — wordmark +
-  // identity + sign-out only, no AppSidebar. Distributors/Locations/Quotes
-  // routes don't exist as chef-facing surfaces in V2 scope, so showing
-  // rep-flavored nav to a chef is both confusing and 404-prone. Rep flow is
-  // unchanged.
-  const isChef = user?.role === 'chef';
+  // V2 fix (smoke P0-A): chef-role + group_admin users get the minimal chef
+  // layout — wordmark + identity + sign-out only, no AppSidebar.
+  // Distributors/Locations/Quotes routes don't exist as chef-facing surfaces
+  // in V2 scope, so showing rep-flavored nav to a chef is both confusing and
+  // 404-prone. Buyer stays on AppSidebar; rep flow unchanged.
+  const isChefLayout = ['chef', 'group_admin'].includes(user?.role ?? '');
 
-  if (isChef) {
+  if (isChefLayout) {
     return (
       <AuthSyncProvider>
         <div className="flex flex-col min-h-screen bg-[#FBFAF7]">
