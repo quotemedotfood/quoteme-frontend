@@ -188,7 +188,14 @@ export function ChefEntryPage() {
   // /chef/status/<id>; the chef perceives zero transition because
   // ChefStatusPage renders the identical layout.
   if (submitting) {
-    return <BuildingQuoteOverlay />;
+    return (
+      <BuildingQuoteOverlay
+        onTimeout={() => {
+          setSubmitting(false);
+          setError('Taking longer than usual. Please try again.');
+        }}
+      />
+    );
   }
 
   return (
@@ -358,16 +365,32 @@ export function ChefEntryPage() {
           )}
 
           {/* Error */}
-          {error && <p className={errorText}>{error}</p>}
+          {error && (
+            <div className="flex flex-col gap-2">
+              <p className={errorText}>{error}</p>
+              {error.startsWith('Taking longer than usual') && (
+                <button
+                  type="button"
+                  className={primaryBtn}
+                  onClick={handleSubmit}
+                  disabled={!hasContent}
+                >
+                  Try again
+                </button>
+              )}
+            </div>
+          )}
 
           {/* Submit */}
-          <button
-            className={primaryBtn}
-            onClick={handleSubmit}
-            disabled={!hasContent || submitting}
-          >
-            {submitting ? 'Sending…' : 'Build my quote'}
-          </button>
+          {!error?.startsWith('Taking longer than usual') && (
+            <button
+              className={primaryBtn}
+              onClick={handleSubmit}
+              disabled={!hasContent || submitting}
+            >
+              {submitting ? 'Sending…' : 'Build my quote'}
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -398,11 +421,17 @@ function stageFor(elapsedSec: number): string {
   return current;
 }
 
-function BuildingQuoteOverlay() {
+interface BuildingQuoteOverlayProps {
+  onTimeout: () => void;
+}
+
+function BuildingQuoteOverlay({ onTimeout }: BuildingQuoteOverlayProps) {
   const [dots, setDots] = useState('');
   const [elapsed, setElapsed] = useState(0);
   const dotsRef = useRef(0);
   const startedAtRef = useRef<number>(Date.now());
+  const onTimeoutRef = useRef(onTimeout);
+  onTimeoutRef.current = onTimeout;
 
   useEffect(() => {
     const states = ['', '.', '..', '...'];
@@ -418,6 +447,15 @@ function BuildingQuoteOverlay() {
       setElapsed(Math.floor((Date.now() - startedAtRef.current) / 1000));
     }, 1000);
     return () => clearInterval(interval);
+  }, []);
+
+  // c133: 60-second timeout — if the POST hasn't resolved by then, surface
+  // a calm retry prompt so the chef is never left on a blank spinner.
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      onTimeoutRef.current();
+    }, 60_000);
+    return () => clearTimeout(timer);
   }, []);
 
   const stageMessage = stageFor(elapsed);
