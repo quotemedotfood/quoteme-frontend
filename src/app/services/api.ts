@@ -2238,3 +2238,59 @@ export async function getPullQuote(id: string): Promise<ApiResponse<PullQuoteRes
 export async function sharePullQuote(id: string): Promise<ApiResponse<{ share_url: string }>> {
   return fetchWithGuest(`/api/v1/chef/pull_quotes/${id}/share`, { method: 'POST' });
 }
+
+// ─── Menu Spread ─────────────────────────────────────────────────────────────
+// GET /api/v1/chef/menus/:id/spread
+//
+// Assumed BE response shape (locked for Agent C4 to match):
+//   menu:          { id, name, items: [{ id, name, section }] }
+//   distributors:  [{ id, name, affiliated }]   (affiliated = linked to this chef's account)
+//   matrix:        [{ item_id, distributor_id, unit_price_cents, line_total_cents, unmatched }]
+//   column_totals: [{ distributor_id, total_cents, coverage_pct }]
+//
+// `unmatched: true` → item not in that distributor's catalog.
+// `unit_price_cents` and `line_total_cents` are null when unmatched.
+// `coverage_pct` is 0–100 (integer or float, percent of menu items matched).
+
+export interface SpreadMenuItem {
+  id: string;
+  name: string;
+  section: string | null;
+}
+
+export interface SpreadDistributor {
+  id: string;
+  name: string;
+  affiliated: boolean;
+}
+
+export interface SpreadMatrixCell {
+  item_id: string;
+  distributor_id: string;
+  unit_price_cents: number | null;
+  line_total_cents: number | null;
+  unmatched: boolean;
+}
+
+export interface SpreadColumnTotal {
+  distributor_id: string;
+  total_cents: number;
+  coverage_pct: number;
+}
+
+export interface MenuSpreadResponse {
+  menu: {
+    id: string;
+    name: string;
+    items: SpreadMenuItem[];
+  };
+  distributors: SpreadDistributor[];
+  matrix: SpreadMatrixCell[];
+  column_totals: SpreadColumnTotal[];
+}
+
+export async function getMenuSpread(
+  menuId: string
+): Promise<ApiResponse<MenuSpreadResponse>> {
+  return fetchWithAuth<MenuSpreadResponse>(`/api/v1/chef/menus/${menuId}/spread`);
+}

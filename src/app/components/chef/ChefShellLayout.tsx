@@ -29,7 +29,7 @@ function initialModeFromPath(pathname: string): SidebarMode {
   // Detail surfaces default to Compact (in-flow density)
   if (pathname.startsWith('/chef/quotes/') && pathname !== '/chef/quotes') return 'collapsed';
   if (pathname.startsWith('/chef/order-guide/')) return 'collapsed';
-  // Menu detail (/chef/menus/:id) — document view, collapsed sidebar
+  // Menu detail (/chef/menus/:id) + spread (/chef/menus/:id/spread) — document view
   if (/^\/chef\/menus\/[^/]+/.test(pathname)) return 'collapsed';
   // Browse surfaces default to Full
   // /dashboard, /chef/quotes (no :id), /chef/menus (index), /chef/catalog

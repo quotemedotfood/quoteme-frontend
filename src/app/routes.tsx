@@ -57,6 +57,7 @@ import { ChefCatalogSelectionPage } from "./pages/chef/ChefCatalogSelectionPage"
 import { ChefPullEntryPage } from "./pages/chef/ChefPullEntryPage";
 import { ChefPullStatusPage } from "./pages/chef/ChefPullStatusPage";
 import { ChefPullReceiptPage } from "./pages/chef/ChefPullReceiptPage";
+import { ChefMenuSpreadPage } from "./pages/chef/ChefMenuSpreadPage";
 import { ChefShellLayout } from "./components/chef/ChefShellLayout";
 import { ChefMenusPage } from "./pages/chef/ChefMenusPage";
 import { ChefMenuDetailPage } from "./pages/chef/ChefMenuDetailPage";
@@ -161,6 +162,7 @@ export const router = createBrowserRouter([
               { path: "chef/order-guide/:id", Component: ChefOrderGuidePage },
               { path: "chef/menus/:id", Component: ChefMenuDetailPage },
               { path: "chef/catalog", Component: ChefCatalogSelectionPage },
+              { path: "chef/menus/:id/spread", Component: ChefMenuSpreadPage },
             ],
           },
           ...(demo ? [] : [
