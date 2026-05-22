@@ -1653,6 +1653,9 @@ export interface KnowledgeGapSubmission {
   reviewed_at: string | null;
   review_notes: string | null;
   resolved_data: Record<string, unknown> | null;
+  // suspected-tail clumping v1 — non-null when SuspectedTailClumpService has grouped
+  // this submission into a cluster by TF-IDF cosine similarity (threshold 0.65).
+  cluster_id: string | null;
 }
 
 export type KnowledgeGapEditedData = {
@@ -1826,5 +1829,46 @@ export async function undoKnowledgeGapTail(
 ): Promise<ApiResponse<KnowledgeGapSubmission>> {
   return fetchWithAuth(`/api/v1/admin/knowledge_gap_submissions/${submissionId}/undo_tail`, {
     method: 'POST',
+  });
+}
+
+// ── Suspected-tail clumping v1 ─────────────────────────────────────────────────
+
+/**
+ * Decision log record written after the operator bulk-acts on a cluster.
+ * Mirrors the TailClusterDecision BE model (tail_cluster_decisions_controller.rb#serialize).
+ * The actual approval/archive mutations happen via bulkApproveAsTail / bulkArchiveKnowledgeGap;
+ * this is a separate forensic write so calibration errors don't affect UX.
+ */
+export interface TailClusterDecision {
+  id: string;
+  cluster_id: string;
+  decision: 'kept' | 'split' | 'rejected';
+  cluster_size: number;
+  threshold_used: number;
+  avg_intra_similarity: number | null;
+  submission_ids: string[];
+  parent_cluster_label_id: string | null;
+  reviewer_user_id: string | null;
+  decided_at: string | null;
+  review_notes: string | null;
+}
+
+export interface RecordTailClusterDecisionParams {
+  cluster_id: string;
+  decision: 'kept' | 'split' | 'rejected';
+  submission_ids: string[];
+  threshold_used: number;
+  avg_intra_similarity?: number | null;
+  parent_cluster_label_id?: string | null;
+  review_notes?: string | null;
+}
+
+export async function recordTailClusterDecision(
+  params: RecordTailClusterDecisionParams
+): Promise<ApiResponse<TailClusterDecision>> {
+  return fetchWithAuth('/api/v1/admin/tail_cluster_decisions', {
+    method: 'POST',
+    body: JSON.stringify(params),
   });
 }
