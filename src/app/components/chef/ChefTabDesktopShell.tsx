@@ -16,6 +16,7 @@
 import React, { useState } from 'react';
 import { FileText, ClipboardList, Truck, Settings, Home, PanelLeftClose, PanelLeftOpen, Plus } from 'lucide-react';
 import quotemeLogo from '../../../assets/quoteme-logo.png';
+import { SidebarHelpInput } from './SidebarHelpInput';
 
 const C = {
   charcoal: '#2B2B2B',
@@ -184,7 +185,45 @@ function NewspaperSidebarStub({
           </button>
         </div>
 
-        {NAV_ITEMS.map((item) => {
+        {NAV_ITEMS.filter((item) => item.id !== 'settings').map((item) => {
+          const on = item.id === active;
+          const { Icon } = item;
+          return (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => onNav(item.target)}
+              style={{
+                width: '100%',
+                textAlign: 'left',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+                padding: collapsed ? '10px 0' : '10px 20px',
+                justifyContent: collapsed ? 'center' : 'flex-start',
+                background: on ? 'rgba(43,43,43,.07)' : 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                ...sans,
+                fontSize: 14,
+                fontWeight: on ? 600 : 400,
+                color: on ? C.charcoal : C.gray700,
+                borderLeft: on ? `3px solid ${C.charcoal}` : '3px solid transparent',
+              }}
+            >
+              {/* c64: icon in compact mode, label in open mode */}
+              {collapsed
+                ? <Icon size={18} strokeWidth={on ? 2 : 1.6} />
+                : item.label}
+            </button>
+          );
+        })}
+
+        {/* SidebarHelpInput — above Settings per Desi spec lock */}
+        <SidebarHelpInput collapsed={collapsed} />
+
+        {/* Settings — always last */}
+        {NAV_ITEMS.filter((item) => item.id === 'settings').map((item) => {
           const on = item.id === active;
           const { Icon } = item;
           return (
