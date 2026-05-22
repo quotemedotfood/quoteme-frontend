@@ -29,14 +29,17 @@ function initialModeFromPath(pathname: string): SidebarMode {
   // Detail surfaces default to Compact (in-flow density)
   if (pathname.startsWith('/chef/quotes/') && pathname !== '/chef/quotes') return 'collapsed';
   if (pathname.startsWith('/chef/order-guide/')) return 'collapsed';
+  // Menu detail (/chef/menus/:id) + spread (/chef/menus/:id/spread) — document view
+  if (/^\/chef\/menus\/[^/]+/.test(pathname)) return 'collapsed';
   // Browse surfaces default to Full
-  // /dashboard, /chef/quotes (no :id), /chef/catalog
+  // /dashboard, /chef/quotes (no :id), /chef/menus (index), /chef/catalog
   return 'open';
 }
 
 function activeTabFromPath(pathname: string): ActiveTab {
   if (pathname.startsWith('/chef/order-guide')) return 'order-guides';
   if (pathname.startsWith('/chef/quotes')) return 'home'; // Quotes destination
+  if (pathname.startsWith('/chef/menus')) return 'home'; // Menus sit under the Quotes/home tab
   if (pathname.startsWith('/chef/catalog')) return 'distributors';
   if (pathname.startsWith('/chef/settings')) return 'settings';
   // c73: /dashboard maps explicitly to 'dashboard' tab

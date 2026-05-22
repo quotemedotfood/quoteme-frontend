@@ -2091,3 +2091,206 @@ export async function exitImpersonation(): Promise<ApiResponse<ExitImpersonation
     body: JSON.stringify({}),
   });
 }
+
+// ============================================================
+// Chef Menus Library  (Track C — BE not yet live)
+// Endpoints: GET /api/v1/chef/menus
+//            GET /api/v1/chef/menus/:id
+//            PATCH /api/v1/chef/menus/:id  (rename)
+//            DELETE /api/v1/chef/menus/:id
+// ============================================================
+
+/** One row in the menus index. Canonical shape — Pull-quote flow consumes this too. */
+export interface ChefMenuRow {
+  id: string;
+  name: string;
+  item_count: number;
+  /** ISO datetime of the most recent quote derived from this menu. Null for draft menus. */
+  last_quoted_at: string | null;
+  quote_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ChefMenusIndexResponse {
+  menus: ChefMenuRow[];
+  count: number;
+}
+
+/** Distributor entry in the menu detail history block. */
+export interface ChefMenuDistributorHistory {
+  distributor_id: string;
+  distributor_name: string;
+  /** ISO datetime of the most recent quote for this distributor. */
+  last_quoted_at: string;
+  /** Total quoted value across all quotes for this distributor (cents). */
+  total_cents: number;
+  quote_count: number;
+}
+
+/** Full menu document response. */
+export interface ChefMenuDetail {
+  id: string;
+  name: string;
+  item_count: number;
+  last_quoted_at: string | null;
+  quote_count: number;
+  created_at: string;
+  updated_at: string;
+  /** The raw menu items / components stored on this saved menu. */
+  items: ChefMenuItemDetail[];
+  /** Distributor history — the moat surface. */
+  distributor_history: ChefMenuDistributorHistory[];
+}
+
+export interface ChefMenuItemDetail {
+  id: string;
+  name: string;
+  category: string | null;
+  source_dish: string | null;
+}
+
+// ============================================================
+// Pull-Quote flow (chef pulls a quote against a chosen distributor)
+// ============================================================
+
+// Distributor context returned on pull-quote responses.
+export interface PullQuoteDistributor {
+  id: string;
+  name: string;
+  /** True when the chef has a DistributorRestaurantRelationship with an active rep */
+  affiliated: boolean;
+  catalog_item_count?: number | null;
+  catalog_refreshed_at?: string | null;
+  rep?: {
+    name: string;
+    first_name?: string | null;
+    email: string;
+  } | null;
+}
+
+// Pull-quote create request
+export interface PullQuoteCreateRequest {
+  /** Either menu_id (saved menu) or raw_text (paste) must be present */
+  menu_id?: string;
+  raw_text?: string;
+  distributor_id: string;
+  restaurant_name?: string;
+}
+
+// Pull-quote create response
+export interface PullQuoteCreateResponse {
+  pull_quote_id: string;
+  status: string;
+}
+
+// Pull-quote status/show response
+export interface PullQuoteResponse {
+  id: string;
+  status: string;
+  created_at: string;
+  distributor: PullQuoteDistributor;
+  restaurant?: string | null;
+  lines?: QuoteLineResponse[];
+  item_count?: number;
+  total_cents?: number;
+  total?: string;
+  share_url?: string | null;
+}
+
+export async function getChefMenus(): Promise<ApiResponse<ChefMenusIndexResponse>> {
+  return fetchWithGuest('/api/v1/chef/menus');
+}
+
+export async function getChefMenu(menuId: string): Promise<ApiResponse<ChefMenuDetail>> {
+  return fetchWithGuest(`/api/v1/chef/menus/${menuId}`);
+}
+
+export async function renameChefMenu(
+  menuId: string,
+  name: string
+): Promise<ApiResponse<ChefMenuRow>> {
+  return fetchWithGuest(`/api/v1/chef/menus/${menuId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ name }),
+  });
+}
+
+export async function deleteChefMenu(menuId: string): Promise<ApiResponse<{ success: boolean }>> {
+  return fetchWithGuest(`/api/v1/chef/menus/${menuId}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function createPullQuote(
+  data: PullQuoteCreateRequest,
+): Promise<ApiResponse<PullQuoteCreateResponse>> {
+  return fetchWithGuest('/api/v1/chef/pull_quotes', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function getPullQuote(id: string): Promise<ApiResponse<PullQuoteResponse>> {
+  return fetchWithGuest(`/api/v1/chef/pull_quotes/${id}`);
+}
+
+export async function sharePullQuote(id: string): Promise<ApiResponse<{ share_url: string }>> {
+  return fetchWithGuest(`/api/v1/chef/pull_quotes/${id}/share`, { method: 'POST' });
+}
+
+// ─── Menu Spread ─────────────────────────────────────────────────────────────
+// GET /api/v1/chef/menus/:id/spread
+//
+// Assumed BE response shape (locked for Agent C4 to match):
+//   menu:          { id, name, items: [{ id, name, section }] }
+//   distributors:  [{ id, name, affiliated }]   (affiliated = linked to this chef's account)
+//   matrix:        [{ item_id, distributor_id, unit_price_cents, line_total_cents, unmatched }]
+//   column_totals: [{ distributor_id, total_cents, coverage_pct }]
+//
+// `unmatched: true` → item not in that distributor's catalog.
+// `unit_price_cents` and `line_total_cents` are null when unmatched.
+// `coverage_pct` is 0–100 (integer or float, percent of menu items matched).
+
+export interface SpreadMenuItem {
+  id: string;
+  name: string;
+  section: string | null;
+}
+
+export interface SpreadDistributor {
+  id: string;
+  name: string;
+  affiliated: boolean;
+}
+
+export interface SpreadMatrixCell {
+  item_id: string;
+  distributor_id: string;
+  unit_price_cents: number | null;
+  line_total_cents: number | null;
+  unmatched: boolean;
+}
+
+export interface SpreadColumnTotal {
+  distributor_id: string;
+  total_cents: number;
+  coverage_pct: number;
+}
+
+export interface MenuSpreadResponse {
+  menu: {
+    id: string;
+    name: string;
+    items: SpreadMenuItem[];
+  };
+  distributors: SpreadDistributor[];
+  matrix: SpreadMatrixCell[];
+  column_totals: SpreadColumnTotal[];
+}
+
+export async function getMenuSpread(
+  menuId: string
+): Promise<ApiResponse<MenuSpreadResponse>> {
+  return fetchWithAuth<MenuSpreadResponse>(`/api/v1/chef/menus/${menuId}/spread`);
+}

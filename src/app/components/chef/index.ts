@@ -26,6 +26,9 @@ export type { YourDistributor, AreaDistributor } from './distributorsDemoData';
 export { StuckRecoveryScreen, MENU_DRAFT_KEY } from './StuckRecoveryScreen';
 export type { StuckRecoveryScreenProps } from './StuckRecoveryScreen';
 
+export { PullDistributorAnchor } from './PullDistributorAnchor';
+export type { PullDistributorAnchorProps, PullDistributorInfo } from './PullDistributorAnchor';
+
 export { ChefBadgePill } from './ChefBadgePill';
 export type { ChefBadgePillProps, ChefType } from './ChefBadgePill';
 

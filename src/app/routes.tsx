@@ -54,7 +54,13 @@ import { ChefQuoteReceiptPage } from "./pages/chef/ChefQuoteReceiptPage";
 import { ChefOrderGuidePage } from "./pages/chef/ChefOrderGuidePage";
 import { ChefWelcomePage } from "./pages/chef/ChefWelcomePage";
 import { ChefCatalogSelectionPage } from "./pages/chef/ChefCatalogSelectionPage";
+import { ChefPullEntryPage } from "./pages/chef/ChefPullEntryPage";
+import { ChefPullStatusPage } from "./pages/chef/ChefPullStatusPage";
+import { ChefPullReceiptPage } from "./pages/chef/ChefPullReceiptPage";
+import { ChefMenuSpreadPage } from "./pages/chef/ChefMenuSpreadPage";
 import { ChefShellLayout } from "./components/chef/ChefShellLayout";
+import { ChefMenusPage } from "./pages/chef/ChefMenusPage";
+import { ChefMenuDetailPage } from "./pages/chef/ChefMenuDetailPage";
 import { CreateRestaurantPage } from "./pages/CreateRestaurantPage";
 import { isDemoMode } from "./utils/demoMode";
 
@@ -89,6 +95,18 @@ export const router = createBrowserRouter([
       {
         path: "chef/status/:id",
         Component: ChefStatusPage,
+      },
+      {
+        path: "chef/pull/entry",
+        Component: ChefPullEntryPage,
+      },
+      {
+        path: "chef/pull/status/:id",
+        Component: ChefPullStatusPage,
+      },
+      {
+        path: "chef/pull/receipt/:id",
+        Component: ChefPullReceiptPage,
       },
       {
         path: "reset-password",
@@ -138,10 +156,13 @@ export const router = createBrowserRouter([
               ...(demo ? [] : [
                 { path: "dashboard", Component: DashboardRoleRouter },
                 { path: "chef/quotes", Component: ChefQuotesPage },
+                { path: "chef/menus", Component: ChefMenusPage },
               ]),
               { path: "chef/quotes/:id", Component: ChefQuoteReceiptPage },
               { path: "chef/order-guide/:id", Component: ChefOrderGuidePage },
+              { path: "chef/menus/:id", Component: ChefMenuDetailPage },
               { path: "chef/catalog", Component: ChefCatalogSelectionPage },
+              { path: "chef/menus/:id/spread", Component: ChefMenuSpreadPage },
             ],
           },
           ...(demo ? [] : [
