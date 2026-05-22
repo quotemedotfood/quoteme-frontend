@@ -2091,3 +2091,85 @@ export async function exitImpersonation(): Promise<ApiResponse<ExitImpersonation
     body: JSON.stringify({}),
   });
 }
+
+// ============================================================
+// Chef Menus Library  (Track C — BE not yet live)
+// Endpoints: GET /api/v1/chef/menus
+//            GET /api/v1/chef/menus/:id
+//            PATCH /api/v1/chef/menus/:id  (rename)
+//            DELETE /api/v1/chef/menus/:id
+// ============================================================
+
+/** One row in the menus index. */
+export interface ChefMenuRow {
+  id: string;
+  name: string;
+  item_count: number;
+  /** ISO datetime of the most recent quote derived from this menu. Null for draft menus. */
+  last_quoted_at: string | null;
+  quote_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ChefMenusIndexResponse {
+  menus: ChefMenuRow[];
+  count: number;
+}
+
+/** Distributor entry in the menu detail history block. */
+export interface ChefMenuDistributorHistory {
+  distributor_id: string;
+  distributor_name: string;
+  /** ISO datetime of the most recent quote for this distributor. */
+  last_quoted_at: string;
+  /** Total quoted value across all quotes for this distributor (cents). */
+  total_cents: number;
+  quote_count: number;
+}
+
+/** Full menu document response. */
+export interface ChefMenuDetail {
+  id: string;
+  name: string;
+  item_count: number;
+  last_quoted_at: string | null;
+  quote_count: number;
+  created_at: string;
+  updated_at: string;
+  /** The raw menu items / components stored on this saved menu. */
+  items: ChefMenuItemDetail[];
+  /** Distributor history — the moat surface. */
+  distributor_history: ChefMenuDistributorHistory[];
+}
+
+export interface ChefMenuItemDetail {
+  id: string;
+  name: string;
+  category: string | null;
+  source_dish: string | null;
+}
+
+export async function getChefMenus(): Promise<ApiResponse<ChefMenusIndexResponse>> {
+  return fetchWithGuest('/api/v1/chef/menus');
+}
+
+export async function getChefMenu(menuId: string): Promise<ApiResponse<ChefMenuDetail>> {
+  return fetchWithGuest(`/api/v1/chef/menus/${menuId}`);
+}
+
+export async function renameChefMenu(
+  menuId: string,
+  name: string
+): Promise<ApiResponse<ChefMenuRow>> {
+  return fetchWithGuest(`/api/v1/chef/menus/${menuId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ name }),
+  });
+}
+
+export async function deleteChefMenu(menuId: string): Promise<ApiResponse<{ success: boolean }>> {
+  return fetchWithGuest(`/api/v1/chef/menus/${menuId}`, {
+    method: 'DELETE',
+  });
+}
