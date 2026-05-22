@@ -121,7 +121,7 @@ export function StuckRecoveryScreen({ quoteId, repEmail, repName, onWaitItOut }:
             className="text-2xl font-bold text-[#2A2A2A]"
             style={headlineStyle}
           >
-            Taking longer than expected
+            Taking longer than usual
           </h1>
           <p className="text-[#4F4F4F] text-base leading-relaxed">
             We saved your menu. Pick how you'd like to handle this.
@@ -166,8 +166,8 @@ export function StuckRecoveryScreen({ quoteId, repEmail, repName, onWaitItOut }:
               Try again with shorter sections
             </p>
             <p className="text-[#9E9E9E] text-xs leading-relaxed">
-              Your menu text is ready to edit. Breaking it into smaller
-              sections usually works.
+              Your menu's saved. Breaking it into smaller sections usually
+              helps.
             </p>
           </button>
         </div>
