@@ -1,4 +1,4 @@
-import { Outlet, Navigate } from 'react-router';
+import { Outlet, Navigate, useLocation } from 'react-router';
 import { AppSidebar } from './AppSidebar';
 import { ChefTopbar } from './ChefTopbar';
 import { AuthSyncProvider } from './AuthSyncProvider';
@@ -6,11 +6,27 @@ import { DemoBanner } from './DemoBanner';
 import { isDemoMode } from '../utils/demoMode';
 import { useAuth } from '../contexts/AuthContext';
 
+// P0 (Bug #1): /chef/quotes/:id is the chef receipt and must render
+// for a guest who holds a guest-session token in localStorage. The
+// BE endpoint authenticates the token via Chef::BaseController's
+// X-Guest-Token header path; this regex gates which FE paths the
+// guest-token bypass applies to so rep / admin routes still require
+// real auth.
+const CHEF_RECEIPT_PATH = /^\/chef\/quotes\/[^/]+/;
+
 export function RootLayout() {
   const demo = isDemoMode();
   const { user, isAuthenticated, isLoading } = useAuth();
+  const location = useLocation();
 
-  if (!demo && !isAuthenticated && !isLoading) {
+  const guestToken =
+    typeof window !== 'undefined' ? localStorage.getItem('quoteme_guest_token') : null;
+  const isGuestChefReceipt =
+    !isAuthenticated &&
+    Boolean(guestToken) &&
+    CHEF_RECEIPT_PATH.test(location.pathname);
+
+  if (!demo && !isAuthenticated && !isLoading && !isGuestChefReceipt) {
     return <Navigate to="/auth" replace />;
   }
 
@@ -37,7 +53,11 @@ export function RootLayout() {
   // Distributors/Locations/Quotes routes don't exist as chef-facing surfaces
   // in V2 scope, so showing rep-flavored nav to a chef is both confusing and
   // 404-prone. Buyer stays on AppSidebar; rep flow unchanged.
-  const isChefLayout = ['chef', 'group_admin'].includes(user?.role ?? '');
+  // P0 (Bug #1): a guest viewing the chef receipt has no user/role yet;
+  // without this override they'd render the rep AppSidebar around the
+  // receipt. Force the minimal chef layout for that case.
+  const isChefLayout =
+    isGuestChefReceipt || ['chef', 'group_admin'].includes(user?.role ?? '');
 
   if (isChefLayout) {
     return (
