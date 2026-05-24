@@ -708,7 +708,7 @@ export function SettingsPage() {
           <div className="flex justify-between items-start mb-6">
             <div>
               <h2 className="text-lg text-[#4F4F4F] mb-1">Documents</h2>
-              <p className="text-sm text-[#4F4F4F]">Upload and manage your onboarding documents</p>
+              <p className="text-sm text-[#4F4F4F]">Upload and manage your customer setup documents</p>
             </div>
           </div>
 
