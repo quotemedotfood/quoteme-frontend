@@ -449,7 +449,7 @@ export function QuoteBuilderPage() {
               </Button>
             )}
             <Button
-              onClick={() => navigate('/review', { state: { quoteId, isOpenQuote, locationId } })}
+              onClick={() => navigate(`/export-finalize?quoteId=${quoteId}`)}
               className="hidden md:flex bg-[#F9A64B] hover:bg-[#E8953A] text-white"
             >
               Finish quote
@@ -952,7 +952,7 @@ export function QuoteBuilderPage() {
 
       {/* Floating Finish Quote button */}
       <button
-        onClick={() => navigate('/review', { state: { quoteId, isOpenQuote, locationId } })}
+        onClick={() => navigate(`/export-finalize?quoteId=${quoteId}`)}
         className="fixed bottom-[80px] right-6 bg-[#F9A64B] hover:bg-[#E8953A] text-white font-medium py-3 px-6 rounded-full shadow-lg text-base min-h-[48px] z-50"
       >
         Finish Quote
