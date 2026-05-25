@@ -431,13 +431,6 @@ export function QuoteReviewPage() {
 
       {/* Bottom Bar */}
       <div className="fixed bottom-0 left-0 right-0 md:left-64 bg-white border-t border-gray-200 px-6 py-4 z-40">
-        {demo && (
-          <p className="text-center text-xs text-gray-500 mb-2 md:hidden">
-            {quotesRemaining > 0
-              ? `${quotesRemaining} free quote${quotesRemaining !== 1 ? 's' : ''} left`
-              : 'No free quotes left'}
-          </p>
-        )}
         <div className="max-w-5xl mx-auto flex flex-col md:flex-row items-center justify-between gap-3">
           <Button
             variant="outline"

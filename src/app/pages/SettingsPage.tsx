@@ -1022,7 +1022,7 @@ export function SettingsPage() {
                       onClick={handleUpgradePlan}
                       className="bg-[#7FAEC2] hover:bg-[#6A9AB0] text-white text-sm"
                     >
-                      Upgrade to Premium
+                      Subscribe
                     </Button>
                   ) : (
                     <Button

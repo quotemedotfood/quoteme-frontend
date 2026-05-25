@@ -1371,7 +1371,7 @@ export function StartNewQuotePage() {
                 <div className="flex items-center gap-3">
                   <span className="text-green-600 text-lg">&#10003;</span>
                   <div>
-                    <p className="text-sm font-medium text-[#2A2A2A]">Demo Catalog Active</p>
+                    <p className="text-sm font-medium text-[#2A2A2A]">Sample Catalog Active</p>
                     <p className="text-xs text-gray-500">Upload your own catalog below, or continue with the demo.</p>
                   </div>
                 </div>
@@ -1413,7 +1413,7 @@ export function StartNewQuotePage() {
                 <div className="flex items-center gap-3">
                   <span className="text-amber-500 text-lg">&#9888;</span>
                   <div>
-                    <p className="text-sm font-medium text-[#2A2A2A]">Demo Catalog Active</p>
+                    <p className="text-sm font-medium text-[#2A2A2A]">Sample Catalog Active</p>
                     <p className="text-xs text-gray-500">Upload your own catalog to create quotes that count toward your plan.</p>
                   </div>
                 </div>
