@@ -21,6 +21,7 @@
 import { useEffect, useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router';
 import { ChefTabBar, ChefTabDesktopShell } from './';
+import { useAuth } from '../../contexts/AuthContext';
 
 type ActiveTab = 'home' | 'dashboard' | 'order-guides' | 'distributors' | 'settings';
 type SidebarMode = 'open' | 'collapsed' | 'hidden';
@@ -48,6 +49,9 @@ function activeTabFromPath(pathname: string): ActiveTab {
 }
 
 export function ChefShellLayout() {
+  // All hooks must be called unconditionally before any early return to
+  // satisfy the Rules of Hooks. Role check + bypass happens after.
+  const { user } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const activeTab = activeTabFromPath(location.pathname);
@@ -62,6 +66,15 @@ export function ChefShellLayout() {
     mq.addEventListener('change', handler);
     return () => mq.removeEventListener('change', handler);
   }, []);
+
+  // Bug #4: /dashboard is mounted inside this layout via routes.tsx so that
+  // chef/buyer/group_admin users get the chef chrome (sidebar + tab bar).
+  // DashboardRoleRouter correctly branches content by role, but the layout
+  // wraps unconditionally — meaning a rep at /dashboard previously saw the
+  // chef tab bar over their rep dashboard. Role-guard here pulls the chef
+  // chrome off non-chef-role users. Outer RootLayout still owns rep chrome.
+  const isChefShellUser = user?.role === 'chef' || user?.role === 'buyer' || user?.role === 'group_admin';
+  if (!isChefShellUser) return <Outlet />;
 
   // Stage 1: all tab nav routes to /dashboard, passing the clicked tab
   // through navigate state so ChefDashboardPage can open on the right tab.
