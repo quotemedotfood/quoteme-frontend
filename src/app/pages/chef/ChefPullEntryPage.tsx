@@ -59,6 +59,12 @@ export function ChefPullEntryPage() {
   const [menuSource, setMenuSource] = useState<'paste' | string>('paste');
   const [pasteText, setPasteText] = useState('');
   const [restaurantName, setRestaurantName] = useState('');
+  // c151-E rep capture. Prefilled from distributor.rep when affiliated;
+  // empty + friendlier placeholders when unaffiliated. Required at submit.
+  const [repName, setRepName] = useState(distributor?.rep?.name ?? '');
+  const [repEmail, setRepEmail] = useState(distributor?.rep?.email ?? '');
+  const [repNameError, setRepNameError] = useState<string | null>(null);
+  const [repEmailError, setRepEmailError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -105,8 +111,31 @@ export function ChefPullEntryPage() {
     );
   }
 
+  // c151-E: regex matches the dispatch spec verbatim
+  const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  function validateRepFields(): boolean {
+    let ok = true;
+    const trimmedName = repName.trim();
+    const trimmedEmail = repEmail.trim();
+    if (trimmedName.length < 2) {
+      setRepNameError('Add the rep’s name.');
+      ok = false;
+    } else {
+      setRepNameError(null);
+    }
+    if (!EMAIL_RE.test(trimmedEmail)) {
+      setRepEmailError('Add the rep’s email.');
+      ok = false;
+    } else {
+      setRepEmailError(null);
+    }
+    return ok;
+  }
+
   async function handleSubmit() {
     if (!hasContent || !distributorId) return;
+    if (!validateRepFields()) return;
     setError(null);
     setSubmitting(true);
 
@@ -114,6 +143,8 @@ export function ChefPullEntryPage() {
       const payload: Parameters<typeof createPullQuote>[0] = {
         distributor_id: distributorId,
         ...(restaurantName.trim() ? { restaurant_name: restaurantName.trim() } : {}),
+        rep_name: repName.trim(),
+        rep_email: repEmail.trim(),
       };
 
       if (isPasteMode) {
@@ -256,6 +287,54 @@ export function ChefPullEntryPage() {
               )}
             </div>
 
+            {/* c151-E: Rep capture — required. Sits between the menu input and the Build quote CTA. */}
+            <div className="border border-[#E8C9A0] rounded-lg p-4 bg-[#FFF9F3] flex flex-col gap-3">
+              <div>
+                <h3 className="text-sm font-semibold text-[#2B2B2B]">
+                  Who at {distributor?.name ?? 'this distributor'} should get this?
+                </h3>
+                <p className="text-xs text-[#4F4F4F] mt-1 leading-relaxed">
+                  We’ll email them your quote as soon as it’s ready.
+                  {!affiliated && ' We’ll also send them an invite to QuoteMe.'}
+                </p>
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <label htmlFor="rep_name" className={labelStyle}>Rep name</label>
+                <input
+                  id="rep_name"
+                  type="text"
+                  value={repName}
+                  onChange={(e) => { setRepName(e.target.value); if (repNameError) setRepNameError(null); }}
+                  placeholder={affiliated ? '' : 'Pat from Riverbend'}
+                  disabled={submitting}
+                  autoComplete="name"
+                  className={`border border-[#E8E8E8] rounded-lg px-4 py-2.5 text-sm text-[#2B2B2B] placeholder-[#BDBDBD] focus:outline-none focus:ring-2 focus:ring-[#2B2B2B]/10 focus:border-[#E8E8E8] ${
+                    submitting ? 'opacity-40 cursor-not-allowed bg-[#F9F9F9]' : 'bg-white'
+                  }`}
+                />
+                {repNameError && <p className={errorText}>{repNameError}</p>}
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <label htmlFor="rep_email" className={labelStyle}>Rep email</label>
+                <input
+                  id="rep_email"
+                  type="email"
+                  inputMode="email"
+                  value={repEmail}
+                  onChange={(e) => { setRepEmail(e.target.value); if (repEmailError) setRepEmailError(null); }}
+                  placeholder={affiliated ? '' : 'pat@riverbend.com'}
+                  disabled={submitting}
+                  autoComplete="email"
+                  className={`border border-[#E8E8E8] rounded-lg px-4 py-2.5 text-sm text-[#2B2B2B] placeholder-[#BDBDBD] focus:outline-none focus:ring-2 focus:ring-[#2B2B2B]/10 focus:border-[#E8E8E8] ${
+                    submitting ? 'opacity-40 cursor-not-allowed bg-[#F9F9F9]' : 'bg-white'
+                  }`}
+                />
+                {repEmailError && <p className={errorText}>{repEmailError}</p>}
+              </div>
+            </div>
+
             {/* Error */}
             {error && <p className={errorText}>{error}</p>}
 
@@ -267,14 +346,6 @@ export function ChefPullEntryPage() {
             >
               {submitting ? 'Building…' : 'Build quote'}
             </button>
-
-            {/* Affiliated context note */}
-            {affiliated && distributor?.rep && (
-              <p className="text-xs text-[#9E9E9E] text-center leading-relaxed">
-                Your rep {distributor.rep.first_name ?? distributor.rep.name} will be notified
-                when the quote is ready.
-              </p>
-            )}
           </div>
         </div>
       </div>
