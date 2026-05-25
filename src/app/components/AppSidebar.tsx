@@ -158,18 +158,6 @@ export function AppSidebar() {
       {/* Location Switcher — buyer only */}
       {isBuyer && <LocationSwitcher />}
 
-      {/* Trial Badge - Only show for non-paid users */}
-      {!profile.hasPaidSubscription && (
-        <div className="mx-2 mt-4 mb-2">
-          <div className="bg-[#FFF9F3] border border-[#F2993D] rounded-lg p-2">
-            <div className="text-center">
-              <div className="text-xl font-bold text-[#F2993D]">{quotesRemaining}</div>
-              <div className="text-[9px] text-[#4F4F4F] leading-tight">Free Quotes Left</div>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Navigation */}
       <nav className="flex-1 pt-4">
         {navItems.map(item => (

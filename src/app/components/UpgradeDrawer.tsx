@@ -135,7 +135,7 @@ export function UpgradeDrawer({ isOpen, onClose }: UpgradeDrawerProps) {
             className="w-full bg-[#F2993D] hover:bg-[#E08A2E] text-white py-6 text-base font-semibold"
           >
             <CreditCard className="w-5 h-5 mr-2" />
-            {isDemoMode() ? 'Sign Up to Continue' : 'Upgrade to Premium'}
+            {isDemoMode() ? 'Sign Up to Continue' : 'Subscribe'}
           </Button>
           <p className="text-xs text-center text-[#4F4F4F] mt-3">
             {isDemoMode()

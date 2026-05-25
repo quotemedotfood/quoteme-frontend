@@ -45,10 +45,6 @@ export function DemoBanner() {
             </>
           ) : (
             <>
-              <div className="bg-[#FFF9F3] border border-[#F2993D] rounded-lg px-3 py-1 self-start">
-                <span className="text-sm font-bold text-[#F2993D]">{quotesRemaining}</span>
-                <span className="text-xs text-[#4F4F4F] ml-1">Free Quotes Left</span>
-              </div>
               <a
                 href={PROD_SIGNUP_URL}
                 className="text-sm text-[#F2993D] hover:underline"
@@ -88,10 +84,6 @@ export function DemoBanner() {
             </div>
           ) : (
             <div className="flex items-center gap-2">
-              <div className="bg-[#FFF9F3] border border-[#F2993D] rounded-lg px-3 py-1">
-                <span className="text-sm font-bold text-[#F2993D]">{quotesRemaining}</span>
-                <span className="text-xs text-[#4F4F4F] ml-1">Free Quotes Left</span>
-              </div>
               <a
                 href={PROD_SIGNUP_URL}
                 className="text-xs text-[#F2993D] hover:underline"

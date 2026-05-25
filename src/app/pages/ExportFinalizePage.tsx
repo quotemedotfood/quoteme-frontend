@@ -524,7 +524,7 @@ export function ExportFinalizePage() {
                 PREMIUM
               </div>
               
-              <h2 className="text-lg text-[#2A2A2A] mb-1 font-medium">Add Onboarding Documents & Links</h2>
+              <h2 className="text-lg text-[#2A2A2A] mb-1 font-medium">Supporting Documents & Links</h2>
               <p className="text-gray-500 text-sm mb-4">
                 Include onboarding materials with your quote.
               </p>
@@ -550,7 +550,7 @@ export function ExportFinalizePage() {
                 <div>
                   <h3 className="text-sm font-semibold text-[#2A2A2A] mb-3 flex items-center gap-2">
                     <FileText className="w-4 h-4 text-gray-500" />
-                    Onboarding Documents
+                    Documents
                   </h3>
                   <div className="space-y-3 pl-1">
                     {onboardingDocuments.map((doc) => (
@@ -582,7 +582,7 @@ export function ExportFinalizePage() {
                 <div>
                   <h3 className="text-sm font-semibold text-[#2A2A2A] mb-3 flex items-center gap-2">
                     <LinkIcon className="w-4 h-4 text-gray-500" />
-                    Onboarding Links
+                    Links
                   </h3>
                   <div className="space-y-3 pl-1">
                     {onboardingLinks.map((link) => (
