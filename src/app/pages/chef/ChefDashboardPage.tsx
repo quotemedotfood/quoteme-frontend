@@ -194,7 +194,7 @@ const TAB_LABELS: { id: Tab; label: string }[] = [
   { id: 'overview', label: 'Overview' },
   { id: 'distributors', label: 'Distributors' },
   { id: 'settings', label: 'Settings' },
-  { id: 'discovery', label: 'Discovery' },
+  { id: 'discovery', label: 'Build my Stack' },
 ];
 
 function TabNav({ activeTab, onSelect }: { activeTab: Tab; onSelect: (t: Tab) => void }) {
@@ -536,7 +536,7 @@ function DiscoveryTab() {
         aria-hidden="true"
       />
       <p style={{ ...sans, fontSize: 15, fontWeight: 500, color: C.charcoal, marginBottom: 8 }}>
-        Discovery is available on paid plans.
+        Build my Stack is available on paid plans.
       </p>
       <p style={{ ...sans, fontSize: 13, color: C.gray700, lineHeight: 1.6 }}>
         Send one menu to multiple distributors over time.
