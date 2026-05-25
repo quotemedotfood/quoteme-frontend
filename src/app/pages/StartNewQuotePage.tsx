@@ -121,7 +121,6 @@ export function StartNewQuotePage() {
   const [extractError, setExtractError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
-  const [skipIngredientReview, setSkipIngredientReview] = useState(true);
 
   // Background processing state
   const [backgroundProcessing, setBackgroundProcessing] = useState(false);
@@ -1212,15 +1211,6 @@ export function StartNewQuotePage() {
               Clear Results
             </Button>
           </div>
-          <button
-            className="text-xs text-gray-400 hover:text-gray-600"
-            onClick={() => {
-              setSkipIngredientReview(true);
-              handleContinueToQuoteBuilder();
-            }}
-          >
-            Skip review, match now
-          </button>
         </div>
 
         {/* ── Customer Information ── */}
