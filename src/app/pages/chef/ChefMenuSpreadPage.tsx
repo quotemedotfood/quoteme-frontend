@@ -485,7 +485,7 @@ function ItemRow({
                       opacity: 0.45,
                       lineHeight: 1,
                     }}
-                    title="Lowest unit price for this item"
+                    title="Per-unit pricing — distributor reference"
                   >
                     ↓
                   </span>
@@ -677,7 +677,7 @@ function MobileItemCard({
                 {!unmatched && isCheap && (
                   <span
                     style={{ fontSize: 10, color: C.cheapIndicator, opacity: 0.45 }}
-                    title="Lowest unit price for this item"
+                    title="Per-unit pricing — distributor reference"
                   >
                     ↓
                   </span>

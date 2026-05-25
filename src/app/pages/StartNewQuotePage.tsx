@@ -121,7 +121,6 @@ export function StartNewQuotePage() {
   const [extractError, setExtractError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
-  const [skipIngredientReview, setSkipIngredientReview] = useState(true);
 
   // Background processing state
   const [backgroundProcessing, setBackgroundProcessing] = useState(false);
@@ -1212,15 +1211,6 @@ export function StartNewQuotePage() {
               Clear Results
             </Button>
           </div>
-          <button
-            className="text-xs text-gray-400 hover:text-gray-600"
-            onClick={() => {
-              setSkipIngredientReview(true);
-              handleContinueToQuoteBuilder();
-            }}
-          >
-            Skip review, match now
-          </button>
         </div>
 
         {/* ── Customer Information ── */}
@@ -1371,8 +1361,8 @@ export function StartNewQuotePage() {
                 <div className="flex items-center gap-3">
                   <span className="text-green-600 text-lg">&#10003;</span>
                   <div>
-                    <p className="text-sm font-medium text-[#2A2A2A]">Sample Catalog Active</p>
-                    <p className="text-xs text-gray-500">Upload your own catalog below, or continue with the demo.</p>
+                    <p className="text-sm font-medium text-[#2A2A2A]">Sample catalog active</p>
+                    <p className="text-xs text-gray-500">Upload your own catalog below, or continue with the sample.</p>
                   </div>
                 </div>
               </div>
@@ -1413,8 +1403,8 @@ export function StartNewQuotePage() {
                 <div className="flex items-center gap-3">
                   <span className="text-amber-500 text-lg">&#9888;</span>
                   <div>
-                    <p className="text-sm font-medium text-[#2A2A2A]">Sample Catalog Active</p>
-                    <p className="text-xs text-gray-500">Upload your own catalog to create quotes that count toward your plan.</p>
+                    <p className="text-sm font-medium text-[#2A2A2A]">Sample catalog active</p>
+                    <p className="text-xs text-gray-500">Prices won't reflect your rep's pricing.</p>
                   </div>
                 </div>
               </div>
@@ -1541,7 +1531,7 @@ export function StartNewQuotePage() {
             </div>
             <div className="p-6">
               <p className="text-sm text-gray-500 mb-4">
-                These products were auto-classified but the AI wasn't confident. Review and fix any incorrect categories.
+                Review these categories — classification was uncertain.
               </p>
               <CategoryReviewPanel
                 catalogId={catalogUploadResult.catalogId}

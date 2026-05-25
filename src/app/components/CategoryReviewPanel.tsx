@@ -125,7 +125,7 @@ export function CategoryReviewPanel({ catalogId, onDone }: Props) {
             </div>
             <div className="mt-1 flex items-center gap-2">
               <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">
-                AI suggested: {titleCase(product.category)}
+                Suggested category: {titleCase(product.category)}
               </span>
             </div>
           </div>

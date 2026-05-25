@@ -61,7 +61,7 @@ export function QuotePreviewPage() {
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <img src={logoSquare} alt="QuoteMe" className="w-10 h-10" />
-          <span className="text-xs text-gray-400">Powered by QuoteMe</span>
+          <span className="text-xs text-gray-400">via QuoteMe</span>
         </div>
 
         {/* Quote info */}

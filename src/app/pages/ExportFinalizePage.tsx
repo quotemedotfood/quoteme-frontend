@@ -526,7 +526,7 @@ export function ExportFinalizePage() {
               
               <h2 className="text-lg text-[#2A2A2A] mb-1 font-medium">Supporting Documents & Links</h2>
               <p className="text-gray-500 text-sm mb-4">
-                Automatically include onboarding materials with your quote.
+                Include onboarding materials with your quote.
               </p>
 
               <div className="bg-orange-50 border border-orange-100 rounded-md p-4 mb-6">
