@@ -1541,7 +1541,7 @@ export function StartNewQuotePage() {
             </div>
             <div className="p-6">
               <p className="text-sm text-gray-500 mb-4">
-                These products were auto-classified but the AI wasn't confident. Review and fix any incorrect categories.
+                Review these categories — classification was uncertain.
               </p>
               <CategoryReviewPanel
                 catalogId={catalogUploadResult.catalogId}

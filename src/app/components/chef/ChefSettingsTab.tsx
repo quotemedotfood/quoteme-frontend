@@ -161,7 +161,7 @@ export function ChefSettingsTab({ state = 'with-data', nav = noopNav }: ChefSett
         <SettingsSection title="OTHER CHEFS HERE" count={empty ? 0 : TEAM_CHEFS.length}>
           {empty ? (
             <div className="py-3 text-[12.5px] ink-faint leading-snug">
-              Just you for now. Invite the kitchen and quotes are shared automatically.
+              Just you for now. Invite the kitchen and quotes are visible to the whole team.
             </div>
           ) : (
             TEAM_CHEFS.map((c, i) => (
@@ -458,7 +458,7 @@ export function ChefSettingsTabDesktop({
                 className="py-4 text-[13px] ink-faint leading-relaxed"
                 style={{ maxWidth: 480 }}
               >
-                Just you for now. Invite the kitchen and quotes are shared automatically.
+                Just you for now. Invite the kitchen and quotes are visible to the whole team.
               </div>
             ) : (
               TEAM_CHEFS.map((c, i) => (
