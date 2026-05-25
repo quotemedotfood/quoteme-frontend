@@ -2176,6 +2176,11 @@ export interface PullQuoteCreateRequest {
   raw_text?: string;
   distributor_id: string;
   restaurant_name?: string;
+  /** c151-E: rep capture for chef-initiated pull quotes. Required at the form
+   * level; routed through ChefQuoteNotificationService (C4c) and
+   * ChefRepAutoCreateService (C4d), dedup keyed on rep_email. */
+  rep_name?: string;
+  rep_email?: string;
 }
 
 // Pull-quote create response
