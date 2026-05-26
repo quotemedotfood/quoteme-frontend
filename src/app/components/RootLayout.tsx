@@ -4,6 +4,7 @@ import { ChefTopbar } from './ChefTopbar';
 import { AuthSyncProvider } from './AuthSyncProvider';
 import { DemoBanner } from './DemoBanner';
 import { isDemoMode } from '../utils/demoMode';
+import { isBuyerRole } from '../utils/roles';
 import { useAuth } from '../contexts/AuthContext';
 
 // P0 (Bug #1): /chef/quotes/:id is the chef receipt and must render
@@ -46,6 +47,34 @@ export function RootLayout() {
         <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
     );
+  }
+
+  // Track 13: role guard for /chef/* routes. The chef flow is for chef /
+  // group_admin users (+ buyers, who are chef-adjacent) and unauthenticated
+  // guests building a quote via magic link. Before this guard, an
+  // authenticated rep / distributor_admin / quoteme_admin who navigated to a
+  // /chef/* path fell through to the rep AppSidebar layout with the chef page
+  // mounted inside it — the page then 500'd on chef-token rejection ("Session
+  // not found or expired"), and the rep saw chef UI they shouldn't. Redirect
+  // those roles to their own landing BEFORE the page mounts/fetches.
+  //
+  // Guests (not authenticated) pass through untouched — the guest chef-build
+  // flow (/chef/entry, /chef/welcome, /chef/status, /chef/quotes/:id) must
+  // stay open. The isAuthenticated gate above already bounced unauthenticated
+  // non-guests to /auth.
+  const CHEF_FLOW_ROLES = ['chef', 'group_admin'];
+  if (
+    isAuthenticated &&
+    location.pathname.startsWith('/chef') &&
+    !isGuestChefReceipt &&
+    !CHEF_FLOW_ROLES.includes(user?.role ?? '') &&
+    !isBuyerRole(user?.role)
+  ) {
+    const landing =
+      user?.role === 'quoteme_admin' ? '/qm-admin' :
+      user?.role === 'distributor_admin' ? '/distributor-admin' :
+      '/dashboard';
+    return <Navigate to={landing} replace />;
   }
 
   // V2 fix (smoke P0-A): chef-role + group_admin users get the minimal chef
