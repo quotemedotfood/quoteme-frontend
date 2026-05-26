@@ -91,27 +91,34 @@ function NewspaperSidebarStub({
         zIndex: 20,
       }}
     >
-      {/* Masthead row: logo + toggle — c74: replaced truck+wordmark with PNG-05 lockup */}
+      {/* Masthead — Moose 2026-05-26:
+          • Expanded: NO logo in the sidebar (ChefTopbar wordmark serves as the header).
+            Just the toggle, sitting above the [+] Build Quote button.
+          • Collapsed: square logo at top, toggle beneath it, then [+] below.
+          Toggle is always positioned BETWEEN the logo (or its absent slot) and the
+          [+] Build Quote CTA. */}
       <div
         style={{
           display: 'flex',
-          alignItems: 'center',
-          justifyContent: collapsed ? 'center' : 'space-between',
-          padding: collapsed ? '0 6px 12px' : '0 12px 12px 20px',
+          flexDirection: 'column',
+          alignItems: collapsed ? 'center' : 'flex-end',
+          gap: 8,
+          padding: collapsed ? '0 6px 12px' : '12px 12px 12px 20px',
         }}
       >
-        {/* c74: Full mode — logo ~130px wide; Compact mode — ~42px wide */}
-        <img
-          src={quotemeLogo}
-          alt="QuoteMe"
-          style={{
-            width: collapsed ? 42 : 130,
-            height: 'auto',
-            display: 'block',
-            flexShrink: 0,
-          }}
-        />
-        {/* c65: Toggle at top, larger tap target, lucide icon */}
+        {collapsed && (
+          <img
+            src={quotemeLogo}
+            alt="QuoteMe"
+            style={{
+              width: 42,
+              height: 'auto',
+              display: 'block',
+              flexShrink: 0,
+            }}
+          />
+        )}
+        {/* Toggle — sits between logo and [+] Build Quote in both states */}
         <button
           type="button"
           onClick={() => onModeChange(collapsed ? 'open' : mode === 'open' ? 'collapsed' : 'open')}
