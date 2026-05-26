@@ -48,16 +48,14 @@ export function ChefTopbar() {
 
   return (
     <>
+      {/* Track 7: masthead logo removed. The sidebar lockup (post-Track-2)
+          is sufficient brand presence on chef pages — the top-strip
+          wordmark was a duplicate. justify-end keeps the ChefBadgePill
+          right-aligned now that it's the only child. */}
       <div
-        className="flex items-center justify-between px-5 py-3 bg-white"
+        className="flex items-center justify-end px-5 py-3 bg-white"
         style={{ borderBottom: `1px solid ${C.softLine}`, flexShrink: 0 }}
       >
-        <img
-          src="/quoteme-wordmark.png"
-          alt="QuoteMe"
-          style={{ height: 22, width: 'auto', display: 'block' }}
-        />
-
         <ChefBadgePill
           firstName={firstName || email.split('@')[0] || 'Chef'}
           chefType={chefType}
