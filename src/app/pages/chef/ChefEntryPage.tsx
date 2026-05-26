@@ -99,7 +99,7 @@ export function ChefEntryPage() {
   // Track 4: branch the file by extension. CSV / TXT get read straight into
   // pasteText (no separate selectedFile state) — keeps the build path JSON.
   // PDF / image / xlsx go through the existing selectedFile → FormData submit.
-  function processFile(file: File | null) {
+  async function processFile(file: File | null) {
     if (!file) return;
     setError(null);
     const name = file.name.toLowerCase();
@@ -113,12 +113,42 @@ export function ChefEntryPage() {
         }
       };
       reader.readAsText(file);
-      // Clear any prior selectedFile so the JSON path (raw_text) fires on submit.
       setSelectedFile(null);
       return;
     }
-    // PDF / image / xlsx — existing FormData path on submit.
-    setSelectedFile(file);
+
+    // Track 8: PDF / PNG / JPG / JPEG / xlsx — extract text via the rep-side
+    // extract_text endpoint (Claude Vision / OCR) and drop it straight into
+    // the paste textarea. Moose doctrine: "extract what we see, don't validate
+    // it with the chef here" — no preview/confirm step. The chef sees the
+    // extracted text, can edit or ignore it, then clicks Build my quote against
+    // the populated textarea (which always submits via the raw_text path).
+    setSelectedFile(null);
+    setIsExtracting(true);
+    try {
+      const res = await extractMenuText({ file });
+      if (res.error) {
+        const err = res.error;
+        if (err.includes('pdf_too_large')) {
+          setError("This menu is too large to read at once. Try a single section — entrees, apps, or the cocktail list.");
+        } else if (err.includes('service_busy') || err === 'service_busy') {
+          setError("Our menu service is temporarily busy. Please try again in a few seconds.");
+        } else {
+          setError(err);
+        }
+        return;
+      }
+      if (res.data?.text) {
+        setPasteText(res.data.text);
+        if (res.data.text.trim()) {
+          localStorage.setItem(MENU_DRAFT_KEY, res.data.text);
+        }
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to read text from that file');
+    } finally {
+      setIsExtracting(false);
+    }
   }
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
