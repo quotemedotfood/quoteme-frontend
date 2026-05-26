@@ -52,14 +52,13 @@ export function ChefEntryPage() {
     }
     return '';
   });
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // Track 4 (chef-entry v2): drag-zone state + URL fetch state. The drag-zone
-  // accepts PDF / image (→ selectedFile → existing FormData submit) and
-  // CSV / text (→ FileReader → fills pasteText, like rep's flow). The URL
-  // Fetch path uses extractMenuText({url}) — same endpoint rep uses, returns
-  // plain text into pasteText — then existing JSON submit path fires.
+  // Track 4 (chef-entry v2) + Track 8: drag-zone + URL fetch state. ALL file
+  // types now extract to pasteText — CSV/TXT via FileReader, PDF/image/xlsx
+  // via extractMenuText({file}). The build always submits raw_text. (Track 8b
+  // removed the old selectedFile → FormData path: no file ever stays as a
+  // direct upload now.)
   const [isDragging, setIsDragging] = useState(false);
   const [menuUrl, setMenuUrl] = useState('');
   const [isExtracting, setIsExtracting] = useState(false);
@@ -72,8 +71,8 @@ export function ChefEntryPage() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const hasContent = pasteText.trim().length > 0 || selectedFile !== null;
-  const textareaDisabled = selectedFile !== null || submitting;
+  const hasContent = pasteText.trim().length > 0;
+  const textareaDisabled = submitting;
 
   // If the chef arrived back on this page via browser back from /chef/status/<id>,
   // forward them to that status page instead of letting them re-edit/re-submit
@@ -96,9 +95,10 @@ export function ChefEntryPage() {
     }
   }, [navigate]);
 
-  // Track 4: branch the file by extension. CSV / TXT get read straight into
-  // pasteText (no separate selectedFile state) — keeps the build path JSON.
-  // PDF / image / xlsx go through the existing selectedFile → FormData submit.
+  // Track 4/8: branch the file by extension. CSV / TXT read straight into
+  // pasteText via FileReader. PDF / image / xlsx extract via the rep-side
+  // extract_text endpoint. Either way the text lands in pasteText and the
+  // build submits raw_text — no file is ever held as a direct upload.
   async function processFile(file: File | null) {
     if (!file) return;
     setError(null);
@@ -113,7 +113,6 @@ export function ChefEntryPage() {
         }
       };
       reader.readAsText(file);
-      setSelectedFile(null);
       return;
     }
 
@@ -122,8 +121,7 @@ export function ChefEntryPage() {
     // the paste textarea. Moose doctrine: "extract what we see, don't validate
     // it with the chef here" — no preview/confirm step. The chef sees the
     // extracted text, can edit or ignore it, then clicks Build my quote against
-    // the populated textarea (which always submits via the raw_text path).
-    setSelectedFile(null);
+    // the populated textarea.
     setIsExtracting(true);
     try {
       const res = await extractMenuText({ file });
@@ -153,10 +151,7 @@ export function ChefEntryPage() {
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     processFile(e.target.files?.[0] ?? null);
-  }
-
-  function handleClearFile() {
-    setSelectedFile(null);
+    // Reset the input so re-selecting the same file fires onChange again.
     if (fileInputRef.current) fileInputRef.current.value = '';
   }
 
@@ -206,8 +201,6 @@ export function ChefEntryPage() {
         if (res.data.text.trim()) {
           localStorage.setItem(MENU_DRAFT_KEY, res.data.text);
         }
-        // URL fetch fills pasteText → JSON submit path; clear any file.
-        setSelectedFile(null);
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to extract text from URL');
@@ -239,50 +232,10 @@ export function ChefEntryPage() {
         await initGuestSession();
       }
 
-      if (selectedFile) {
-        // File path: send as FormData (createGuestQuote is JSON-only)
-        const formData = new FormData();
-        formData.append('file', selectedFile);
-        const sendName = opts.nameOverride ?? restaurantName.trim();
-        if (sendName) formData.append('name', sendName);
-        if (opts.confirmNew) formData.append('confirm_new_restaurant', 'true');
-        if (incomingDistributorId) formData.append('distributor_id', incomingDistributorId);
-
-        const guestToken = localStorage.getItem('quoteme_guest_token');
-        const authToken = localStorage.getItem('quoteme_token');
-        const API_BASE = import.meta.env.VITE_API_BASE_URL || 'https://web-production-9f6e9.up.railway.app';
-        const response = await fetch(`${API_BASE}/api/v1/guest/quotes`, {
-          method: 'POST',
-          headers: {
-            ...(guestToken ? { 'X-Guest-Token': guestToken } : {}),
-            ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
-          },
-          body: formData,
-        });
-
-        if (response.status === 409) {
-          const body = await response.json().catch(() => ({}));
-          if (body.error === 'multi_restaurant_confirm_required') {
-            setMultiRestaurantPrompt({
-              existing_restaurants: body.existing_restaurants || [],
-              typed_name: body.typed_name || sendName,
-            });
-            return;
-          }
-        }
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.error || `HTTP ${response.status}`);
-        }
-
-        const data = await response.json();
-        sessionStorage.setItem(RECENT_QUOTE_KEY, data.quote_id);
-        navigate(`/chef/status/${data.quote_id}`);
-        return;
-      }
-
-      // Text paste path — restaurant name is optional. When blank, omit it
-      // so BE falls back to the chef's existing RestaurantContact (P0-11).
+      // Text path — all inputs (paste, file extraction, URL fetch) land in
+      // pasteText, so the build always submits raw_text. Restaurant name is
+      // optional; when blank, BE falls back to the chef's existing
+      // RestaurantContact (P0-11).
       const sendName = opts.nameOverride ?? restaurantName.trim();
       const res = await createGuestQuote(
         {
@@ -500,30 +453,6 @@ export function ChefEntryPage() {
               }`}
             />
           </div>
-
-          {/* Selected file chip — shown when a PDF / image / xlsx was dropped
-              or picked (CSV / TXT goes straight into pasteText via FileReader,
-              so no chip for those). */}
-          {selectedFile && (
-            <div className="flex items-center gap-2 bg-white border border-[#E8E8E8] rounded-lg px-4 py-2.5">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#E5A84B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                <polyline points="14 2 14 8 20 8" />
-              </svg>
-              <span className="text-sm text-[#4F4F4F] flex-1 truncate">{selectedFile.name}</span>
-              <button
-                type="button"
-                onClick={handleClearFile}
-                className="text-[#9E9E9E] hover:text-[#4F4F4F] transition-colors"
-                aria-label="Remove file"
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="18" y1="6" x2="6" y2="18" />
-                  <line x1="6" y1="6" x2="18" y2="18" />
-                </svg>
-              </button>
-            </div>
-          )}
 
           {/* Error */}
           {error && (
