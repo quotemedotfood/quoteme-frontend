@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate, useSearchParams, useLocation } from 'react-router';
-import { createGuestQuote } from '../../services/api';
+import { Upload, Loader2 } from 'lucide-react';
+import { createGuestQuote, extractMenuText } from '../../services/api';
 import { useUser } from '../../contexts/UserContext';
 import { MultiRestaurantConfirmModal, type ExistingRestaurant } from '../../components/MultiRestaurantConfirmModal';
 import { MENU_DRAFT_KEY } from '../../components/chef/StuckRecoveryScreen';
@@ -54,6 +55,14 @@ export function ChefEntryPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Track 4 (chef-entry v2): drag-zone state + URL fetch state. The drag-zone
+  // accepts PDF / image (→ selectedFile → existing FormData submit) and
+  // CSV / text (→ FileReader → fills pasteText, like rep's flow). The URL
+  // Fetch path uses extractMenuText({url}) — same endpoint rep uses, returns
+  // plain text into pasteText — then existing JSON submit path fires.
+  const [isDragging, setIsDragging] = useState(false);
+  const [menuUrl, setMenuUrl] = useState('');
+  const [isExtracting, setIsExtracting] = useState(false);
   // V2 W4-2 — multi-restaurant guard rail modal state. Populated when BE
   // returns 409 with error_code "multi_restaurant_confirm_required".
   const [multiRestaurantPrompt, setMultiRestaurantPrompt] = useState<{
@@ -62,11 +71,9 @@ export function ChefEntryPage() {
   } | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const cameraInputRef = useRef<HTMLInputElement>(null);
 
   const hasContent = pasteText.trim().length > 0 || selectedFile !== null;
   const textareaDisabled = selectedFile !== null || submitting;
-  const fileDisabled = pasteText.trim().length > 0 || submitting;
 
   // If the chef arrived back on this page via browser back from /chef/status/<id>,
   // forward them to that status page instead of letting them re-edit/re-submit
@@ -89,16 +96,94 @@ export function ChefEntryPage() {
     }
   }, [navigate]);
 
-  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0] ?? null;
-    setSelectedFile(file);
+  // Track 4: branch the file by extension. CSV / TXT get read straight into
+  // pasteText (no separate selectedFile state) — keeps the build path JSON.
+  // PDF / image / xlsx go through the existing selectedFile → FormData submit.
+  function processFile(file: File | null) {
+    if (!file) return;
     setError(null);
+    const name = file.name.toLowerCase();
+    if (name.endsWith('.csv') || name.endsWith('.txt')) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const text = (e.target?.result as string) ?? '';
+        setPasteText(text);
+        if (text.trim()) {
+          localStorage.setItem(MENU_DRAFT_KEY, text);
+        }
+      };
+      reader.readAsText(file);
+      // Clear any prior selectedFile so the JSON path (raw_text) fires on submit.
+      setSelectedFile(null);
+      return;
+    }
+    // PDF / image / xlsx — existing FormData path on submit.
+    setSelectedFile(file);
+  }
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    processFile(e.target.files?.[0] ?? null);
   }
 
   function handleClearFile() {
     setSelectedFile(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
-    if (cameraInputRef.current) cameraInputRef.current.value = '';
+  }
+
+  function handleDragOver(e: React.DragEvent) {
+    e.preventDefault();
+    setIsDragging(true);
+  }
+  function handleDragLeave(e: React.DragEvent) {
+    e.preventDefault();
+    setIsDragging(false);
+  }
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0] ?? null;
+    processFile(file);
+  }
+
+  async function handleUrlExtract() {
+    const trimmed = menuUrl.trim();
+    if (!trimmed) return;
+    setIsExtracting(true);
+    setError(null);
+    try {
+      let url = trimmed;
+      if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        url = 'https://' + url;
+      }
+      const res = await extractMenuText({ url });
+      if (res.error) {
+        // Map a few common known errors to chef-readable copy; otherwise
+        // fall through to the raw message.
+        const err = res.error;
+        if (err.includes('url_fetch_failed')) {
+          setError("We couldn't fetch that URL. Check the link or try uploading the PDF directly.");
+        } else if (err.includes('url_unsupported_type')) {
+          setError("That URL didn't return a menu we can read. Try uploading the PDF directly.");
+        } else if (err.includes('service_busy') || err === 'service_busy') {
+          setError("Our menu service is temporarily busy. Please try again in a few seconds.");
+        } else {
+          setError(err);
+        }
+        return;
+      }
+      if (res.data?.text) {
+        setPasteText(res.data.text);
+        if (res.data.text.trim()) {
+          localStorage.setItem(MENU_DRAFT_KEY, res.data.text);
+        }
+        // URL fetch fills pasteText → JSON submit path; clear any file.
+        setSelectedFile(null);
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to extract text from URL');
+    } finally {
+      setIsExtracting(false);
+    }
   }
 
   async function handleSubmit() {
@@ -283,9 +368,81 @@ export function ChefEntryPage() {
             />
           </div>
 
+          {/* Track 4: Drag-zone (PDF / image / CSV / text). On mobile, the
+              click handler opens the file picker which itself offers camera +
+              library — covers the prior "Add photo" affordance. Matches rep
+              visual exactly (border-2 dashed, accent-blue palette). */}
+          <div
+            className={`border-2 border-dashed rounded-lg p-10 text-center cursor-pointer transition-colors ${
+              isDragging ? 'border-[#7FAEC2] bg-[#A5CFDD]/10' : 'border-[#A5CFDD] hover:border-[#7FAEC2]'
+            } ${submitting ? 'opacity-40 cursor-not-allowed' : ''}`}
+            onClick={() => !submitting && fileInputRef.current?.click()}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+          >
+            {isExtracting ? (
+              <div className="flex flex-col items-center gap-2">
+                <Loader2 className="w-6 h-6 animate-spin text-[#A5CFDD]" />
+                <p className="text-sm text-gray-600">Reading menu...</p>
+              </div>
+            ) : (
+              <>
+                <Upload className="w-6 h-6 text-[#A5CFDD] mx-auto mb-2" />
+                <p className="text-sm text-gray-700 mb-1">Drag files here or click to browse</p>
+                <p className="text-xs text-gray-400">PDF, image, CSV, or text file</p>
+              </>
+            )}
+          </div>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".pdf,.csv,.txt,.xlsx,.xls,image/*"
+            className="hidden"
+            onChange={handleFileChange}
+          />
+
+          {/* Track 4: Menu URL row — Fetch wires to the rep-side
+              extract_text endpoint (guest-auth allowed). On success, the
+              extracted text lands in pasteText and the chef builds via the
+              existing JSON path. */}
+          <div className="flex flex-col gap-1">
+            <label className={labelStyle}>Menu URL</label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={menuUrl}
+                onChange={(e) => setMenuUrl(e.target.value)}
+                placeholder="www.example.com/menu"
+                disabled={isExtracting || submitting}
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="none"
+                spellCheck={false}
+                className={`flex-1 border border-[#E8E8E8] rounded-lg px-4 py-2.5 text-sm text-[#2B2B2B] placeholder-[#BDBDBD] focus:outline-none focus:ring-2 focus:ring-[#2B2B2B]/10 focus:border-[#E8E8E8] ${
+                  isExtracting || submitting ? 'opacity-40 cursor-not-allowed bg-[#F9F9F9]' : 'bg-white'
+                }`}
+              />
+              <button
+                type="button"
+                onClick={handleUrlExtract}
+                disabled={!menuUrl.trim() || isExtracting || submitting}
+                className="bg-[#A5CFDD] hover:bg-[#7FAEC2] disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg px-4 py-2.5 text-sm font-medium transition-colors flex items-center justify-center min-w-[72px]"
+              >
+                {isExtracting ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Fetch'}
+              </button>
+            </div>
+          </div>
+
+          {/* OR PASTE TEXT divider — matches rep flow */}
+          <div className="relative flex items-center">
+            <div className="flex-grow border-t border-[#E8E8E8]"></div>
+            <span className="flex-shrink mx-3 text-xs text-[#9E9E9E] tracking-wider">OR PASTE TEXT</span>
+            <div className="flex-grow border-t border-[#E8E8E8]"></div>
+          </div>
+
           {/* Menu paste */}
           <div className="flex flex-col gap-1">
-            <label className={labelStyle}>Paste your menu</label>
             <textarea
               value={pasteText}
               onChange={(e) => {
@@ -303,13 +460,6 @@ export function ChefEntryPage() {
               disabled={textareaDisabled}
               placeholder="Paste your full menu here: dishes, ingredients, sections…"
               rows={8}
-              // iOS Safari's QuickType bar will silently inject autofill text
-              // into a focused textarea via an `input` event, flipping
-              // pasteText non-empty before the chef has typed. That makes the
-              // fileDisabled derivation (pasteText.trim().length > 0) flip
-              // true on first mobile mount, greying the Upload + Camera
-              // buttons. These five attributes suppress every iOS autofill
-              // surface for this field.
               autoComplete="off"
               autoCorrect="off"
               autoCapitalize="off"
@@ -321,64 +471,9 @@ export function ChefEntryPage() {
             />
           </div>
 
-          {/* Upload + camera row */}
-          <div className="flex items-center gap-3">
-            <span className="text-sm text-[#9E9E9E]">or</span>
-
-            {/* File upload */}
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={fileDisabled}
-              className={`flex items-center gap-2 border border-[#E0E0E0] rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
-                fileDisabled
-                  ? 'opacity-40 cursor-not-allowed text-[#9E9E9E]'
-                  : 'text-[#4F4F4F] hover:border-[#E5A84B] hover:text-[#E5A84B]'
-              }`}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                <polyline points="17 8 12 3 7 8" />
-                <line x1="12" y1="3" x2="12" y2="15" />
-              </svg>
-              Upload file
-            </button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".pdf,.csv,.txt,.xlsx,.xls,image/*"
-              className="hidden"
-              onChange={handleFileChange}
-            />
-
-            {/* Camera */}
-            <button
-              type="button"
-              onClick={() => cameraInputRef.current?.click()}
-              disabled={fileDisabled}
-              className={`flex items-center gap-2 border border-[#E0E0E0] rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
-                fileDisabled
-                  ? 'opacity-40 cursor-not-allowed text-[#9E9E9E]'
-                  : 'text-[#4F4F4F] hover:border-[#E5A84B] hover:text-[#E5A84B]'
-              }`}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-                <circle cx="12" cy="13" r="4" />
-              </svg>
-              Add photo
-            </button>
-            <input
-              ref={cameraInputRef}
-              type="file"
-              accept="image/*"
-              capture="environment"
-              className="hidden"
-              onChange={handleFileChange}
-            />
-          </div>
-
-          {/* Selected file chip */}
+          {/* Selected file chip — shown when a PDF / image / xlsx was dropped
+              or picked (CSV / TXT goes straight into pasteText via FileReader,
+              so no chip for those). */}
           {selectedFile && (
             <div className="flex items-center gap-2 bg-white border border-[#E8E8E8] rounded-lg px-4 py-2.5">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#E5A84B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
