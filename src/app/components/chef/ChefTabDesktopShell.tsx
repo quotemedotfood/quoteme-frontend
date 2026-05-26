@@ -91,33 +91,34 @@ function NewspaperSidebarStub({
         zIndex: 20,
       }}
     >
-      {/* Masthead — Moose 2026-05-26:
-          • Expanded: NO logo in the sidebar (ChefTopbar wordmark serves as the header).
-            Just the toggle, sitting above the [+] Build Quote button.
-          • Collapsed: square logo at top, toggle beneath it, then [+] below.
-          Toggle is always positioned BETWEEN the logo (or its absent slot) and the
-          [+] Build Quote CTA. */}
+      {/* Masthead — Moose 2026-05-26 (Track 9 correction):
+          • Expanded: horizontal QuoteMe lockup at the top of the sidebar
+            (~130px wide), left-aligned. Track 7 removed the duplicate
+            wordmark from the page top-strip (ChefTopbar) — the sidebar
+            masthead is now the single brand mark, so it must render here.
+          • Collapsed: square logo (~42px), centered.
+          • Toggle sits BELOW the logo in both states; [+] Build Quote below.
+          NOTE: this does NOT reverse Track 7 — that removed the SEPARATE
+          top-strip ChefTopbar logo. This renders the SIDEBAR's own logo. */}
       <div
         style={{
           display: 'flex',
           flexDirection: 'column',
-          alignItems: collapsed ? 'center' : 'flex-end',
+          alignItems: collapsed ? 'center' : 'flex-start',
           gap: 8,
           padding: collapsed ? '0 6px 12px' : '12px 12px 12px 20px',
         }}
       >
-        {collapsed && (
-          <img
-            src={quotemeLogo}
-            alt="QuoteMe"
-            style={{
-              width: 42,
-              height: 'auto',
-              display: 'block',
-              flexShrink: 0,
-            }}
-          />
-        )}
+        <img
+          src={quotemeLogo}
+          alt="QuoteMe"
+          style={{
+            width: collapsed ? 42 : 130,
+            height: 'auto',
+            display: 'block',
+            flexShrink: 0,
+          }}
+        />
         {/* Toggle — sits between logo and [+] Build Quote in both states */}
         <button
           type="button"
