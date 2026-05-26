@@ -2,6 +2,8 @@ import { X, CreditCard, Zap, CheckCircle } from 'lucide-react';
 import { Button } from './ui/button';
 import { useNavigate } from 'react-router';
 import { isDemoMode, PROD_SIGNUP_URL } from '../utils/demoMode';
+import { isBuyerRole } from '../utils/roles';
+import { useAuth } from '../contexts/AuthContext';
 
 interface UpgradeDrawerProps {
   isOpen: boolean;
@@ -10,10 +12,32 @@ interface UpgradeDrawerProps {
 
 export function UpgradeDrawer({ isOpen, onClose }: UpgradeDrawerProps) {
   const navigate = useNavigate();
+  const { user } = useAuth();
+
+  // Track 10 Phase 2 Slice 1 — interim chef subscribe path. The chef tier is
+  // $20/month (Moose lock 2026-05-26) but no Stripe chef product exists yet,
+  // and /upgrade (PaywallPage) only offers the rep tiers (Solo Rep $50,
+  // Distributor Seat $100). So a chef/buyer hitting the quote limit who taps
+  // Subscribe routes to a mailto to Justin instead of the wrong paywall.
+  // Reps keep the existing /upgrade flow (Solo Rep checkout is correct for
+  // them). Demo mode keeps the signup redirect. Swap mailto → real Stripe
+  // checkout when the $20 chef product + STRIPE_CHEF_PRICE_ID land.
+  const isChefTier = isBuyerRole(user?.role) || ['chef', 'group_admin'].includes(user?.role ?? '');
 
   const handleUpgradeClick = () => {
     if (isDemoMode()) {
       window.location.href = PROD_SIGNUP_URL;
+      return;
+    }
+    if (isChefTier) {
+      const fullName = [
+        (user as { first_name?: string } | null)?.first_name,
+        (user as { last_name?: string } | null)?.last_name,
+      ].filter(Boolean).join(' ').trim() || user?.email || 'a QuoteMe chef';
+      const subject = encodeURIComponent('QuoteMe subscription request');
+      const body = encodeURIComponent(`I'd like to subscribe to QuoteMe at $20/month. — ${fullName}`);
+      window.location.href = `mailto:justinl@quoteme.food?subject=${subject}&body=${body}`;
+      onClose();
       return;
     }
     onClose();
