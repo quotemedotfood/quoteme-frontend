@@ -1,4 +1,4 @@
-import { Link, Outlet, useLocation, Navigate } from 'react-router';
+import { Link, Outlet, useLocation, Navigate, useNavigate } from 'react-router';
 import {
   LayoutDashboard,
   UserPlus,
@@ -15,6 +15,7 @@ import {
   BrainCircuit,
   ChefHat,
   Kanban,
+  LogOut,
 } from 'lucide-react';
 import logoSquare from '/src/assets/e549e7d27b183e98e791f43494c715b8cc6ce7e9.png';
 import { useAuth } from '../contexts/AuthContext';
@@ -39,7 +40,13 @@ const navItems = [
 
 export function QMAdminLayout() {
   const location = useLocation();
-  const { user, isLoading } = useAuth();
+  const navigate = useNavigate();
+  const { user, isLoading, logout } = useAuth();
+
+  function handleSignOut() {
+    logout();
+    navigate('/auth', { replace: true });
+  }
 
   if (isLoading) return null;
   if (!user || user.role !== 'quoteme_admin') return <Navigate to="/auth" replace />;
@@ -82,10 +89,18 @@ export function QMAdminLayout() {
           })}
         </nav>
 
-        <div className="p-4 border-t border-gray-200">
+        <div className="p-4 border-t border-gray-200 flex flex-col gap-3">
           <Link to="/dashboard" className="text-xs text-[#4F4F4F] hover:text-[#7FAEC2] transition-colors">
             ← Rep Dashboard
           </Link>
+          <button
+            type="button"
+            onClick={handleSignOut}
+            className="flex items-center gap-2 text-xs text-[#4F4F4F] hover:text-[#DC2626] transition-colors"
+          >
+            <LogOut size={14} />
+            Sign out
+          </button>
         </div>
       </div>
 
