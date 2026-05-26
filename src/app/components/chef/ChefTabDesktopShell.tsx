@@ -109,11 +109,14 @@ function NewspaperSidebarStub({
           padding: collapsed ? '0 6px 12px' : '12px 12px 12px 20px',
         }}
       >
+        {/* Track 9b: expanded uses the horizontal lockup asset (public/
+            quoteme-horizontal.png, Moose-committed); collapsed keeps the
+            square src/assets logo. */}
         <img
-          src={quotemeLogo}
+          src={collapsed ? quotemeLogo : '/quoteme-horizontal.png'}
           alt="QuoteMe"
           style={{
-            width: collapsed ? 42 : 130,
+            width: collapsed ? 42 : 150,
             height: 'auto',
             display: 'block',
             flexShrink: 0,
