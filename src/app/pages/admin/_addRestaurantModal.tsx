@@ -12,6 +12,10 @@ import {
   type Restaurant,
 } from '../../services/adminApi';
 
+// 18c: Summit Food Distributors (demo) — default distributor on the Add
+// Restaurant form so an admin can add a restaurant without first selecting one.
+const SUMMIT_DISTRIBUTOR_ID = '88c1038d-6b3b-4cc0-ba35-32c32f435f91';
+
 const US_STATES = [
   'AL','AK','AZ','AR','CA','CO','CT','DE','DC','FL',
   'GA','HI','ID','IL','IN','IA','KS','KY','LA','ME',
@@ -71,11 +75,19 @@ export function AddRestaurantModal({ open, onClose, onCreated }: Props) {
     { types: ['establishment', 'geocode'] },
   );
 
-  // Load distributors on modal open
+  // Load distributors on modal open. 18c: default the dropdown to Summit (demo)
+  // so admins can add a restaurant without first picking a distributor — still
+  // changeable. No BE change.
   useEffect(() => {
     if (!open) return;
     getAdminDistributors().then((res) => {
-      if (res.data) setDistributors(res.data);
+      if (res.data) {
+        const list = res.data;
+        setDistributors(list);
+        setDistributorId((prev) =>
+          prev || (list.some((d) => d.id === SUMMIT_DISTRIBUTOR_ID) ? SUMMIT_DISTRIBUTOR_ID : prev),
+        );
+      }
     });
   }, [open]);
 
