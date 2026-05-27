@@ -20,6 +20,26 @@ import {
   QuoteCountPill,
 } from './SettingsPrimitives';
 
+// ─── Mailto helpers ───────────────────────────────────────────────────────────
+// Interim pattern — no Stripe chef product exists yet, so management actions
+// route to Justin via mailto. Matches the approach in UpgradeDrawer.tsx.
+
+function openTeamManagementMailto(action: 'Remove' | 'Resend', chefName: string, chefEmail: string) {
+  const subject = encodeURIComponent('QuoteMe team management request');
+  const body = encodeURIComponent(
+    `Action: ${action} team member\nChef: ${chefName} <${chefEmail}>`
+  );
+  window.location.href = `mailto:justinl@quoteme.food?subject=${subject}&body=${body}`;
+}
+
+function openAddPaymentMailto(chefIdentifier: string) {
+  const subject = encodeURIComponent('QuoteMe payment setup request');
+  const body = encodeURIComponent(
+    `I'd like to set up payment for QuoteMe. — ${chefIdentifier}`
+  );
+  window.location.href = `mailto:justinl@quoteme.food?subject=${subject}&body=${body}`;
+}
+
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 type NavFn = (target: string) => void;
@@ -205,7 +225,16 @@ export function ChefSettingsTab({ state = 'with-data', nav = noopNav }: ChefSett
                     {c.joined && <span> · joined {c.joined}</span>}
                   </div>
                 </div>
-                <button className="text-[11.5px] ink-soft underline shrink-0">
+                <button
+                  className="text-[11.5px] ink-soft underline shrink-0"
+                  onClick={() =>
+                    openTeamManagementMailto(
+                      c.status === 'invited' ? 'Resend' : 'Remove',
+                      c.name,
+                      c.email
+                    )
+                  }
+                >
                   {c.status === 'invited' ? 'Resend' : 'Remove'}
                 </button>
               </div>
@@ -288,6 +317,7 @@ export function ChefSettingsTab({ state = 'with-data', nav = noopNav }: ChefSett
               <button
                 className="qm-btn qm-btn-orange"
                 style={{ padding: '8px 14px', fontSize: 12.5 }}
+                onClick={() => openAddPaymentMailto(`${DEMO.chefFirst} ${DEMO.chefLast} <${DEMO.chefEmail}>`)}
               >
                 Add payment
               </button>
@@ -297,7 +327,7 @@ export function ChefSettingsTab({ state = 'with-data', nav = noopNav }: ChefSett
           {/* Paid tier explainer — no marketing voice, just what it does */}
           <div className="doc-divider pt-3 pb-1">
             <div className="text-[12.5px] ink leading-snug">
-              <span className="serif font-medium">$50/mo</span> · unlimited quotes, plus the ability
+              <span className="serif font-medium">$20/mo</span> · unlimited quotes, plus the ability
               to send one menu to several distributors at once.
             </div>
             <div className="text-[11px] ink-faint mt-1 leading-snug">
@@ -501,7 +531,16 @@ export function ChefSettingsTabDesktop({
                       {c.joined && ` · joined ${c.joined}`}
                     </div>
                   </div>
-                  <button className="text-[12px] ink-soft underline shrink-0">
+                  <button
+                    className="text-[12px] ink-soft underline shrink-0"
+                    onClick={() =>
+                      openTeamManagementMailto(
+                        c.status === 'invited' ? 'Resend' : 'Remove',
+                        c.name,
+                        c.email
+                      )
+                    }
+                  >
                     {c.status === 'invited' ? 'Resend' : 'Remove'}
                   </button>
                 </div>
@@ -608,6 +647,7 @@ export function ChefSettingsTabDesktop({
                 <button
                   className="qm-btn qm-btn-orange"
                   style={{ padding: '10px 16px', fontSize: 13 }}
+                  onClick={() => openAddPaymentMailto(`${DEMO.chefFirst} ${DEMO.chefLast} <${DEMO.chefEmail}>`)}
                 >
                   Add payment
                 </button>
@@ -617,7 +657,7 @@ export function ChefSettingsTabDesktop({
             <div className="doc-divider pt-4 pb-2 flex items-baseline justify-between gap-6">
               <div className="flex-1">
                 <div className="text-[13.5px] ink leading-snug">
-                  <span className="serif font-medium">$50/mo</span> · unlimited quotes, plus the
+                  <span className="serif font-medium">$20/mo</span> · unlimited quotes, plus the
                   ability to send one menu to several distributors at once.
                 </div>
                 <div className="text-[11.5px] ink-faint mt-1 leading-snug">
