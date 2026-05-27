@@ -60,11 +60,11 @@ export interface QuoteDocGroup {
 export interface QuoteStateDocumentProps {
   state?: QuoteDocumentState;
   restaurant: string;
-  forName: string; // chef full name
+  forName?: string; // chef full name (omitted on surfaces that don't carry it)
   quoteDate: string;
   rep: string;
   repPhone?: string;
-  distributorShort: string;
+  distributorShort?: string; // omitted when the surface has no distributor name
   catalogUpdated?: string;
   groups: QuoteDocGroup[];
   pricedCount?: number; // for distributor state
@@ -97,11 +97,8 @@ export function QuoteStateDocument({
   lastUpdated = '',
   confirmedAt = '',
 }: QuoteStateDocumentProps) {
-  const total = groups.reduce(
-    (a, g) => a + g.items.reduce((b, it) => b + it.qty * it.unit, 0),
-    0,
-  );
   const itemCount = totalCount || groups.reduce((a, g) => a + g.items.length, 0);
+  const at = distributorShort ? ` at ${distributorShort}` : '';
 
   const chrome: Chrome = {
     preview: {
@@ -110,7 +107,7 @@ export function QuoteStateDocument({
       eyebrow: 'PREVIEW QUOTE · NOT YET PRICED',
       watermark: 'PREVIEW',
       topRightSlot: null,
-      footerLine: `Sent to ${rep} at ${distributorShort} · awaiting reply`,
+      footerLine: `Sent to ${rep}${at} · awaiting reply`,
     },
     distributor: {
       bg: '#FFFFFF',
@@ -126,7 +123,7 @@ export function QuoteStateDocument({
       eyebrow: `CONFIRMED QUOTE · LOCKED ${confirmedAt.toUpperCase()}`,
       watermark: null,
       topRightSlot: 'seal',
-      footerLine: `Confirmed by ${rep} at ${distributorShort} · ${confirmedAt}`,
+      footerLine: `Confirmed by ${rep}${at} · ${confirmedAt}`,
     },
   }[state];
 
@@ -178,8 +175,8 @@ export function QuoteStateDocument({
               {restaurant}
             </h1>
             <div className="mt-1 text-[13px] leading-relaxed" style={{ color: INK_SOFT }}>
-              For <span style={{ color: INK }}>{forName}</span>
-              <span style={{ color: INK_FAINT }}> · {quoteDate}</span>
+              {forName && <>For <span style={{ color: INK }}>{forName}</span></>}
+              <span style={{ color: INK_FAINT }}>{forName ? ' · ' : ''}{quoteDate}</span>
             </div>
           </div>
 
@@ -226,7 +223,7 @@ export function QuoteStateDocument({
           <div className="flex-1 text-right min-w-0">
             <div style={eyebrowSm}>DISTRIBUTOR</div>
             <div className="text-[13px] mt-0.5 truncate" style={{ color: INK }}>
-              {distributorShort}
+              {distributorShort || '—'}
             </div>
             {catalogUpdated && (
               <div className="text-[12px]" style={{ color: INK_SOFT }}>
@@ -250,7 +247,9 @@ export function QuoteStateDocument({
         ))}
 
         <div style={dividerThick} />
-        <QuoteStateTotal state={state} groups={groups} pricedCount={pricedCount} totalCount={itemCount} total={total} />
+        {/* Track 21: no quote-level Total — without quantities the sum has no
+            meaning. Document is a price list, not a priced order. A per-unit
+            total treatment is pending the Justin/Moose call. */}
 
         <div className="mt-3 text-[11px] leading-relaxed" style={{ color: INK_FAINT }}>
           {chrome.footerLine}
@@ -294,11 +293,6 @@ function QuoteStateGroup({
   for (let i = 0; i < groupIndex; i++) cumBefore += groups[i].items.length;
   const groupPriced = Math.max(0, Math.min(group.items.length, pricedCount - cumBefore));
 
-  const subtotal = group.items.reduce((a, i) => a + i.qty * i.unit, 0);
-  const partialSubtotal = group.items
-    .slice(0, groupPriced)
-    .reduce((a, i) => a + i.qty * i.unit, 0);
-
   return (
     <div className="mt-4">
       <div className="flex items-baseline justify-between">
@@ -326,136 +320,28 @@ function QuoteStateGroup({
                   {it.note ? ` · ${it.note}` : ''}
                 </div>
               </div>
+              {/* Track 21: quantities are ORDER data, not quote data. Unit price
+                  only — no qty multiplier, no per-line total. */}
               <div className="text-right shrink-0" style={TABULAR}>
                 {state === 'preview' ? (
-                  <>
-                    <div className="text-[12.5px]" style={{ color: INK_FAINT }}>
-                      {it.qty} × —
-                    </div>
-                    <div className="text-[13.5px]" style={{ color: INK_FAINT }}>
-                      —
-                    </div>
-                  </>
+                  <div className="text-[13.5px]" style={{ color: INK_FAINT }}>—</div>
                 ) : priced ? (
-                  <>
-                    <div className="text-[12.5px]" style={{ color: INK_SOFT }}>
-                      {it.qty} × {money(it.unit)}
-                    </div>
-                    <div
-                      className={`text-[13.5px] ${state === 'confirmed' ? 'font-semibold' : 'font-medium'}`}
-                      style={{ color: INK }}
-                    >
-                      {money(it.qty * it.unit)}
-                    </div>
-                  </>
+                  <div
+                    className={`text-[13.5px] ${state === 'confirmed' ? 'font-semibold' : 'font-medium'}`}
+                    style={{ color: INK }}
+                  >
+                    {money(it.unit)}
+                  </div>
                 ) : (
-                  <>
-                    <div className="text-[12.5px] italic" style={{ color: INK_FAINT }}>
-                      pricing…
-                    </div>
-                    <div className="text-[13.5px]" style={{ color: INK_FAINT }}>
-                      —
-                    </div>
-                  </>
+                  <div className="text-[12.5px] italic" style={{ color: INK_FAINT }}>
+                    pricing…
+                  </div>
                 )}
               </div>
             </div>
           );
         })}
-        <div className="flex items-center justify-between pt-2 pb-1" style={dividerThin}>
-          <span className="text-[12px]" style={{ color: INK_SOFT }}>
-            Subtotal · {group.cat}
-          </span>
-          <span className="text-[13px] font-medium" style={{ ...TABULAR, color: INK }}>
-            {state === 'preview' ? (
-              <span className="italic" style={{ color: INK_FAINT }}>
-                pending
-              </span>
-            ) : state === 'distributor' ? (
-              groupPriced === group.items.length ? (
-                money(subtotal)
-              ) : groupPriced === 0 ? (
-                <span className="italic" style={{ color: INK_FAINT }}>
-                  —
-                </span>
-              ) : (
-                <span>
-                  <span style={{ color: INK_SOFT }}>{money(partialSubtotal)}</span>
-                  <span style={{ color: INK_FAINT }}> so far</span>
-                </span>
-              )
-            ) : (
-              money(subtotal)
-            )}
-          </span>
-        </div>
       </div>
-    </div>
-  );
-}
-
-function QuoteStateTotal({
-  state,
-  groups,
-  pricedCount,
-  totalCount,
-  total,
-}: {
-  state: QuoteDocumentState;
-  groups: QuoteDocGroup[];
-  pricedCount: number;
-  totalCount: number;
-  total: number;
-}) {
-  let partialTotal = 0;
-  let remaining = pricedCount;
-  for (const g of groups) {
-    for (const it of g.items) {
-      if (remaining <= 0) break;
-      partialTotal += it.qty * it.unit;
-      remaining--;
-    }
-    if (remaining <= 0) break;
-  }
-
-  if (state === 'preview') {
-    return (
-      <div className="flex items-baseline justify-between pt-3">
-        <span style={{ ...SERIF, fontSize: 15, color: INK }}>Quote total</span>
-        <span className="italic" style={{ ...SERIF, fontSize: 18, color: INK_FAINT }}>
-          pending rep pricing
-        </span>
-      </div>
-    );
-  }
-  if (state === 'distributor') {
-    return (
-      <>
-        <div className="flex items-baseline justify-between pt-3">
-          <span style={{ ...SERIF, fontSize: 15, color: INK }}>Quote total so far</span>
-          <span className="font-medium" style={{ ...SERIF, ...TABULAR, fontSize: 22, color: INK }}>
-            {money(partialTotal)}
-          </span>
-        </div>
-        <div className="mt-1 flex items-baseline justify-between">
-          <span className="text-[11px] italic" style={{ color: INK_FAINT }}>
-            {pricedCount} of {totalCount} items priced · still working
-          </span>
-          <span className="text-[11px]" style={{ ...TABULAR, color: INK_FAINT }}>
-            approx
-          </span>
-        </div>
-      </>
-    );
-  }
-  return (
-    <div className="flex items-baseline justify-between pt-3">
-      <span className="font-medium" style={{ ...SERIF, fontSize: 15, color: INK }}>
-        Quote total · confirmed
-      </span>
-      <span className="font-semibold" style={{ ...SERIF, ...TABULAR, fontSize: 22, color: INK }}>
-        {money(total)}
-      </span>
     </div>
   );
 }

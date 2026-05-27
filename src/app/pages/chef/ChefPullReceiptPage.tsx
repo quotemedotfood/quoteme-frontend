@@ -19,7 +19,11 @@ import { useParams, useNavigate, useLocation } from 'react-router';
 import { getPullQuote, type PullQuoteResponse, type PullQuoteDistributor } from '../../services/api';
 import type { QuoteLineResponse } from '../../services/api';
 import { PullDistributorAnchor } from '../../components/chef/PullDistributorAnchor';
-import { ChevronDown } from 'lucide-react';
+import {
+  QuoteStateDocument,
+  stateFromQuoteState,
+  type QuoteDocGroup,
+} from '../../components/chef/QuoteStateDocument';
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -76,7 +80,6 @@ export function ChefPullReceiptPage() {
   const [quote, setQuote] = useState<PullQuoteResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const [shareCopied, setShareCopied] = useState(false);
   const [shareError, setShareError] = useState<string | null>(null);
 
@@ -157,6 +160,21 @@ export function ChefPullReceiptPage() {
   const affiliated = distributor?.affiliated ?? false;
   const rep = distributor?.rep ?? null;
 
+  // ── D6 QuoteStateDocument props (replaces the inline header + line list) ──────
+  const docState = quote.state ? stateFromQuoteState(quote.state) : 'preview';
+  const docGroups: QuoteDocGroup[] = Array.from(grouped.entries()).map(([category, catLines]) => ({
+    cat: toTitleCase(category),
+    items: catLines.map((l) => ({
+      name: toTitleCase(l.product.product),
+      pack: l.product.pack_size || undefined,
+      note: l.product.brand ? toTitleCase(l.product.brand) : undefined,
+      qty: l.quantity,
+      unit: (l.unit_price_cents ?? 0) / 100,
+    })),
+  }));
+  const pricedCount = matchedLines.filter((l) => l.unit_price_cents != null).length;
+  const docDate = formatDate(quote.created_at);
+
   // Share / send handlers
   async function handleSendToRep() {
     if (!rep?.email) return;
@@ -190,37 +208,28 @@ export function ChefPullReceiptPage() {
       <div className="flex-1 flex flex-col items-center px-6 py-10">
         <div className="w-full max-w-xl">
 
-          {/* ── 1. Header block ─────────────────────────────────────────── */}
-          <div className="mb-10">
-            {/* Restaurant name */}
-            {quote.restaurant && (
-              <p
-                className="text-xs text-[#9E9E9E] tracking-widest mb-3"
-                style={{ fontVariant: 'small-caps', textTransform: 'uppercase' }}
-              >
-                {quote.restaurant}
-              </p>
-            )}
-
-            <h1
-              className="text-4xl font-bold text-[#2A2A2A] leading-tight mb-3"
-              style={headlineStyle}
+          {/* ── 1+3. Document — D6 state-driven chrome (replaces the inline
+              header + price-less grouped line list). Anchor strip, "Items to
+              confirm" (unmatched), and CTAs below stay. */}
+          {quote.restaurant && (
+            <div
+              className="mb-8 overflow-hidden rounded-lg"
+              style={{ border: '1px solid #E8E8E8' }}
             >
-              Your Quote
-            </h1>
-
-            <p className="text-sm text-[#9E9E9E]">{formatDate(quote.created_at)}</p>
-
-            {/* Distributor line */}
-            {distributor && (
-              <p className="text-sm text-[#9E9E9E] mt-1">
-                {distributor.name}
-                {affiliated && rep
-                  ? ` · ${rep.name}`
-                  : ''}
-              </p>
-            )}
-          </div>
+              <QuoteStateDocument
+                state={docState}
+                restaurant={quote.restaurant}
+                quoteDate={docDate}
+                rep={rep?.name || 'your rep'}
+                distributorShort={distributor?.name}
+                groups={docGroups}
+                pricedCount={pricedCount}
+                totalCount={matchedLines.length}
+                lastUpdated={docDate}
+                confirmedAt={docDate}
+              />
+            </div>
+          )}
 
           {/* ── 2. Empty state ───────────────────────────────────────────── */}
           {lines.length === 0 && (
@@ -228,63 +237,6 @@ export function ChefPullReceiptPage() {
               <p className="text-[#4F4F4F] text-sm">
                 No line items yet. The quote may still be processing — check back in a moment.
               </p>
-            </div>
-          )}
-
-          {/* ── 3. Line items grouped by category ───────────────────────── */}
-          {grouped.size > 0 && (
-            <div className="mb-8 flex flex-col gap-8">
-              {Array.from(grouped.entries()).map(([category, catLines]) => {
-                const isCollapsed = collapsedGroups.has(category);
-                return (
-                  <div key={category}>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setCollapsedGroups((prev) => {
-                          const next = new Set(prev);
-                          next.has(category) ? next.delete(category) : next.add(category);
-                          return next;
-                        });
-                      }}
-                      className="w-full flex items-center justify-between gap-2 mb-3 pb-2 border-b border-[#F0EDE7]"
-                    >
-                      <p className="text-xs font-semibold text-[#9E9E9E] tracking-widest uppercase">
-                        {toTitleCase(category)}
-                      </p>
-                      <ChevronDown
-                        size={13}
-                        className="text-[#BDBDBD] shrink-0"
-                        style={{ transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)' }}
-                      />
-                    </button>
-
-                    {!isCollapsed && (
-                      <div className="flex flex-col gap-4">
-                        {catLines.map((line) => (
-                          <div key={line.id} className="flex items-start justify-between gap-4">
-                            <div className="flex flex-col gap-0.5 min-w-0">
-                              <span className="text-[#2A2A2A] text-base font-medium leading-snug">
-                                {toTitleCase(line.product.product)}
-                              </span>
-                              {line.product.brand && (
-                                <span className="text-xs text-[#BDBDBD]">
-                                  {toTitleCase(line.product.brand)}
-                                </span>
-                              )}
-                            </div>
-                            {line.product.pack_size && (
-                              <span className="text-sm text-[#9E9E9E] whitespace-nowrap shrink-0 mt-0.5">
-                                {line.product.pack_size}
-                              </span>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
             </div>
           )}
 
