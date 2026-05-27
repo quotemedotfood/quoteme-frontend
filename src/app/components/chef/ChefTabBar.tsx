@@ -98,7 +98,7 @@ export function ChefTabBar({ active = 'home', nav = () => {} }: ChefTabBarProps)
     { id: 'order-guides', label: 'Order Guides', target: 'tab-order-guides' },
     { id: 'distributors', label: 'Distributors', target: 'tab-distributors' },
     { id: 'settings',     label: 'Settings',     target: 'tab-settings' },
-    { id: 'build',        label: 'Build Quote',  target: 'entry', isAction: true },
+    { id: 'build',        label: 'Build Quote',  target: 'distributor-new', isAction: true },
   ];
 
   return (

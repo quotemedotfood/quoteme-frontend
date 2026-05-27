@@ -81,6 +81,7 @@ export function ChefShellLayout() {
   // c53-bis: implemented — activeTab passed via state arg.
   const navTab = (target: string) => {
     if (target === 'entry') return navigate('/chef/entry');
+    if (target === 'distributor-new') return navigate('/chef/distributor/new');
     if (target === 'tab-dashboard') return navigate('/dashboard', { state: { activeTab: 'home' } });
     // Quotes has a dedicated route — navigate there directly (c135)
     if (target === 'tab-home') return navigate('/chef/quotes');
