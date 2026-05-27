@@ -168,7 +168,15 @@ export interface MenuCreateResponse {
 }
 
 // Guest quote create response
+// Track 22: async response — POST returns immediately with quote_id + "processing" status.
+// Pipeline runs in GuestMenuProcessingJob; ChefStatusPage polls processing_stage.
 export interface GuestQuoteCreateResponse {
+  quote_id: string;
+  status: 'processing';
+}
+
+/** Legacy sync response shape — kept for reference; no longer returned by the guest path */
+export interface GuestQuoteCreateResponseLegacy {
   menu_id: string;
   quote_id: string;
   component_count: number;
@@ -191,6 +199,9 @@ export interface QuoteContact {
 export interface QuoteResponse {
   id: string;
   status: string;
+  /** Track 22: real pipeline stage written by GuestMenuProcessingJob. Values:
+   * extracting_dishes | aligning_products | building_quote | complete | failed | null */
+  processing_stage?: string | null;
   /** J1 document-state machine: preview | distributor_quote | confirmed | accepted | declined | expired. Drives D6 QuoteStateDocument chrome. */
   state?: string | null;
   working_label: string;
