@@ -222,10 +222,9 @@ function NewspaperSidebarStub({
                 borderLeft: on ? `3px solid ${C.charcoal}` : '3px solid transparent',
               }}
             >
-              {/* c64: icon in compact mode, label in open mode */}
-              {collapsed
-                ? <Icon size={18} strokeWidth={on ? 2 : 1.6} />
-                : item.label}
+              {/* c64 + 18d: icon-only when collapsed; icon + label side-by-side when expanded */}
+              <Icon size={18} strokeWidth={on ? 2 : 1.6} />
+              {!collapsed && <span>{item.label}</span>}
             </button>
           );
         })}
@@ -260,10 +259,9 @@ function NewspaperSidebarStub({
                 borderLeft: on ? `3px solid ${C.charcoal}` : '3px solid transparent',
               }}
             >
-              {/* c64: icon in compact mode, label in open mode */}
-              {collapsed
-                ? <Icon size={18} strokeWidth={on ? 2 : 1.6} />
-                : item.label}
+              {/* c64 + 18d: icon-only when collapsed; icon + label side-by-side when expanded */}
+              <Icon size={18} strokeWidth={on ? 2 : 1.6} />
+              {!collapsed && <span>{item.label}</span>}
             </button>
           );
         })}
