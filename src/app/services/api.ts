@@ -2392,3 +2392,141 @@ export async function createChefDistributor(
     return { error: err instanceof Error ? err.message : 'Network error' };
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Rep API — magic-link + quote endpoints (feat/rep-suite-fe).
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Shape of a quote row in the rep triage queue.
+export interface RepIncomingQuote {
+  id: string;
+  label: string;
+  state: string;
+  /** 'ready' | 'review' | 'coverage' */
+  match_state: 'ready' | 'review' | 'coverage';
+  missing_count?: number;
+  chef_first: string;
+  chef_last: string;
+  restaurant: string;
+  city?: string | null;
+  item_count: number;
+  waiting_hours?: number;
+  sent_at?: string | null;
+  priced_count?: number;
+  total_count?: number;
+  confirmed?: boolean;
+  confirmed_at?: string | null;
+  /** When non-null, no lines exist yet — this is Request mode. */
+  chef_request_message?: string | null;
+}
+
+// Consume response for a rep magic-link.
+export interface RepMagicLinkConsumeResponse {
+  jwt: string;
+  user: {
+    id: string;
+    email: string;
+    role: string;
+    first_name: string | null;
+    last_name: string | null;
+  };
+  quote: {
+    id: string;
+    label: string;
+    item_count: number;
+    match_state: 'ready' | 'review' | 'coverage';
+    missing_count?: number;
+    restaurant: string;
+    city?: string | null;
+    chef_first: string;
+    chef_last: string;
+    sent_at?: string | null;
+    waiting_hours?: number;
+  };
+  distributor_name: string;
+  /** Absolute path to redirect to after JWT is stored, e.g. "/rep/quotes/{id}" */
+  redirect_to: string;
+}
+
+// Rep pricing line input.
+export interface RepPricingLine {
+  id: string;
+  unit_price_cents: number;
+}
+
+/**
+ * consumeRepMagicLink — POST /api/v1/rep/magic_links/consume
+ *
+ * Unauthenticated by design (same pattern as consumeChefMagicLink). The token
+ * from the URL IS the credential. Returns a JWT + envelope payload.
+ */
+export async function consumeRepMagicLink(
+  token: string,
+): Promise<ApiResponse<RepMagicLinkConsumeResponse>> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/v1/rep/magic_links/consume`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token }),
+    });
+    if (!response.ok) {
+      const errorBody = await response.json().catch(() => ({ error: `HTTP ${response.status}` }));
+      return {
+        error: errorBody.error || `HTTP ${response.status}`,
+        error_code: errorBody.error,
+        data: undefined,
+      };
+    }
+    const data: RepMagicLinkConsumeResponse = await response.json();
+    return { data, token: data.jwt };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : 'Network error', data: undefined };
+  }
+}
+
+/**
+ * getRepIncomingQuotes — GET /api/v1/rep/quotes (Bearer auth)
+ *
+ * Returns all quotes in the rep's triage queue ordered by urgency.
+ */
+export async function getRepIncomingQuotes(): Promise<ApiResponse<RepIncomingQuote[]>> {
+  return fetchWithAuth<RepIncomingQuote[]>('/api/v1/rep/quotes');
+}
+
+/**
+ * getRepQuote — GET /api/v1/rep/quotes/:id (Bearer auth)
+ *
+ * Returns the full quote document for the rep to review/price.
+ */
+export async function getRepQuote(id: string): Promise<ApiResponse<QuoteResponse>> {
+  return fetchWithAuth<QuoteResponse>(`/api/v1/rep/quotes/${id}`);
+}
+
+/**
+ * repPriceQuote — POST /api/v1/rep/quotes/:id/pricing (Bearer auth)
+ *
+ * Submits rep prices for one or more lines. Optionally removes lines by id.
+ * Returns the updated quote.
+ */
+export async function repPriceQuote(
+  id: string,
+  lines: RepPricingLine[],
+  removeLineIds: string[] = [],
+): Promise<ApiResponse<QuoteResponse>> {
+  return fetchWithAuth<QuoteResponse>(`/api/v1/rep/quotes/${id}/pricing`, {
+    method: 'POST',
+    body: JSON.stringify({ lines, remove_line_ids: removeLineIds }),
+  });
+}
+
+/**
+ * repConfirmQuote — POST /api/v1/rep/quotes/:id/confirm (Bearer auth)
+ *
+ * Marks the quote as confirmed and emails the chef a copy.
+ * Returns the updated quote.
+ */
+export async function repConfirmQuote(id: string): Promise<ApiResponse<QuoteResponse>> {
+  return fetchWithAuth<QuoteResponse>(`/api/v1/rep/quotes/${id}/confirm`, {
+    method: 'POST',
+  });
+}

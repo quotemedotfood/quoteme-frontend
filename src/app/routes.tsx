@@ -65,6 +65,9 @@ import { ChefMenusPage } from "./pages/chef/ChefMenusPage";
 import { ChefMenuDetailPage } from "./pages/chef/ChefMenuDetailPage";
 import { CreateRestaurantPage } from "./pages/CreateRestaurantPage";
 import { isDemoMode } from "./utils/demoMode";
+import { RepWelcomePage } from "./pages/rep/RepWelcomePage";
+import { RepTriagePage } from "./pages/rep/RepTriagePage";
+import { RepIncomingQuotePage } from "./pages/rep/RepIncomingQuotePage";
 
 const demo = isDemoMode();
 
@@ -85,6 +88,13 @@ export const router = createBrowserRouter([
       {
         path: "chef/welcome",
         Component: ChefWelcomePage,
+      },
+      {
+        // Rep magic-link landing — MUST live outside RootLayout so reps
+        // arriving via email with no JWT aren't bounced to /auth.
+        // Exactly mirrors how chef/welcome is placed.
+        path: "rep/welcome",
+        Component: RepWelcomePage,
       },
       {
         path: "chef",
@@ -183,6 +193,10 @@ export const router = createBrowserRouter([
             { path: "quotes", Component: QuotesRoleRouter },
             { path: "settings", Component: SettingsPage },
             { path: "settings/billing", Component: SettingsPage },
+            // ── Rep suite routes (auth-guarded via RootLayout) ──────────────
+            // /rep/welcome is placed OUTSIDE RootLayout (pre-auth, magic link).
+            { path: "rep/triage", Component: RepTriagePage },
+            { path: "rep/quotes/:id", Component: RepIncomingQuotePage },
           ]),
           { path: "upgrade", Component: PaywallPage },
           { path: "start-new-quote", Component: StartNewQuotePage },

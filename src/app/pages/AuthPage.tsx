@@ -50,7 +50,7 @@ export function AuthPage() {
       case 'buyer': return '/dashboard';
       case 'group_admin': return '/dashboard';
       case 'chef': return '/dashboard';
-      case 'rep': return '/start-new-quote';
+      case 'rep': return '/rep/triage';
       default: return '/start-new-quote';
     }
   };
