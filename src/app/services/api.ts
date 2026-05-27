@@ -191,6 +191,8 @@ export interface QuoteContact {
 export interface QuoteResponse {
   id: string;
   status: string;
+  /** J1 document-state machine: preview | distributor_quote | confirmed | accepted | declined | expired. Drives D6 QuoteStateDocument chrome. */
+  state?: string | null;
   working_label: string;
   restaurant: string;
   rep: string;
@@ -2193,6 +2195,8 @@ export interface PullQuoteCreateResponse {
 export interface PullQuoteResponse {
   id: string;
   status: string;
+  /** J1 document-state machine — drives D6 QuoteStateDocument chrome. */
+  state?: string | null;
   created_at: string;
   distributor: PullQuoteDistributor;
   restaurant?: string | null;

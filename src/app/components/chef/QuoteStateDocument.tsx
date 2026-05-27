@@ -60,11 +60,11 @@ export interface QuoteDocGroup {
 export interface QuoteStateDocumentProps {
   state?: QuoteDocumentState;
   restaurant: string;
-  forName: string; // chef full name
+  forName?: string; // chef full name (omitted on surfaces that don't carry it)
   quoteDate: string;
   rep: string;
   repPhone?: string;
-  distributorShort: string;
+  distributorShort?: string; // omitted when the surface has no distributor name
   catalogUpdated?: string;
   groups: QuoteDocGroup[];
   pricedCount?: number; // for distributor state
@@ -102,6 +102,7 @@ export function QuoteStateDocument({
     0,
   );
   const itemCount = totalCount || groups.reduce((a, g) => a + g.items.length, 0);
+  const at = distributorShort ? ` at ${distributorShort}` : '';
 
   const chrome: Chrome = {
     preview: {
@@ -110,7 +111,7 @@ export function QuoteStateDocument({
       eyebrow: 'PREVIEW QUOTE · NOT YET PRICED',
       watermark: 'PREVIEW',
       topRightSlot: null,
-      footerLine: `Sent to ${rep} at ${distributorShort} · awaiting reply`,
+      footerLine: `Sent to ${rep}${at} · awaiting reply`,
     },
     distributor: {
       bg: '#FFFFFF',
@@ -126,7 +127,7 @@ export function QuoteStateDocument({
       eyebrow: `CONFIRMED QUOTE · LOCKED ${confirmedAt.toUpperCase()}`,
       watermark: null,
       topRightSlot: 'seal',
-      footerLine: `Confirmed by ${rep} at ${distributorShort} · ${confirmedAt}`,
+      footerLine: `Confirmed by ${rep}${at} · ${confirmedAt}`,
     },
   }[state];
 
@@ -178,8 +179,8 @@ export function QuoteStateDocument({
               {restaurant}
             </h1>
             <div className="mt-1 text-[13px] leading-relaxed" style={{ color: INK_SOFT }}>
-              For <span style={{ color: INK }}>{forName}</span>
-              <span style={{ color: INK_FAINT }}> · {quoteDate}</span>
+              {forName && <>For <span style={{ color: INK }}>{forName}</span></>}
+              <span style={{ color: INK_FAINT }}>{forName ? ' · ' : ''}{quoteDate}</span>
             </div>
           </div>
 
@@ -226,7 +227,7 @@ export function QuoteStateDocument({
           <div className="flex-1 text-right min-w-0">
             <div style={eyebrowSm}>DISTRIBUTOR</div>
             <div className="text-[13px] mt-0.5 truncate" style={{ color: INK }}>
-              {distributorShort}
+              {distributorShort || '—'}
             </div>
             {catalogUpdated && (
               <div className="text-[12px]" style={{ color: INK_SOFT }}>
