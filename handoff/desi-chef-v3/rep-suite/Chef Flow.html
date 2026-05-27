@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>QuoteMe — Chef Flow Design Lock</title>
+
+  <link rel="stylesheet" href="assets/colors_and_type.css" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <style>
+    html, body { margin: 0; padding: 0; background: #F2F0EA; font-family: var(--qm-sans); color: var(--qm-charcoal); }
+    .num { font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1; }
+    .serif { font-family: var(--qm-serif); }
+    .sans { font-family: var(--qm-sans); }
+    .hairline { border-color: var(--qm-soft-line); }
+    .ink { color: var(--qm-charcoal); }
+    .ink-soft { color: var(--qm-gray-700); }
+    .ink-faint { color: var(--qm-gray-500); }
+
+    /* Gallery shell */
+    .gallery { max-width: 1640px; margin: 0 auto; padding: 64px 48px 96px; }
+    .gallery-header {
+      max-width: 880px; margin-bottom: 64px;
+    }
+    .gallery-section { margin-top: 72px; }
+    .gallery-section + .gallery-section { margin-top: 96px; }
+    .section-head { max-width: 880px; margin-bottom: 28px; }
+    .section-row {
+      display: flex; flex-wrap: wrap; gap: 32px;
+    }
+    .artboard {
+      display: flex; flex-direction: column; gap: 10px;
+    }
+    .artboard-label {
+      font-family: var(--qm-sans); font-size: 11px; font-weight: 600;
+      letter-spacing: 0.08em; text-transform: uppercase; color: rgba(40,30,20,.55);
+    }
+
+    /* iPhone frame */
+    .phone {
+      width: 390px; height: 844px;
+      background: #ffffff;
+      border-radius: 36px;
+      box-shadow: 0 1px 0 rgba(0,0,0,.04) inset, 0 24px 60px rgba(43,43,43,.10), 0 0 0 1px rgba(0,0,0,.05);
+      overflow: hidden;
+      position: relative;
+      font-family: var(--qm-sans);
+      color: var(--qm-charcoal);
+    }
+    .phone .screen { position: absolute; inset: 0; overflow: hidden; display: flex; flex-direction: column; }
+    .phone .statusbar {
+      height: 44px; flex: 0 0 44px; display: flex; align-items: center; justify-content: space-between;
+      padding: 0 24px 0 28px; font-size: 14px; font-weight: 600; color: var(--qm-charcoal);
+      font-variant-numeric: tabular-nums;
+    }
+    .phone .statusbar .right { display: flex; align-items: center; gap: 5px; }
+    .phone .home-indicator {
+      position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%);
+      width: 134px; height: 5px; border-radius: 999px; background: rgba(0,0,0,.85);
+    }
+
+    /* Desktop frame */
+    .desktop {
+      width: 1280px; height: 800px; background: #ffffff;
+      border-radius: 14px;
+      box-shadow: 0 1px 0 rgba(0,0,0,.04) inset, 0 24px 60px rgba(43,43,43,.10), 0 0 0 1px rgba(0,0,0,.05);
+      overflow: hidden; position: relative; font-family: var(--qm-sans); color: var(--qm-charcoal);
+    }
+
+    /* Buttons */
+    .qm-btn { display:inline-flex; align-items:center; justify-content:center; gap:8px;
+      font-family: var(--qm-sans); font-weight: 500; font-size: 15px;
+      border-radius: 6px; padding: 12px 18px; line-height: 1;
+      transition: background-color .15s ease, color .15s ease, border-color .15s ease;
+      cursor: pointer; user-select: none; border: 1px solid transparent;
+    }
+    .qm-btn-orange { background: var(--qm-orange); color: #fff; }
+    .qm-btn-orange:hover { background: var(--qm-orange-hover); }
+    .qm-btn-outline { background: #fff; color: var(--qm-charcoal); border-color: var(--qm-soft-line); }
+    .qm-btn-outline:hover { background: var(--qm-gray-50); }
+    .qm-btn-text { background: transparent; color: var(--qm-gray-700); padding: 12px 8px; }
+    .qm-btn-text:hover { color: var(--qm-charcoal); }
+    .qm-btn-full { width: 100%; }
+
+    /* Inputs */
+    .qm-input, .qm-textarea {
+      width: 100%; font-family: var(--qm-sans); font-size: 16px; color: var(--qm-charcoal);
+      border: 1px solid var(--qm-soft-line); border-radius: 6px;
+      padding: 12px 14px; background: #fff; line-height: 1.4;
+    }
+    .qm-input:focus, .qm-textarea:focus { outline: none; border-color: var(--qm-hover-blue); box-shadow: 0 0 0 3px rgba(127,174,194,.25); }
+    .qm-textarea { resize: none; min-height: 220px; }
+
+    /* Pill */
+    .qm-pill { display:inline-flex; align-items:center; gap:6px; padding:3px 10px;
+      font-size: 11px; font-weight: 500; border-radius: 999px; line-height: 1.4; }
+
+    /* Trust ribbon */
+    .trust {
+      background: var(--qm-warm-paper);
+      border-bottom: 1px solid var(--qm-soft-line);
+      padding: 8px 18px; font-size: 11px; line-height: 1.3;
+      color: var(--qm-gray-700);
+      display: flex; align-items: center; gap: 8px;
+    }
+    .trust .dot { width: 5px; height: 5px; border-radius: 999px; background: var(--qm-hover-blue); }
+    .trust b { color: var(--qm-charcoal); font-weight: 500; }
+
+    /* Document */
+    .doc-divider-thick { border-top: 2px solid var(--qm-charcoal); }
+    .doc-divider { border-top: 1px solid var(--qm-soft-line); }
+
+    /* eyebrow */
+    .qm-eyebrow {
+      font-family: var(--qm-sans); font-weight: 600;
+      font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;
+      color: var(--qm-gray-700);
+    }
+
+    /* Scroll inside phone screens */
+    .scroller { flex: 1 1 0; overflow-y: auto; }
+    .scroller::-webkit-scrollbar { width: 0; }
+
+    button:focus-visible { outline: none; }
+
+    /* Loading state for the gallery */
+    #app:empty::before {
+      content: "Loading…";
+      display: block; padding: 80px 48px; color: rgba(40,30,20,.4);
+      font-family: var(--qm-serif); font-size: 22px;
+    }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+
+  <script type="text/babel" data-presets="react" src="tweaks-panel.jsx"></script>
+  <script type="text/babel" data-presets="react" src="src/document.jsx"></script>
+  <script type="text/babel" data-presets="react" src="src/screens-existing.jsx"></script>
+  <script type="text/babel" data-presets="react" src="src/screens-new.jsx"></script>
+  <script type="text/babel" data-presets="react" src="src/screens-desktop.jsx"></script>
+  <script type="text/babel" data-presets="react" src="src/screens-states.jsx"></script>
+  <script type="text/babel" data-presets="react" src="src/screens-tabs.jsx"></script>
+  <script type="text/babel" data-presets="react" src="src/screens-menus.jsx"></script>
+  <script type="text/babel" data-presets="react" src="src/screens-pullquote.jsx"></script>
+  <script type="text/babel" data-presets="react" src="src/screens-stack.jsx"></script>
+  <script type="text/babel" data-presets="react" src="src/screens-stack-v2.jsx"></script>
+  <script type="text/babel" data-presets="react" src="src/screens-stack-roster.jsx"></script>
+  <script type="text/babel" data-presets="react" src="src/screens-quote-states.jsx"></script>
+  <script type="text/babel" data-presets="react" src="src/screens-rep.jsx"></script>
+  <script type="text/babel" data-presets="react" src="src/screens-chef-distributor-entry.jsx"></script>
+  <script type="text/babel" data-presets="react" src="src/screens-match.jsx"></script>
+  <script type="text/babel" data-presets="react" src="src/screens-account-help.jsx"></script>
+  <script type="text/babel" data-presets="react" src="src/gallery.jsx"></script>
+
+  <script>
+    // Debounced lucide icon hydration. The MutationObserver runs createIcons
+    // through requestAnimationFrame so the createIcons mutation itself can't
+    // re-trigger the observer in the same frame.
+    let pending = false;
+    const renderIcons = () => {
+      pending = false;
+      try { lucide.createIcons(); } catch (e) {}
+    };
+    const schedule = () => {
+      if (pending) return;
+      pending = true;
+      requestAnimationFrame(renderIcons);
+    };
+    new MutationObserver(schedule).observe(document.body, { childList: true, subtree: true });
+    window.addEventListener('load', () => setTimeout(renderIcons, 200));
+  </script>
+</body>
+</html>
