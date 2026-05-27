@@ -41,7 +41,7 @@ export function ErrorPage() {
         <div className="space-y-3">
           <Button 
             className="w-full bg-[#7FAEC2] hover:bg-[#6A9AB0] text-white"
-            onClick={() => navigate('/')}
+            onClick={() => navigate('/dashboard')}
           >
             Return to Dashboard
           </Button>
