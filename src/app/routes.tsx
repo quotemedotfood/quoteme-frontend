@@ -50,6 +50,7 @@ import { LocationPage } from "./pages/LocationPage";
 import { ChefSignupPage } from "./pages/chef/ChefSignupPage";
 import { ChefEntryPage } from "./pages/chef/ChefEntryPage";
 import { ChefStatusPage } from "./pages/chef/ChefStatusPage";
+import { QuoteStateDocumentPreviewPage } from "./pages/chef/QuoteStateDocumentPreviewPage";
 import { ChefQuoteReceiptPage } from "./pages/chef/ChefQuoteReceiptPage";
 import { ChefOrderGuidePage } from "./pages/chef/ChefOrderGuidePage";
 import { ChefWelcomePage } from "./pages/chef/ChefWelcomePage";
@@ -95,6 +96,12 @@ export const router = createBrowserRouter([
       {
         path: "chef/status/:id",
         Component: ChefStatusPage,
+      },
+      {
+        // TEMPORARY — D6 QuoteStateDocument visual sign-off (Item 3).
+        // Remove once wired into ChefQuoteReceiptPage (Item 4, gated on C3).
+        path: "chef/_preview/quote-states",
+        Component: QuoteStateDocumentPreviewPage,
       },
       {
         path: "chef/pull/entry",
