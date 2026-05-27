@@ -2299,3 +2299,92 @@ export async function getMenuSpread(
 ): Promise<ApiResponse<MenuSpreadResponse>> {
   return fetchWithAuth<MenuSpreadResponse>(`/api/v1/chef/menus/${menuId}/spread`);
 }
+
+// ─── Chef distributor entry ────────────────────────────────────────────────
+
+export interface ChefDistributorRepContact {
+  existing_rep_id?: string;
+  name?: string;
+  email?: string;
+  phone?: string;
+}
+
+export interface ChefDistributorCreateRequest {
+  mode: 'pick' | 'upload' | 'request';
+  distributor_id?: string;
+  distributor_company_name?: string;
+  rep_contact?: ChefDistributorRepContact;
+  request_message?: string;
+}
+
+export interface ChefDistributorCreateResponse {
+  distributor_id: string;
+  catalog_id?: string;
+  redirect_to: string;
+  request_sent_to?: string;
+}
+
+/**
+ * POST /api/v1/chef/distributors
+ * mode "pick" / "request" → JSON body
+ * mode "upload" → multipart FormData (catalog_file + JSON fields)
+ */
+export async function createChefDistributor(
+  data: ChefDistributorCreateRequest,
+  catalogFile?: File,
+): Promise<ApiResponse<ChefDistributorCreateResponse>> {
+  const authToken = getAuthToken();
+  const guestToken = getGuestToken();
+  const headers: Record<string, string> = {};
+  if (authToken) {
+    headers['Authorization'] = `Bearer ${authToken}`;
+  } else if (guestToken) {
+    headers['X-Guest-Token'] = guestToken;
+  }
+
+  if (catalogFile) {
+    // multipart upload
+    const form = new FormData();
+    form.append('mode', data.mode);
+    if (data.distributor_company_name) {
+      form.append('distributor_company_name', data.distributor_company_name);
+    }
+    if (data.rep_contact) {
+      form.append('rep_contact', JSON.stringify(data.rep_contact));
+    }
+    form.append('catalog_file', catalogFile);
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/v1/chef/distributors`, {
+        method: 'POST',
+        headers,
+        body: form,
+      });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        return { error: errorData.error || `HTTP ${response.status}`, status: response.status };
+      }
+      const responseData = await response.json();
+      return { data: responseData };
+    } catch (err) {
+      return { error: err instanceof Error ? err.message : 'Network error' };
+    }
+  }
+
+  // JSON body for pick / request
+  headers['Content-Type'] = 'application/json';
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/v1/chef/distributors`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      return { error: errorData.error || `HTTP ${response.status}`, status: response.status };
+    }
+    const responseData = await response.json();
+    return { data: responseData };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : 'Network error' };
+  }
+}

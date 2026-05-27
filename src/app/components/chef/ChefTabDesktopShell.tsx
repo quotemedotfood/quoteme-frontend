@@ -165,7 +165,7 @@ function NewspaperSidebarStub({
         >
           <button
             type="button"
-            onClick={() => onNav('entry')}
+            onClick={() => onNav('distributor-new')}
             aria-label="Build Quote"
             title={collapsed ? 'Build Quote' : undefined}
             style={{
