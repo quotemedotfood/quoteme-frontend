@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { getChefQuotes, type ChefQuoteRow, type ChefQuotesIndexResponse } from '../../services/api';
 import { PreviewPill } from '../../components/chef/PreviewPill';
+import { QuoteStatusPill } from '../../components/chef/QuoteStatusPill';
 
 const C = {
   charcoal: '#2B2B2B',
@@ -27,37 +28,6 @@ function money(cents: number): string {
 function formatDate(iso: string): string {
   try { return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }); }
   catch { return ''; }
-}
-
-function StatusPill({ status, hasOG }: { status: string; hasOG: boolean }) {
-  let label = status;
-  let bg = '#F3F4F6';
-  let color = C.gray700;
-
-  if (status === 'won' && hasOG) { label = 'Ordered'; bg = '#DCFCE7'; color = '#166534'; }
-  else if (status === 'won') { label = 'Accepted'; bg = '#DCFCE7'; color = '#166534'; }
-  else if (status === 'pending') { label = 'Ready'; bg = 'rgba(127,174,194,.2)'; color = '#2A5F6F'; }
-  else if (status === 'sent') { label = 'Sent'; bg = 'rgba(127,174,194,.2)'; color = '#2A5F6F'; }
-  else if (status === 'draft') { label = 'Processing'; bg = '#FEF3C7'; color = '#92400E'; }
-  else if (status === 'expired') { label = 'Refresh available'; bg = '#FEF3C7'; color = '#92400E'; }
-  else if (status === 'lost') { label = 'Closed'; bg = '#F3F4F6'; color = C.gray500; }
-
-  return (
-    <span
-      className="inline-flex items-center"
-      style={{
-        ...sans,
-        background: bg,
-        color,
-        fontSize: 10,
-        fontWeight: 500,
-        padding: '2px 8px',
-        borderRadius: 999,
-      }}
-    >
-      {label}
-    </span>
-  );
 }
 
 function LoadingRow() {
@@ -119,7 +89,7 @@ function QuoteRow({ q, onPick }: { q: ChefQuoteRow; onPick: (q: ChefQuoteRow) =>
           </span>
           {q.preview && <PreviewPill size="xs" />}
         </button>
-        <StatusPill status={q.status} hasOG={q.has_order_guide} />
+        <QuoteStatusPill status={q.status} />
       </div>
       {/* B5 meta line */}
       <div
