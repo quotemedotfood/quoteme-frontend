@@ -37,13 +37,11 @@ export function ChefEntryPage() {
 
   // c144 — recovery path (b): when navigated here from StuckRecoveryScreen
   // with { restoreMenuDraft: true }, pull the saved draft from localStorage
-  // and populate the textarea. Show a soft hint about shorter sections.
+  // and populate the textarea.
   const locationState = location.state as {
     restoreMenuDraft?: boolean;
-    hint?: string;
   } | null;
   const shouldRestoreDraft = !!locationState?.restoreMenuDraft;
-  const showShorterSectionsHint = locationState?.hint === 'shorter_sections';
 
   const [restaurantName, setRestaurantName] = useState('');
   const [pasteText, setPasteText] = useState(() => {
@@ -317,17 +315,6 @@ export function ChefEntryPage() {
             Paste your menu, upload a file, or share a photo. We'll take it from here.
           </p>
         </div>
-
-        {/* c144 — shorter-sections hint, shown when chef returns via recovery path (b) */}
-        {showShorterSectionsHint && (
-          <div className="mb-6 border border-[#E8E8E8] rounded-xl px-5 py-4 bg-[#FFFBF5]">
-            <p className="text-sm text-[#4F4F4F] leading-relaxed">
-              <span className="font-medium text-[#2A2A2A]">Your menu is here.</span>{' '}
-              Splitting it into smaller sections — one course or category at a time —
-              tends to work better.
-            </p>
-          </div>
-        )}
 
         <div className="flex flex-col gap-6">
           {/* Restaurant name (optional) */}
