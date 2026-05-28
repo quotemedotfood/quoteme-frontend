@@ -253,9 +253,11 @@ export function ChefPullReceiptPage() {
                       <span className="text-[#2A2A2A] text-base font-medium leading-snug">
                         {toTitleCase(line.component?.name || line.category || 'Item')}
                       </span>
-                      <span className="inline-flex self-start bg-amber-50 text-amber-800 border border-amber-200 px-2 py-0.5 rounded text-xs">
-                        {(line as { resolution_label?: string }).resolution_label ?? 'Not in catalog'}
-                      </span>
+                      {docState !== 'preview' && (
+                        <span className="inline-flex self-start bg-amber-50 text-amber-800 border border-amber-200 px-2 py-0.5 rounded text-xs">
+                          {(line as { resolution_label?: string }).resolution_label ?? 'Not in catalog'}
+                        </span>
+                      )}
                     </div>
                     {line.category && line.component?.name && (
                       <span className="text-sm text-[#9E9E9E] whitespace-nowrap shrink-0 mt-0.5">
