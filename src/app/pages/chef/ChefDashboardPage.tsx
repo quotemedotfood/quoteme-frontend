@@ -21,6 +21,7 @@ import { useNavigate, useLocation } from 'react-router';
 import { Lock } from 'lucide-react';
 import { getChefQuotes, type ChefQuoteRow, type ChefQuotesIndexResponse } from '../../services/api';
 import { PreviewPill } from '../../components/chef/PreviewPill';
+import { QuoteStatusPill } from '../../components/chef/QuoteStatusPill';
 import { ChefDistributorsTab } from '../../components/chef';
 import { ChefSettingsTab } from '../../components/chef/ChefSettingsTab';
 
@@ -652,7 +653,7 @@ function QuoteHistory({
                 </span>
                 {q.preview && <PreviewPill size="xs" />}
               </button>
-              <StatusPill status={q.status} hasOG={q.has_order_guide} />
+              <QuoteStatusPill status={q.status} />
             </div>
             {/* Meta line — V3 Part 3 format */}
             <div
@@ -668,36 +669,7 @@ function QuoteHistory({
   );
 }
 
-function StatusPill({ status, hasOG }: { status: string; hasOG: boolean }) {
-  let label = status;
-  let bg = '#F3F4F6';
-  let color = C.gray700;
-
-  if (status === 'won' && hasOG) { label = 'Ordered'; bg = '#DCFCE7'; color = '#166534'; }
-  else if (status === 'won') { label = 'Accepted'; bg = '#DCFCE7'; color = '#166534'; }
-  else if (status === 'pending') { label = 'Ready'; bg = 'color-mix(in srgb, var(--accent) 20%, transparent)'; color = '#2A5F6F'; }
-  else if (status === 'sent') { label = 'Sent'; bg = 'color-mix(in srgb, var(--accent) 20%, transparent)'; color = '#2A5F6F'; }
-  else if (status === 'draft') { label = 'Processing'; bg = '#FEF3C7'; color = '#92400E'; }
-  else if (status === 'expired') { label = 'Refresh available'; bg = '#FEF3C7'; color = '#92400E'; }
-  else if (status === 'lost') { label = 'Closed'; bg = '#F3F4F6'; color = C.gray500; }
-
-  return (
-    <span
-      className="inline-flex items-center"
-      style={{
-        ...sans,
-        background: bg,
-        color,
-        fontSize: 10,
-        fontWeight: 500,
-        padding: '2px 8px',
-        borderRadius: 999,
-      }}
-    >
-      {label}
-    </span>
-  );
-}
+// StatusPill extracted to ../../components/chef/QuoteStatusPill (PR-redo for #50)
 
 function EmptyState() {
   return (
