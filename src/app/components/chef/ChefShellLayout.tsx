@@ -42,6 +42,10 @@ function activeTabFromPath(pathname: string): ActiveTab {
   if (pathname.startsWith('/chef/quotes')) return 'home'; // Quotes destination
   if (pathname.startsWith('/chef/menus')) return 'home'; // Menus sit under the Quotes/home tab
   if (pathname.startsWith('/chef/catalog')) return 'distributors';
+  if (pathname.startsWith('/chef/distributor')) return 'distributors';
+  // /chef/pull/entry — the pull-quote entry surface lives under Distributors
+  // in the IA: a chef picks a distributor first, then lands here.
+  if (pathname.startsWith('/chef/pull')) return 'distributors';
   if (pathname.startsWith('/chef/settings')) return 'settings';
   // c73: /dashboard maps explicitly to 'dashboard' tab
   if (pathname === '/dashboard' || pathname.startsWith('/dashboard')) return 'dashboard';
