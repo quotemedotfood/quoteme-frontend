@@ -87,7 +87,10 @@ function NewspaperSidebarStub({
         padding: '12px 0 20px',
         transition: 'width 200ms ease',
         overflow: 'hidden',
-        position: 'relative',
+        // Sticky sidebar: stays in place while the content column scrolls.
+        position: 'sticky',
+        top: 0,
+        height: '100vh',
         zIndex: 20,
       }}
     >
@@ -313,9 +316,12 @@ export function ChefTabDesktopShell({
   const hidden = mode === 'hidden';
 
   return (
+    // min-h-screen ensures the flex container stretches to at least the
+    // viewport height; the sticky sidebar then pins correctly relative to it.
+    // No overflow:hidden here — that would prevent position:sticky from working.
     <div
       className="flex"
-      style={{ position: 'relative', height: '100%' }}
+      style={{ position: 'relative', minHeight: '100vh' }}
     >
       {!hidden && (
         <NewspaperSidebarStub
@@ -326,12 +332,14 @@ export function ChefTabDesktopShell({
         />
       )}
 
+      {/* Content column — flex-1 so it fills remaining width. No overflow on
+          this wrapper; scrolling is inherited from the parent RootLayout <main>
+          so the sticky sidebar stays anchored to the viewport top. */}
       <div
-        className="flex flex-col overflow-hidden"
+        className="flex flex-col"
         style={{ flex: 1, minWidth: 0 }}
       >
-        {/* showTrust → TrustRibbon omitted; accepted by prop for future B4 wiring */}
-        <div className="flex-1 overflow-auto">
+        <div>
           <div style={{ padding: '36px 40px' }}>
             <div style={{ maxWidth: 880, margin: '0 auto' }}>{children}</div>
           </div>

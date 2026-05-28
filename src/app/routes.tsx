@@ -101,8 +101,11 @@ export const router = createBrowserRouter([
         Component: ChefEntryPage,
       },
       {
+        // Retired route — redirects to the canonical new-distributor entry surface.
+        // ChefEntryPage.tsx is kept (its drag-zone pattern is reused in pull entry).
+        // Chef v4 Doctrine Day will restructure /chef/distributor/new further.
         path: "chef/entry",
-        Component: ChefEntryPage,
+        element: <Navigate to="/chef/distributor/new" replace />,
       },
       {
         path: "chef/status/:id",
@@ -113,10 +116,6 @@ export const router = createBrowserRouter([
         // Remove once wired into ChefQuoteReceiptPage (Item 4, gated on C3).
         path: "chef/_preview/quote-states",
         Component: QuoteStateDocumentPreviewPage,
-      },
-      {
-        path: "chef/pull/entry",
-        Component: ChefPullEntryPage,
       },
       {
         path: "chef/pull/status/:id",
@@ -182,6 +181,8 @@ export const router = createBrowserRouter([
               { path: "chef/catalog", Component: ChefCatalogSelectionPage },
               { path: "chef/distributor/new", Component: ChefDistributorEntryPage },
               { path: "chef/menus/:id/spread", Component: ChefMenuSpreadPage },
+              // Pull-entry mounted inside the shell so it gets sidebar/tab chrome.
+              { path: "chef/pull/entry", Component: ChefPullEntryPage },
             ],
           },
           ...(demo ? [] : [
