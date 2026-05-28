@@ -734,7 +734,7 @@ export function SettingsPage() {
               <p className="text-xs text-gray-500 mt-0.5">
                 {user?.unlimited_drafts
                   ? 'You can have unlimited draft quotes at once'
-                  : 'Limited to 2 draft quotes at a time (recommended)'}
+                  : 'Limited to 2 draft quotes at a time'}
               </p>
             </div>
             <button
@@ -972,12 +972,11 @@ export function SettingsPage() {
             </div>
           ) : (
             <>
-              {/* Trial Status Banner - Only show for non-paid users */}
+              {/* Usage Banner - Only show for non-paid users */}
               {!billingData?.has_paid_subscription && !profile.hasPaidSubscription && (
                 <div className="bg-[#FFF9F3] border border-[#F2993D] rounded-lg p-4 mb-6">
-                  <p className="text-sm text-[#2A2A2A] font-semibold mb-1">Free Trial Active</p>
                   <p className="text-xs text-[#4F4F4F]">
-                    You've used {billingData?.quotes_used ?? profile.quotesUsed} of {billingData?.quotes_limit ?? profile.quotesLimit} free quotes. Sign up to keep building quotes.
+                    You've used {billingData?.quotes_used ?? profile.quotesUsed} of {billingData?.quotes_limit ?? profile.quotesLimit} free quotes. Subscribe to continue building quotes.
                   </p>
                 </div>
               )}
@@ -988,7 +987,7 @@ export function SettingsPage() {
                   <div>
                     <h3 className="text-sm text-[#4F4F4F]">Current Plan</h3>
                     <p className="text-lg text-[#2A2A2A]">
-                      {(billingData?.has_paid_subscription ?? profile.hasPaidSubscription) ? (billingData?.plan_name || 'Premium Plan') : 'Free Trial'}
+                      {(billingData?.has_paid_subscription ?? profile.hasPaidSubscription) ? (billingData?.plan_name || 'Premium Plan') : 'Plan'}
                     </p>
                   </div>
                   <div className="text-right">
