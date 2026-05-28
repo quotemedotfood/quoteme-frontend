@@ -259,6 +259,8 @@ function TriageRow({
 }) {
   return (
     <div
+      role={isDone ? undefined : 'link'}
+      tabIndex={isDone ? undefined : 0}
       style={{
         display: 'flex', alignItems: 'flex-start', gap: 12,
         padding: '12px 0',
@@ -267,6 +269,7 @@ function TriageRow({
         cursor: isDone ? 'default' : 'pointer',
       }}
       onClick={() => !isDone && nav('rep-incoming', { quoteId: q.id })}
+      onKeyDown={(e) => { if (!isDone && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); nav('rep-incoming', { quoteId: q.id }); } }}
     >
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>

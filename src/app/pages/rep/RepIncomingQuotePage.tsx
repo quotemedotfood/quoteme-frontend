@@ -7,8 +7,8 @@
 // the request mode surface (message prominent, "No menu yet" copy, Ask-the-chef
 // action). Coverage / pricing CTAs are hidden in this state.
 //
-// ?mode=pricing query param switches to RepPricingOnlyView (mobile pricing
-// surface). Desktop always shows RepPricingTableDesktop (the full table).
+// ?mode=pricing query param switches to RepPricingOnlyView on all viewports.
+// ?mode=review switches to RepReviewThreePanelDesktop.
 //
 // Doctrine compliance:
 //   - Q3 LOCKED: NO qty column anywhere in pricing
@@ -63,7 +63,7 @@ function eyebrow(size = 10): React.CSSProperties {
 
 type SortBy = 'category' | 'component' | 'match';
 
-type FlowState = 'first-arrival' | 'auto-fired' | 'review-only' | 'pricing-only';
+type FlowState = 'first-arrival' | 'auto-fired';
 
 // Detect match state from lines
 function deriveMatchState(lines: QuoteLineResponse[]): 'ready' | 'review' | 'coverage' {
@@ -322,7 +322,6 @@ export function RepIncomingQuotePage() {
                 onReview={() => nav('rep-review')}
                 onGoPricing={() => nav('rep-pricing')}
                 onSendToChef={handleConfirmSend}
-                onConfirmSend={handleConfirmSend}
               />
             </div>
 
