@@ -136,7 +136,7 @@ function EmptyState({ menuId }: { menuId: string }) {
         Run this menu against a distributor's catalog to generate a spread.
       </p>
       <button
-        onClick={() => navigate(`/chef/menus/${menuId}/pull-quote`)}
+        onClick={() => navigate(`/chef/pull/entry`)}
         style={{
           background: C.orange,
           color: C.white,
@@ -733,7 +733,7 @@ function BottomRail({ distributor, menuId }: BottomRailProps) {
       </span>
       <button
         onClick={() =>
-          navigate(`/chef/menus/${menuId}/pull-quote`, {
+          navigate(`/chef/pull/entry`, {
             state: { distributor_id: distributor.id, distributor_name: distributor.name },
           })
         }
