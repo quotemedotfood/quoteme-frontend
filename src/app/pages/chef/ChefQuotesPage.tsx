@@ -2,7 +2,7 @@
 // Full quote index list. Sits inside ChefShellLayout — content-only, no chrome.
 
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router';
+import { Link } from 'react-router';
 import { getChefQuotes, type ChefQuoteRow, type ChefQuotesIndexResponse } from '../../services/api';
 import { PreviewPill } from '../../components/chef/PreviewPill';
 import { QuoteStatusPill } from '../../components/chef/QuoteStatusPill';
@@ -71,16 +71,16 @@ function EmptyState() {
   );
 }
 
-function QuoteRow({ q, onPick }: { q: ChefQuoteRow; onPick: (q: ChefQuoteRow) => void }) {
+function QuoteRow({ q }: { q: ChefQuoteRow }) {
   return (
-    <div className="py-3 px-1 hover:bg-gray-50" style={{ borderBottom: `1px solid ${C.softLine}` }}>
+    <Link
+      to={`/chef/quotes/${q.id}`}
+      style={{ display: 'block', textDecoration: 'none', color: 'inherit', borderBottom: `1px solid ${C.softLine}` }}
+      className="py-3 px-1 hover:bg-gray-50"
+    >
       {/* Label row */}
       <div className="flex items-baseline justify-between gap-3">
-        <button
-          type="button"
-          onClick={() => onPick(q)}
-          className="min-w-0 flex-1 text-left flex items-baseline gap-2 hover:opacity-80"
-        >
+        <div className="min-w-0 flex-1 flex items-baseline gap-2">
           <span
             className="truncate"
             style={{ ...sans, fontSize: 14, fontWeight: 500, color: C.charcoal }}
@@ -90,6 +90,8 @@ function QuoteRow({ q, onPick }: { q: ChefQuoteRow; onPick: (q: ChefQuoteRow) =>
           {q.preview && <PreviewPill size="xs" />}
         </button>
         <QuoteStatusPill status={q.status} />
+        </div>
+        <StatusPill status={q.status} hasOG={q.has_order_guide} />
       </div>
       {/* B5 meta line */}
       <div
@@ -98,12 +100,11 @@ function QuoteRow({ q, onPick }: { q: ChefQuoteRow; onPick: (q: ChefQuoteRow) =>
       >
         {q.quote_number} · {q.distributor?.name ?? 'Unaffiliated'} · {formatDate(q.created_at)} · {q.item_count} {q.item_count === 1 ? 'item' : 'items'} · {money(q.total_cents)}
       </div>
-    </div>
+    </Link>
   );
 }
 
 export function ChefQuotesPage() {
-  const navigate = useNavigate();
   const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading');
   const [data, setData] = useState<ChefQuotesIndexResponse | null>(null);
   const [errorMsg, setErrorMsg] = useState<string>('');
@@ -125,7 +126,6 @@ export function ChefQuotesPage() {
   }, []);
 
   const quotes = data?.quotes ?? [];
-  const onPick = (q: ChefQuoteRow) => navigate(`/chef/quotes/${q.id}`);
 
   return (
     <div className="max-w-2xl mx-auto px-5 pt-6 pb-12" style={{ ...sans, color: C.charcoal }}>
@@ -143,7 +143,7 @@ export function ChefQuotesPage() {
           ) : (
             <div style={{ borderTop: `1px solid ${C.softLine}` }}>
               {quotes.map((q) => (
-                <QuoteRow key={q.id} q={q} onPick={onPick} />
+                <QuoteRow key={q.id} q={q} />
               ))}
             </div>
           )}
