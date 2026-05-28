@@ -4,12 +4,21 @@
 //
 // V3 spec refs: Part 6.7 (tab content scope), Part 9 (distributor follow-ups — locked copy).
 //
+// c71 (2026-05-27): Action buttons wired.
+//   YOU Edit → Sheet drawer, PATCH /api/v1/users/me (name + email; phone BE-gated to reps).
+//   Restaurant Edit → disabled-with-tooltip (no chef-scoped PATCH restaurant endpoint — Chef v4 pre-work).
+//   Replace logo → disabled-with-tooltip (no logo upload endpoint — Chef v4 pre-work).
+//   Remove / Resend invite → mailto interim (no chef-team-member BE endpoint — Chef v4 pre-work).
+//   Sign out → wired to AuthContext logout().
+//   Real data: YOU section from GET /api/v1/me; Restaurant name from GET /api/v1/chef/quotes[0].
+//
 // ChefTabBar: B1 (feat-a1-chef-sidebar-shell) will land this at
 //   src/app/components/chef/ChefTabBar (or ChefMobileTabBar).
 //   Minimal stub below — B1 will replace at bundle integration.
 // ChefTabDesktopShell: same B1 branch, same path.
 //   Minimal stub below — B1 will replace at bundle integration.
 
+import { useState, useEffect } from 'react';
 import { ImagePlus, UserPlus, Store, Plus } from 'lucide-react';
 
 import {
@@ -20,9 +29,14 @@ import {
   QuoteCountPill,
 } from './SettingsPrimitives';
 
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '../ui/sheet';
+import { useAuth } from '../../contexts/AuthContext';
+import { updateCurrentUser, getChefQuotes } from '../../services/api';
+
 // ─── Mailto helpers ───────────────────────────────────────────────────────────
-// Interim pattern — no Stripe chef product exists yet, so management actions
-// route to Justin via mailto. Matches the approach in UpgradeDrawer.tsx.
+// Interim pattern — no chef-team-member BE endpoint exists. Routes team
+// management actions to Justin via mailto. Replace when a real
+// /api/v1/chef/team_members resource lands (Chef v4 pre-work).
 
 function openTeamManagementMailto(action: 'Remove' | 'Resend', chefName: string, chefEmail: string) {
   const subject = encodeURIComponent('QuoteMe team management request');
@@ -33,9 +47,9 @@ function openTeamManagementMailto(action: 'Remove' | 'Resend', chefName: string,
 }
 
 function openAddPaymentMailto(chefIdentifier: string) {
-  const subject = encodeURIComponent('QuoteMe payment setup request');
+  const subject = encodeURIComponent('QuoteMe subscription request');
   const body = encodeURIComponent(
-    `I'd like to set up payment for QuoteMe. — ${chefIdentifier}`
+    `I'd like to subscribe to QuoteMe at $20/month. — ${chefIdentifier}`
   );
   window.location.href = `mailto:justinl@quoteme.food?subject=${subject}&body=${body}`;
 }
@@ -44,8 +58,10 @@ function openAddPaymentMailto(chefIdentifier: string) {
 
 type NavFn = (target: string) => void;
 
-// ─── Demo data — LOCKED (verbatim from source/screens-tabs.jsx) ──────────────
-// TODO: replace with API data from GET /api/v1/chef/settings (or equivalent endpoint).
+// ─── Demo data — team chefs only (no BE endpoint yet) ────────────────────────
+// TODO (Chef v4): replace TEAM_CHEFS with real data from a
+// GET /api/v1/chef/team_members endpoint once the BE resource exists.
+// LOCATIONS are also static pending a multi-location chef BE.
 
 const TEAM_CHEFS = [
   {
@@ -69,14 +85,6 @@ const LOCATIONS = [
   { name: 'The Maple Room', city: 'Rhinebeck, NY', role: 'Visiting', current: false },
 ];
 
-// TODO: replace with API data from GET /api/v1/chef/me.
-const DEMO = {
-  chefFirst: 'Marcus',
-  chefLast: 'Holloway',
-  chefEmail: 'marcus@hollowayandsons.com',
-  restaurant: 'Holloway & Sons',
-};
-
 // ─── B1 stubs ─────────────────────────────────────────────────────────────────
 // TODO: Remove these stubs when B1 (feat-a1-chef-sidebar-shell) merges to main.
 //       ChefTabBar → src/app/components/chef/ChefTabBar
@@ -98,6 +106,141 @@ function ChefTabDesktopShell({
   );
 }
 
+// ─── Edit You Drawer ─────────────────────────────────────────────────────────
+// Wired to PATCH /api/v1/users/me (first_name, last_name, email).
+// Phone is intentionally read-only for chefs: the BE update_me only writes
+// phone on rep_profile (which chefs don't have). Flag for Chef v4.
+
+interface EditYouDrawerProps {
+  open: boolean;
+  onClose: () => void;
+  initialFirstName: string;
+  initialLastName: string;
+  initialEmail: string;
+  onSaved: () => void;
+}
+
+function EditYouDrawer({
+  open,
+  onClose,
+  initialFirstName,
+  initialLastName,
+  initialEmail,
+  onSaved,
+}: EditYouDrawerProps) {
+  const [firstName, setFirstName] = useState(initialFirstName);
+  const [lastName, setLastName] = useState(initialLastName);
+  const [email, setEmail] = useState(initialEmail);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Sync fields when drawer opens with fresh values
+  useEffect(() => {
+    if (open) {
+      setFirstName(initialFirstName);
+      setLastName(initialLastName);
+      setEmail(initialEmail);
+      setError(null);
+    }
+  }, [open, initialFirstName, initialLastName, initialEmail]);
+
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    if (!firstName.trim() || !lastName.trim() || !email.trim()) {
+      setError('Name and email are required.');
+      return;
+    }
+    setSaving(true);
+    const res = await updateCurrentUser({
+      first_name: firstName.trim(),
+      last_name: lastName.trim(),
+      email: email.trim(),
+    });
+    setSaving(false);
+    if (res.error) {
+      setError(res.error);
+      return;
+    }
+    onSaved();
+    onClose();
+  }
+
+  return (
+    <Sheet open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
+      <SheetContent className="w-full sm:max-w-md">
+        <SheetHeader>
+          <SheetTitle className="serif">Edit your details</SheetTitle>
+        </SheetHeader>
+        <div className="px-4 pb-6">
+          <form onSubmit={handleSave} className="flex flex-col gap-5 mt-2">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex flex-col gap-1">
+                <label className="qm-eyebrow" style={{ fontSize: 10 }}>FIRST NAME</label>
+                <input
+                  className="border border-[var(--border)] rounded-md px-3 py-2 text-[13.5px] ink bg-transparent focus:outline-none focus:ring-1 focus:ring-[var(--primary)]"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  required
+                  disabled={saving}
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="qm-eyebrow" style={{ fontSize: 10 }}>LAST NAME</label>
+                <input
+                  className="border border-[var(--border)] rounded-md px-3 py-2 text-[13.5px] ink bg-transparent focus:outline-none focus:ring-1 focus:ring-[var(--primary)]"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  required
+                  disabled={saving}
+                />
+              </div>
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="qm-eyebrow" style={{ fontSize: 10 }}>EMAIL</label>
+              <input
+                type="email"
+                className="border border-[var(--border)] rounded-md px-3 py-2 text-[13.5px] ink bg-transparent focus:outline-none focus:ring-1 focus:ring-[var(--primary)]"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                disabled={saving}
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="qm-eyebrow" style={{ fontSize: 10 }}>PHONE</label>
+              <div
+                className="border border-[var(--border)] rounded-md px-3 py-2 text-[13.5px] ink-faint bg-transparent cursor-not-allowed select-none"
+                title="Phone updates require contacting support. Chef v4 pre-work."
+              >
+                —
+              </div>
+              <p className="text-[11px] ink-faint leading-snug">
+                To update your phone number, email{' '}
+                <a href="mailto:support@quoteme.food" className="underline ink-soft">
+                  support@quoteme.food
+                </a>
+                .
+              </p>
+            </div>
+            {error && (
+              <p className="text-[12px] text-red-600 leading-snug">{error}</p>
+            )}
+            <button
+              type="submit"
+              className="qm-btn qm-btn-orange mt-1"
+              style={{ padding: '10px 20px', fontSize: 13 }}
+              disabled={saving}
+            >
+              {saving ? 'Saving…' : 'Save changes'}
+            </button>
+          </form>
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
 // ─── ChefSettingsTab — mobile ────────────────────────────────────────────────
 
 interface ChefSettingsTabProps {
@@ -106,7 +249,33 @@ interface ChefSettingsTabProps {
 }
 
 export function ChefSettingsTab({ state = 'with-data', nav = noopNav }: ChefSettingsTabProps) {
+  const { user, refreshUser, logout } = useAuth();
   const empty = state === 'empty';
+
+  // Restaurant name fetched from first chef quote's restaurant field.
+  // Chef v4 pre-work: replace with a dedicated GET /api/v1/chef/profile endpoint
+  // that returns the chef's primary restaurant with address + phone.
+  const [restaurantName, setRestaurantName] = useState<string | null>(null);
+  const [editYouOpen, setEditYouOpen] = useState(false);
+
+  useEffect(() => {
+    if (!user) return;
+    getChefQuotes().then((res) => {
+      const quotes = res.data?.quotes ?? [];
+      const name = quotes.find((q) => q.restaurant?.name)?.restaurant?.name ?? null;
+      setRestaurantName(name);
+    });
+  }, [user]);
+
+  const chefFirst = user?.first_name ?? '';
+  const chefLast = user?.last_name ?? '';
+  const chefEmail = user?.email ?? '';
+  const chefFullName = [chefFirst, chefLast].filter(Boolean).join(' ') || '—';
+  const restaurantDisplay = restaurantName ?? '—';
+
+  function handleSignOut() {
+    logout();
+  }
 
   return (
     <div className="flex flex-col h-full">
@@ -122,12 +291,22 @@ export function ChefSettingsTab({ state = 'with-data', nav = noopNav }: ChefSett
 
         {/* YOU */}
         <SettingsSection title="YOU">
-          <SettingRow label="Name" value={empty ? '—' : `${DEMO.chefFirst} ${DEMO.chefLast}`} />
-          <SettingRow label="Email" value={DEMO.chefEmail} />
+          <SettingRow
+            label="Name"
+            value={empty ? '—' : chefFullName}
+            onEdit={() => setEditYouOpen(true)}
+          />
+          <SettingRow
+            label="Email"
+            value={empty ? '—' : (chefEmail || '—')}
+            onEdit={() => setEditYouOpen(true)}
+          />
           <SettingRow
             label="Phone"
-            value={empty ? 'Add a number' : '(518) 555-0188'}
-            placeholder={empty}
+            value={empty ? 'Add a number' : '—'}
+            placeholder={empty || true}
+            editDisabled
+            editTooltip="Phone updates for chefs coming in a future release."
           />
         </SettingsSection>
 
@@ -148,7 +327,7 @@ export function ChefSettingsTab({ state = 'with-data', nav = noopNav }: ChefSett
                 <ImagePlus size={20} color="var(--muted-foreground)" />
               ) : (
                 <span className="serif font-semibold" style={{ fontSize: 18, letterSpacing: 0.4 }}>
-                  H&amp;S
+                  {restaurantDisplay.charAt(0) || '?'}
                 </span>
               )}
             </div>
@@ -159,21 +338,35 @@ export function ChefSettingsTab({ state = 'with-data', nav = noopNav }: ChefSett
                   ? 'Square PNG or JPG. Shows on your order guides.'
                   : 'Shows on your order guide header and emails.'}
               </div>
-              <button className="text-[11.5px] underline ink-soft mt-1">
+              {/* Logo upload — no BE endpoint exists. Disabled with tooltip. Chef v4 pre-work. */}
+              <button
+                className="text-[11.5px] underline ink-soft mt-1 cursor-not-allowed opacity-50"
+                title="Logo upload coming in a future release."
+                disabled
+              >
                 {empty ? 'Upload' : 'Replace'}
               </button>
             </div>
           </div>
-          <SettingRow label="Name" value={empty ? 'Holloway & Sons' : DEMO.restaurant} />
+          <SettingRow
+            label="Name"
+            value={empty ? '—' : restaurantDisplay}
+            editDisabled
+            editTooltip="Restaurant edits require your rep. Chef v4 pre-work."
+          />
           <SettingRow
             label="Address"
-            value={empty ? 'Add address' : '412 Warren St, Hudson, NY 12534'}
-            placeholder={empty}
+            value={empty ? 'Add address' : '—'}
+            placeholder={empty || restaurantDisplay === '—'}
+            editDisabled
+            editTooltip="Restaurant edits require your rep. Chef v4 pre-work."
           />
           <SettingRow
             label="Phone"
-            value={empty ? 'Add a number' : '(518) 555-0140'}
-            placeholder={empty}
+            value={empty ? 'Add a number' : '—'}
+            placeholder={empty || true}
+            editDisabled
+            editTooltip="Restaurant edits require your rep. Chef v4 pre-work."
           />
         </SettingsSection>
 
@@ -225,6 +418,7 @@ export function ChefSettingsTab({ state = 'with-data', nav = noopNav }: ChefSett
                     {c.joined && <span> · joined {c.joined}</span>}
                   </div>
                 </div>
+                {/* mailto interim — no /api/v1/chef/team_members endpoint. Chef v4 pre-work. */}
                 <button
                   className="text-[11.5px] ink-soft underline shrink-0"
                   onClick={() =>
@@ -255,7 +449,7 @@ export function ChefSettingsTab({ state = 'with-data', nav = noopNav }: ChefSett
         <SettingsSection title="OTHER LOCATIONS" count={empty ? 0 : LOCATIONS.length - 1}>
           {empty ? (
             <div className="py-3 text-[12.5px] ink-faint leading-snug">
-              {DEMO.restaurant} is your only kitchen right now.
+              {restaurantDisplay} is your only kitchen right now.
             </div>
           ) : (
             LOCATIONS.filter((l) => !l.current).map((l, i) => (
@@ -317,7 +511,7 @@ export function ChefSettingsTab({ state = 'with-data', nav = noopNav }: ChefSett
               <button
                 className="qm-btn qm-btn-orange"
                 style={{ padding: '8px 14px', fontSize: 12.5 }}
-                onClick={() => openAddPaymentMailto(`${DEMO.chefFirst} ${DEMO.chefLast} <${DEMO.chefEmail}>`)}
+                onClick={() => openAddPaymentMailto(`${chefFullName} <${chefEmail}>`)}
               >
                 Add payment
               </button>
@@ -349,10 +543,22 @@ export function ChefSettingsTab({ state = 'with-data', nav = noopNav }: ChefSett
           className="mt-7 pt-4 flex items-center justify-between"
           style={{ borderTop: '1px solid var(--border)' }}
         >
-          <div className="text-[11.5px] ink-faint">Signed in as {DEMO.chefEmail}</div>
-          <button className="text-[11.5px] ink-soft underline">Sign out</button>
+          <div className="text-[11.5px] ink-faint">Signed in as {chefEmail || '—'}</div>
+          <button className="text-[11.5px] ink-soft underline" onClick={handleSignOut}>
+            Sign out
+          </button>
         </div>
       </div>
+
+      {/* Edit YOU drawer */}
+      <EditYouDrawer
+        open={editYouOpen}
+        onClose={() => setEditYouOpen(false)}
+        initialFirstName={chefFirst}
+        initialLastName={chefLast}
+        initialEmail={chefEmail}
+        onSaved={refreshUser}
+      />
     </div>
   );
 }
@@ -370,7 +576,30 @@ export function ChefSettingsTabDesktop({
   nav = noopNav,
   initialMode = 'open',
 }: ChefSettingsTabDesktopProps) {
+  const { user, refreshUser, logout } = useAuth();
   const empty = state === 'empty';
+
+  const [restaurantName, setRestaurantName] = useState<string | null>(null);
+  const [editYouOpen, setEditYouOpen] = useState(false);
+
+  useEffect(() => {
+    if (!user) return;
+    getChefQuotes().then((res) => {
+      const quotes = res.data?.quotes ?? [];
+      const name = quotes.find((q) => q.restaurant?.name)?.restaurant?.name ?? null;
+      setRestaurantName(name);
+    });
+  }, [user]);
+
+  const chefFirst = user?.first_name ?? '';
+  const chefLast = user?.last_name ?? '';
+  const chefEmail = user?.email ?? '';
+  const chefFullName = [chefFirst, chefLast].filter(Boolean).join(' ') || '—';
+  const restaurantDisplay = restaurantName ?? '—';
+
+  function handleSignOut() {
+    logout();
+  }
 
   return (
     <ChefTabDesktopShell active="settings" nav={nav} initialMode={initialMode}>
@@ -396,14 +625,20 @@ export function ChefSettingsTabDesktop({
             <div className="grid grid-cols-[120px_1fr_auto] items-baseline gap-x-4">
               <DesktopSettingRow
                 label="Name"
-                value={empty ? '—' : `${DEMO.chefFirst} ${DEMO.chefLast}`}
-                placeholder={empty}
+                value={empty ? '—' : chefFullName}
+                onEdit={() => setEditYouOpen(true)}
               />
-              <DesktopSettingRow label="Email" value={DEMO.chefEmail} />
+              <DesktopSettingRow
+                label="Email"
+                value={empty ? '—' : (chefEmail || '—')}
+                onEdit={() => setEditYouOpen(true)}
+              />
               <DesktopSettingRow
                 label="Phone"
-                value={empty ? 'Add a number' : '(518) 555-0188'}
-                placeholder={empty}
+                value={empty ? 'Add a number' : '—'}
+                placeholder={empty || true}
+                editDisabled
+                editTooltip="Phone updates for chefs coming in a future release."
               />
             </div>
           </section>
@@ -432,7 +667,7 @@ export function ChefSettingsTabDesktop({
                     className="serif font-semibold"
                     style={{ fontSize: 22, letterSpacing: 0.4 }}
                   >
-                    H&amp;S
+                    {restaurantDisplay.charAt(0) || '?'}
                   </span>
                 )}
               </div>
@@ -443,7 +678,12 @@ export function ChefSettingsTabDesktop({
                 <div className="text-[12px] ink-faint leading-snug">
                   Square PNG or JPG, up to 2 MB. Shows on your order guide header and emails.
                 </div>
-                <button className="text-[12px] underline ink-soft mt-1">
+                {/* Logo upload — no BE endpoint exists. Disabled with tooltip. Chef v4 pre-work. */}
+                <button
+                  className="text-[12px] underline ink-soft mt-1 cursor-not-allowed opacity-50"
+                  title="Logo upload coming in a future release."
+                  disabled
+                >
                   {empty ? 'Upload' : 'Replace'}
                 </button>
               </div>
@@ -451,17 +691,23 @@ export function ChefSettingsTabDesktop({
             <div className="grid grid-cols-[120px_1fr_auto] items-baseline gap-x-4">
               <DesktopSettingRow
                 label="Name"
-                value={empty ? 'Holloway & Sons' : DEMO.restaurant}
+                value={empty ? '—' : restaurantDisplay}
+                editDisabled
+                editTooltip="Restaurant edits require your rep. Chef v4 pre-work."
               />
               <DesktopSettingRow
                 label="Address"
-                value={empty ? 'Add address' : '412 Warren St, Hudson, NY 12534'}
-                placeholder={empty}
+                value={empty ? 'Add address' : '—'}
+                placeholder={empty || restaurantDisplay === '—'}
+                editDisabled
+                editTooltip="Restaurant edits require your rep. Chef v4 pre-work."
               />
               <DesktopSettingRow
                 label="Phone"
-                value={empty ? 'Add a number' : '(518) 555-0140'}
-                placeholder={empty}
+                value={empty ? 'Add a number' : '—'}
+                placeholder={empty || true}
+                editDisabled
+                editTooltip="Restaurant edits require your rep. Chef v4 pre-work."
               />
             </div>
           </section>
@@ -531,6 +777,7 @@ export function ChefSettingsTabDesktop({
                       {c.joined && ` · joined ${c.joined}`}
                     </div>
                   </div>
+                  {/* mailto interim — no /api/v1/chef/team_members endpoint. Chef v4 pre-work. */}
                   <button
                     className="text-[12px] ink-soft underline shrink-0"
                     onClick={() =>
@@ -579,7 +826,7 @@ export function ChefSettingsTabDesktop({
                 className="py-4 text-[13px] ink-faint leading-relaxed"
                 style={{ maxWidth: 480 }}
               >
-                {DEMO.restaurant} is your only kitchen right now.
+                {restaurantDisplay} is your only kitchen right now.
               </div>
             ) : (
               LOCATIONS.filter((l) => !l.current).map((l, i) => (
@@ -647,7 +894,7 @@ export function ChefSettingsTabDesktop({
                 <button
                   className="qm-btn qm-btn-orange"
                   style={{ padding: '10px 16px', fontSize: 13 }}
-                  onClick={() => openAddPaymentMailto(`${DEMO.chefFirst} ${DEMO.chefLast} <${DEMO.chefEmail}>`)}
+                  onClick={() => openAddPaymentMailto(`${chefFullName} <${chefEmail}>`)}
                 >
                   Add payment
                 </button>
@@ -680,11 +927,23 @@ export function ChefSettingsTabDesktop({
             className="mt-10 pt-5 flex items-center justify-between"
             style={{ borderTop: '1px solid var(--border)' }}
           >
-            <div className="text-[12px] ink-faint">Signed in as {DEMO.chefEmail}</div>
-            <button className="text-[12px] ink-soft underline">Sign out</button>
+            <div className="text-[12px] ink-faint">Signed in as {chefEmail || '—'}</div>
+            <button className="text-[12px] ink-soft underline" onClick={handleSignOut}>
+              Sign out
+            </button>
           </div>
         </div>
       </div>
+
+      {/* Edit YOU drawer */}
+      <EditYouDrawer
+        open={editYouOpen}
+        onClose={() => setEditYouOpen(false)}
+        initialFirstName={chefFirst}
+        initialLastName={chefLast}
+        initialEmail={chefEmail}
+        onSaved={refreshUser}
+      />
     </ChefTabDesktopShell>
   );
 }
@@ -697,4 +956,3 @@ export {
   DistributorFollowupRow,
   QuoteCountPill,
 } from './SettingsPrimitives';
-
