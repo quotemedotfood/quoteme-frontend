@@ -6,26 +6,22 @@ import { DemoBanner } from './DemoBanner';
 import { isDemoMode } from '../utils/demoMode';
 import { isBuyerRole } from '../utils/roles';
 import { useAuth } from '../contexts/AuthContext';
-
-// P0 (Bug #1): /chef/quotes/:id is the chef receipt and must render
-// for a guest who holds a guest-session token in localStorage. The
-// BE endpoint authenticates the token via Chef::BaseController's
-// X-Guest-Token header path; this regex gates which FE paths the
-// guest-token bypass applies to so rep / admin routes still require
-// real auth.
-const CHEF_RECEIPT_PATH = /^\/chef\/quotes\/[^/]+/;
+import { guestTokenBypassesAuthGuard } from '../utils/routeGuard';
 
 export function RootLayout() {
   const demo = isDemoMode();
   const { user, isAuthenticated, isLoading } = useAuth();
   const location = useLocation();
 
-  const guestToken =
-    typeof window !== 'undefined' ? localStorage.getItem('quoteme_guest_token') : null;
+  // P0 (Bug #1 / route-guard): /chef/quotes/:id is the chef receipt and must
+  // render for a guest who holds a quoteme_guest_token in localStorage.
+  // guestTokenBypassesAuthGuard() reads localStorage synchronously BEFORE the
+  // Navigate redirect fires — this is the critical ordering that lets returning
+  // unauthenticated chefs see their emailed quote link without being bounced to
+  // /auth. The BE endpoint authenticates the token via Chef::BaseController's
+  // X-Guest-Token header; see src/app/utils/routeGuard.ts for path scoping.
   const isGuestChefReceipt =
-    !isAuthenticated &&
-    Boolean(guestToken) &&
-    CHEF_RECEIPT_PATH.test(location.pathname);
+    !isAuthenticated && guestTokenBypassesAuthGuard(location.pathname);
 
   if (!demo && !isAuthenticated && !isLoading && !isGuestChefReceipt) {
     return <Navigate to="/auth" replace />;
