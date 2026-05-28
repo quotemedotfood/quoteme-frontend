@@ -2,29 +2,38 @@
 //
 // Mirrors ChefTabDesktopShell / NewspaperSidebarStub (chef-side) with
 // rep-specific nav destinations:
-//   Triage (inbox) · Quotes (file-text) · Catalog (clipboard-list) · Settings (settings)
+//   Quotes > Inbound · Quotes > History · Settings
 //
 // Sidebar modes: 'open' (280px) · 'collapsed' (64px) · 'hidden' (no sidebar).
 // When hidden, a restore button floats at the left edge.
 //
 // "WORKING AS" block: rep name + distributor name (never catalog name).
 //
-// Nav group structure (Moose lock May 26):
-//   THE DAILY WORK: Triage (with sub-items) · Quotes
-//   YOUR DESK:      Catalog (with sub-items)
+// Nav group structure (Stage 1 restructure 2026-05-28):
+//   THE DAILY WORK: Quotes (with sub-items: Inbound · History)
 //   [bottom]:       Settings · Hide sidebar
+//
+// Catalog removed from rep sidebar — reps access catalog via
+// /distributor-admin/catalog links embedded in the triage banners.
 //
 // Source: designs/handoff/5272026/src/screens-rep.jsx · RepNewspaperSidebar
 // and RepDesktopShell. Translated from prototype conventions to FE idioms.
 //
 // Cross-cutting constraint: Sacred Orange = var(--primary), never #F9A64B.
 // Coverage/accent dots = var(--accent).
+//
+// SIDEBAR PERSISTENCE BUG (Stage 2 fix):
+//   Each rep page (RepTriagePage, RepIncomingQuotePage, RepReviewThreePanelDesktop)
+//   renders its own <RepDesktopShell> instance, so the shell unmounts/remounts on
+//   every navigation and sidebar mode resets to 'open'. Fix: create a RepLayout
+//   component that renders <RepNewspaperSidebar> + <Outlet />, hoist all /rep/*
+//   routes under it, and remove the per-page RepDesktopShell wrappers. Each page
+//   would render only its content body (no shell). Filed for Stage 2 — touching
+//   3+ page internals is out of scope for this atomic PR.
 
 import React, { useState } from 'react';
 import {
-  Inbox,
   FileText,
-  ClipboardList,
   Settings,
   PanelLeftClose,
   PanelLeftOpen,
@@ -48,7 +57,9 @@ const serif: React.CSSProperties = {
 };
 
 export type RepSidebarMode = 'open' | 'collapsed' | 'hidden';
-export type RepActiveTab = 'triage' | 'quotes' | 'catalog' | 'settings';
+// 'quotes-inbound' and 'quotes-history' are sub-tab states under the Quotes parent.
+// 'quotes' is a catch-all when on a quote detail page (/rep/quotes/:id).
+export type RepActiveTab = 'quotes-inbound' | 'quotes-history' | 'quotes' | 'settings';
 
 // ─── Nav destination config ──────────────────────────────────────────────────
 
@@ -57,39 +68,20 @@ interface NavDestConfig {
   label: string;
   target: string;
   Icon: React.ComponentType<{ size?: number; strokeWidth?: number }>;
-  group: 'daily' | 'desk' | 'bottom';
-  sub?: { label: string; meta: string; target: string }[];
+  group: 'daily' | 'bottom';
+  sub?: { label: string; meta: string; target: string; id: RepActiveTab }[];
 }
 
 const NAV_ITEMS: NavDestConfig[] = [
   {
-    id: 'triage',
-    label: 'Triage',
-    target: 'rep-triage',
-    Icon: Inbox,
-    group: 'daily',
-    sub: [
-      { label: 'Incoming',    meta: '',  target: 'rep-triage' },
-      { label: 'In progress', meta: '',  target: 'rep-triage' },
-      { label: 'Confirmed',   meta: '',  target: 'rep-triage' },
-    ],
-  },
-  {
     id: 'quotes',
     label: 'Quotes',
-    target: 'rep-quotes',
+    target: 'rep-quotes-inbound',
     Icon: FileText,
     group: 'daily',
-  },
-  {
-    id: 'catalog',
-    label: 'Catalog',
-    target: 'rep-catalog',
-    Icon: ClipboardList,
-    group: 'desk',
     sub: [
-      { label: 'Current',         meta: '', target: 'rep-catalog' },
-      { label: 'Confirm pricing', meta: '', target: 'rep-catalog' },
+      { id: 'quotes-inbound',  label: 'Inbound', meta: '', target: 'rep-quotes-inbound' },
+      { id: 'quotes-history',  label: 'History', meta: '', target: 'rep-quotes-history' },
     ],
   },
   {
@@ -137,7 +129,9 @@ function NavDestination({
   count?: number;
   onNav: (target: string) => void;
 }) {
-  const on = item.id === active;
+  // Parent item is "on" when active matches any of its sub-item ids, or itself.
+  const subIds = item.sub?.map((s) => s.id) ?? [];
+  const on = item.id === active || subIds.includes(active);
   const { Icon } = item;
 
   return (
@@ -185,35 +179,39 @@ function NavDestination({
         )}
       </button>
 
-      {/* Sub-items — only in open mode */}
+      {/* Sub-items — always shown when parent is active, open mode only */}
       {!collapsed && on && item.sub && (
         <div style={{ paddingLeft: 52 }}>
-          {item.sub.map((s) => (
-            <button
-              key={s.label}
-              type="button"
-              onClick={() => onNav(s.target)}
-              style={{
-                ...sans,
-                width: '100%',
-                display: 'flex',
-                alignItems: 'baseline',
-                justifyContent: 'space-between',
-                gap: 8,
-                padding: '4px 24px 4px 0',
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                fontSize: 12,
-                color: C.gray700,
-              }}
-            >
-              <span>{s.label}</span>
-              {s.meta && (
-                <span style={{ ...sans, fontSize: 11, color: C.gray500 }}>{s.meta}</span>
-              )}
-            </button>
-          ))}
+          {item.sub.map((s) => {
+            const subOn = s.id === active;
+            return (
+              <button
+                key={s.label}
+                type="button"
+                onClick={() => onNav(s.target)}
+                style={{
+                  ...sans,
+                  width: '100%',
+                  display: 'flex',
+                  alignItems: 'baseline',
+                  justifyContent: 'space-between',
+                  gap: 8,
+                  padding: '4px 24px 4px 0',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontSize: 12,
+                  fontWeight: subOn ? 600 : 400,
+                  color: subOn ? C.charcoal : C.gray700,
+                }}
+              >
+                <span>{s.label}</span>
+                {s.meta && (
+                  <span style={{ ...sans, fontSize: 11, color: C.gray500 }}>{s.meta}</span>
+                )}
+              </button>
+            );
+          })}
         </div>
       )}
     </div>
@@ -231,10 +229,8 @@ export interface RepNewspaperSidebarProps {
   repName?: string;
   /** Distributor name — never catalog name */
   distributorName?: string;
-  /** Badge count on Triage (incoming quotes) */
+  /** Stage 2: badge count on Inbound sub-item (not wired yet) */
   incomingCount?: number;
-  /** Total quote count for Quotes nav item */
-  quotesCount?: number;
 }
 
 export function RepNewspaperSidebar({
@@ -245,7 +241,6 @@ export function RepNewspaperSidebar({
   repName = 'Marcus Rivera',
   distributorName = "D'Lisius Distribution Co.",
   incomingCount = 0,
-  quotesCount = 0,
 }: RepNewspaperSidebarProps) {
   const collapsed = mode === 'collapsed';
   const width = collapsed ? 64 : 280;
@@ -256,7 +251,6 @@ export function RepNewspaperSidebar({
     .join('');
 
   const dailyItems = NAV_ITEMS.filter((n) => n.group === 'daily');
-  const deskItems  = NAV_ITEMS.filter((n) => n.group === 'desk');
   const bottomItems = NAV_ITEMS.filter((n) => n.group === 'bottom');
 
   return (
@@ -415,21 +409,6 @@ export function RepNewspaperSidebar({
             item={item}
             active={active}
             collapsed={collapsed}
-            count={item.id === 'triage' ? incomingCount : item.id === 'quotes' ? quotesCount : undefined}
-            onNav={onNav}
-          />
-        ))}
-      </div>
-
-      {/* Your desk nav group */}
-      <div style={{ paddingTop: 4, paddingBottom: 8 }}>
-        <NavGroupLabel label="YOUR DESK" collapsed={collapsed} />
-        {deskItems.map((item) => (
-          <NavDestination
-            key={item.id}
-            item={item}
-            active={active}
-            collapsed={collapsed}
             onNav={onNav}
           />
         ))}
@@ -528,7 +507,6 @@ export interface RepDesktopShellProps {
   repName?: string;
   distributorName?: string;
   incomingCount?: number;
-  quotesCount?: number;
 }
 
 export function RepDesktopShell({
@@ -539,7 +517,6 @@ export function RepDesktopShell({
   repName,
   distributorName,
   incomingCount,
-  quotesCount,
 }: RepDesktopShellProps) {
   const [mode, setMode] = useState<RepSidebarMode>(initialMode);
   const hidden = mode === 'hidden';
@@ -562,7 +539,6 @@ export function RepDesktopShell({
           repName={repName}
           distributorName={distributorName}
           incomingCount={incomingCount}
-          quotesCount={quotesCount}
         />
       )}
 

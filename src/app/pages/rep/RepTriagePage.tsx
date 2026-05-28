@@ -74,7 +74,8 @@ export function RepTriagePage() {
   }, []);
 
   const nav = (dest: string, opts?: { quoteId?: string }) => {
-    if (dest === 'rep-triage') navigate('/rep/triage');
+    if (dest === 'rep-triage' || dest === 'rep-quotes-inbound') navigate('/rep/quotes/inbound');
+    else if (dest === 'rep-quotes-history') navigate('/rep/quotes/history');
     else if (dest === 'rep-incoming' && opts?.quoteId) navigate(`/rep/quotes/${opts.quoteId}`);
     else if (dest === 'rep-pricing' && opts?.quoteId) navigate(`/rep/quotes/${opts.quoteId}?mode=pricing`);
     else if (dest === 'rep-catalog') navigate('/distributor-admin/catalog');
@@ -88,7 +89,7 @@ export function RepTriagePage() {
     <>
       {/* Desktop view */}
       <div className="hidden md:block">
-        <RepDesktopShell active="triage" nav={nav}>
+        <RepDesktopShell active="quotes-inbound" nav={nav}>
           {body}
         </RepDesktopShell>
       </div>
