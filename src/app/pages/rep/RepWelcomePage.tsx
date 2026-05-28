@@ -141,7 +141,7 @@ export function RepWelcomePage() {
   };
 
   const handleTriage = () => {
-    navigate('/rep/triage');
+    navigate('/rep/quotes/inbound');
   };
 
   return (

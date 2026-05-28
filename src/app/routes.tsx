@@ -190,14 +190,35 @@ export const router = createBrowserRouter([
             { path: "vendors", Component: VendorsPage },
             { path: "vendors/:id", Component: VendorDetailPage },
             { path: "locations", Component: LocationPage },
-            { path: "rep/quotes", Component: QuotesPage },
             { path: "quotes", Component: QuotesRoleRouter },
             { path: "settings", Component: SettingsPage },
             { path: "settings/billing", Component: SettingsPage },
             // ── Rep suite routes (auth-guarded via RootLayout) ──────────────
             // /rep/welcome is placed OUTSIDE RootLayout (pre-auth, magic link).
-            { path: "rep/triage", Component: RepTriagePage },
-            { path: "rep/quotes/:id", Component: RepIncomingQuotePage },
+            //
+            // Route hierarchy:
+            //   /rep/quotes              → redirects to /rep/quotes/inbound (index)
+            //   /rep/quotes/inbound      → RepTriagePage (was /rep/triage)
+            //   /rep/quotes/history      → QuotesPage (was /rep/quotes)
+            //   /rep/quotes/:id          → RepIncomingQuotePage (unchanged)
+            //
+            // Legacy redirect: /rep/triage → /rep/quotes/inbound
+            {
+              path: "rep/triage",
+              element: <Navigate to="/rep/quotes/inbound" replace />,
+            },
+            {
+              path: "rep/quotes",
+              children: [
+                { index: true, element: <Navigate to="/rep/quotes/inbound" replace /> },
+                { path: "inbound", Component: RepTriagePage },
+                { path: "history", Component: QuotesPage },
+                // Detail route must be nested here so /rep/quotes/:id still resolves.
+                // The :id segment won't collide with "inbound"/"history" because
+                // react-router matches static segments before dynamic ones.
+                { path: ":id", Component: RepIncomingQuotePage },
+              ],
+            },
           ]),
           { path: "upgrade", Component: PaywallPage },
           { path: "start-new-quote", Component: StartNewQuotePage },

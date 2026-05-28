@@ -80,7 +80,8 @@ export function RepReviewThreePanelDesktop({ quoteId }: { quoteId: string }) {
   const [saving, setSaving] = useState(false);
 
   const nav = (dest: string, opts?: { quoteId?: string }) => {
-    if (dest === 'rep-triage') navigate('/rep/triage');
+    if (dest === 'rep-triage' || dest === 'rep-quotes-inbound') navigate('/rep/quotes/inbound');
+    else if (dest === 'rep-quotes-history') navigate('/rep/quotes/history');
     else if (dest === 'rep-incoming') navigate(`/rep/quotes/${opts?.quoteId || quoteId}`);
     else if (dest === 'rep-pricing') navigate(`/rep/quotes/${opts?.quoteId || quoteId}?mode=pricing`);
     else if (dest === 'rep-catalog') navigate('/distributor-admin/catalog');
@@ -123,7 +124,7 @@ export function RepReviewThreePanelDesktop({ quoteId }: { quoteId: string }) {
     if (saving) return;
     setSaving(true);
     const res = await repConfirmQuote(quoteId);
-    if (res.data) navigate('/rep/triage');
+    if (res.data) navigate('/rep/quotes/inbound');
     setSaving(false);
   };
 

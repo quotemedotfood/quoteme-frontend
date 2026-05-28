@@ -109,7 +109,7 @@ export function RepPricingOnlyView({ quoteId }: { quoteId: string }) {
     setSaving(true);
     await handleSave();
     const res = await repConfirmQuote(quoteId);
-    if (res.data) navigate('/rep/triage');
+    if (res.data) navigate('/rep/quotes/inbound');
     setSaving(false);
   };
 

@@ -23,5 +23,5 @@ export function QuotesRoleRouter() {
     return <Navigate to="/chef/quotes" replace />;
   }
 
-  return <Navigate to="/rep/quotes" replace />;
+  return <Navigate to="/rep/quotes/inbound" replace />;
 }

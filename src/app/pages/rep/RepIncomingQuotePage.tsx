@@ -123,7 +123,8 @@ export function RepIncomingQuotePage() {
   const isEmptyMenu = lines.length === 0 && !!chefRequestMessage;
 
   const nav = (dest: string, opts?: { quoteId?: string }) => {
-    if (dest === 'rep-triage') navigate('/rep/triage');
+    if (dest === 'rep-triage' || dest === 'rep-quotes-inbound') navigate('/rep/quotes/inbound');
+    else if (dest === 'rep-quotes-history') navigate('/rep/quotes/history');
     else if (dest === 'rep-incoming') navigate(`/rep/quotes/${opts?.quoteId || id}`);
     else if (dest === 'rep-pricing') navigate(`/rep/quotes/${opts?.quoteId || id}?mode=pricing`);
     else if (dest === 'rep-review') navigate(`/rep/quotes/${opts?.quoteId || id}?mode=review`);
@@ -151,7 +152,7 @@ export function RepIncomingQuotePage() {
     const res = await repConfirmQuote(id);
     if (res.data) {
       setQuote(res.data);
-      navigate('/rep/triage');
+      navigate('/rep/quotes/inbound');
     }
     setSaving(false);
   };
@@ -197,10 +198,10 @@ export function RepIncomingQuotePage() {
       >
         <button
           type="button"
-          onClick={() => navigate('/rep/triage')}
+          onClick={() => navigate('/rep/quotes/inbound')}
           style={{ ...sans, display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, color: C.gray700, background: 'none', border: 'none', cursor: 'pointer' }}
         >
-          <ChevronLeft size={13} strokeWidth={1.8} /> Triage
+          <ChevronLeft size={13} strokeWidth={1.8} /> Inbound
         </button>
         {sentAt && <span style={{ ...sans, fontSize: 11, color: C.gray500 }}>{sentAt}</span>}
       </div>
