@@ -1984,6 +1984,8 @@ export interface ChefQuoteRow {
   id: string;
   quote_number: string;
   label: string;
+  /** J1 document-state machine: preview | distributor_quote | confirmed | accepted | declined | expired */
+  state: string | null;
   status: string;
   preview: boolean;
   created_at: string;
