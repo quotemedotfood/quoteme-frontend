@@ -456,9 +456,10 @@ function ProductAltCard({
   primary?: boolean;
   onClick?: () => void;
 }) {
+  const Tag = onClick ? 'button' : 'div';
   return (
-    <div
-      onClick={onClick}
+    <Tag
+      {...(onClick ? { type: 'button' as const, onClick } : {})}
       style={{
         padding: '10px 14px',
         borderRadius: 6,
@@ -466,6 +467,8 @@ function ProductAltCard({
         background: selected ? C.warmPaper : '#fff',
         cursor: onClick ? 'pointer' : 'default',
         marginTop: primary ? 8 : 0,
+        width: onClick ? '100%' : undefined,
+        textAlign: onClick ? 'left' as const : undefined,
       }}
     >
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
@@ -477,13 +480,9 @@ function ProductAltCard({
           </div>
         </div>
         {!selected && onClick && (
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); onClick(); }}
-            style={{ ...sans, fontSize: 11, color: C.charcoal, background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', flexShrink: 0 }}
-          >
+          <span style={{ ...sans, fontSize: 11, color: C.charcoal, flexShrink: 0, textDecoration: 'underline' }}>
             Swap
-          </button>
+          </span>
         )}
         {selected && (
           <span style={{ ...sans, fontSize: 10, color: C.gray500, letterSpacing: '.12em', textTransform: 'uppercase', flexShrink: 0 }}>
@@ -491,7 +490,7 @@ function ProductAltCard({
           </span>
         )}
       </div>
-    </div>
+    </Tag>
   );
 }
 

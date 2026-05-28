@@ -5,9 +5,6 @@
 //                    (Review the quote / Go straight to pricing)
 //   'auto-fired':    primary "Send to chef" (disabled if unpricedCount > 0)
 //                    + secondary "Review before sending"
-//   'review-only':   primary "Review the quote" (blue accent) + secondary
-//                    "Go straight to pricing" (text)
-//   'pricing-only':  primary "Confirm & send back" (orange)
 //
 // Justin May 27 Q3 lock: CTAs always both visible. Partial-coverage
 // deemphasizes "Go straight to pricing" with microcopy below.
@@ -18,7 +15,7 @@
 // RepIncomingQuotePage.
 
 import React from 'react';
-import { DollarSign, SquarePen, ArrowRight, Check } from 'lucide-react';
+import { DollarSign, SquarePen, ArrowRight } from 'lucide-react';
 
 const C = {
   charcoal: '#2B2B2B',
@@ -37,7 +34,7 @@ const serif: React.CSSProperties = {
   fontFamily: "'Playfair Display', Georgia, 'Times New Roman', serif",
 };
 
-export type RepCtaFlowState = 'first-arrival' | 'auto-fired' | 'review-only' | 'pricing-only';
+export type RepCtaFlowState = 'first-arrival' | 'auto-fired';
 
 export interface RepCtaStripProps {
   flowState?: RepCtaFlowState;
@@ -51,7 +48,6 @@ export interface RepCtaStripProps {
   onReview?: () => void;
   onGoPricing?: () => void;
   onSendToChef?: () => void;
-  onConfirmSend?: () => void;
 }
 
 export function RepCtaStrip({
@@ -63,7 +59,6 @@ export function RepCtaStrip({
   onReview,
   onGoPricing,
   onSendToChef,
-  onConfirmSend,
 }: RepCtaStripProps) {
   const primaryBtn: React.CSSProperties = {
     ...sans,
@@ -190,34 +185,6 @@ export function RepCtaStrip({
     );
   }
 
-  if (flowState === 'review-only') {
-    return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        <button type="button" style={reviewBtn} onClick={onReview}>
-          <SquarePen size={12} color={C.charcoal} strokeWidth={1.8} />
-          Review the quote
-        </button>
-        <button type="button" style={{ ...textBtn, flex: 'unset', width: '100%' }} onClick={onGoPricing}>
-          Go straight to pricing
-        </button>
-      </div>
-    );
-  }
-
-  // pricing-only
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      <button type="button" style={primaryBtn} onClick={onConfirmSend}>
-        <Check size={14} color="#fff" strokeWidth={1.8} />
-        Confirm &amp; send back
-      </button>
-      {totalCount > 0 && (
-        <p style={caption}>
-          {unpricedCount > 0
-            ? `${unpricedCount} ${unpricedCount === 1 ? 'line' : 'lines'} still need a price.`
-            : 'All lines priced.'}
-        </p>
-      )}
-    </div>
-  );
+  // Fallback — should not be reached with the two live branches above.
+  return null;
 }

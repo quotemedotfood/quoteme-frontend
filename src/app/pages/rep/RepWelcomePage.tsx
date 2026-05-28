@@ -16,6 +16,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { consumeRepMagicLink } from '../../services/api';
 import type { RepMagicLinkConsumeResponse } from '../../services/api';
+import { RepMatchStateBadge } from '../../components/rep/RepMatchStateBadge';
 
 const serif: React.CSSProperties = {
   fontFamily: "'Playfair Display', Georgia, 'Times New Roman', serif",
@@ -199,7 +200,7 @@ export function RepWelcomePage() {
                   {q.waiting_hours != null && q.waiting_hours > 0 ? ` · waiting ${q.waiting_hours}h` : ''}
                 </div>
                 <div style={{ marginTop: 6 }}>
-                  <MatchStateBadge state={q.match_state} missingCount={q.missing_count} />
+                  <RepMatchStateBadge state={q.match_state} missingCount={q.missing_count} />
                 </div>
               </div>
             </div>
@@ -289,41 +290,6 @@ export function RepWelcomePage() {
         </div>
       </div>
     </PageShell>
-  );
-}
-
-// ─── Inline MatchStateBadge ────────────────────────────────────────────────
-function MatchStateBadge({ state, missingCount }: { state: 'ready' | 'review' | 'coverage'; missingCount?: number }) {
-  const spec = {
-    ready:    { label: 'Ready to price',  dot: 'var(--accent, #7FAEC2)', ring: C.softLine },
-    review:   { label: 'Needs my review', dot: C.charcoal,               ring: C.softLine },
-    coverage: { label: 'Coverage gaps',   dot: 'var(--primary)',          ring: 'rgba(249,166,75,.35)' },
-  }[state] ?? { label: state, dot: C.gray500, ring: C.softLine };
-
-  const suffix = state === 'coverage' && missingCount
-    ? ` · ${missingCount} missing`
-    : state === 'review' && missingCount
-      ? ` · ${missingCount} flagged`
-      : '';
-
-  return (
-    <span
-      style={{
-        ...sans,
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: 6,
-        padding: '2px 9px 2px 8px',
-        borderRadius: 999,
-        border: `1px solid ${spec.ring}`,
-        fontSize: 11,
-        color: C.charcoal,
-        lineHeight: 1.4,
-      }}
-    >
-      <span style={{ width: 7, height: 7, borderRadius: '50%', background: spec.dot, display: 'inline-block' }} />
-      {spec.label}{suffix}
-    </span>
   );
 }
 
