@@ -2186,8 +2186,9 @@ export interface PullQuoteCreateRequest {
 }
 
 // Pull-quote create response
+// BE (Api::V1::Chef::PullQuotesController#create) returns { quote_id, status, ... }
 export interface PullQuoteCreateResponse {
-  pull_quote_id: string;
+  quote_id: string;
   status: string;
 }
 

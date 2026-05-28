@@ -308,7 +308,7 @@ export function ChefPullEntryPage() {
         return;
       }
 
-      navigate(`/chef/pull/status/${res.data!.pull_quote_id}`, {
+      navigate(`/chef/pull/status/${res.data!.quote_id}`, {
         state: {
           distributor,
           raw_text: isPasteMode ? pasteText.trim() : undefined,
