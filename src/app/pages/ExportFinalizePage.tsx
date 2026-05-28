@@ -270,6 +270,18 @@ export function ExportFinalizePage() {
   const [smsSent, setSmsSent] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
 
+  // Reset email drawer state when it closes so the button label and
+  // in-flight flags don't persist as stale state on reopen.
+  // TODO(Desi): "Send Quote" (sticky footer) and "Email Quote to Chef" (send section)
+  // both open the same email drawer — confirm this is intentional.
+  useEffect(() => {
+    if (!showEmailDrawer) {
+      setEmailSent(false);
+      setSendingEmail(false);
+      setSendError(null);
+    }
+  }, [showEmailDrawer]);
+
   // Manual send inputs (for open quotes)
   const [manualEmail, setManualEmail] = useState('');
   const [manualPhone, setManualPhone] = useState('');
