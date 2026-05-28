@@ -265,21 +265,10 @@ export function ChefEntryPage() {
     }
   }
 
-  // P0-12: take over the screen with the status-page visual the moment the
-  // chef clicks "Build my quote" — no waiting for the POST response before
-  // showing feedback. When the response returns, we navigate(replace) to
-  // /chef/status/<id>; the chef perceives zero transition because
-  // ChefStatusPage renders the identical layout.
-  if (submitting) {
-    return (
-      <BuildingQuoteOverlay
-        onTimeout={() => {
-          setSubmitting(false);
-          setError('Taking longer than usual. Please try again.');
-        }}
-      />
-    );
-  }
+  // Track 22: POST now returns 202 Accepted immediately with { quote_id, status: "processing" }.
+  // We navigate to /chef/status/:id as soon as quote_id is received (~200ms vs ~20-30s).
+  // The submitting state still disables the submit button to prevent double-submission.
+  // BuildingQuoteOverlay removed — ChefStatusPage shows real pipeline stages via polling.
 
   return (
     <div className={pageWrap}>
@@ -470,93 +459,6 @@ export function ChefEntryPage() {
           )}
         </div>
       </div>
-    </div>
-  );
-}
-
-// ─── BuildingQuoteOverlay ────────────────────────────────────────────────────
-// Visual carbon-copy of ChefStatusPage so the chef perceives zero transition
-// between submit-click and the status page. Used while the POST is in flight
-// (we don't yet have a quote_id to navigate to). Stage messages tick from the
-// moment the click registers; after navigate() resolves to /chef/status/<id>
-// the timer restarts there — close enough that the chef doesn't notice.
-
-// Four canonical messages per QUOTEME_CHEF_FLOW_CANONICAL_V3 Part 6 Step 4.
-// Dots animation provides trailing ellipsis — strings omit it.
-const STATUS_STAGES: Array<{ at: number; message: string }> = [
-  { at:  0, message: 'Preparing your draft' },
-  { at:  8, message: 'Checking catalog coverage' },
-  { at: 18, message: 'Organizing menu components' },
-  { at: 30, message: 'Preparing distributor alignment' },
-];
-
-function stageFor(elapsedSec: number): string {
-  let current = STATUS_STAGES[0].message;
-  for (const stage of STATUS_STAGES) {
-    if (elapsedSec >= stage.at) current = stage.message;
-  }
-  return current;
-}
-
-interface BuildingQuoteOverlayProps {
-  onTimeout: () => void;
-}
-
-function BuildingQuoteOverlay({ onTimeout }: BuildingQuoteOverlayProps) {
-  const [dots, setDots] = useState('');
-  const [elapsed, setElapsed] = useState(0);
-  const dotsRef = useRef(0);
-  const startedAtRef = useRef<number>(Date.now());
-  const onTimeoutRef = useRef(onTimeout);
-  onTimeoutRef.current = onTimeout;
-
-  useEffect(() => {
-    const states = ['', '.', '..', '...'];
-    const interval = setInterval(() => {
-      dotsRef.current = (dotsRef.current + 1) % states.length;
-      setDots(states[dotsRef.current]);
-    }, 500);
-    return () => clearInterval(interval);
-  }, []);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setElapsed(Math.floor((Date.now() - startedAtRef.current) / 1000));
-    }, 1000);
-    return () => clearInterval(interval);
-  }, []);
-
-  // c133: 60-second timeout — if the POST hasn't resolved by then, surface
-  // a calm retry prompt so the chef is never left on a blank spinner.
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      onTimeoutRef.current();
-    }, 60_000);
-    return () => clearTimeout(timer);
-  }, []);
-
-  const stageMessage = stageFor(elapsed);
-
-  return (
-    <div className="min-h-screen bg-white flex flex-col items-center justify-center p-6">
-      <div className="w-full max-w-sm flex flex-col items-center text-center gap-6">
-        <div
-          className="w-12 h-12 rounded-full border-4 border-[#E0E0E0] border-t-[#E5A84B]"
-          style={{ animation: 'spin 1s linear infinite' }}
-        />
-        <div>
-          <h1
-            className="text-2xl font-bold text-[#2B2B2B] mb-2"
-            style={headlineStyle}
-          >
-            {stageMessage}{dots}
-          </h1>
-          <p className="text-[#4F4F4F] text-base">
-            This usually takes about 30 seconds.
-          </p>
-        </div>
-      </div>
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 }

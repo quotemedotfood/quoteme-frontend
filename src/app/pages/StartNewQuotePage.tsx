@@ -578,9 +578,9 @@ export function StartNewQuotePage() {
           return;
         }
         if (response.data) {
-          navigate('/map-ingredients', {
-            state: { quoteId: response.data.quote_id, menuId: response.data.menu_id, isOpenQuote: isQuoteOpened, locationId: isBuyerRole ? selectedLocation?.id : undefined }
-          });
+          // Track 22: quote is processing async — navigate to chef/status to show
+          // real pipeline stages. ChefStatusPage navigates to /chef/quotes/:id on completion.
+          navigate(`/chef/status/${response.data.quote_id}`);
         }
       } else {
         const response = await createMenu({ raw_text: menuText, name: selectedRestaurant?.name || 'New Quote' });
@@ -646,7 +646,9 @@ export function StartNewQuotePage() {
           return;
         }
         if (response.data) {
-          navigate('/export-finalize', { state: { quoteId: response.data.quote_id, isOpenQuote: isQuoteOpened } });
+          // Track 22: quote is processing async — navigate to chef/status to show
+          // real pipeline stages. ChefStatusPage navigates to /chef/quotes/:id on completion.
+          navigate(`/chef/status/${response.data.quote_id}`);
         }
       } else {
         const response = await createMenu({ raw_text: menuText, name: selectedRestaurant?.name || 'New Quote' });

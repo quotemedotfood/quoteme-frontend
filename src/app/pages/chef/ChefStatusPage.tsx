@@ -167,7 +167,7 @@ export function ChefStatusPage({ onTimeout }: ChefStatusPageProps = {}) {
       const res = await getGuestQuote(id);
 
       if (res.data) {
-        // Step 1 done after the first successful poll response.
+        // Populate distributor/rep metadata on first successful response.
         if (!firstPollDone) {
           firstPollDone = true;
           // c143 + c144 — defensive read of distributor/rep fields. These ride
@@ -178,32 +178,54 @@ export function ChefStatusPage({ onTimeout }: ChefStatusPageProps = {}) {
           if (distributor?.name) setDistributorName(distributor.name);
           if (distributor?.rep?.email) setRepEmail(distributor.rep.email);
           if (distributor?.rep?.name) setRepName(distributor.rep.name);
-          setCurrentStep(1);
         }
 
-        const done =
-          (res.data.lines && res.data.lines.length > 0) ||
-          (res.data.status &&
-            res.data.status !== 'draft' &&
-            res.data.status !== 'processing');
+        // Track 22: drive step progression from real backend processing_stage.
+        const stage = res.data.processing_stage;
 
-        if (done) {
-          if (pollRef.current) {
-            clearInterval(pollRef.current);
-            pollRef.current = null;
+        if (stage) {
+          // Stage-driven path — quote was created via the async Track 22 flow.
+          if (stage === 'extracting_dishes') {
+            setCurrentStep(0);
+          } else if (stage === 'aligning_products') {
+            setCurrentStep(1);
+          } else if (stage === 'building_quote') {
+            setCurrentStep(2);
+          } else if (stage === 'failed') {
+            if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
+            if (stuckTimerRef.current) { clearTimeout(stuckTimerRef.current); stuckTimerRef.current = null; }
+            // Treat a failed job the same as stuck — show recovery screen.
+            setIsStuck(true);
+            return;
+          } else if (stage === 'complete') {
+            if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
+            if (stuckTimerRef.current) { clearTimeout(stuckTimerRef.current); stuckTimerRef.current = null; }
+            localStorage.removeItem(MENU_DRAFT_KEY);
+            setCurrentStep(2);
+            setTimeout(() => { navigate(`/chef/quotes/${id}`); }, FINAL_STEP_DISPLAY_MS);
+            return;
           }
-          // c144 — quote resolved, cancel stuck timer so recovery never shows.
-          if (stuckTimerRef.current) {
-            clearTimeout(stuckTimerRef.current);
-            stuckTimerRef.current = null;
+        } else {
+          // Fallback: legacy behavior — advance by line count.
+          // Handles quotes already in-flight at the time of Track 22 deploy,
+          // or quotes reached directly via /chef/status/:id without async creation.
+          // firstPollDone is already true at this point (set in the block above), so
+          // we check it before this block to set step 1 on the first successful poll.
+          setCurrentStep((prev) => Math.max(prev, 1));
+
+          const done =
+            (res.data.lines && res.data.lines.length > 0) ||
+            (res.data.status &&
+              res.data.status !== 'draft' &&
+              res.data.status !== 'processing');
+
+          if (done) {
+            if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
+            if (stuckTimerRef.current) { clearTimeout(stuckTimerRef.current); stuckTimerRef.current = null; }
+            localStorage.removeItem(MENU_DRAFT_KEY);
+            setCurrentStep(2);
+            setTimeout(() => { navigate(`/chef/quotes/${id}`); }, FINAL_STEP_DISPLAY_MS);
           }
-          // c144 — clean up the saved draft now that processing succeeded.
-          localStorage.removeItem(MENU_DRAFT_KEY);
-          // c143 — briefly show step 3 active before navigating
-          setCurrentStep(2);
-          setTimeout(() => {
-            navigate(`/chef/quotes/${id}`);
-          }, FINAL_STEP_DISPLAY_MS);
         }
       }
     }
