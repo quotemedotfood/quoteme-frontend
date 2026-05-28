@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { getChefQuotes, type ChefQuoteRow, type ChefQuotesIndexResponse } from '../../services/api';
 import { PreviewPill } from '../../components/chef/PreviewPill';
-import { QuoteStatusPill } from '../../components/chef/QuoteStatusPill';
+import { QuoteStatusPill, legacyStatusToState } from '../../components/chef/QuoteStatusPill';
 
 const C = {
   charcoal: '#2B2B2B',
@@ -91,7 +91,7 @@ function QuoteRow({ q }: { q: ChefQuoteRow }) {
           </span>
           {q.preview && <PreviewPill size="xs" />}
         </div>
-        <QuoteStatusPill status={q.status} />
+        <QuoteStatusPill state={q.state ?? legacyStatusToState(q.status)} />
       </div>
       {/* B5 meta line */}
       <div

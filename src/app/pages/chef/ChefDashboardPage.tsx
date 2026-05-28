@@ -21,7 +21,7 @@ import { useNavigate, useLocation } from 'react-router';
 import { Lock } from 'lucide-react';
 import { getChefQuotes, type ChefQuoteRow, type ChefQuotesIndexResponse } from '../../services/api';
 import { PreviewPill } from '../../components/chef/PreviewPill';
-import { QuoteStatusPill } from '../../components/chef/QuoteStatusPill';
+import { QuoteStatusPill, legacyStatusToState } from '../../components/chef/QuoteStatusPill';
 import { ChefDistributorsTab } from '../../components/chef';
 import { ChefSettingsTab } from '../../components/chef/ChefSettingsTab';
 
@@ -653,7 +653,7 @@ function QuoteHistory({
                 </span>
                 {q.preview && <PreviewPill size="xs" />}
               </button>
-              <QuoteStatusPill status={q.status} />
+              <QuoteStatusPill state={q.state ?? legacyStatusToState(q.status)} />
             </div>
             {/* Meta line — V3 Part 3 format */}
             <div
