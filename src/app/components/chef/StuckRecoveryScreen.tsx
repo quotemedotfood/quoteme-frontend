@@ -2,7 +2,7 @@
 // Mounts inside ChefStatusPage when the 60-second polling timeout fires.
 // Three escape paths per design-lock spec:
 //   (a) Email menu directly to support
-//   (b) Try again with shorter sections (back to /chef/entry, menu text preserved)
+//   (b) Go back and try again (back to /chef/pull/entry, menu text preserved)
 //   (c) Wait it out — email-capture so chef gets a notification when quote lands
 //
 // Copy doctrine: calm, operational, never panicked.
@@ -63,13 +63,13 @@ export function StuckRecoveryScreen({ quoteId, repEmail, repName, onWaitItOut }:
     window.location.href = `mailto:${repEmail}?subject=${subject}&body=${body}`;
   }
 
-  // ── Path (b): try again ─────────────────────────────────────────────────
+  // ── Path (b): go back and try again ────────────────────────────────────
   function handleTryAgain() {
     setActivePath('b');
     // Menu text is already in localStorage under MENU_DRAFT_KEY.
-    // ChefEntryPage reads this key on mount to restore the textarea.
-    navigate('/chef/entry', {
-      state: { restoreMenuDraft: true, hint: 'shorter_sections' },
+    // ChefPullEntryPage reads this key on mount to restore the textarea.
+    navigate('/chef/pull/entry', {
+      state: { restoreMenuDraft: true },
     });
   }
 
@@ -151,7 +151,7 @@ export function StuckRecoveryScreen({ quoteId, repEmail, repName, onWaitItOut }:
           </div>
         )}
 
-        {/* Escape path (b) — try again with shorter sections */}
+        {/* Escape path (b) — go back and try again */}
         <div className="flex flex-col gap-2">
           <button
             type="button"
@@ -163,11 +163,10 @@ export function StuckRecoveryScreen({ quoteId, repEmail, repName, onWaitItOut }:
             }`}
           >
             <p className="font-medium text-[#2A2A2A] text-sm mb-0.5">
-              Try again with shorter sections
+              Go back and try again
             </p>
             <p className="text-[#9E9E9E] text-xs leading-relaxed">
-              Your menu's saved. Breaking it into smaller sections usually
-              helps.
+              Something went wrong — head back and try again.
             </p>
           </button>
         </div>
