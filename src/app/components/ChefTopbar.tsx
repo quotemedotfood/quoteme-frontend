@@ -82,12 +82,12 @@ export function ChefTopbar() {
         }}
         onAddLocation={() => {
           setDrawerOpen(false);
-          navigate('/chef/settings');
+          navigate('/dashboard', { state: { activeTab: 'settings' } });
         }}
         onSignOut={handleSignOut}
         onNavigate={(dest) => {
           setDrawerOpen(false);
-          navigate('/chef/settings');
+          navigate('/dashboard', { state: { activeTab: 'settings' } });
         }}
       />
     </>
