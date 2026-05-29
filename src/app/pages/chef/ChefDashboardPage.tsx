@@ -19,7 +19,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router';
 import { Lock } from 'lucide-react';
-import { getChefQuotes, type ChefQuoteRow, type ChefQuotesIndexResponse } from '../../services/api';
+import { getChefQuotes, getChefOrderGuides, type ChefQuoteRow, type ChefQuotesIndexResponse, type ChefOrderGuideRow } from '../../services/api';
 import { PreviewPill } from '../../components/chef/PreviewPill';
 import { QuoteStatusPill, legacyStatusToState } from '../../components/chef/QuoteStatusPill';
 import { ChefDistributorsTab } from '../../components/chef';
@@ -65,6 +65,10 @@ export function ChefDashboardPage() {
   const initialTab = (location.state as any)?.activeTab as Tab | undefined;
   const [activeTab, setActiveTab] = useState<Tab>(initialTab ?? 'home');
 
+  // Order Guides tab state — loaded once on page mount via dedicated endpoint.
+  const [ogRows, setOgRows] = useState<ChefOrderGuideRow[]>([]);
+  const [ogLoading, setOgLoading] = useState<boolean>(true);
+
   // Sync activeTab when ChefShellLayout navigates to /dashboard with a
   // different activeTab in location.state. Without this effect, useState
   // only reads the initial value on mount, so sidebar tab clicks that
@@ -91,6 +95,18 @@ export function ChefDashboardPage() {
   // the form instead of bouncing the chef back to their last quote.
   useEffect(() => {
     sessionStorage.removeItem('chef_recent_quote_id');
+  }, []);
+
+  // Fetch order guides from the dedicated endpoint once on mount.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const res = await getChefOrderGuides();
+      if (cancelled) return;
+      if (res.data) setOgRows(res.data);
+      setOgLoading(false);
+    })();
+    return () => { cancelled = true; };
   }, []);
 
   useEffect(() => {
@@ -132,7 +148,7 @@ export function ChefDashboardPage() {
       );
     }
     if (activeTab === 'order-guides') {
-      return <OrderGuidesTab quotes={quotes} onPick={(id) => navigate(`/chef/order-guide/${id}`)} />;
+      return <OrderGuidesTab rows={ogRows} loading={ogLoading} onPick={(id) => navigate(`/chef/order-guide/${id}`)} />;
     }
     if (activeTab === 'distributors') {
       return <ChefDistributorsTab nav={navTab} />;
@@ -155,10 +171,17 @@ export function ChefDashboardPage() {
   );
 }
 
-// ─── Order Guides tab (B6 stub — lists quotes with linked order guides) ────
+// ─── Order Guides tab — consumes GET /api/v1/chef/order_guides (OG PR-C) ────
 
-function OrderGuidesTab({ quotes, onPick }: { quotes: ChefQuoteRow[]; onPick: (id: string) => void }) {
-  const withOG = quotes.filter((q) => q.has_order_guide && q.order_guide_id);
+function OrderGuidesTab({
+  rows,
+  loading,
+  onPick,
+}: {
+  rows: ChefOrderGuideRow[];
+  loading: boolean;
+  onPick: (id: string) => void;
+}) {
   return (
     <>
       <div className="mb-6 pb-5" style={{ borderBottom: `1px solid ${C.softLine}` }}>
@@ -166,21 +189,41 @@ function OrderGuidesTab({ quotes, onPick }: { quotes: ChefQuoteRow[]; onPick: (i
           Order Guides
         </h1>
       </div>
-      {withOG.length === 0 ? (
+      {loading ? (
+        <LoadingRow />
+      ) : rows.length === 0 ? (
         <p style={{ ...sans, fontSize: 14, color: C.gray500 }}>
           You don't have any order guides yet. They appear here once your distributor builds one for you.
         </p>
       ) : (
         <div className="divide-y" style={{ borderTop: `1px solid ${C.softLine}`, borderBottom: `1px solid ${C.softLine}` }}>
-          {withOG.map((q) => (
+          {rows.map((og) => (
             <button
-              key={q.id}
+              key={og.id}
               type="button"
-              onClick={() => onPick(q.order_guide_id!)}
+              onClick={() => onPick(og.id)}
               className="w-full text-left py-3 px-1 hover:bg-gray-50 flex items-baseline justify-between gap-3"
             >
-              <span style={{ ...sans, fontSize: 14, color: C.charcoal }}>{q.label}</span>
-              <span style={{ ...sans, fontSize: 11.5, color: C.gray500 }}>{q.distributor?.name ?? '—'}</span>
+              <div className="flex flex-col gap-0.5">
+                <span style={{ ...sans, fontSize: 14, color: C.charcoal }}>{og.distributor_name}</span>
+                <span style={{ ...sans, fontSize: 11.5, color: C.gray500 }}>
+                  {og.items_count} {og.items_count === 1 ? 'item' : 'items'} · {formatDate(og.created_at)}
+                </span>
+              </div>
+              <span
+                style={{
+                  ...sans,
+                  fontSize: 11,
+                  fontWeight: 500,
+                  color: og.status === 'active' ? '#166534' : C.gray500,
+                  background: og.status === 'active' ? '#DCFCE7' : '#F3F4F6',
+                  padding: '2px 7px',
+                  borderRadius: 999,
+                  flexShrink: 0,
+                }}
+              >
+                {og.status}
+              </span>
             </button>
           ))}
         </div>

@@ -2048,6 +2048,26 @@ export async function getChefOrderGuide(orderGuideId: string): Promise<ApiRespon
   return fetchWithGuest(`/api/v1/chef/order_guides/${orderGuideId}`);
 }
 
+// ─── Chef Order Guides index ──────────────────────────────────────────────────
+// GET /api/v1/chef/order_guides — dedicated index endpoint (OG PR-C BE).
+// Returns a flat list of the chef's order guides scoped by their restaurant
+// contacts, one row per order guide. Replaces the client-side filter that
+// previously synthesised this list from the quotes payload.
+
+export interface ChefOrderGuideRow {
+  id: string;
+  quote_id: string;
+  distributor_id: string | null;
+  distributor_name: string | null;
+  status: string;
+  created_at: string;
+  items_count: number;
+}
+
+export async function getChefOrderGuides(): Promise<ApiResponse<ChefOrderGuideRow[]>> {
+  return fetchWithGuest('/api/v1/chef/order_guides');
+}
+
 export async function updateOrderGuideItem(
   orderGuideId: string,
   itemId: string,
