@@ -71,6 +71,7 @@ import { RepTriagePage } from "./pages/rep/RepTriagePage";
 import { RepIncomingQuotePage } from "./pages/rep/RepIncomingQuotePage";
 import { RepCustomersPage } from "./pages/rep/RepCustomersPage";
 import { RepLayout } from "./components/rep/RepLayout";
+import { useAuth } from "./contexts/AuthContext";
 
 const demo = isDemoMode();
 
