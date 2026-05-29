@@ -357,6 +357,13 @@ export function QuotesPage() {
                 <div className="flex flex-wrap items-center gap-3 mt-4 pt-3 border-t border-gray-100">
                   <button
                     className="flex items-center gap-1.5 text-xs text-gray-600 hover:text-[#F2993D] transition-colors"
+                    onClick={() => handleEditQuote(quote.id)}
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                    Edit
+                  </button>
+                  <button
+                    className="flex items-center gap-1.5 text-xs text-gray-600 hover:text-[#F2993D] transition-colors"
                     onClick={() => handleViewQuote(quote.id)}
                   >
                     <Eye className="w-3.5 h-3.5" />
