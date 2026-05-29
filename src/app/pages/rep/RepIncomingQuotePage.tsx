@@ -24,7 +24,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
 import { ChevronLeft, SquarePen, DollarSign, Search, X, Flag, Bookmark, MessageCircle, Pencil } from 'lucide-react';
 
-import { RepDesktopShell } from '../../components/rep/RepDesktopShell';
 import { RepMatchStateBadge } from '../../components/rep/RepMatchStateBadge';
 import { QuoteCoverageLabelRep } from '../../components/rep/QuoteCoverageLabelRep';
 import { LineCoverageDot } from '../../components/rep/CoverageDots';
@@ -447,37 +446,35 @@ export function RepIncomingQuotePage() {
     </div>
   );
 
-  // Desktop: wrap with RepDesktopShell; if review mode on desktop, show three-panel.
+  // Desktop: RepLayout provides shell + sidebar. Render content body directly.
   return (
     <>
       <div className="hidden md:block">
-        <RepDesktopShell active="quotes" nav={nav}>
-          {/* Desktop shows three-panel review or pricing table depending on mode */}
-          <RepDesktopQuoteView
-            quote={quote}
-            quoteId={id!}
-            lines={lines}
-            groups={groups}
-            matchState={matchState}
-            missingLines={missingLines}
-            partial={partial}
-            flowState={flowState}
-            unpricedCount={unpricedCount}
-            handleUseCatalogPrices={handleUseCatalogPrices}
-            handleConfirmSend={handleConfirmSend}
-            saving={saving}
-            nav={nav}
-            sortBy={sortBy}
-            setSortBy={setSortBy}
-            sentAt={sentAt}
-            bannerDismissed={bannerDismissed}
-            setBannerDismissed={setBannerDismissed}
-            showAutoFireToast={showAutoFireToast}
-            pricedLines={pricedLines}
-            isEmptyMenu={isEmptyMenu}
-            chefRequestMessage={chefRequestMessage}
-          />
-        </RepDesktopShell>
+        {/* RepLayout supplies the sidebar + main chrome; render content body bare */}
+        <RepDesktopQuoteView
+          quote={quote}
+          quoteId={id!}
+          lines={lines}
+          groups={groups}
+          matchState={matchState}
+          missingLines={missingLines}
+          partial={partial}
+          flowState={flowState}
+          unpricedCount={unpricedCount}
+          handleUseCatalogPrices={handleUseCatalogPrices}
+          handleConfirmSend={handleConfirmSend}
+          saving={saving}
+          nav={nav}
+          sortBy={sortBy}
+          setSortBy={setSortBy}
+          sentAt={sentAt}
+          bannerDismissed={bannerDismissed}
+          setBannerDismissed={setBannerDismissed}
+          showAutoFireToast={showAutoFireToast}
+          pricedLines={pricedLines}
+          isEmptyMenu={isEmptyMenu}
+          chefRequestMessage={chefRequestMessage}
+        />
       </div>
       <div className="block md:hidden">
         {mobileBody}

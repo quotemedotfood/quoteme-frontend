@@ -50,6 +50,7 @@ import { LocationPage } from "./pages/LocationPage";
 import { ChefSignupPage } from "./pages/chef/ChefSignupPage";
 import { ChefEntryPage } from "./pages/chef/ChefEntryPage";
 import { ChefStatusPage } from "./pages/chef/ChefStatusPage";
+import { QuoteStateDocumentPreviewPage } from "./pages/chef/QuoteStateDocumentPreviewPage";
 import { ChefQuoteReceiptPage } from "./pages/chef/ChefQuoteReceiptPage";
 import { ChefOrderGuidePage } from "./pages/chef/ChefOrderGuidePage";
 import { ChefWelcomePage } from "./pages/chef/ChefWelcomePage";
@@ -67,6 +68,7 @@ import { isDemoMode } from "./utils/demoMode";
 import { RepWelcomePage } from "./pages/rep/RepWelcomePage";
 import { RepTriagePage } from "./pages/rep/RepTriagePage";
 import { RepIncomingQuotePage } from "./pages/rep/RepIncomingQuotePage";
+import { RepLayout } from "./components/rep/RepLayout";
 
 const demo = isDemoMode();
 
@@ -109,6 +111,12 @@ export const router = createBrowserRouter([
       {
         path: "chef/status/:id",
         Component: ChefStatusPage,
+      },
+      {
+        // TEMPORARY — D6 QuoteStateDocument visual sign-off (Item 3).
+        // Remove once wired into ChefQuoteReceiptPage (Item 4, gated on C3).
+        path: "chef/_preview/quote-states",
+        Component: QuoteStateDocumentPreviewPage,
       },
       {
         path: "chef/pull/status/:id",
@@ -189,6 +197,11 @@ export const router = createBrowserRouter([
             // ── Rep suite routes (auth-guarded via RootLayout) ──────────────
             // /rep/welcome is placed OUTSIDE RootLayout (pre-auth, magic link).
             //
+            // RepLayout is a persistent shell that holds sidebar useState — it
+            // never unmounts across /rep/* transitions, so sidebar mode (open /
+            // collapsed / hidden) survives navigation. Pages render bare content
+            // bodies; RepLayout supplies sidebar + main chrome via <Outlet />.
+            //
             // Route hierarchy:
             //   /rep/quotes              → redirects to /rep/quotes/inbound (index)
             //   /rep/quotes/inbound      → RepTriagePage (was /rep/triage)
@@ -201,15 +214,21 @@ export const router = createBrowserRouter([
               element: <Navigate to="/rep/quotes/inbound" replace />,
             },
             {
-              path: "rep/quotes",
+              path: "rep",
+              Component: RepLayout,
               children: [
-                { index: true, element: <Navigate to="/rep/quotes/inbound" replace /> },
-                { path: "inbound", Component: RepTriagePage },
-                { path: "history", Component: QuotesPage },
-                // Detail route must be nested here so /rep/quotes/:id still resolves.
-                // The :id segment won't collide with "inbound"/"history" because
-                // react-router matches static segments before dynamic ones.
-                { path: ":id", Component: RepIncomingQuotePage },
+                {
+                  path: "quotes",
+                  children: [
+                    { index: true, element: <Navigate to="/rep/quotes/inbound" replace /> },
+                    { path: "inbound", Component: RepTriagePage },
+                    { path: "history", Component: QuotesPage },
+                    // Detail route must be nested here so /rep/quotes/:id still resolves.
+                    // The :id segment won't collide with "inbound"/"history" because
+                    // react-router matches static segments before dynamic ones.
+                    { path: ":id", Component: RepIncomingQuotePage },
+                  ],
+                },
               ],
             },
           ]),
