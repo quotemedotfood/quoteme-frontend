@@ -7,10 +7,16 @@
 // c71 (2026-05-27): Action buttons wired.
 //   YOU Edit → Sheet drawer, PATCH /api/v1/users/me (name + email; phone BE-gated to reps).
 //   Restaurant Edit → disabled-with-tooltip (no chef-scoped PATCH restaurant endpoint — Chef v4 pre-work).
-//   Replace logo → disabled-with-tooltip (no logo upload endpoint — Chef v4 pre-work).
+//   Replace logo → disabled-with-tooltip (no logo upload endpoint — W2-2 scope).
 //   Remove / Resend invite → mailto interim (no chef-team-member BE endpoint — Chef v4 pre-work).
 //   Sign out → wired to AuthContext logout().
 //   Real data: YOU section from GET /api/v1/me; Restaurant name from GET /api/v1/chef/quotes[0].
+//
+// W2-1 (2026-05-29): Restaurant Edit wired to live BE.
+//   GET /api/v1/chef/restaurant → populates Name, Address, Phone fields.
+//   PATCH /api/v1/chef/restaurant → saves changes. On 422 with field errors: inline.
+//   Multi-restaurant chef with no context → 422; surfaced as inline error in drawer.
+//   EditRestaurantDrawer replaces the disabled-with-tooltip stubs on all three rows.
 //
 // ChefTabBar: B1 (feat-a1-chef-sidebar-shell) will land this at
 //   src/app/components/chef/ChefTabBar (or ChefMobileTabBar).
@@ -31,7 +37,7 @@ import {
 
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '../ui/sheet';
 import { useAuth } from '../../contexts/AuthContext';
-import { updateCurrentUser, getChefQuotes } from '../../services/api';
+import { updateCurrentUser, getChefRestaurant, updateChefRestaurant, type ChefRestaurant } from '../../services/api';
 
 // ─── Mailto helpers ───────────────────────────────────────────────────────────
 // Interim pattern — no chef-team-member BE endpoint exists. Routes team
@@ -241,6 +247,226 @@ function EditYouDrawer({
   );
 }
 
+// ─── EditRestaurantDrawer ─────────────────────────────────────────────────────
+// Wired to PATCH /api/v1/chef/restaurant.
+// Multi-restaurant chef with no context → BE returns 422 → show inline error.
+// Fields: name, address_line_1, address_line_2, city, state, zip, phone, website.
+
+interface EditRestaurantDrawerProps {
+  open: boolean;
+  onClose: () => void;
+  restaurant: ChefRestaurant | null;
+  restaurantId?: string;
+  onSaved: (updated: ChefRestaurant) => void;
+}
+
+function EditRestaurantDrawer({
+  open,
+  onClose,
+  restaurant,
+  restaurantId,
+  onSaved,
+}: EditRestaurantDrawerProps) {
+  const [name, setName] = useState(restaurant?.name ?? '');
+  const [addressLine1, setAddressLine1] = useState(restaurant?.address_line_1 ?? '');
+  const [addressLine2, setAddressLine2] = useState(restaurant?.address_line_2 ?? '');
+  const [city, setCity] = useState(restaurant?.city ?? '');
+  const [state, setState] = useState(restaurant?.state ?? '');
+  const [zip, setZip] = useState(restaurant?.zip ?? '');
+  const [phone, setPhone] = useState(restaurant?.phone ?? '');
+  const [website, setWebsite] = useState(restaurant?.website ?? '');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Sync fields when drawer opens with fresh restaurant data
+  useEffect(() => {
+    if (open) {
+      setName(restaurant?.name ?? '');
+      setAddressLine1(restaurant?.address_line_1 ?? '');
+      setAddressLine2(restaurant?.address_line_2 ?? '');
+      setCity(restaurant?.city ?? '');
+      setState(restaurant?.state ?? '');
+      setZip(restaurant?.zip ?? '');
+      setPhone(restaurant?.phone ?? '');
+      setWebsite(restaurant?.website ?? '');
+      setError(null);
+    }
+  }, [open, restaurant]);
+
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    if (!name.trim()) {
+      setError('Restaurant name is required.');
+      return;
+    }
+    setSaving(true);
+    const res = await updateChefRestaurant(
+      {
+        name: name.trim(),
+        address_line_1: addressLine1.trim() || undefined,
+        address_line_2: addressLine2.trim() || undefined,
+        city: city.trim() || undefined,
+        state: state.trim() || undefined,
+        zip: zip.trim() || undefined,
+        phone: phone.trim() || undefined,
+        website: website.trim() || undefined,
+      },
+      restaurantId
+    );
+    setSaving(false);
+    if (res.error) {
+      // Surface field errors from 422 or context-selector error
+      const errData = res.error_data as any;
+      const msgs: string[] = errData?.errors ?? [];
+      setError(msgs.length > 0 ? msgs.join(' ') : (res.error as string));
+      return;
+    }
+    if (res.data?.restaurant) {
+      onSaved(res.data.restaurant);
+    }
+    onClose();
+  }
+
+  const inputCls =
+    'border border-[var(--border)] rounded-md px-3 py-2 text-[13.5px] ink bg-transparent focus:outline-none focus:ring-1 focus:ring-[var(--primary)]';
+
+  return (
+    <Sheet open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
+      <SheetContent className="w-full sm:max-w-md overflow-y-auto">
+        <SheetHeader>
+          <SheetTitle className="serif">Edit restaurant details</SheetTitle>
+        </SheetHeader>
+        <div className="px-4 pb-6">
+          <form onSubmit={handleSave} className="flex flex-col gap-4 mt-2">
+            <div className="flex flex-col gap-1">
+              <label className="qm-eyebrow" style={{ fontSize: 10 }}>NAME</label>
+              <input
+                className={inputCls}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+                disabled={saving}
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="qm-eyebrow" style={{ fontSize: 10 }}>ADDRESS LINE 1</label>
+              <input
+                className={inputCls}
+                value={addressLine1}
+                onChange={(e) => setAddressLine1(e.target.value)}
+                disabled={saving}
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="qm-eyebrow" style={{ fontSize: 10 }}>ADDRESS LINE 2</label>
+              <input
+                className={inputCls}
+                value={addressLine2}
+                onChange={(e) => setAddressLine2(e.target.value)}
+                disabled={saving}
+              />
+            </div>
+            <div className="grid grid-cols-[1fr_80px_80px] gap-3">
+              <div className="flex flex-col gap-1">
+                <label className="qm-eyebrow" style={{ fontSize: 10 }}>CITY</label>
+                <input
+                  className={inputCls}
+                  value={city}
+                  onChange={(e) => setCity(e.target.value)}
+                  disabled={saving}
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="qm-eyebrow" style={{ fontSize: 10 }}>STATE</label>
+                <input
+                  className={inputCls}
+                  value={state}
+                  onChange={(e) => setState(e.target.value)}
+                  maxLength={2}
+                  disabled={saving}
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="qm-eyebrow" style={{ fontSize: 10 }}>ZIP</label>
+                <input
+                  className={inputCls}
+                  value={zip}
+                  onChange={(e) => setZip(e.target.value)}
+                  disabled={saving}
+                />
+              </div>
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="qm-eyebrow" style={{ fontSize: 10 }}>PHONE</label>
+              <input
+                className={inputCls}
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                disabled={saving}
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="qm-eyebrow" style={{ fontSize: 10 }}>WEBSITE</label>
+              <input
+                className={inputCls}
+                type="url"
+                value={website}
+                onChange={(e) => setWebsite(e.target.value)}
+                placeholder="https://"
+                disabled={saving}
+              />
+            </div>
+            {error && (
+              <p className="text-[12px] text-red-600 leading-snug">{error}</p>
+            )}
+            <button
+              type="submit"
+              className="qm-btn qm-btn-orange mt-1"
+              style={{ padding: '10px 20px', fontSize: 13 }}
+              disabled={saving}
+            >
+              {saving ? 'Saving…' : 'Save changes'}
+            </button>
+          </form>
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+// ─── useRestaurantData ────────────────────────────────────────────────────────
+// Fetches the chef's restaurant from GET /api/v1/chef/restaurant.
+// Replaces the old getChefQuotes()-based approach (which only pulled the name).
+// restaurantId: optional context selector for multi-restaurant chefs.
+
+function useRestaurantData(userId: string | undefined) {
+  const [restaurant, setRestaurant] = useState<ChefRestaurant | null>(null);
+  const [restaurantId, setRestaurantId] = useState<string | undefined>(undefined);
+  const [loading, setLoading] = useState(false);
+
+  function refresh(rid?: string) {
+    if (!userId) return;
+    setLoading(true);
+    getChefRestaurant(rid).then((res) => {
+      setLoading(false);
+      if (res.data?.restaurant) {
+        setRestaurant(res.data.restaurant);
+        setRestaurantId(res.data.restaurant.id);
+      }
+      // 422 multi-restaurant: leave restaurant null — drawer surfaces the error on submit
+    });
+  }
+
+  useEffect(() => {
+    refresh();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId]);
+
+  return { restaurant, restaurantId, loading, refresh };
+}
+
 // ─── ChefSettingsTab — mobile ────────────────────────────────────────────────
 
 interface ChefSettingsTabProps {
@@ -252,26 +478,24 @@ export function ChefSettingsTab({ state = 'with-data', nav = noopNav }: ChefSett
   const { user, refreshUser, logout } = useAuth();
   const empty = state === 'empty';
 
-  // Restaurant name fetched from first chef quote's restaurant field.
-  // Chef v4 pre-work: replace with a dedicated GET /api/v1/chef/profile endpoint
-  // that returns the chef's primary restaurant with address + phone.
-  const [restaurantName, setRestaurantName] = useState<string | null>(null);
+  const { restaurant, restaurantId, refresh: refreshRestaurant } = useRestaurantData(user?.id);
   const [editYouOpen, setEditYouOpen] = useState(false);
-
-  useEffect(() => {
-    if (!user) return;
-    getChefQuotes().then((res) => {
-      const quotes = res.data?.quotes ?? [];
-      const name = quotes.find((q) => q.restaurant?.name)?.restaurant?.name ?? null;
-      setRestaurantName(name);
-    });
-  }, [user]);
+  const [editRestaurantOpen, setEditRestaurantOpen] = useState(false);
 
   const chefFirst = user?.first_name ?? '';
   const chefLast = user?.last_name ?? '';
   const chefEmail = user?.email ?? '';
   const chefFullName = [chefFirst, chefLast].filter(Boolean).join(' ') || '—';
-  const restaurantDisplay = restaurantName ?? '—';
+  const restaurantDisplay = restaurant?.name ?? '—';
+
+  // Formatted address for display — combine non-null parts
+  const addressParts = [
+    restaurant?.address_line_1,
+    restaurant?.address_line_2,
+    [restaurant?.city, restaurant?.state].filter(Boolean).join(', '),
+    restaurant?.zip,
+  ].filter(Boolean);
+  const addressDisplay = addressParts.length > 0 ? addressParts.join(' ') : null;
 
   function handleSignOut() {
     logout();
@@ -338,7 +562,7 @@ export function ChefSettingsTab({ state = 'with-data', nav = noopNav }: ChefSett
                   ? 'Square PNG or JPG. Shows on your order guides.'
                   : 'Shows on your order guide header and emails.'}
               </div>
-              {/* Logo upload — no BE endpoint exists. Disabled with tooltip. Chef v4 pre-work. */}
+              {/* Logo upload — W2-2 scope. Disabled with tooltip. */}
               <button
                 className="text-[11.5px] underline ink-soft mt-1 cursor-not-allowed opacity-50"
                 title="Logo upload coming in a future release."
@@ -351,22 +575,19 @@ export function ChefSettingsTab({ state = 'with-data', nav = noopNav }: ChefSett
           <SettingRow
             label="Name"
             value={empty ? '—' : restaurantDisplay}
-            editDisabled
-            editTooltip="Restaurant edits require your rep. Chef v4 pre-work."
+            onEdit={() => setEditRestaurantOpen(true)}
           />
           <SettingRow
             label="Address"
-            value={empty ? 'Add address' : '—'}
-            placeholder={empty || restaurantDisplay === '—'}
-            editDisabled
-            editTooltip="Restaurant edits require your rep. Chef v4 pre-work."
+            value={empty ? 'Add address' : (addressDisplay ?? '—')}
+            placeholder={empty || !addressDisplay}
+            onEdit={() => setEditRestaurantOpen(true)}
           />
           <SettingRow
             label="Phone"
-            value={empty ? 'Add a number' : '—'}
-            placeholder={empty || true}
-            editDisabled
-            editTooltip="Restaurant edits require your rep. Chef v4 pre-work."
+            value={empty ? 'Add a number' : (restaurant?.phone ?? '—')}
+            placeholder={empty || !restaurant?.phone}
+            onEdit={() => setEditRestaurantOpen(true)}
           />
         </SettingsSection>
 
@@ -559,6 +780,17 @@ export function ChefSettingsTab({ state = 'with-data', nav = noopNav }: ChefSett
         initialEmail={chefEmail}
         onSaved={refreshUser}
       />
+
+      {/* Edit Restaurant drawer */}
+      <EditRestaurantDrawer
+        open={editRestaurantOpen}
+        onClose={() => setEditRestaurantOpen(false)}
+        restaurant={restaurant}
+        restaurantId={restaurantId}
+        onSaved={(updated) => {
+          refreshRestaurant(updated.id);
+        }}
+      />
     </div>
   );
 }
@@ -579,23 +811,24 @@ export function ChefSettingsTabDesktop({
   const { user, refreshUser, logout } = useAuth();
   const empty = state === 'empty';
 
-  const [restaurantName, setRestaurantName] = useState<string | null>(null);
+  const { restaurant, restaurantId, refresh: refreshRestaurant } = useRestaurantData(user?.id);
   const [editYouOpen, setEditYouOpen] = useState(false);
-
-  useEffect(() => {
-    if (!user) return;
-    getChefQuotes().then((res) => {
-      const quotes = res.data?.quotes ?? [];
-      const name = quotes.find((q) => q.restaurant?.name)?.restaurant?.name ?? null;
-      setRestaurantName(name);
-    });
-  }, [user]);
+  const [editRestaurantOpen, setEditRestaurantOpen] = useState(false);
 
   const chefFirst = user?.first_name ?? '';
   const chefLast = user?.last_name ?? '';
   const chefEmail = user?.email ?? '';
   const chefFullName = [chefFirst, chefLast].filter(Boolean).join(' ') || '—';
-  const restaurantDisplay = restaurantName ?? '—';
+  const restaurantDisplay = restaurant?.name ?? '—';
+
+  // Formatted address for display
+  const addressParts = [
+    restaurant?.address_line_1,
+    restaurant?.address_line_2,
+    [restaurant?.city, restaurant?.state].filter(Boolean).join(', '),
+    restaurant?.zip,
+  ].filter(Boolean);
+  const addressDisplay = addressParts.length > 0 ? addressParts.join(' ') : null;
 
   function handleSignOut() {
     logout();
@@ -678,7 +911,7 @@ export function ChefSettingsTabDesktop({
                 <div className="text-[12px] ink-faint leading-snug">
                   Square PNG or JPG, up to 2 MB. Shows on your order guide header and emails.
                 </div>
-                {/* Logo upload — no BE endpoint exists. Disabled with tooltip. Chef v4 pre-work. */}
+                {/* Logo upload — W2-2 scope. Disabled with tooltip. */}
                 <button
                   className="text-[12px] underline ink-soft mt-1 cursor-not-allowed opacity-50"
                   title="Logo upload coming in a future release."
@@ -692,22 +925,19 @@ export function ChefSettingsTabDesktop({
               <DesktopSettingRow
                 label="Name"
                 value={empty ? '—' : restaurantDisplay}
-                editDisabled
-                editTooltip="Restaurant edits require your rep. Chef v4 pre-work."
+                onEdit={() => setEditRestaurantOpen(true)}
               />
               <DesktopSettingRow
                 label="Address"
-                value={empty ? 'Add address' : '—'}
-                placeholder={empty || restaurantDisplay === '—'}
-                editDisabled
-                editTooltip="Restaurant edits require your rep. Chef v4 pre-work."
+                value={empty ? 'Add address' : (addressDisplay ?? '—')}
+                placeholder={empty || !addressDisplay}
+                onEdit={() => setEditRestaurantOpen(true)}
               />
               <DesktopSettingRow
                 label="Phone"
-                value={empty ? 'Add a number' : '—'}
-                placeholder={empty || true}
-                editDisabled
-                editTooltip="Restaurant edits require your rep. Chef v4 pre-work."
+                value={empty ? 'Add a number' : (restaurant?.phone ?? '—')}
+                placeholder={empty || !restaurant?.phone}
+                onEdit={() => setEditRestaurantOpen(true)}
               />
             </div>
           </section>
@@ -943,6 +1173,17 @@ export function ChefSettingsTabDesktop({
         initialLastName={chefLast}
         initialEmail={chefEmail}
         onSaved={refreshUser}
+      />
+
+      {/* Edit Restaurant drawer */}
+      <EditRestaurantDrawer
+        open={editRestaurantOpen}
+        onClose={() => setEditRestaurantOpen(false)}
+        restaurant={restaurant}
+        restaurantId={restaurantId}
+        onSaved={(updated) => {
+          refreshRestaurant(updated.id);
+        }}
       />
     </ChefTabDesktopShell>
   );
