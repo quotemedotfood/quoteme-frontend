@@ -5,6 +5,7 @@
 // This component lives at the /dashboard route mount point so the existing
 // rep flow keeps reaching QuoteMePage without any change.
 
+import { Navigate } from 'react-router';
 import { useAuth } from '../contexts/AuthContext';
 import { QuoteMePage } from '../pages/QuoteMePage';
 import { ChefDashboardPage } from '../pages/chef/ChefDashboardPage';
@@ -16,6 +17,8 @@ export function DashboardRoleRouter() {
   if (isLoading) {
     return null; // RootWrapper already shows a loading shell on initial mount
   }
+
+  if (user?.role === 'distributor_admin') return <Navigate to="/distributor-admin/" replace />;
 
   if (user?.role === 'chef') {
     return <ChefDashboardPage />;
