@@ -1,6 +1,7 @@
 import { createBrowserRouter, Navigate } from "react-router";
 import { RootWrapper } from "./components/RootWrapper";
 import { RootLayout } from "./components/RootLayout";
+import { useAuth } from "./contexts/AuthContext";
 import { QMAdminLayout } from "./components/QMAdminLayout";
 import { CustomersPage } from "./pages/CustomersPage";
 import { QuoteMePage } from "./pages/QuoteMePage";
@@ -59,6 +60,7 @@ import { ChefPullEntryPage } from "./pages/chef/ChefPullEntryPage";
 import { ChefPullStatusPage } from "./pages/chef/ChefPullStatusPage";
 import { ChefPullReceiptPage } from "./pages/chef/ChefPullReceiptPage";
 import { ChefDistributorEntryPage } from "./pages/chef/ChefDistributorEntryPage";
+import { ChefDistributorDetailPage } from "./pages/chef/ChefDistributorDetailPage";
 import { ChefMenuSpreadPage } from "./pages/chef/ChefMenuSpreadPage";
 import { ChefShellLayout } from "./components/chef/ChefShellLayout";
 import { ChefMenusPage } from "./pages/chef/ChefMenusPage";
@@ -70,8 +72,22 @@ import { RepTriagePage } from "./pages/rep/RepTriagePage";
 import { RepIncomingQuotePage } from "./pages/rep/RepIncomingQuotePage";
 import { RepCustomersPage } from "./pages/rep/RepCustomersPage";
 import { RepLayout } from "./components/rep/RepLayout";
+import { useAuth } from "./contexts/AuthContext";
 
 const demo = isDemoMode();
+
+// RootIndex — bare domain redirect.
+// RootLayout already guards unauthenticated users (→ /auth), so by the time
+// this component renders the user is always authenticated. Send them straight
+// to /dashboard; role-routing lives inside DashboardRoleRouter.
+function RootIndex() {
+  const { isAuthenticated, isLoading } = useAuth();
+  if (isLoading) return null;
+  if (isAuthenticated) return <Navigate to="/dashboard" replace />;
+  // Unauthenticated path: RootLayout would have already redirected to /auth,
+  // but guard here defensively so landing on "/" never shows a blank screen.
+  return <Navigate to="/auth" replace />;
+}
 
 export const router = createBrowserRouter([
   {
@@ -165,7 +181,7 @@ export const router = createBrowserRouter([
       {
         Component: RootLayout,
         children: [
-          { index: true, Component: StartNewQuotePage },
+          { index: true, Component: RootIndex },
           // ── Chef shell layout — persistent tab chrome across chef sub-routes ──
           // ChefShellLayout derives activeTab from useLocation() so sidebar/bar
           // highlight stays in sync with direct URL navigation.
@@ -182,6 +198,9 @@ export const router = createBrowserRouter([
               { path: "chef/menus/:id", Component: ChefMenuDetailPage },
               { path: "chef/catalog", Component: ChefCatalogSelectionPage },
               { path: "chef/distributor/new", Component: ChefDistributorEntryPage },
+              // B3b: distributor detail. 'new' (static) takes precedence over
+              // ':id' (dynamic) in react-router — no collision.
+              { path: "chef/distributor/:id", Component: ChefDistributorDetailPage },
               { path: "chef/menus/:id/spread", Component: ChefMenuSpreadPage },
               // Pull-entry mounted inside the shell so it gets sidebar/tab chrome.
               { path: "chef/pull/entry", Component: ChefPullEntryPage },

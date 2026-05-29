@@ -11,7 +11,8 @@ import {
   TableHead,
   TableCell,
 } from '../../components/ui/table';
-import { getAdminRestaurants, impersonateUser, AdminRestaurant } from '../../services/adminApi';
+import { getAdminRestaurants, AdminRestaurant } from '../../services/adminApi';
+import { handleImpersonate } from '../../utils/impersonate';
 import { AddRestaurantModal } from './_addRestaurantModal';
 import { ManageAdminDrawer } from './_manageAdminDrawer';
 
@@ -32,20 +33,6 @@ export function QMAdminRestaurants() {
 
   // Feature 2: Manage Admin drawer
   const [manageAdminTarget, setManageAdminTarget] = useState<AdminRestaurant | null>(null);
-
-  async function handleImpersonate(userId: string, userName: string) {
-    setImpersonating(userId);
-    const res = await impersonateUser(userId);
-    if (res.data?.token) {
-      localStorage.setItem('quoteme_admin_token', localStorage.getItem('quoteme_token') || '');
-      localStorage.setItem('quoteme_impersonating', userName);
-      localStorage.setItem('quoteme_token', res.data.token);
-      window.location.href = '/';
-    } else {
-      setError(res.error || 'Failed to impersonate');
-      setImpersonating(null);
-    }
-  }
 
   async function loadRestaurants() {
     const res = await getAdminRestaurants();
@@ -206,7 +193,7 @@ export function QMAdminRestaurants() {
                             size="sm"
                             className="text-xs text-[#7FAEC2] hover:text-[#6A9AB0]"
                             disabled={impersonating === r.admin_user_id}
-                            onClick={() => handleImpersonate(r.admin_user_id!, r.admin_user_name || r.name)}
+                            onClick={() => handleImpersonate(r.admin_user_id!, r.admin_user_name || r.name, setImpersonating, setError)}
                           >
                             <UserCheck size={14} className="mr-1" />
                             {impersonating === r.admin_user_id ? 'Switching...' : 'Impersonate'}

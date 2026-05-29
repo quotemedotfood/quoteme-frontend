@@ -17,7 +17,8 @@ import {
   SheetHeader,
   SheetTitle,
 } from '../../components/ui/sheet';
-import { getAdminDistributors, createDistributor, impersonateUser, downloadDistributorExport, AdminDistributor } from '../../services/adminApi';
+import { getAdminDistributors, createDistributor, downloadDistributorExport, AdminDistributor } from '../../services/adminApi';
+import { handleImpersonate } from '../../utils/impersonate';
 import SubcategoryExclusionDrawer from '../../components/SubcategoryExclusionDrawer';
 import {
   getAdminSubcategoryExclusions,
@@ -52,20 +53,6 @@ export function QMAdminDistributors() {
   const [exportDistributor, setExportDistributor] = useState<AdminDistributor | null>(null);
   const [exporting, setExporting] = useState<string | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
-
-  async function handleImpersonate(userId: string, userName: string) {
-    setImpersonating(userId);
-    const res = await impersonateUser(userId);
-    if (res.data?.token) {
-      localStorage.setItem('quoteme_admin_token', localStorage.getItem('quoteme_token') || '');
-      localStorage.setItem('quoteme_impersonating', userName);
-      localStorage.setItem('quoteme_token', res.data.token);
-      window.location.href = '/';
-    } else {
-      setError(res.error || 'Failed to impersonate');
-      setImpersonating(null);
-    }
-  }
 
   const loadExclusions = useCallback(async (distributorId: string) => {
     setExclusionDistributorId(distributorId);
@@ -327,7 +314,7 @@ export function QMAdminDistributors() {
                             size="sm"
                             className="text-xs text-[#7FAEC2] hover:text-[#6A9AB0]"
                             disabled={impersonating === d.admin_user_id}
-                            onClick={() => handleImpersonate(d.admin_user_id!, d.admin_user_name || d.name)}
+                            onClick={() => handleImpersonate(d.admin_user_id!, d.admin_user_name || d.name, setImpersonating, setError)}
                           >
                             <UserCheck size={14} className="mr-1" />
                             {impersonating === d.admin_user_id ? 'Switching...' : 'Impersonate'}

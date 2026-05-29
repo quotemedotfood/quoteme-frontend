@@ -93,13 +93,11 @@ export function ChefTabBar({ active = 'home', nav = () => {} }: ChefTabBarProps)
     return () => scrollTarget.removeEventListener('scroll', onScroll);
   }, []);
 
-  // Order Guides + Distributors removed — no routes built yet; dead items kill trust
-  // faster than missing features (Justin doctrine). Re-add when /chef/order-guides and
-  // /chef/distributors routes exist.
   const tabs: TabDef[] = [
-    { id: 'home',     label: 'Quotes',      target: 'tab-home' },
-    { id: 'settings', label: 'Settings',    target: 'tab-settings' },
-    { id: 'build',    label: 'Build Quote', target: 'distributor-new', isAction: true },
+    { id: 'home',          label: 'Quotes',       target: 'tab-home' },
+    { id: 'distributors',  label: 'Distributors', target: 'tab-distributors' },
+    { id: 'settings',      label: 'Settings',     target: 'tab-settings' },
+    { id: 'build',         label: 'Build Quote',  target: 'distributor-new', isAction: true },
   ];
 
   return (
