@@ -6,12 +6,8 @@
 // Bottom: Distributor-history block (the moat surface). Shows every
 // distributor this menu has been quoted against, with dates and totals.
 //
-// Two primary actions:
-//   "Pull a quote from this menu" → /chef/pull/entry        (state: { menu_id })
-//   "Compare across distributors" → /chef/menus/:id/spread  (Agent C3)
-//
-// BE not yet live (Track C, Agent C4). 404 / empty responses render the
-// empty state cleanly.
+// Primary action:
+//   "Pull a quote from this menu" → /chef/pull/entry  (state: { menu_id })
 
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router';
@@ -393,23 +389,6 @@ export function ChefMenuDetailPage() {
           Pull a quote from this menu
         </button>
 
-        <button
-          type="button"
-          onClick={() => navigate(`/chef/menus/${menu.id}/spread`)}
-          style={{
-            ...sans,
-            background: 'transparent',
-            color: C.charcoal,
-            fontSize: 13.5,
-            fontWeight: 500,
-            padding: '10px 20px',
-            borderRadius: 8,
-            border: `1.5px solid ${C.gray300}`,
-            cursor: 'pointer',
-          }}
-        >
-          Compare across distributors
-        </button>
       </div>
 
       {/* Menu content — document weight */}
@@ -544,23 +523,6 @@ export function ChefMenuDetailPage() {
           Pull a quote from this menu
         </button>
 
-        <button
-          type="button"
-          onClick={() => navigate(`/chef/menus/${menu.id}/spread`)}
-          style={{
-            ...sans,
-            background: 'transparent',
-            color: C.charcoal,
-            fontSize: 13.5,
-            fontWeight: 500,
-            padding: '10px 20px',
-            borderRadius: 8,
-            border: `1.5px solid ${C.gray300}`,
-            cursor: 'pointer',
-          }}
-        >
-          Compare across distributors
-        </button>
       </div>
     </div>
   );
