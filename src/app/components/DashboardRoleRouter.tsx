@@ -20,7 +20,10 @@ export function DashboardRoleRouter() {
 
   if (user?.role === 'distributor_admin') return <Navigate to="/distributor-admin/" replace />;
 
-  if (user?.role === 'chef') {
+  // Flag A fix: buyer + group_admin inherit chef-side dashboard (Justin doctrine lock).
+  // isChefShellUser in ChefShellLayout already treats these roles as chef-chrome users;
+  // this aligns content routing to match that chrome decision.
+  if (user?.role === 'chef' || user?.role === 'buyer' || user?.role === 'group_admin') {
     return <ChefDashboardPage />;
   }
 
