@@ -48,6 +48,7 @@ function activeTabFromPath(pathname: string): RepActiveTab {
   if (pathname.startsWith('/rep/quotes/inbound')) return 'quotes-inbound';
   // /rep/quotes/:id and any sub-mode (?mode=review, ?mode=pricing)
   if (pathname.startsWith('/rep/quotes')) return 'quotes';
+  if (pathname.startsWith('/rep/customers')) return 'customers';
   if (pathname.startsWith('/rep/settings') || pathname.startsWith('/settings')) return 'settings';
   // Default to inbound
   return 'quotes-inbound';
@@ -73,6 +74,7 @@ export function RepLayout() {
     else if (dest === 'rep-incoming' && opts?.quoteId) navigate(`/rep/quotes/${opts.quoteId}`);
     else if (dest === 'rep-pricing' && opts?.quoteId) navigate(`/rep/quotes/${opts.quoteId}?mode=pricing`);
     else if (dest === 'rep-catalog') navigate('/distributor-admin/catalog');
+    else if (dest === 'rep-customers') navigate('/rep/customers');
     else if (dest === 'rep-settings') navigate('/settings');
   };
 

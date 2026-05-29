@@ -68,6 +68,7 @@ import { isDemoMode } from "./utils/demoMode";
 import { RepWelcomePage } from "./pages/rep/RepWelcomePage";
 import { RepTriagePage } from "./pages/rep/RepTriagePage";
 import { RepIncomingQuotePage } from "./pages/rep/RepIncomingQuotePage";
+import { RepCustomersPage } from "./pages/rep/RepCustomersPage";
 import { RepLayout } from "./components/rep/RepLayout";
 
 const demo = isDemoMode();
@@ -229,6 +230,9 @@ export const router = createBrowserRouter([
                     { path: ":id", Component: RepIncomingQuotePage },
                   ],
                 },
+                // Card 11 (Desi Lock D-2): customer list shell — list only,
+                // no Add Customer form (Moose's track).
+                { path: "customers", Component: RepCustomersPage },
               ],
             },
           ]),
