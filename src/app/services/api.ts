@@ -2278,10 +2278,6 @@ export async function getPullQuote(id: string): Promise<ApiResponse<PullQuoteRes
   return fetchWithGuest(`/api/v1/chef/pull_quotes/${id}`);
 }
 
-export async function sharePullQuote(id: string): Promise<ApiResponse<{ share_url: string }>> {
-  return fetchWithGuest(`/api/v1/chef/pull_quotes/${id}/share`, { method: 'POST' });
-}
-
 // ─── Chef distributor entry ────────────────────────────────────────────────
 
 export interface ChefDistributorRepContact {
