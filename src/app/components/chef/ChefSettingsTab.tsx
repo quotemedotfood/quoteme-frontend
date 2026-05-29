@@ -8,7 +8,6 @@
 //   YOU Edit → Sheet drawer, PATCH /api/v1/users/me (name + email; phone BE-gated to reps).
 //   Restaurant Edit → disabled-with-tooltip (no chef-scoped PATCH restaurant endpoint — Chef v4 pre-work).
 //   Replace logo → disabled-with-tooltip (no logo upload endpoint — W2-2 scope).
-//   Remove / Resend invite → mailto interim (no chef-team-member BE endpoint — Chef v4 pre-work).
 //   Sign out → wired to AuthContext logout().
 //   Real data: YOU section from GET /api/v1/me; Restaurant name from GET /api/v1/chef/quotes[0].
 //
@@ -24,14 +23,21 @@
 //   Disabled-with-tooltip stub dropped. File picker: accept image/jpeg,image/png,image/webp.
 //   422 errors from BE surfaced inline. Loading state during upload.
 //
+// W2-3 (2026-05-29): Team Management wired to live BE (BE PR #73, merged).
+//   GET /api/v1/chef/team_members → live list on mount.
+//   POST /api/v1/chef/team_members → Add team member form (first_name, last_name, email, phone, role).
+//   DELETE /api/v1/chef/team_members/:id → per-row delete with confirm dialog; self-removal 422 inline.
+//   D-3 Desi Lock: STOP AT THE FORM. No invite-send / magic-link flow (V2, Q-Settings-3).
+//   mailto-justin interim removed entirely.
+//
 // ChefTabBar: B1 (feat-a1-chef-sidebar-shell) will land this at
 //   src/app/components/chef/ChefTabBar (or ChefMobileTabBar).
 //   Minimal stub below — B1 will replace at bundle integration.
 // ChefTabDesktopShell: same B1 branch, same path.
 //   Minimal stub below — B1 will replace at bundle integration.
 
-import { useState, useEffect } from 'react';
-import { ImagePlus, UserPlus, Store, Plus } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { ImagePlus, Store, Plus, Trash2, X } from 'lucide-react';
 
 import {
   SettingsSection,
@@ -43,20 +49,18 @@ import {
 
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '../ui/sheet';
 import { useAuth } from '../../contexts/AuthContext';
-import { updateCurrentUser, getChefRestaurant, updateChefRestaurant, uploadChefRestaurantLogo, deleteChefRestaurantLogo, type ChefRestaurant } from '../../services/api';
-
-// ─── Mailto helpers ───────────────────────────────────────────────────────────
-// Interim pattern — no chef-team-member BE endpoint exists. Routes team
-// management actions to Justin via mailto. Replace when a real
-// /api/v1/chef/team_members resource lands (Chef v4 pre-work).
-
-function openTeamManagementMailto(action: 'Remove' | 'Resend', chefName: string, chefEmail: string) {
-  const subject = encodeURIComponent('QuoteMe team management request');
-  const body = encodeURIComponent(
-    `Action: ${action} team member\nChef: ${chefName} <${chefEmail}>`
-  );
-  window.location.href = `mailto:justinl@quoteme.food?subject=${subject}&body=${body}`;
-}
+import {
+  updateCurrentUser,
+  getChefRestaurant,
+  updateChefRestaurant,
+  uploadChefRestaurantLogo,
+  deleteChefRestaurantLogo,
+  getChefTeamMembers,
+  createChefTeamMember,
+  deleteChefTeamMember,
+  type ChefRestaurant,
+  type ChefTeamMember,
+} from '../../services/api';
 
 function openAddPaymentMailto(chefIdentifier: string) {
   const subject = encodeURIComponent('QuoteMe subscription request');
@@ -70,28 +74,7 @@ function openAddPaymentMailto(chefIdentifier: string) {
 
 type NavFn = (target: string) => void;
 
-// ─── Demo data — team chefs only (no BE endpoint yet) ────────────────────────
-// TODO (Chef v4): replace TEAM_CHEFS with real data from a
-// GET /api/v1/chef/team_members endpoint once the BE resource exists.
-// LOCATIONS are also static pending a multi-location chef BE.
-
-const TEAM_CHEFS = [
-  {
-    name: 'Marta Quintero',
-    email: 'marta@hollowayandsons.com',
-    role: 'Sous chef',
-    joined: 'Apr 14, 2026',
-    status: 'active' as const,
-  },
-  {
-    name: 'Wei Tanaka',
-    email: 'wei@hollowayandsons.com',
-    role: 'Pastry',
-    joined: null as string | null,
-    status: 'invited' as const,
-  },
-];
-
+// LOCATIONS — static pending multi-location chef BE.
 const LOCATIONS = [
   { name: 'Holloway & Sons', city: 'Hudson, NY', role: 'Primary', current: true },
   { name: 'The Maple Room', city: 'Rhinebeck, NY', role: 'Visiting', current: false },
@@ -442,6 +425,173 @@ function EditRestaurantDrawer({
   );
 }
 
+// ─── useTeamData ─────────────────────────────────────────────────────────────
+// Fetches team members from GET /api/v1/chef/team_members.
+// restaurantId: Q-Settings-1 context selector. Undefined → no param sent → BE
+// resolves single-restaurant chef automatically; 422 on multi-restaurant-no-context.
+
+function useTeamData(restaurantId: string | undefined) {
+  const [members, setMembers] = useState<ChefTeamMember[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const refresh = useCallback(() => {
+    setLoading(true);
+    getChefTeamMembers(restaurantId).then((res) => {
+      setLoading(false);
+      if (Array.isArray(res.data)) {
+        setMembers(res.data);
+      }
+      // 422 multi-restaurant-no-context: leave empty — consistent with W2-1 pattern
+    });
+  }, [restaurantId]);
+
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
+
+  return { members, loading, refresh };
+}
+
+// ─── AddTeamMemberForm ────────────────────────────────────────────────────────
+// Inline form for POST /api/v1/chef/team_members.
+// D-3 Desi Lock: first_name + last_name + email + phone + role fields only.
+// No invite-send / magic-link (V2).
+
+interface AddTeamMemberFormProps {
+  restaurantId: string | undefined;
+  onSaved: () => void;
+  onCancel: () => void;
+  desktop?: boolean;
+}
+
+function AddTeamMemberForm({ restaurantId, onSaved, onCancel, desktop }: AddTeamMemberFormProps) {
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [role, setRole] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const inputCls = `border border-[var(--border)] rounded-md px-3 py-2 text-[13px] ink bg-transparent focus:outline-none focus:ring-1 focus:ring-[var(--primary)]`;
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    if (!firstName.trim() || !lastName.trim()) {
+      setError('First and last name are required.');
+      return;
+    }
+    setSaving(true);
+    const res = await createChefTeamMember(
+      {
+        first_name: firstName.trim(),
+        last_name: lastName.trim(),
+        email: email.trim() || undefined,
+        phone: phone.trim() || undefined,
+        role: role.trim() || undefined,
+      },
+      restaurantId
+    );
+    setSaving(false);
+    if (res.error) {
+      const errData = res.error_data as any;
+      const msgs: string[] = errData?.errors ?? [];
+      setError(msgs.length > 0 ? msgs.join(' ') : (res.error as string));
+      return;
+    }
+    onSaved();
+  }
+
+  return (
+    <form
+      onSubmit={handleSubmit}
+      className="flex flex-col gap-3 mt-3 pt-3"
+      style={{ borderTop: '1px solid var(--border)' }}
+    >
+      <div className={desktop ? 'grid grid-cols-2 gap-3' : 'flex flex-col gap-3'}>
+        <div className="flex flex-col gap-1">
+          <label className="qm-eyebrow" style={{ fontSize: 10 }}>FIRST NAME *</label>
+          <input
+            className={inputCls}
+            value={firstName}
+            onChange={(e) => setFirstName(e.target.value)}
+            required
+            disabled={saving}
+            placeholder="First name"
+          />
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className="qm-eyebrow" style={{ fontSize: 10 }}>LAST NAME *</label>
+          <input
+            className={inputCls}
+            value={lastName}
+            onChange={(e) => setLastName(e.target.value)}
+            required
+            disabled={saving}
+            placeholder="Last name"
+          />
+        </div>
+      </div>
+      <div className="flex flex-col gap-1">
+        <label className="qm-eyebrow" style={{ fontSize: 10 }}>EMAIL</label>
+        <input
+          type="email"
+          className={inputCls}
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          disabled={saving}
+          placeholder="email@example.com"
+        />
+      </div>
+      <div className={desktop ? 'grid grid-cols-2 gap-3' : 'flex flex-col gap-3'}>
+        <div className="flex flex-col gap-1">
+          <label className="qm-eyebrow" style={{ fontSize: 10 }}>PHONE</label>
+          <input
+            type="tel"
+            className={inputCls}
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            disabled={saving}
+            placeholder="(555) 000-0000"
+          />
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className="qm-eyebrow" style={{ fontSize: 10 }}>ROLE</label>
+          <input
+            className={inputCls}
+            value={role}
+            onChange={(e) => setRole(e.target.value)}
+            disabled={saving}
+            placeholder="Sous chef, Pastry…"
+          />
+        </div>
+      </div>
+      {error && (
+        <p className="text-[12px] text-red-600 leading-snug">{error}</p>
+      )}
+      <div className="flex items-center gap-3">
+        <button
+          type="submit"
+          className="qm-btn qm-btn-orange"
+          style={{ padding: '8px 16px', fontSize: 12.5 }}
+          disabled={saving}
+        >
+          {saving ? 'Adding…' : 'Add team member'}
+        </button>
+        <button
+          type="button"
+          className="text-[12px] ink-soft underline flex items-center gap-1"
+          onClick={onCancel}
+          disabled={saving}
+        >
+          <X size={12} /> Cancel
+        </button>
+      </div>
+    </form>
+  );
+}
+
 // ─── useRestaurantData ────────────────────────────────────────────────────────
 // Fetches the chef's restaurant from GET /api/v1/chef/restaurant.
 // Replaces the old getChefQuotes()-based approach (which only pulled the name).
@@ -485,10 +635,14 @@ export function ChefSettingsTab({ state = 'with-data', nav = noopNav }: ChefSett
   const empty = state === 'empty';
 
   const { restaurant, restaurantId, refresh: refreshRestaurant } = useRestaurantData(user?.id);
+  const { members: teamMembers, refresh: refreshTeam } = useTeamData(restaurantId);
   const [editYouOpen, setEditYouOpen] = useState(false);
   const [editRestaurantOpen, setEditRestaurantOpen] = useState(false);
   const [logoUploading, setLogoUploading] = useState(false);
   const [logoError, setLogoError] = useState<string | null>(null);
+  const [addTeamOpen, setAddTeamOpen] = useState(false);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const chefFirst = user?.first_name ?? '';
   const chefLast = user?.last_name ?? '';
@@ -531,6 +685,17 @@ export function ChefSettingsTab({ state = 'with-data', nav = noopNav }: ChefSett
       return;
     }
     refreshRestaurant(restaurantId);
+  }
+
+  async function handleDeleteTeamMember(id: string) {
+    setDeleteError(null);
+    const res = await deleteChefTeamMember(id, restaurantId);
+    setDeleteConfirmId(null);
+    if (res.error) {
+      setDeleteError(res.error);
+      return;
+    }
+    refreshTeam();
   }
 
   function handleSignOut() {
@@ -653,79 +818,88 @@ export function ChefSettingsTab({ state = 'with-data', nav = noopNav }: ChefSett
           />
         </SettingsSection>
 
-        {/* OTHER CHEFS — magic-link invite, no passwords */}
-        <SettingsSection title="OTHER CHEFS HERE" count={empty ? 0 : TEAM_CHEFS.length}>
+        {/* OTHER CHEFS — wired to GET/POST/DELETE /api/v1/chef/team_members (W2-3) */}
+        <SettingsSection title="OTHER CHEFS HERE" count={empty ? 0 : teamMembers.length}>
           {empty ? (
             <div className="py-3 text-[12.5px] ink-faint leading-snug">
-              Just you for now. Invite the kitchen and quotes are visible to the whole team.
+              Just you for now. Add the kitchen and quotes are visible to the whole team.
+            </div>
+          ) : teamMembers.length === 0 && !addTeamOpen ? (
+            <div className="py-3 text-[12.5px] ink-faint leading-snug">
+              Just you for now. Add the kitchen and quotes are visible to the whole team.
             </div>
           ) : (
-            TEAM_CHEFS.map((c, i) => (
-              <div key={i} className="doc-divider py-3 flex items-start gap-3">
+            teamMembers.map((m) => (
+              <div key={m.id} className="doc-divider py-3 flex items-start gap-3">
                 <div
                   className="shrink-0 w-8 h-8 rounded-full flex items-center justify-center"
                   style={{
-                    background:
-                      c.status === 'active' ? 'var(--secondary)' : 'var(--background)',
-                    border:
-                      c.status === 'active' ? 'none' : '1px dashed var(--border)',
+                    background: 'var(--secondary)',
+                    border: 'none',
                   }}
                 >
                   <span className="serif text-[11px] font-semibold ink">
-                    {c.name
-                      .split(' ')
-                      .map((s) => s[0])
-                      .join('')}
+                    {[m.first_name?.[0], m.last_name?.[0]].filter(Boolean).join('') || '?'}
                   </span>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-baseline gap-2">
-                    <div className="text-[13px] ink leading-snug">{c.name}</div>
-                    {c.status === 'invited' && (
-                      <span
-                        className="qm-pill"
-                        style={{
-                          background: '#FEF3C7',
-                          color: '#92400E',
-                          fontSize: 9.5,
-                          padding: '1px 7px',
-                        }}
-                      >
-                        Invite sent
-                      </span>
-                    )}
-                  </div>
-                  <div className="text-[11.5px] ink-faint leading-snug">{c.email}</div>
-                  <div className="text-[11px] ink-faint mt-0.5 leading-snug">
-                    {c.role}
-                    {c.joined && <span> · joined {c.joined}</span>}
-                  </div>
+                  <div className="text-[13px] ink leading-snug">{m.name}</div>
+                  {m.email && (
+                    <div className="text-[11.5px] ink-faint leading-snug">{m.email}</div>
+                  )}
+                  {m.role && (
+                    <div className="text-[11px] ink-faint mt-0.5 leading-snug">{m.role}</div>
+                  )}
                 </div>
-                {/* mailto interim — no /api/v1/chef/team_members endpoint. Chef v4 pre-work. */}
-                <button
-                  className="text-[11.5px] ink-soft underline shrink-0"
-                  onClick={() =>
-                    openTeamManagementMailto(
-                      c.status === 'invited' ? 'Resend' : 'Remove',
-                      c.name,
-                      c.email
-                    )
-                  }
-                >
-                  {c.status === 'invited' ? 'Resend' : 'Remove'}
-                </button>
+                {/* Delete — only for non-primary, non-self members */}
+                {!m.is_primary && (
+                  deleteConfirmId === m.id ? (
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="text-[11px] ink-faint">Remove?</span>
+                      <button
+                        className="text-[11.5px] text-red-600 underline"
+                        onClick={() => handleDeleteTeamMember(m.id)}
+                      >
+                        Yes
+                      </button>
+                      <button
+                        className="text-[11.5px] ink-soft underline"
+                        onClick={() => { setDeleteConfirmId(null); setDeleteError(null); }}
+                      >
+                        No
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      className="shrink-0 text-[var(--muted-foreground)] hover:text-red-600 transition-colors"
+                      title="Remove team member"
+                      onClick={() => { setDeleteConfirmId(m.id); setDeleteError(null); }}
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  )
+                )}
               </div>
             ))
           )}
-          <button
-            className="qm-btn qm-btn-outline mt-3 flex items-center gap-1.5"
-            style={{ padding: '8px 14px', fontSize: 12.5 }}
-          >
-            <UserPlus size={14} /> Invite a chef
-          </button>
-          <div className="text-[10.5px] ink-faint mt-2 leading-snug">
-            We send a one-tap link. No password, no account setup on their end.
-          </div>
+          {deleteError && (
+            <p className="text-[11px] text-red-600 leading-snug mt-1">{deleteError}</p>
+          )}
+          {!empty && addTeamOpen ? (
+            <AddTeamMemberForm
+              restaurantId={restaurantId}
+              onSaved={() => { setAddTeamOpen(false); refreshTeam(); }}
+              onCancel={() => setAddTeamOpen(false)}
+            />
+          ) : !empty && (
+            <button
+              className="qm-btn qm-btn-outline mt-3 flex items-center gap-1.5"
+              style={{ padding: '8px 14px', fontSize: 12.5 }}
+              onClick={() => setAddTeamOpen(true)}
+            >
+              <Plus size={14} /> Add team member
+            </button>
+          )}
         </SettingsSection>
 
         {/* OTHER LOCATIONS */}
@@ -874,10 +1048,14 @@ export function ChefSettingsTabDesktop({
   const empty = state === 'empty';
 
   const { restaurant, restaurantId, refresh: refreshRestaurant } = useRestaurantData(user?.id);
+  const { members: teamMembers, refresh: refreshTeam } = useTeamData(restaurantId);
   const [editYouOpen, setEditYouOpen] = useState(false);
   const [editRestaurantOpen, setEditRestaurantOpen] = useState(false);
   const [logoUploading, setLogoUploading] = useState(false);
   const [logoError, setLogoError] = useState<string | null>(null);
+  const [addTeamOpen, setAddTeamOpen] = useState(false);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const chefFirst = user?.first_name ?? '';
   const chefLast = user?.last_name ?? '';
@@ -919,6 +1097,17 @@ export function ChefSettingsTabDesktop({
       return;
     }
     refreshRestaurant(restaurantId);
+  }
+
+  async function handleDeleteTeamMemberDesktop(id: string) {
+    setDeleteError(null);
+    const res = await deleteChefTeamMember(id, restaurantId);
+    setDeleteConfirmId(null);
+    if (res.error) {
+      setDeleteError(res.error);
+      return;
+    }
+    refreshTeam();
   }
 
   function handleSignOut() {
@@ -1059,19 +1248,19 @@ export function ChefSettingsTabDesktop({
             </div>
           </section>
 
-          {/* OTHER CHEFS */}
+          {/* OTHER CHEFS — wired to GET/POST/DELETE /api/v1/chef/team_members (W2-3) */}
           <section id="team" className="mt-10">
             <div
               className="qm-eyebrow flex items-baseline justify-between"
               style={{ fontSize: 11 }}
             >
               <span>OTHER CHEFS HERE</span>
-              {!empty && (
+              {!empty && teamMembers.length > 0 && (
                 <span
                   className="ink-faint"
                   style={{ letterSpacing: 0, textTransform: 'none', fontWeight: 400 }}
                 >
-                  {TEAM_CHEFS.length}
+                  {teamMembers.length}
                 </span>
               )}
             </div>
@@ -1081,74 +1270,85 @@ export function ChefSettingsTabDesktop({
                 className="py-4 text-[13px] ink-faint leading-relaxed"
                 style={{ maxWidth: 480 }}
               >
-                Just you for now. Invite the kitchen and quotes are visible to the whole team.
+                Just you for now. Add the kitchen and quotes are visible to the whole team.
+              </div>
+            ) : teamMembers.length === 0 && !addTeamOpen ? (
+              <div
+                className="py-4 text-[13px] ink-faint leading-relaxed"
+                style={{ maxWidth: 480 }}
+              >
+                Just you for now. Add the kitchen and quotes are visible to the whole team.
               </div>
             ) : (
-              TEAM_CHEFS.map((c, i) => (
-                <div key={i} className="doc-divider py-3 flex items-center gap-4">
+              teamMembers.map((m) => (
+                <div key={m.id} className="doc-divider py-3 flex items-center gap-4">
                   <div
                     className="shrink-0 w-9 h-9 rounded-full flex items-center justify-center"
                     style={{
-                      background:
-                        c.status === 'active' ? 'var(--secondary)' : 'var(--background)',
-                      border:
-                        c.status === 'active' ? 'none' : '1px dashed var(--border)',
+                      background: 'var(--secondary)',
+                      border: 'none',
                     }}
                   >
                     <span className="serif text-[12px] font-semibold ink">
-                      {c.name
-                        .split(' ')
-                        .map((s) => s[0])
-                        .join('')}
+                      {[m.first_name?.[0], m.last_name?.[0]].filter(Boolean).join('') || '?'}
                     </span>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-baseline gap-2">
-                      <div className="text-[13.5px] ink leading-snug">{c.name}</div>
-                      {c.status === 'invited' && (
-                        <span
-                          className="qm-pill"
-                          style={{
-                            background: '#FEF3C7',
-                            color: '#92400E',
-                            fontSize: 10,
-                            padding: '1px 7px',
-                          }}
-                        >
-                          Invite sent
-                        </span>
-                      )}
-                    </div>
+                    <div className="text-[13.5px] ink leading-snug">{m.name}</div>
                     <div className="text-[12px] ink-faint leading-snug">
-                      {c.email} · {c.role}
-                      {c.joined && ` · joined ${c.joined}`}
+                      {[m.email, m.role].filter(Boolean).join(' · ')}
                     </div>
                   </div>
-                  {/* mailto interim — no /api/v1/chef/team_members endpoint. Chef v4 pre-work. */}
-                  <button
-                    className="text-[12px] ink-soft underline shrink-0"
-                    onClick={() =>
-                      openTeamManagementMailto(
-                        c.status === 'invited' ? 'Resend' : 'Remove',
-                        c.name,
-                        c.email
-                      )
-                    }
-                  >
-                    {c.status === 'invited' ? 'Resend' : 'Remove'}
-                  </button>
+                  {/* Delete — only for non-primary members */}
+                  {!m.is_primary && (
+                    deleteConfirmId === m.id ? (
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-[12px] ink-faint">Remove?</span>
+                        <button
+                          className="text-[12px] text-red-600 underline"
+                          onClick={() => handleDeleteTeamMemberDesktop(m.id)}
+                        >
+                          Yes
+                        </button>
+                        <button
+                          className="text-[12px] ink-soft underline"
+                          onClick={() => { setDeleteConfirmId(null); setDeleteError(null); }}
+                        >
+                          No
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        className="shrink-0 text-[var(--muted-foreground)] hover:text-red-600 transition-colors"
+                        title="Remove team member"
+                        onClick={() => { setDeleteConfirmId(m.id); setDeleteError(null); }}
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    )
+                  )}
                 </div>
               ))
             )}
-            <button
-              className="qm-btn qm-btn-outline mt-3 flex items-center gap-1.5"
-              style={{ padding: '10px 16px', fontSize: 13 }}
-            >
-              <UserPlus size={15} /> Invite a chef
-            </button>
-            <div className="text-[11.5px] ink-faint mt-2 leading-snug">
-              We send a one-tap link. No password, no account setup on their end.
-            </div>
+            {deleteError && (
+              <p className="text-[12px] text-red-600 leading-snug mt-1">{deleteError}</p>
+            )}
+            {!empty && addTeamOpen ? (
+              <AddTeamMemberForm
+                restaurantId={restaurantId}
+                onSaved={() => { setAddTeamOpen(false); refreshTeam(); }}
+                onCancel={() => setAddTeamOpen(false)}
+                desktop
+              />
+            ) : !empty && (
+              <button
+                className="qm-btn qm-btn-outline mt-3 flex items-center gap-1.5"
+                style={{ padding: '10px 16px', fontSize: 13 }}
+                onClick={() => setAddTeamOpen(true)}
+              >
+                <Plus size={15} /> Add team member
+              </button>
+            )}
           </section>
 
           {/* LOCATIONS */}
