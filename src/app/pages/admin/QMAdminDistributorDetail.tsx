@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router';
-import { ArrowLeft, Package, Users, UtensilsCrossed } from 'lucide-react';
+import { ArrowLeft, Package, Users, UtensilsCrossed, UserCheck } from 'lucide-react';
 import { getAdminDistributor, AdminDistributorDetail } from '../../services/adminApi';
+import { Button } from '../../components/ui/button';
 import {
   Table,
   TableHeader,
@@ -10,12 +11,14 @@ import {
   TableHead,
   TableCell,
 } from '../../components/ui/table';
+import { handleImpersonate } from '../../utils/impersonate';
 
 export function QMAdminDistributorDetailPage() {
   const { id } = useParams<{ id: string }>();
   const [dist, setDist] = useState<AdminDistributorDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [impersonating, setImpersonating] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -107,6 +110,7 @@ export function QMAdminDistributorDetailPage() {
                   <TableHead>Phone</TableHead>
                   <TableHead>Territory</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -120,6 +124,18 @@ export function QMAdminDistributorDetailPage() {
                       <span className={`text-xs px-2 py-0.5 rounded ${r.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
                         {r.is_active ? 'Active' : 'Inactive'}
                       </span>
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-xs text-[#7FAEC2] hover:text-[#6A9AB0]"
+                        disabled={impersonating === r.user_id}
+                        onClick={() => handleImpersonate(r.user_id, r.name, setImpersonating, setError)}
+                      >
+                        <UserCheck size={14} className="mr-1" />
+                        {impersonating === r.user_id ? 'Switching...' : 'Impersonate'}
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))}
