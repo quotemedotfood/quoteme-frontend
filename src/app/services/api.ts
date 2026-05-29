@@ -2597,3 +2597,56 @@ export async function requestCatalogUploadLink(distributorId: string): Promise<A
     body: JSON.stringify({ distributor_id: distributorId }),
   });
 }
+
+// ─── Chef Restaurant settings (Q-Settings-1 + Q-Settings-5) ──────────────────
+// GET  /api/v1/chef/restaurant       → show  (BE PR #69, merged)
+// PATCH /api/v1/chef/restaurant      → update (BE PR #69, merged)
+//
+// Context-selector: ?restaurant_id=<uuid> on both endpoints.
+// Multi-restaurant chef with no context → 422 { error: "select a restaurant..." }
+// Restaurant not in chef scope → 404 { error: "No restaurant found..." }
+
+export interface ChefRestaurant {
+  id: string;
+  name: string;
+  address_line_1: string | null;
+  address_line_2: string | null;
+  city: string | null;
+  state: string | null;
+  zip: string | null;
+  phone: string | null;
+  website: string | null;
+  status: string;
+  logo_url: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ChefRestaurantShape {
+  restaurant: ChefRestaurant | null;
+  user: {
+    id: string;
+    first_name: string;
+    last_name: string;
+    email: string;
+    phone: string | null;
+  };
+}
+
+/** GET /api/v1/chef/restaurant — returns the chef's current restaurant + user. */
+export async function getChefRestaurant(restaurantId?: string): Promise<ApiResponse<ChefRestaurantShape>> {
+  const query = restaurantId ? `?restaurant_id=${restaurantId}` : '';
+  return fetchWithGuest<ChefRestaurantShape>(`/api/v1/chef/restaurant${query}`);
+}
+
+/** PATCH /api/v1/chef/restaurant — update editable restaurant fields. */
+export async function updateChefRestaurant(
+  payload: Partial<Pick<ChefRestaurant, 'name' | 'address_line_1' | 'address_line_2' | 'city' | 'state' | 'zip' | 'phone' | 'website'>>,
+  restaurantId?: string
+): Promise<ApiResponse<ChefRestaurantShape>> {
+  const query = restaurantId ? `?restaurant_id=${restaurantId}` : '';
+  return fetchWithGuest<ChefRestaurantShape>(`/api/v1/chef/restaurant${query}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ restaurant: payload }),
+  });
+}
