@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
-import { Loader2, Check, Send, UserPlus, Users, X } from 'lucide-react';
-import { inviteRep, getDistributorAdminReps } from '../services/api';
+import { Loader2, Check, Send, UserPlus, Users, X, LogIn } from 'lucide-react';
+import { inviteRep, getDistributorAdminReps, impersonateRep } from '../services/api';
 import type { DistributorRep } from '../services/api';
 
 export function DistributorRepsPage() {
@@ -16,6 +16,8 @@ export function DistributorRepsPage() {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+  const [impersonating, setImpersonating] = useState<string | null>(null);
+  const [impersonateError, setImpersonateError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!document.getElementById('quoteme-fonts')) {
@@ -61,6 +63,23 @@ export function DistributorRepsPage() {
       loadReps();
     }
     setSending(false);
+  };
+
+  const handleImpersonate = async (rep: DistributorRep) => {
+    setImpersonating(rep.id);
+    setImpersonateError(null);
+    const res = await impersonateRep(rep.id);
+    if (res.data?.token) {
+      // Store the distributor admin's original token so they can restore it later
+      localStorage.setItem('quoteme_admin_token', localStorage.getItem('quoteme_token') || '');
+      const displayName = [rep.first_name, rep.last_name].filter(Boolean).join(' ') || rep.email;
+      localStorage.setItem('quoteme_impersonating', displayName);
+      localStorage.setItem('quoteme_token', res.data.token);
+      window.location.href = '/';
+    } else {
+      setImpersonateError(res.error || 'Failed to impersonate rep');
+      setImpersonating(null);
+    }
   };
 
   const activeReps = reps.filter(r => r.status === 'active');
@@ -142,6 +161,10 @@ export function DistributorRepsPage() {
         </form>
       )}
 
+      {impersonateError && (
+        <p className="text-red-500 text-sm mb-4">{impersonateError}</p>
+      )}
+
       {/* Reps table */}
       {loading ? (
         <div className="flex items-center justify-center py-20">
@@ -176,6 +199,7 @@ export function DistributorRepsPage() {
                 <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wide px-6 py-3 hidden md:table-cell" style={{ fontFamily: "'DM Sans', sans-serif" }}>Territory</th>
                 <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wide px-6 py-3" style={{ fontFamily: "'DM Sans', sans-serif" }}>Status</th>
                 <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wide px-6 py-3 hidden lg:table-cell" style={{ fontFamily: "'DM Sans', sans-serif" }}>Joined</th>
+                <th className="px-6 py-3" />
               </tr>
             </thead>
             <tbody>
@@ -203,6 +227,22 @@ export function DistributorRepsPage() {
                       {new Date(rep.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                     </p>
                   </td>
+                  <td className="px-6 py-4 text-right">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={impersonating === rep.id}
+                      onClick={() => handleImpersonate(rep)}
+                      className="text-gray-500 hover:text-[#2A2A2A] text-xs"
+                      title={`Sign in as ${rep.first_name || rep.email}`}
+                    >
+                      {impersonating === rep.id
+                        ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        : <LogIn className="w-3.5 h-3.5 mr-1" />
+                      }
+                      {impersonating === rep.id ? '' : 'Sign in as'}
+                    </Button>
+                  </td>
                 </tr>
               ))}
               {invitedReps.map(rep => (
@@ -229,6 +269,7 @@ export function DistributorRepsPage() {
                       {new Date(rep.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                     </p>
                   </td>
+                  <td className="px-6 py-4" />
                 </tr>
               ))}
               {inactiveReps.map(rep => (
@@ -255,6 +296,7 @@ export function DistributorRepsPage() {
                       {new Date(rep.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                     </p>
                   </td>
+                  <td className="px-6 py-4" />
                 </tr>
               ))}
             </tbody>
