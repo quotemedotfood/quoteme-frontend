@@ -18,6 +18,12 @@
 //   Multi-restaurant chef with no context → 422; surfaced as inline error in drawer.
 //   EditRestaurantDrawer replaces the disabled-with-tooltip stubs on all three rows.
 //
+// W2-2 (2026-05-29): Logo replace wired to live BE (BE PR #71, merged).
+//   POST /api/v1/chef/restaurant/logo (multipart) → attach logo; preview logo_url.
+//   DELETE /api/v1/chef/restaurant/logo → remove logo.
+//   Disabled-with-tooltip stub dropped. File picker: accept image/jpeg,image/png,image/webp.
+//   422 errors from BE surfaced inline. Loading state during upload.
+//
 // ChefTabBar: B1 (feat-a1-chef-sidebar-shell) will land this at
 //   src/app/components/chef/ChefTabBar (or ChefMobileTabBar).
 //   Minimal stub below — B1 will replace at bundle integration.
@@ -37,7 +43,7 @@ import {
 
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '../ui/sheet';
 import { useAuth } from '../../contexts/AuthContext';
-import { updateCurrentUser, getChefRestaurant, updateChefRestaurant, type ChefRestaurant } from '../../services/api';
+import { updateCurrentUser, getChefRestaurant, updateChefRestaurant, uploadChefRestaurantLogo, deleteChefRestaurantLogo, type ChefRestaurant } from '../../services/api';
 
 // ─── Mailto helpers ───────────────────────────────────────────────────────────
 // Interim pattern — no chef-team-member BE endpoint exists. Routes team
@@ -481,6 +487,8 @@ export function ChefSettingsTab({ state = 'with-data', nav = noopNav }: ChefSett
   const { restaurant, restaurantId, refresh: refreshRestaurant } = useRestaurantData(user?.id);
   const [editYouOpen, setEditYouOpen] = useState(false);
   const [editRestaurantOpen, setEditRestaurantOpen] = useState(false);
+  const [logoUploading, setLogoUploading] = useState(false);
+  const [logoError, setLogoError] = useState<string | null>(null);
 
   const chefFirst = user?.first_name ?? '';
   const chefLast = user?.last_name ?? '';
@@ -496,6 +504,34 @@ export function ChefSettingsTab({ state = 'with-data', nav = noopNav }: ChefSett
     restaurant?.zip,
   ].filter(Boolean);
   const addressDisplay = addressParts.length > 0 ? addressParts.join(' ') : null;
+
+  async function handleLogoFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setLogoError(null);
+    setLogoUploading(true);
+    const res = await uploadChefRestaurantLogo(file, restaurantId);
+    setLogoUploading(false);
+    if (res.error) {
+      setLogoError(res.error);
+      return;
+    }
+    refreshRestaurant(restaurantId);
+    // Reset input so selecting the same file again re-fires onChange
+    e.target.value = '';
+  }
+
+  async function handleLogoDelete() {
+    setLogoError(null);
+    setLogoUploading(true);
+    const res = await deleteChefRestaurantLogo(restaurantId);
+    setLogoUploading(false);
+    if (res.error) {
+      setLogoError(res.error);
+      return;
+    }
+    refreshRestaurant(restaurantId);
+  }
 
   function handleSignOut() {
     logout();
@@ -537,8 +573,9 @@ export function ChefSettingsTab({ state = 'with-data', nav = noopNav }: ChefSett
         {/* RESTAURANT */}
         <SettingsSection title="RESTAURANT">
           <div className="py-3 flex items-center gap-3">
+            {/* Logo thumbnail — shows uploaded image when logo_url present, else initials/placeholder */}
             <div
-              className="shrink-0 rounded-md flex items-center justify-center"
+              className="shrink-0 rounded-md flex items-center justify-center overflow-hidden"
               style={{
                 width: 56,
                 height: 56,
@@ -549,6 +586,12 @@ export function ChefSettingsTab({ state = 'with-data', nav = noopNav }: ChefSett
             >
               {empty ? (
                 <ImagePlus size={20} color="var(--muted-foreground)" />
+              ) : restaurant?.logo_url ? (
+                <img
+                  src={restaurant.logo_url}
+                  alt="Restaurant logo"
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                />
               ) : (
                 <span className="serif font-semibold" style={{ fontSize: 18, letterSpacing: 0.4 }}>
                   {restaurantDisplay.charAt(0) || '?'}
@@ -562,14 +605,33 @@ export function ChefSettingsTab({ state = 'with-data', nav = noopNav }: ChefSett
                   ? 'Square PNG or JPG. Shows on your order guides.'
                   : 'Shows on your order guide header and emails.'}
               </div>
-              {/* Logo upload — W2-2 scope. Disabled with tooltip. */}
-              <button
-                className="text-[11.5px] underline ink-soft mt-1 cursor-not-allowed opacity-50"
-                title="Logo upload coming in a future release."
-                disabled
-              >
-                {empty ? 'Upload' : 'Replace'}
-              </button>
+              {/* Logo upload — wired to POST /api/v1/chef/restaurant/logo (W2-2) */}
+              <div className="flex items-center gap-3 mt-1">
+                <label
+                  className={`text-[11.5px] underline ink-soft ${logoUploading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                >
+                  {logoUploading ? 'Uploading…' : (empty || !restaurant?.logo_url ? 'Upload' : 'Replace')}
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    className="sr-only"
+                    disabled={logoUploading || empty}
+                    onChange={handleLogoFileChange}
+                  />
+                </label>
+                {!empty && restaurant?.logo_url && !logoUploading && (
+                  <button
+                    className="text-[11.5px] ink-faint underline"
+                    onClick={handleLogoDelete}
+                    disabled={logoUploading}
+                  >
+                    Remove
+                  </button>
+                )}
+              </div>
+              {logoError && (
+                <p className="text-[11px] text-red-600 leading-snug mt-0.5">{logoError}</p>
+              )}
             </div>
           </div>
           <SettingRow
@@ -814,6 +876,8 @@ export function ChefSettingsTabDesktop({
   const { restaurant, restaurantId, refresh: refreshRestaurant } = useRestaurantData(user?.id);
   const [editYouOpen, setEditYouOpen] = useState(false);
   const [editRestaurantOpen, setEditRestaurantOpen] = useState(false);
+  const [logoUploading, setLogoUploading] = useState(false);
+  const [logoError, setLogoError] = useState<string | null>(null);
 
   const chefFirst = user?.first_name ?? '';
   const chefLast = user?.last_name ?? '';
@@ -829,6 +893,33 @@ export function ChefSettingsTabDesktop({
     restaurant?.zip,
   ].filter(Boolean);
   const addressDisplay = addressParts.length > 0 ? addressParts.join(' ') : null;
+
+  async function handleLogoFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setLogoError(null);
+    setLogoUploading(true);
+    const res = await uploadChefRestaurantLogo(file, restaurantId);
+    setLogoUploading(false);
+    if (res.error) {
+      setLogoError(res.error);
+      return;
+    }
+    refreshRestaurant(restaurantId);
+    e.target.value = '';
+  }
+
+  async function handleLogoDelete() {
+    setLogoError(null);
+    setLogoUploading(true);
+    const res = await deleteChefRestaurantLogo(restaurantId);
+    setLogoUploading(false);
+    if (res.error) {
+      setLogoError(res.error);
+      return;
+    }
+    refreshRestaurant(restaurantId);
+  }
 
   function handleSignOut() {
     logout();
@@ -883,8 +974,9 @@ export function ChefSettingsTabDesktop({
             </div>
             <div className="mt-2 doc-divider-thick" />
             <div className="py-4 flex items-center gap-4">
+              {/* Logo thumbnail — shows uploaded image when logo_url present, else initials/placeholder */}
               <div
-                className="shrink-0 rounded-md flex items-center justify-center"
+                className="shrink-0 rounded-md flex items-center justify-center overflow-hidden"
                 style={{
                   width: 72,
                   height: 72,
@@ -895,6 +987,12 @@ export function ChefSettingsTabDesktop({
               >
                 {empty ? (
                   <ImagePlus size={22} color="var(--muted-foreground)" />
+                ) : restaurant?.logo_url ? (
+                  <img
+                    src={restaurant.logo_url}
+                    alt="Restaurant logo"
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  />
                 ) : (
                   <span
                     className="serif font-semibold"
@@ -909,16 +1007,35 @@ export function ChefSettingsTabDesktop({
                   {empty ? 'Add a logo' : 'Logo'}
                 </div>
                 <div className="text-[12px] ink-faint leading-snug">
-                  Square PNG or JPG, up to 2 MB. Shows on your order guide header and emails.
+                  Square PNG or JPG or WebP, up to 5 MB. Shows on your order guide header and emails.
                 </div>
-                {/* Logo upload — W2-2 scope. Disabled with tooltip. */}
-                <button
-                  className="text-[12px] underline ink-soft mt-1 cursor-not-allowed opacity-50"
-                  title="Logo upload coming in a future release."
-                  disabled
-                >
-                  {empty ? 'Upload' : 'Replace'}
-                </button>
+                {/* Logo upload — wired to POST /api/v1/chef/restaurant/logo (W2-2) */}
+                <div className="flex items-center gap-3 mt-1">
+                  <label
+                    className={`text-[12px] underline ink-soft ${logoUploading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                  >
+                    {logoUploading ? 'Uploading…' : (empty || !restaurant?.logo_url ? 'Upload' : 'Replace')}
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      className="sr-only"
+                      disabled={logoUploading || empty}
+                      onChange={handleLogoFileChange}
+                    />
+                  </label>
+                  {!empty && restaurant?.logo_url && !logoUploading && (
+                    <button
+                      className="text-[12px] ink-faint underline"
+                      onClick={handleLogoDelete}
+                      disabled={logoUploading}
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+                {logoError && (
+                  <p className="text-[11px] text-red-600 leading-snug mt-0.5">{logoError}</p>
+                )}
               </div>
             </div>
             <div className="grid grid-cols-[120px_1fr_auto] items-baseline gap-x-4">
