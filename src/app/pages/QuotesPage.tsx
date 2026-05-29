@@ -6,6 +6,11 @@ import { useNavigate } from 'react-router';
 import { BottomSheet } from '../components/BottomSheet';
 import { getQuotes, requoteQuote, downloadQuotePdf, downloadQuoteCsv, downloadOrderGuide, deleteQuote, type QuoteListItem, type GetQuotesParams } from '../services/api';
 
+/** Statuses where the quote workflow is closed. Requote is hidden for these. */
+export const CLOSED_STATUSES = ['won', 'confirmed', 'accepted', 'declined'] as const;
+export const isClosedQuote = (status: string): boolean =>
+  (CLOSED_STATUSES as readonly string[]).includes(status);
+
 export function QuotesPage() {
   const navigate = useNavigate();
   const [quotes, setQuotes] = useState<QuoteListItem[]>([]);
@@ -378,14 +383,17 @@ export function QuotesPage() {
                     <FileSpreadsheet className="w-3.5 h-3.5" />
                     Order Guide
                   </button>
-                  <button
-                    className="flex items-center gap-1.5 text-xs text-gray-600 hover:text-[#F2993D] transition-colors disabled:opacity-50"
-                    onClick={() => handleRequote(quote.id)}
-                    disabled={requotingId === quote.id}
-                  >
-                    <RefreshCw className={`w-3.5 h-3.5 ${requotingId === quote.id ? 'animate-spin' : ''}`} />
-                    Requote
-                  </button>
+                  {!isClosedQuote(quote.status) && (
+                    <button
+                      className="flex items-center gap-1.5 text-xs text-gray-600 hover:text-[#F2993D] transition-colors disabled:opacity-50"
+                      onClick={() => handleRequote(quote.id)}
+                      disabled={requotingId === quote.id}
+                      aria-label="Requote"
+                    >
+                      <RefreshCw className={`w-3.5 h-3.5 ${requotingId === quote.id ? 'animate-spin' : ''}`} />
+                      Requote
+                    </button>
+                  )}
                   <button
                     className="flex items-center gap-1.5 text-xs text-red-400 hover:text-red-600 transition-colors ml-auto"
                     onClick={() => setConfirmDeleteId(quote.id)}
@@ -546,14 +554,17 @@ export function QuotesPage() {
                           >
                             <FileSpreadsheet className="w-4 h-4 text-[#F9A64B]" />
                           </button>
-                          <button
-                            className="p-1 hover:bg-gray-100 rounded transition-colors disabled:opacity-50"
-                            title="Requote"
-                            onClick={() => handleRequote(quote.id)}
-                            disabled={requotingId === quote.id}
-                          >
-                            <RefreshCw className={`w-4 h-4 text-gray-600 ${requotingId === quote.id ? 'animate-spin' : ''}`} />
-                          </button>
+                          {!isClosedQuote(quote.status) && (
+                            <button
+                              className="p-1 hover:bg-gray-100 rounded transition-colors disabled:opacity-50"
+                              title="Requote"
+                              aria-label="Requote"
+                              onClick={() => handleRequote(quote.id)}
+                              disabled={requotingId === quote.id}
+                            >
+                              <RefreshCw className={`w-4 h-4 text-gray-600 ${requotingId === quote.id ? 'animate-spin' : ''}`} />
+                            </button>
+                          )}
                           <button
                             className="p-1 hover:bg-red-50 rounded transition-colors"
                             title="Delete"
