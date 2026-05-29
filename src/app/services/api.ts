@@ -2724,3 +2724,55 @@ export async function deleteChefRestaurantLogo(
     return { error: error instanceof Error ? error.message : 'Network error' };
   }
 }
+
+// ─── Chef Team Members (Gap 3, BE PR #73 merged) ──────────────────────────────
+// GET    /api/v1/chef/team_members?restaurant_id=<uuid>  → list, ordered is_primary DESC, created_at ASC
+// POST   /api/v1/chef/team_members                       → create; body { team_member: { first_name, last_name, email, phone, role } }
+// DELETE /api/v1/chef/team_members/:id                  → remove; 422 if self-removal
+//
+// Q-Settings-1 context-selector: ?restaurant_id=<uuid> on GET.
+// Multi-restaurant chef with no context → 422 { error: "..." }. Matches W2-1 pattern.
+// Serializer: { id, first_name, last_name, name (computed), email, phone, role, is_primary, user_id }
+//
+// D-3 Desi Lock: STOP AT THE FORM. No invite-send / magic-link flow (V2, Q-Settings-3).
+
+export interface ChefTeamMember {
+  id: string;
+  first_name: string;
+  last_name: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  role: string | null;
+  is_primary: boolean;
+  user_id: string | null;
+}
+
+/** GET /api/v1/chef/team_members — list team members for the current restaurant context. */
+export async function getChefTeamMembers(restaurantId?: string): Promise<ApiResponse<ChefTeamMember[]>> {
+  const query = restaurantId ? `?restaurant_id=${restaurantId}` : '';
+  return fetchWithGuest<ChefTeamMember[]>(`/api/v1/chef/team_members${query}`);
+}
+
+/** POST /api/v1/chef/team_members — add a team member. */
+export async function createChefTeamMember(
+  payload: Partial<ChefTeamMember>,
+  restaurantId?: string
+): Promise<ApiResponse<ChefTeamMember>> {
+  const query = restaurantId ? `?restaurant_id=${restaurantId}` : '';
+  return fetchWithGuest<ChefTeamMember>(`/api/v1/chef/team_members${query}`, {
+    method: 'POST',
+    body: JSON.stringify({ team_member: payload }),
+  });
+}
+
+/** DELETE /api/v1/chef/team_members/:id — remove a team member. 422 if self-removal. */
+export async function deleteChefTeamMember(
+  id: string,
+  restaurantId?: string
+): Promise<ApiResponse<void>> {
+  const query = restaurantId ? `?restaurant_id=${restaurantId}` : '';
+  return fetchWithGuest<void>(`/api/v1/chef/team_members/${id}${query}`, {
+    method: 'DELETE',
+  });
+}
