@@ -2594,3 +2594,62 @@ export interface RepCustomer {
 export async function getRepCustomers(): Promise<ApiResponse<RepCustomer[]>> {
   return fetchWithAuth<RepCustomer[]>('/api/v1/rep/customers');
 }
+
+// ─── B3b: Chef Distributor Detail ────────────────────────────────────────────
+// GET /api/v1/chef/distributors/:id
+// Returns distributor detail + rep (single) + catalogs + recent_quote.
+// Composed from Chef::DistributorsController#show.
+
+export interface ChefDistributorDetailRep {
+  id: string;
+  name: string;
+  email: string;
+  phone?: string | null;
+}
+
+export interface ChefDistributorDetailCatalog {
+  id: string;
+  distributor_id: string;
+  status: string;
+  is_demo: boolean;
+  sku_count: number;
+  catalog_state?: string | null;
+  created_at: string;
+}
+
+export interface ChefDistributorDetailRecentQuote {
+  id: string;
+  status: string;
+  created_at: string;
+}
+
+export interface ChefDistributorDetail {
+  id: string;
+  name: string;
+  status: string;
+  rep: ChefDistributorDetailRep | null;
+  catalogs: ChefDistributorDetailCatalog[];
+  recent_quote: ChefDistributorDetailRecentQuote | null;
+}
+
+export async function getChefDistributorDetail(id: string): Promise<ApiResponse<ChefDistributorDetail>> {
+  return fetchWithGuest(`/api/v1/chef/distributors/${id}`);
+}
+
+// POST /api/v1/chef/catalog_upload_links (BE-3 Sacred Orange CTA)
+// Chef requests a catalog upload link for the given distributor.
+// The backend resolves the primary rep and notifies them via email.
+// Returns { token, url, expires_at }.
+
+export interface CatalogUploadLinkResponse {
+  token: string;
+  url: string;
+  expires_at: string;
+}
+
+export async function requestCatalogUploadLink(distributorId: string): Promise<ApiResponse<CatalogUploadLinkResponse>> {
+  return fetchWithGuest(`/api/v1/chef/catalog_upload_links`, {
+    method: 'POST',
+    body: JSON.stringify({ distributor_id: distributorId }),
+  });
+}
