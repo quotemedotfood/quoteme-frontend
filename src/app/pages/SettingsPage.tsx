@@ -755,7 +755,7 @@ export function SettingsPage() {
             </button>
           </div>
           <p className="text-xs text-gray-400 mt-1">
-            {user?.unlimited_drafts ? 'Unlimited drafts' : '2 drafts (recommended)'}
+            {user?.unlimited_drafts ? 'Unlimited drafts' : '2 drafts'}
           </p>
         </div>
         )}
