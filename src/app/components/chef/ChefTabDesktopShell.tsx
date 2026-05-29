@@ -14,7 +14,7 @@
 //   • CSS vars (--qm-*) → FE color constants.
 
 import React, { useState } from 'react';
-import { FileText, ClipboardList, Truck, Settings, Home, PanelLeftClose, PanelLeftOpen, Plus } from 'lucide-react';
+import { FileText, Settings, Home, PanelLeftClose, PanelLeftOpen, Plus } from 'lucide-react';
 import quotemeLogo from '../../../assets/quoteme-logo.png';
 import { SidebarHelpInput } from './SidebarHelpInput';
 
@@ -53,13 +53,14 @@ export interface ChefTabDesktopShellProps {
 // Preserves the structural contract (flex left rail, ~200px wide, collapses).
 // Full NewspaperSidebar design will be delivered in a subsequent track.
 
-// c73+c75: Dashboard added. Order: Dashboard, Quotes, OrderGuides, Distributors, Settings.
+// c73+c75: Dashboard added. Order: Dashboard, Quotes, Settings.
 // c72: Build Quote rendered separately ABOVE this list at position 2 (per locked IA).
+// Order Guides + Distributors removed — no routes built yet; dead items kill trust
+// faster than missing features (Justin doctrine). Re-add when /chef/order-guides and
+// /chef/distributors routes exist.
 const NAV_ITEMS: { id: ActiveTab; label: string; target: string; Icon: React.ComponentType<{ size?: number; strokeWidth?: number }> }[] = [
   { id: 'dashboard',    label: 'Dashboard',    target: 'tab-dashboard',    Icon: Home },
   { id: 'home',         label: 'Quotes',       target: 'tab-home',         Icon: FileText },
-  { id: 'order-guides', label: 'Order Guides', target: 'tab-order-guides', Icon: ClipboardList },
-  { id: 'distributors', label: 'Distributors', target: 'tab-distributors', Icon: Truck },
   { id: 'settings',     label: 'Settings',     target: 'tab-settings',     Icon: Settings },
 ];
 
