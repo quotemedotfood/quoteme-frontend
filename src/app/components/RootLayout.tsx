@@ -58,6 +58,11 @@ export function RootLayout() {
   // flow (/chef/entry, /chef/welcome, /chef/status, /chef/quotes/:id) must
   // stay open. The isAuthenticated gate above already bounced unauthenticated
   // non-guests to /auth.
+  //
+  // V1 LOCK: /chef/entry requires auth. V2 chef-discovery flow
+  // (chef arrives without rep relationship) will need a NEW entry
+  // surface, NOT removing this guard. See Justin doctrine
+  // 2026-05-28 Q-Entry: lock behavior, not model.
   const CHEF_FLOW_ROLES = ['chef', 'group_admin'];
   if (
     isAuthenticated &&
