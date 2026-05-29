@@ -89,6 +89,7 @@ export function ChefShellLayout() {
     if (target === 'tab-dashboard') return navigate('/dashboard', { state: { activeTab: 'home' } });
     // Quotes has a dedicated route — navigate there directly (c135)
     if (target === 'tab-home') return navigate('/chef/quotes');
+    if (target === 'tab-distributors') return navigate('/chef/distributor/new');
     if (target === 'tab-settings') return navigate('/dashboard', { state: { activeTab: 'settings' } });
   };
 
