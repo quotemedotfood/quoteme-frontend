@@ -52,19 +52,28 @@ export function ChefPullEntryPage() {
 
   // Distributor context passed via router state from ChefCatalogSelectionPage
   // or ChefDashboardPage. Falls back gracefully when absent.
+  // menu_id: Q-Signup-2 forward-compat — when present, pre-select saved-menu mode
+  // with that menu loaded; otherwise default to paste/upload per doctrine.
   const locationState = location.state as {
     distributor?: PullQuoteDistributor;
     distributor_id?: string;
+    menu_id?: string;
   } | null;
 
   const distributor: PullQuoteDistributor | null = locationState?.distributor ?? null;
   const distributorId = distributor?.id ?? locationState?.distributor_id ?? null;
+  // Q-Signup-2 forward-compat: if a caller pushes state.menu_id, pre-select that
+  // saved menu. Otherwise default to paste/upload (Moose doctrine: paste is primary).
+  const menuIdFromState = locationState?.menu_id ?? null;
 
   const [menus, setMenus] = useState<ChefMenuRow[]>([]);
   const [menusLoading, setMenusLoading] = useState(true);
 
-  // Selected menu ID, 'file' for file/drag mode, or 'paste' for free-text mode
-  const [menuSource, setMenuSource] = useState<'paste' | 'file' | string>('paste');
+  // Selected menu ID, 'file' for file/drag mode, or 'paste' for free-text mode.
+  // Default: 'paste' unless a menu_id was forwarded via router state.
+  const [menuSource, setMenuSource] = useState<'paste' | 'file' | string>(
+    menuIdFromState ?? 'paste'
+  );
   const [pasteText, setPasteText] = useState('');
   const [restaurantName, setRestaurantName] = useState('');
   const [restaurantNameLoading, setRestaurantNameLoading] = useState(false);
@@ -84,19 +93,26 @@ export function ChefPullEntryPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Load saved menus
+  // Load saved menus.
+  // Default stays 'paste' unless menu_id was forwarded via router state
+  // (Q-Signup-2 path). In that case, keep the state-seeded value; saved-menu
+  // dropdown becomes a secondary affordance the chef can switch to manually.
   useEffect(() => {
     setMenusLoading(true);
     getChefMenus().then((res) => {
       if (res.data?.menus) {
         setMenus(res.data.menus);
-        // Default to first saved menu when available
-        if (res.data.menus.length > 0) {
-          setMenuSource(res.data.menus[0].id);
+        // Only override the default when a specific menu_id was forwarded.
+        // Do NOT auto-select the first saved menu — paste/upload is primary.
+        if (menuIdFromState) {
+          // Confirm the forwarded menu still exists; fall back to paste if not.
+          const exists = res.data.menus.some((m) => m.id === menuIdFromState);
+          if (!exists) setMenuSource('paste');
         }
       }
       setMenusLoading(false);
     });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Auto-populate restaurant from the chef's most recent quote, falling back

@@ -61,7 +61,9 @@ export function ChefCatalogSelectionPage() {
   }, []);
 
   function pickDistributor(id: string) {
-    navigate(`/chef/entry?distributor_id=${encodeURIComponent(id)}`);
+    // B3b: route to detail page instead of action surface.
+    // Pull-a-quote is an action from the detail page, not the click destination.
+    navigate(`/chef/distributor/${encodeURIComponent(id)}`);
   }
 
   function pickDemo() {
