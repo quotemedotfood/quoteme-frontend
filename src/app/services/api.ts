@@ -2057,8 +2057,8 @@ export async function getChefOrderGuide(orderGuideId: string): Promise<ApiRespon
 export interface ChefOrderGuideRow {
   id: string;
   quote_id: string;
-  distributor_id: string;
-  distributor_name: string;
+  distributor_id: string | null;
+  distributor_name: string | null;
   status: string;
   created_at: string;
   items_count: number;
