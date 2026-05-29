@@ -21,6 +21,9 @@ export function DashboardRoleRouter() {
     return <ChefDashboardPage />;
   }
 
+  // Rep on the shared /dashboard route: wrap in RepLayout so the sidebar is
+  // present, matching /rep/* behaviour. RepLayout accepts optional `children`
+  // so it doesn't require a router Outlet parent.
   // Rep (and distributor_admin, qm_admin, etc.) on the shared /dashboard route:
   // wrap in RepLayout so the rep sidebar is present, matching /rep/* behaviour.
   // RepLayout accepts optional `children` so it doesn't require a router Outlet.
