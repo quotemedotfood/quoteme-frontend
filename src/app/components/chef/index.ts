@@ -16,12 +16,9 @@ export type { ChefDistributorsTabProps } from './ChefDistributorsTab';
 export { ChefDistributorsTabDesktop } from './ChefDistributorsTabDesktop';
 export type { ChefDistributorsTabDesktopProps } from './ChefDistributorsTabDesktop';
 
-export {
-  YOUR_DISTRIBUTORS,
-  AREA_DISTRIBUTORS,
-  DEMO,
-} from './distributorsDemoData';
-export type { YourDistributor, AreaDistributor } from './distributorsDemoData';
+// distributorsDemoData re-exports removed (W2-4 live-data wiring).
+// ChefDistributorsTabDesktop still imports from the file directly (dead code, see its TODO).
+// Do NOT delete distributorsDemoData.ts until ChefDistributorsTabDesktop is wired to live data.
 
 export { StuckRecoveryScreen, MENU_DRAFT_KEY } from './StuckRecoveryScreen';
 export type { StuckRecoveryScreenProps } from './StuckRecoveryScreen';

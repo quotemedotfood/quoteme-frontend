@@ -1,8 +1,14 @@
-// ChefDistributorsTabDesktop — desktop Distributors tab (populated + empty states).
+// ChefDistributorsTabDesktop — desktop Distributors tab.
 //
-// Ported verbatim from source/screens-tabs.jsx (Desi V2 handoff, 2026-05-19).
+// Ported from source/screens-tabs.jsx (Desi V2 handoff, 2026-05-19).
 // V3 spec refs: Part 5, Part 6.7, Part 7.
 // Intended route: /dashboard/distributors (desktop breakpoint; wire-up pending A3 promotion).
+//
+// TODO (W2-5): This component is currently dead code — not rendered anywhere.
+// The mobile ChefDistributorsTab (ChefDistributorsTab.tsx) is the active variant,
+// wired in ChefDashboardPage. Wire this desktop variant when desktop breakpoint
+// switching is added. Mirror the same live-data approach from ChefDistributorsTab
+// (getChefDistributors() + useEffect + navigate to /chef/distributor/:id on row click).
 //
 // Translation notes (JSX → TSX):
 //   • ChefTabDesktopShell wraps this component (NewspaperSidebar stub inside).
