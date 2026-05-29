@@ -1,6 +1,7 @@
 import { createBrowserRouter, Navigate } from "react-router";
 import { RootWrapper } from "./components/RootWrapper";
 import { RootLayout } from "./components/RootLayout";
+import { useAuth } from "./contexts/AuthContext";
 import { QMAdminLayout } from "./components/QMAdminLayout";
 import { CustomersPage } from "./pages/CustomersPage";
 import { QuoteMePage } from "./pages/QuoteMePage";
@@ -72,6 +73,19 @@ import { RepCustomersPage } from "./pages/rep/RepCustomersPage";
 import { RepLayout } from "./components/rep/RepLayout";
 
 const demo = isDemoMode();
+
+// RootIndex — bare domain redirect.
+// RootLayout already guards unauthenticated users (→ /auth), so by the time
+// this component renders the user is always authenticated. Send them straight
+// to /dashboard; role-routing lives inside DashboardRoleRouter.
+function RootIndex() {
+  const { isAuthenticated, isLoading } = useAuth();
+  if (isLoading) return null;
+  if (isAuthenticated) return <Navigate to="/dashboard" replace />;
+  // Unauthenticated path: RootLayout would have already redirected to /auth,
+  // but guard here defensively so landing on "/" never shows a blank screen.
+  return <Navigate to="/auth" replace />;
+}
 
 export const router = createBrowserRouter([
   {
@@ -165,7 +179,7 @@ export const router = createBrowserRouter([
       {
         Component: RootLayout,
         children: [
-          { index: true, Component: StartNewQuotePage },
+          { index: true, Component: RootIndex },
           // ── Chef shell layout — persistent tab chrome across chef sub-routes ──
           // ChefShellLayout derives activeTab from useLocation() so sidebar/bar
           // highlight stays in sync with direct URL navigation.
