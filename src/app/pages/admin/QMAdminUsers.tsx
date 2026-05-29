@@ -151,6 +151,8 @@ export function QMAdminUsers() {
     const res = await updateAdminUser(userId, { status: newStatus });
     if (res.data) {
       setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, status: newStatus } : u)));
+    } else {
+      alert(res.error || `Failed to set status to ${newStatus}`);
     }
     setActionLoading(null);
   }
