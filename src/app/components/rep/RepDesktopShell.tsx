@@ -33,6 +33,7 @@
 import React, { useState } from 'react';
 import {
   FileText,
+  Users,
   Settings,
   PanelLeftClose,
   PanelLeftOpen,
@@ -58,7 +59,7 @@ const serif: React.CSSProperties = {
 export type RepSidebarMode = 'open' | 'collapsed' | 'hidden';
 // 'quotes-inbound' and 'quotes-history' are sub-tab states under the Quotes parent.
 // 'quotes' is a catch-all when on a quote detail page (/rep/quotes/:id).
-export type RepActiveTab = 'quotes-inbound' | 'quotes-history' | 'quotes' | 'settings';
+export type RepActiveTab = 'quotes-inbound' | 'quotes-history' | 'quotes' | 'customers' | 'settings';
 
 // ─── Nav destination config ──────────────────────────────────────────────────
 
@@ -82,6 +83,13 @@ const NAV_ITEMS: NavDestConfig[] = [
       { id: 'quotes-inbound',  label: 'Inbound', meta: '', target: 'rep-quotes-inbound' },
       { id: 'quotes-history',  label: 'History', meta: '', target: 'rep-quotes-history' },
     ],
+  },
+  {
+    id: 'customers',
+    label: 'Customers',
+    target: 'rep-customers',
+    Icon: Users,
+    group: 'daily',
   },
   {
     id: 'settings',

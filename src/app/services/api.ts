@@ -2544,3 +2544,33 @@ export async function repConfirmQuote(id: string): Promise<ApiResponse<QuoteResp
     method: 'POST',
   });
 }
+
+// ─── Rep customers ────────────────────────────────────────────────────────────
+
+/**
+ * RepCustomer — one restaurant in the rep's customer list.
+ *
+ * TODO (BE): wire to GET /api/v1/rep/customers once the endpoint is built.
+ * The BE controller does not exist yet; this type and function are stubs
+ * that will be activated when the endpoint lands.
+ */
+export interface RepCustomer {
+  id: string;
+  name: string;
+  city?: string;
+  state?: string;
+  /** ISO datetime of most recent confirmed quote */
+  last_quote_at?: string | null;
+  /** Total number of quotes sent to this restaurant */
+  quote_count?: number;
+}
+
+/**
+ * getRepCustomers — GET /api/v1/rep/customers (Bearer auth)
+ *
+ * TODO (BE): endpoint not yet implemented. Returns 404 until the BE lands.
+ * Card 11 renders empty state when this call fails or returns [].
+ */
+export async function getRepCustomers(): Promise<ApiResponse<RepCustomer[]>> {
+  return fetchWithAuth<RepCustomer[]>('/api/v1/rep/customers');
+}
