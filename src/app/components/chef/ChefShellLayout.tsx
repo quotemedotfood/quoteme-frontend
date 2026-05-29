@@ -89,14 +89,6 @@ export function ChefShellLayout() {
     if (target === 'tab-dashboard') return navigate('/dashboard', { state: { activeTab: 'home' } });
     // Quotes has a dedicated route — navigate there directly (c135)
     if (target === 'tab-home') return navigate('/chef/quotes');
-    // TODO(dispatch): tab-order-guides has no dedicated route yet — /chef/order-guides is unbuilt.
-    // The /dashboard proxy is removed; sidebar item stays visible (Sixteen/Moose confirm remove vs build).
-    // See Artifacts/CHEF_SHELL_URL_AUDIT.md R3 cross-ref, c73/chef-v4 unification.
-    if (target === 'tab-order-guides') return; // no-op until /chef/order-guides route is built
-    // TODO(dispatch): tab-distributors has no dedicated route yet — /chef/distributors is unbuilt.
-    // The /dashboard proxy is removed; sidebar item stays visible (Sixteen/Moose confirm remove vs build).
-    // See ChefTabBar.tsx:19 "Intended route: /dashboard/distributors (wire-up pending A3 promotion)".
-    if (target === 'tab-distributors') return; // no-op until /chef/distributors route is built
     if (target === 'tab-settings') return navigate('/dashboard', { state: { activeTab: 'settings' } });
   };
 
