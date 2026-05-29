@@ -401,10 +401,7 @@ function ProposalsScreen({
         return;
       }
     }
-    // TODO(dispatch): /chef/menu-upload is not a registered route — Step 4 "Save and continue"
-    // button is visible; dead navigate() stubbed here. Sixteen/Moose to confirm target route
-    // (likely /chef/pull/entry or /chef/distributor/new) before building. See CHEF_SHELL_URL_AUDIT.md.
-    console.warn('[ChefSignupPage] Step 4 navigate target /chef/menu-upload is unregistered — no-op until route is built.');
+    navigate('/chef/dashboard');
   };
 
   return (
