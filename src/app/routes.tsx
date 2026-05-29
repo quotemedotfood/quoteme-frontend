@@ -61,7 +61,6 @@ import { ChefPullStatusPage } from "./pages/chef/ChefPullStatusPage";
 import { ChefPullReceiptPage } from "./pages/chef/ChefPullReceiptPage";
 import { ChefDistributorEntryPage } from "./pages/chef/ChefDistributorEntryPage";
 import { ChefDistributorDetailPage } from "./pages/chef/ChefDistributorDetailPage";
-import { ChefMenuSpreadPage } from "./pages/chef/ChefMenuSpreadPage";
 import { ChefShellLayout } from "./components/chef/ChefShellLayout";
 import { ChefMenusPage } from "./pages/chef/ChefMenusPage";
 import { ChefMenuDetailPage } from "./pages/chef/ChefMenuDetailPage";
@@ -201,7 +200,6 @@ export const router = createBrowserRouter([
               // B3b: distributor detail. 'new' (static) takes precedence over
               // ':id' (dynamic) in react-router — no collision.
               { path: "chef/distributor/:id", Component: ChefDistributorDetailPage },
-              { path: "chef/menus/:id/spread", Component: ChefMenuSpreadPage },
               // Pull-entry mounted inside the shell so it gets sidebar/tab chrome.
               { path: "chef/pull/entry", Component: ChefPullEntryPage },
             ],
