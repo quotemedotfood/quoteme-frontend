@@ -4,8 +4,7 @@
 //
 // Primary CTA:
 //   Affiliated:   "Send to [Rep Name]" — mailto to rep's email
-//   Unaffiliated: "Share a copy" — uses the quote's share_url, falls back
-//                  to clipboard copy of the current URL
+//   Unaffiliated: (no CTA — share flow not yet built)
 //
 // The distributor anchor at top persists so the chef always sees context.
 // Line items are grouped by category. Unmatched items surface in a
@@ -80,9 +79,6 @@ export function ChefPullReceiptPage() {
   const [quote, setQuote] = useState<PullQuoteResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [shareCopied, setShareCopied] = useState(false);
-  const [shareError, setShareError] = useState<string | null>(null);
-
   const distributor: PullQuoteDistributor | null =
     quote?.distributor ?? locationState?.distributor ?? null;
 
@@ -175,7 +171,7 @@ export function ChefPullReceiptPage() {
   const pricedCount = matchedLines.filter((l) => l.unit_price_cents != null).length;
   const docDate = formatDate(quote.created_at);
 
-  // Share / send handlers
+  // ── Send handler ──────────────────────────────────────────────────────────
   async function handleSendToRep() {
     if (!rep?.email) return;
     const subject = encodeURIComponent('Quote ready for review');
@@ -184,18 +180,6 @@ export function ChefPullReceiptPage() {
       `Hi${rep.first_name ? ` ${rep.first_name}` : ''} — a new quote is ready for your review.\n\n${shareLink}`,
     );
     window.location.href = `mailto:${rep.email}?subject=${subject}&body=${body}`;
-  }
-
-  async function handleShareCopy() {
-    setShareError(null);
-    const shareLink = quote?.share_url ?? window.location.href;
-    try {
-      await navigator.clipboard.writeText(shareLink);
-      setShareCopied(true);
-      setTimeout(() => setShareCopied(false), 2500);
-    } catch {
-      setShareError('Could not copy. Highlight the link below and copy manually.');
-    }
   }
 
   // ── Render ─────────────────────────────────────────────────────────────────
@@ -273,11 +257,7 @@ export function ChefPullReceiptPage() {
           {/* ── 5. Primary CTA ───────────────────────────────────────────── */}
           <div className="border-t border-[#F0EDE7] pt-8 flex flex-col gap-3">
 
-            {shareError && (
-              <p className="text-sm text-red-500 mb-1">{shareError}</p>
-            )}
-
-            {affiliated && rep ? (
+            {affiliated && rep && (
               // Affiliated: send directly to the rep
               <button
                 type="button"
@@ -286,25 +266,6 @@ export function ChefPullReceiptPage() {
               >
                 Send to {rep.first_name ?? rep.name}
               </button>
-            ) : (
-              // Unaffiliated: copy share link
-              <button
-                type="button"
-                onClick={handleShareCopy}
-                className="w-full bg-[#2A2A2A] hover:bg-[#1A1A1A] text-white rounded-lg px-6 py-3.5 text-base font-medium transition-colors"
-              >
-                {shareCopied ? 'Link copied' : 'Share a copy'}
-              </button>
-            )}
-
-            {/* Share URL display (non-affiliated fallback) */}
-            {!affiliated && quote.share_url && (
-              <div className="border border-[#E8E8E8] rounded-lg px-4 py-2.5 bg-white">
-                <p className="text-xs text-[#9E9E9E] mb-1">Share link</p>
-                <p className="text-sm text-[#2B2B2B] break-all select-all leading-relaxed">
-                  {quote.share_url}
-                </p>
-              </div>
             )}
 
             {/* Pull another quote */}
