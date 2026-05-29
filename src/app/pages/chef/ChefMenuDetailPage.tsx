@@ -7,7 +7,7 @@
 // distributor this menu has been quoted against, with dates and totals.
 //
 // Two primary actions:
-//   "Pull a quote from this menu" → /chef/pull?menuId=:id   (Agent C2)
+//   "Pull a quote from this menu" → /chef/pull/entry        (state: { menu_id })
 //   "Compare across distributors" → /chef/menus/:id/spread  (Agent C3)
 //
 // BE not yet live (Track C, Agent C4). 404 / empty responses render the
@@ -377,7 +377,7 @@ export function ChefMenuDetailPage() {
       >
         <button
           type="button"
-          onClick={() => navigate(`/chef/pull?menuId=${menu.id}`)}
+          onClick={() => navigate('/chef/pull/entry', { state: { menu_id: menu.id } })}
           style={{
             ...sans,
             background: C.orange,
@@ -528,7 +528,7 @@ export function ChefMenuDetailPage() {
       >
         <button
           type="button"
-          onClick={() => navigate(`/chef/pull?menuId=${menu.id}`)}
+          onClick={() => navigate('/chef/pull/entry', { state: { menu_id: menu.id } })}
           style={{
             ...sans,
             background: C.orange,

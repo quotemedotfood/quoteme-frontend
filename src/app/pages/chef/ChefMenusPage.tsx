@@ -491,7 +491,7 @@ export function ChefMenusPage() {
               menu={menu}
               onOpen={() => navigate(`/chef/menus/${menu.id}`)}
               onUseForQuote={() =>
-                navigate(`/chef/pull?menuId=${menu.id}`)
+                navigate('/chef/pull/entry', { state: { menu_id: menu.id } })
               }
               onRename={(name) => handleRename(menu.id, name)}
               onDelete={() => handleDelete(menu.id)}
