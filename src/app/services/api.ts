@@ -1727,6 +1727,25 @@ export async function inviteRep(data: { name: string; email: string; territory?:
   });
 }
 
+export interface ImpersonateRepResponse {
+  token: string;
+  user: {
+    id: string;
+    email: string;
+    first_name: string;
+    last_name: string;
+    role: string;
+  };
+}
+
+/** POST /api/v1/distributor_admin/reps/:id/impersonate — generate a JWT for a rep. */
+export async function impersonateRep(repProfileId: string): Promise<ApiResponse<ImpersonateRepResponse>> {
+  return fetchWithAuth<ImpersonateRepResponse>(`/api/v1/distributor_admin/reps/${repProfileId}/impersonate`, {
+    method: 'POST',
+    body: JSON.stringify({}),
+  });
+}
+
 // ============= ONBOARDING DOCS =============
 
 export interface OnboardingDoc {
