@@ -136,7 +136,7 @@ export function QuotesPage() {
   };
 
   const handleEditQuote = (quoteId: string) => {
-    navigate(`/quote-builder?quoteId=${quoteId}`);
+    navigate(`/rep/quotes/${quoteId}`);
   };
 
   const handleDeleteQuote = async (quoteId: string) => {
