@@ -2646,3 +2646,81 @@ export async function updateChefRestaurant(
     body: JSON.stringify({ restaurant: payload }),
   });
 }
+
+// ─── Chef Restaurant Logo (Gap 2) ─────────────────────────────────────────────
+// POST   /api/v1/chef/restaurant/logo  → multipart logo field; returns updated restaurant
+// DELETE /api/v1/chef/restaurant/logo  → purges; returns updated restaurant
+//
+// Both accept ?restaurant_id= context selector (Q-Settings-1 pattern).
+// Accepted types: image/jpeg, image/png, image/webp — max 5 MB.
+// On invalid type/size → 422 with errors[].
+// Multipart: cannot use fetchWithGuest (hardcodes Content-Type: application/json).
+// Mirrors uploadCatalogFile pattern — manual fetch with Bearer + X-Guest-Token headers.
+
+/** POST /api/v1/chef/restaurant/logo — attaches a logo image. */
+export async function uploadChefRestaurantLogo(
+  file: File,
+  restaurantId?: string
+): Promise<ApiResponse<ChefRestaurant>> {
+  const authToken = getAuthToken();
+  const guestToken = getGuestToken();
+  const headers: Record<string, string> = {};
+  if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
+  if (guestToken) headers['X-Guest-Token'] = guestToken;
+
+  const query = restaurantId ? `?restaurant_id=${restaurantId}` : '';
+  const formData = new FormData();
+  formData.append('logo', file);
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/v1/chef/restaurant/logo${query}`, {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      return {
+        error: (errorData.errors && errorData.errors[0]) || errorData.error || `HTTP ${response.status}`,
+        error_data: errorData,
+        status: response.status,
+      };
+    }
+    const data = await response.json();
+    return { data };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : 'Network error' };
+  }
+}
+
+/** DELETE /api/v1/chef/restaurant/logo — removes the attached logo. No-op (200) when no logo. */
+export async function deleteChefRestaurantLogo(
+  restaurantId?: string
+): Promise<ApiResponse<ChefRestaurant>> {
+  const authToken = getAuthToken();
+  const guestToken = getGuestToken();
+  const headers: Record<string, string> = {};
+  if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
+  if (guestToken) headers['X-Guest-Token'] = guestToken;
+
+  const query = restaurantId ? `?restaurant_id=${restaurantId}` : '';
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/v1/chef/restaurant/logo${query}`, {
+      method: 'DELETE',
+      headers,
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      return {
+        error: errorData.error || `HTTP ${response.status}`,
+        error_data: errorData,
+        status: response.status,
+      };
+    }
+    const data = await response.json();
+    return { data };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : 'Network error' };
+  }
+}
