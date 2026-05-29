@@ -8,6 +8,7 @@
 import { useAuth } from '../contexts/AuthContext';
 import { QuoteMePage } from '../pages/QuoteMePage';
 import { ChefDashboardPage } from '../pages/chef/ChefDashboardPage';
+import { RepLayout } from './rep/RepLayout';
 
 export function DashboardRoleRouter() {
   const { user, isLoading } = useAuth();
@@ -18,6 +19,17 @@ export function DashboardRoleRouter() {
 
   if (user?.role === 'chef') {
     return <ChefDashboardPage />;
+  }
+
+  // Rep on the shared /dashboard route: wrap in RepLayout so the sidebar is
+  // present, matching /rep/* behaviour. RepLayout accepts optional `children`
+  // so it doesn't require a router Outlet parent.
+  if (user?.role === 'rep') {
+    return (
+      <RepLayout>
+        <QuoteMePage />
+      </RepLayout>
+    );
   }
 
   return <QuoteMePage />;

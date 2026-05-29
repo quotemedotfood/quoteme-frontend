@@ -50,6 +50,8 @@ function activeTabFromPath(pathname: string): RepActiveTab {
   if (pathname.startsWith('/rep/quotes')) return 'quotes';
   if (pathname.startsWith('/rep/customers')) return 'customers';
   if (pathname.startsWith('/rep/settings') || pathname.startsWith('/settings')) return 'settings';
+  // /dashboard shared route used by reps — treat as inbound
+  if (pathname === '/dashboard') return 'quotes-inbound';
   // Default to inbound
   return 'quotes-inbound';
 }
@@ -60,7 +62,13 @@ const sans: React.CSSProperties = {
   fontFamily: "'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
 };
 
-export function RepLayout() {
+interface RepLayoutProps {
+  // When provided, rendered instead of <Outlet />.
+  // Used by the shared /dashboard route where RepLayout is not a router parent.
+  children?: React.ReactNode;
+}
+
+export function RepLayout({ children }: RepLayoutProps = {}) {
   const [mode, setMode] = useState<RepSidebarMode>('open');
   const location = useLocation();
   const navigate = useNavigate();
@@ -112,7 +120,7 @@ export function RepLayout() {
               maxWidth: 1180,
             }}
           >
-            <Outlet />
+            {children ?? <Outlet />}
           </div>
         </main>
 
