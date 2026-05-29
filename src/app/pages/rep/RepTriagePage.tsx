@@ -1,7 +1,7 @@
 // RepTriagePage — `/rep/triage`
 //
 // The rep's dispatch queue. Doctrine 9.2: "what quote am I building next?"
-// Desktop: wraps in RepDesktopShell active="triage".
+// Desktop: rendered inside RepLayout (persistent sidebar shell).
 // Mobile: slim header, scrollable queue.
 //
 // Three visible buckets per design:
@@ -31,7 +31,6 @@ import {
   DollarSign,
   ChevronRight,
 } from 'lucide-react';
-import { RepDesktopShell } from '../../components/rep/RepDesktopShell';
 import { RepMatchStateBadge } from '../../components/rep/RepMatchStateBadge';
 import { CatalogConfirmBanner } from '../../components/rep/CatalogConfirmBanner';
 import { getRepIncomingQuotes } from '../../services/api';
@@ -84,14 +83,12 @@ export function RepTriagePage() {
 
   const body = <TriageBody quotes={quotes} loading={loading} nav={nav} bannerDismissed={bannerDismissed} onDismissBanner={() => setBannerDismissed(true)} />;
 
-  // Desktop: wrap in shell
+  // Desktop: RepLayout provides shell + sidebar. Render body directly.
   return (
     <>
       {/* Desktop view */}
       <div className="hidden md:block">
-        <RepDesktopShell active="quotes-inbound" nav={nav}>
-          {body}
-        </RepDesktopShell>
+        {body}
       </div>
       {/* Mobile view */}
       <div className="block md:hidden" style={{ minHeight: '100vh', background: '#fff' }}>

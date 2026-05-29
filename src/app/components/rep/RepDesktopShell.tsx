@@ -22,14 +22,13 @@
 // Cross-cutting constraint: Sacred Orange = var(--primary), never #F9A64B.
 // Coverage/accent dots = var(--accent).
 //
-// SIDEBAR PERSISTENCE BUG (Stage 2 fix):
-//   Each rep page (RepTriagePage, RepIncomingQuotePage, RepReviewThreePanelDesktop)
-//   renders its own <RepDesktopShell> instance, so the shell unmounts/remounts on
-//   every navigation and sidebar mode resets to 'open'. Fix: create a RepLayout
-//   component that renders <RepNewspaperSidebar> + <Outlet />, hoist all /rep/*
-//   routes under it, and remove the per-page RepDesktopShell wrappers. Each page
-//   would render only its content body (no shell). Filed for Stage 2 — touching
-//   3+ page internals is out of scope for this atomic PR.
+// SIDEBAR PERSISTENCE BUG — FIXED:
+//   Previously each rep page (RepTriagePage, RepIncomingQuotePage,
+//   RepReviewThreePanelDesktop) rendered its own <RepDesktopShell> instance,
+//   causing the shell to unmount/remount on every navigation and sidebar mode
+//   to reset to 'open'. Fixed in RepLayout.tsx: a persistent layout component
+//   wraps all /rep/* routes via <Outlet />, holding sidebar useState at the
+//   layout level. RepDesktopShell is no longer used by any routed rep page.
 
 import React, { useState } from 'react';
 import {

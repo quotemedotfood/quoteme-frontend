@@ -16,7 +16,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { ChevronLeft, Search, X, MessageCircle, Plus, SquarePen, Check } from 'lucide-react';
-import { RepDesktopShell } from '../../components/rep/RepDesktopShell';
 import { QuoteCoverageLabelRep } from '../../components/rep/QuoteCoverageLabelRep';
 import { LineCoverageDot } from '../../components/rep/CoverageDots';
 import { getRepQuote, repConfirmQuote } from '../../services/api';
@@ -145,8 +144,9 @@ export function RepReviewThreePanelDesktop({ quoteId }: { quoteId: string }) {
     );
   }
 
+  // RepLayout provides sidebar + main chrome — render content body bare.
   return (
-    <RepDesktopShell active="quotes" nav={nav}>
+    <>
       {/* Breadcrumb */}
       <button
         type="button"
@@ -441,7 +441,7 @@ export function RepReviewThreePanelDesktop({ quoteId }: { quoteId: string }) {
           </div>
         </aside>
       </div>
-    </RepDesktopShell>
+    </>
   );
 }
 
