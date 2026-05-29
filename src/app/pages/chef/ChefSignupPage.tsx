@@ -401,7 +401,7 @@ function ProposalsScreen({
         return;
       }
     }
-    navigate('/chef/dashboard');
+    navigate('/dashboard');
   };
 
   return (
