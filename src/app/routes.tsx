@@ -67,6 +67,7 @@ import { ChefMenuDetailPage } from "./pages/chef/ChefMenuDetailPage";
 import { CreateRestaurantPage } from "./pages/CreateRestaurantPage";
 import { isDemoMode } from "./utils/demoMode";
 import { RepWelcomePage } from "./pages/rep/RepWelcomePage";
+import { RepInviteAcceptPage } from "./pages/RepInviteAcceptPage";
 import { RepTriagePage } from "./pages/rep/RepTriagePage";
 import { RepIncomingQuotePage } from "./pages/rep/RepIncomingQuotePage";
 import { RepCustomersPage } from "./pages/rep/RepCustomersPage";
@@ -113,6 +114,14 @@ export const router = createBrowserRouter([
         // Exactly mirrors how chef/welcome is placed.
         path: "rep/welcome",
         Component: RepWelcomePage,
+      },
+      {
+        // Rep invite-accept / set-password landing (LAUNCH-B1 FE-1).
+        // MUST live outside RootLayout — reps arriving via email invite link
+        // have no JWT and must not be bounced to /auth.
+        // URL shape: /rep/invite?token=<64-hex-char-token>
+        path: "rep/invite",
+        Component: RepInviteAcceptPage,
       },
       {
         path: "chef",

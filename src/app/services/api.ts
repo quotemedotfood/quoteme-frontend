@@ -2851,3 +2851,75 @@ export async function deleteChefTeamMember(
     method: 'DELETE',
   });
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Rep Invite Consume — public / unauthenticated (LAUNCH-B1 FE-1)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Shape of a successful consume response from POST /api/v1/rep_invitations/:token/consume.
+ *
+ * 201 Created — new user was created and linked.
+ * 200 OK      — existing rep user re-linked to the distributor.
+ *
+ * Error codes (non-2xx):
+ *   not_found        — token does not exist (404)
+ *   expired          — invite past expires_at (410)
+ *   consumed         — invite already stamped consumed_at (410)
+ *   password_required — new-user path, no password in body (422)
+ *   role_conflict    — email belongs to a non-rep account (422)
+ *   record_invalid   — ActiveRecord::RecordInvalid on save (422)
+ */
+export interface RepInviteConsumeResponse {
+  jwt: string;
+  user: {
+    id: string;
+    email: string;
+    first_name: string | null;
+    last_name: string | null;
+    role: string;
+    status: string;
+    distributor: {
+      id: string;
+      name: string;
+    } | null;
+  };
+  /** Absolute path returned by the BE; typically "/rep/welcome". */
+  redirect_to: string;
+}
+
+/**
+ * consumeRepInvitation — POST /api/v1/rep_invitations/:token/consume
+ *
+ * Unauthenticated by design — the token in the URL IS the credential.
+ * Password is required when the email has no existing account yet; for
+ * existing rep users being re-linked, the BE accepts a consume without
+ * a password (but the FE always collects one for safety).
+ */
+export async function consumeRepInvitation(
+  token: string,
+  password: string,
+): Promise<ApiResponse<RepInviteConsumeResponse>> {
+  try {
+    const response = await fetch(
+      `${API_BASE_URL}/api/v1/rep_invitations/${encodeURIComponent(token)}/consume`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password }),
+      },
+    );
+    if (!response.ok) {
+      const errorBody = await response.json().catch(() => ({ error: `HTTP ${response.status}` }));
+      return {
+        error: errorBody.message || errorBody.detail || errorBody.error || `HTTP ${response.status}`,
+        error_code: errorBody.error,
+        data: undefined,
+      };
+    }
+    const data: RepInviteConsumeResponse = await response.json();
+    return { data, token: data.jwt };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : 'Network error', data: undefined };
+  }
+}
