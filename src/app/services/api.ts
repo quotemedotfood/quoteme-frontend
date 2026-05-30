@@ -1975,6 +1975,93 @@ export async function getCommandCenterRepActivity(): Promise<ApiResponse<RepActi
   return fetchWithAuth('/api/v1/distributor_admin/command_center/rep_activity');
 }
 
+// ── Command Center: Quotes ledger (B2-CC) ──
+
+export type CCQuoteStatus = 'accepted' | 'pending' | 'sent' | 'unassigned';
+
+export interface CCRepSummary {
+  id: string;
+  name: string;
+  initials: string;
+}
+
+export interface CCQuoteRow {
+  id: string;
+  rep: CCRepSummary | null;
+  restaurant: string;
+  city: string;
+  status: CCQuoteStatus;
+  sent: string;        // display string, e.g. "May 30"
+  items: number;
+  total: number | null; // null when unassigned/unpriced
+  requote: number;      // times re-quoted; 0 = never
+  wait: number;         // days chef sitting on it
+}
+
+export interface CCQuoteFilters {
+  repId?: string;
+  status?: CCQuoteStatus | 'all';
+  range?: 'week' | 'month';
+}
+
+export async function getCommandCenterQuotes(
+  filters: CCQuoteFilters = {}
+): Promise<ApiResponse<CCQuoteRow[]>> {
+  const params = new URLSearchParams();
+  if (filters.repId && filters.repId !== 'all') params.set('rep_id', filters.repId);
+  if (filters.status && filters.status !== 'all') params.set('status', filters.status);
+  if (filters.range) params.set('range', filters.range);
+  const qs = params.toString();
+  return fetchWithAuth(
+    `/api/v1/distributor_admin/command_center/quotes${qs ? `?${qs}` : ''}`
+  );
+}
+
+// ── Command Center: Single quote detail (B2-CC) ──
+
+export interface CCLineItem {
+  id: string;
+  name: string;
+  pack: string;
+  note?: string;
+  qty: number;
+  unit: number; // unit price
+}
+
+export interface CCLineGroup {
+  cat: string;
+  items: CCLineItem[];
+}
+
+export interface CCRequoteEvent {
+  event: 'sent' | 'requoted' | 'accepted' | 'pending';
+  label: string;
+  date?: string;
+}
+
+export interface CCQuoteDetail {
+  id: string;
+  rep: CCRepSummary | null;
+  restaurant: string;
+  city: string;
+  status: CCQuoteStatus;
+  sent: string;
+  items: number;
+  total: number | null;
+  requote: number;
+  wait: number;
+  requote_trail: CCRequoteEvent[];
+  line_groups: CCLineGroup[];
+}
+
+export async function getCommandCenterQuote(
+  quoteId: string
+): Promise<ApiResponse<CCQuoteDetail>> {
+  return fetchWithAuth(
+    `/api/v1/distributor_admin/command_center/quotes/${encodeURIComponent(quoteId)}`
+  );
+}
+
 // ── Notifications ──
 
 export async function getNotifications(): Promise<ApiResponse<{ notifications: any[]; unread_count: number }>> {
