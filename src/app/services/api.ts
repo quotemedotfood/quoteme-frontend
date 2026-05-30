@@ -2135,6 +2135,50 @@ export async function assignRestaurantRep(
   );
 }
 
+// ── Command Center: Global Search (B2-CC Sec6) ──────────────────────────────
+// GET /api/v1/distributor_admin/command_center/search?q=<term>
+// Three result groups: restaurants, reps, quotes. No inside_sales group.
+
+export interface CCSearchRestaurant {
+  id: string;
+  name: string;
+  quote_count: number;
+  owner_name: string | null;
+  first_quote_id: string | null;
+}
+
+export interface CCSearchRep {
+  id: string;
+  name: string;
+  initials: string;
+  open: number;
+  last: string;
+}
+
+export interface CCSearchQuote {
+  id: string;
+  restaurant: string;
+  q_label: string;
+  rep_name: string | null;
+  sent: string;
+  items: number;
+  status: CCQuoteStatus;
+}
+
+export interface CCSearchResults {
+  restaurants: CCSearchRestaurant[];
+  reps: CCSearchRep[];
+  quotes: CCSearchQuote[];
+}
+
+export async function getCommandCenterSearch(
+  q: string
+): Promise<ApiResponse<CCSearchResults>> {
+  return fetchWithAuth(
+    `/api/v1/distributor_admin/command_center/search?q=${encodeURIComponent(q)}`
+  );
+}
+
 // ── Notifications ──
 
 export async function getNotifications(): Promise<ApiResponse<{ notifications: any[]; unread_count: number }>> {
