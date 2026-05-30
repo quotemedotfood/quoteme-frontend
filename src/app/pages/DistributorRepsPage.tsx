@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
-import { Loader2, Check, Send, UserPlus, Users, X, LogIn, RefreshCw } from 'lucide-react';
-import { inviteRep, getDistributorAdminReps, impersonateRep, cancelRepInvite, resendRepInvite } from '../services/api';
+import { Loader2, Check, Send, UserPlus, Users, X, LogIn, RefreshCw, UserX } from 'lucide-react';
+import { inviteRep, getDistributorAdminReps, impersonateRep, cancelRepInvite, resendRepInvite, disableRep } from '../services/api';
 import type { DistributorRep } from '../services/api';
 
 export function DistributorRepsPage() {
@@ -23,6 +23,8 @@ export function DistributorRepsPage() {
   const [resending, setResending] = useState<string | null>(null);
   const [resendError, setResendError] = useState<string | null>(null);
   const [resendSuccess, setResendSuccess] = useState<string | null>(null);
+  const [disabling, setDisabling] = useState<string | null>(null);
+  const [disableError, setDisableError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!document.getElementById('quoteme-fonts')) {
@@ -112,6 +114,18 @@ export function DistributorRepsPage() {
       loadReps();
     }
     setResending(null);
+  };
+
+  const handleDisable = async (rep: DistributorRep) => {
+    setDisabling(rep.id);
+    setDisableError(null);
+    const res = await disableRep(rep.id);
+    if (res.data) {
+      await loadReps();
+    } else {
+      setDisableError(res.error || 'Failed to disable rep');
+    }
+    setDisabling(null);
   };
 
   const activeReps = reps.filter(r => r.status === 'active');
@@ -207,6 +221,9 @@ export function DistributorRepsPage() {
           <Check className="w-4 h-4" /> {resendSuccess}
         </p>
       )}
+      {disableError && (
+        <p className="text-red-500 text-sm mb-4">{disableError}</p>
+      )}
 
       {/* Reps table */}
       {loading ? (
@@ -271,20 +288,36 @@ export function DistributorRepsPage() {
                     </p>
                   </td>
                   <td className="px-6 py-4 text-right">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      disabled={impersonating === rep.id}
-                      onClick={() => handleImpersonate(rep)}
-                      className="text-gray-500 hover:text-[#2A2A2A] text-xs"
-                      title={`Sign in as ${rep.first_name || rep.email}`}
-                    >
-                      {impersonating === rep.id
-                        ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        : <LogIn className="w-3.5 h-3.5 mr-1" />
-                      }
-                      {impersonating === rep.id ? '' : 'Sign in as'}
-                    </Button>
+                    <div className="flex items-center justify-end gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        disabled={impersonating === rep.id || disabling === rep.id}
+                        onClick={() => handleImpersonate(rep)}
+                        className="text-gray-500 hover:text-[#2A2A2A] text-xs"
+                        title={`Sign in as ${rep.first_name || rep.email}`}
+                      >
+                        {impersonating === rep.id
+                          ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          : <LogIn className="w-3.5 h-3.5 mr-1" />
+                        }
+                        {impersonating === rep.id ? '' : 'Sign in as'}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        disabled={disabling === rep.id || impersonating === rep.id}
+                        onClick={() => handleDisable(rep)}
+                        className="text-gray-400 hover:text-red-600 text-xs"
+                        title={`Disable ${rep.first_name || rep.email}`}
+                      >
+                        {disabling === rep.id
+                          ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          : <UserX className="w-3.5 h-3.5 mr-1" />
+                        }
+                        {disabling === rep.id ? '' : 'Disable'}
+                      </Button>
+                    </div>
                   </td>
                 </tr>
               ))}
