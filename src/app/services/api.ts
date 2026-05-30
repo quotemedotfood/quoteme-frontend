@@ -1959,6 +1959,22 @@ export async function updateAdminSubcategoryExclusions(
   });
 }
 
+// ── Command Center ──
+
+export interface RepActivityRow {
+  user_id: string;
+  first_name: string | null;
+  last_name: string | null;
+  quotes_created: number;
+  quotes_sent: number;
+  quotes_accepted: number;
+  last_activity_at: string | null;
+}
+
+export async function getCommandCenterRepActivity(): Promise<ApiResponse<RepActivityRow[]>> {
+  return fetchWithAuth('/api/v1/distributor_admin/command_center/rep_activity');
+}
+
 // ── Notifications ──
 
 export async function getNotifications(): Promise<ApiResponse<{ notifications: any[]; unread_count: number }>> {

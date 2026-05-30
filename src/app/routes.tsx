@@ -40,6 +40,7 @@ import { QuotePreviewPage } from "./pages/QuotePreviewPage";
 import { PaywallPage } from "./pages/PaywallPage";
 import { OnboardingConfirmPage } from "./pages/OnboardingConfirmPage";
 import { DistributorHomePage } from "./pages/DistributorHomePage";
+import { DistributorCommandCenterPage } from "./pages/DistributorCommandCenterPage";
 import { CatalogManagePage } from "./pages/CatalogManagePage";
 import { CatalogConfirmationPage } from "./pages/CatalogConfirmationPage";
 import { RepInvitePage } from "./pages/RepInvitePage";
@@ -305,6 +306,7 @@ export const router = createBrowserRouter([
           { path: "export-finalize", Component: ExportFinalizePage },
           { path: "onboarding/confirm", Component: OnboardingConfirmPage },
           { path: "catalog/confirmation", Component: CatalogConfirmationPage },
+          { path: "distributor-admin/command-center", Component: DistributorCommandCenterPage },
           { path: "distributor-admin/catalog", Component: CatalogManagePage },
           { path: "distributor-admin/invite", Component: RepInvitePage },
           { path: "distributor-admin/reps", Component: DistributorRepsPage },
