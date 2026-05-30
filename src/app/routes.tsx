@@ -75,6 +75,8 @@ import { RepCustomersPage } from "./pages/rep/RepCustomersPage";
 import { RepProfilePage } from "./pages/rep/RepProfilePage";
 import { RepLayout } from "./components/rep/RepLayout";
 import { useAuth } from "./contexts/AuthContext";
+import { TechLandingPage } from "./components/chef/TechLandingPage";
+import { SecureTechPreviewPage } from "./pages/chef/SecureTechPreviewPage";
 
 const demo = isDemoMode();
 
@@ -123,6 +125,21 @@ export const router = createBrowserRouter([
         // URL shape: /rep/invite?token=<64-hex-char-token>
         path: "rep/invite",
         Component: RepInviteAcceptPage,
+      },
+      {
+        // SU-FE-3: Token-gated public catalog upload landing.
+        // MUST live outside RootLayout — catalog person arrives via forwarded
+        // link with no JWT and must not be bounced to /auth.
+        // No QuoteMe account required to use this page.
+        // URL shape: /c/:token  (7-day single-use token minted when chef asks)
+        path: "c/:token",
+        Component: TechLandingPage,
+      },
+      {
+        // SU-FE-3 visual sign-off — TechLandingPage idle/sent/expired frames.
+        // Remove once Moose signs off on all three states.
+        path: "chef/_preview/secure-tech",
+        Component: SecureTechPreviewPage,
       },
       {
         path: "chef",
