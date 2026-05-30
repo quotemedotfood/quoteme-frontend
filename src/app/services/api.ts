@@ -1753,6 +1753,14 @@ export async function cancelRepInvite(inviteId: string): Promise<ApiResponse<nul
   });
 }
 
+/** POST /api/v1/distributor_admin/reps/invitations/:id/resend — invalidate prior token and issue a fresh invite. */
+export async function resendRepInvite(inviteId: string): Promise<ApiResponse<{ invite: { id: string; email: string; name: string | null; territory: string | null; status: string; expires_at: string; created_at: string }; message: string }>> {
+  return fetchWithAuth(`/api/v1/distributor_admin/reps/invitations/${inviteId}/resend`, {
+    method: 'POST',
+    body: JSON.stringify({}),
+  });
+}
+
 // ============= ONBOARDING DOCS =============
 
 export interface OnboardingDoc {
