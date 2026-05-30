@@ -52,6 +52,7 @@ import { ChefSignupPage } from "./pages/chef/ChefSignupPage";
 import { ChefEntryPage } from "./pages/chef/ChefEntryPage";
 import { ChefStatusPage } from "./pages/chef/ChefStatusPage";
 import { QuoteStateDocumentPreviewPage } from "./pages/chef/QuoteStateDocumentPreviewPage";
+import { RepCatalogEmailPreviewPage } from "./pages/chef/RepCatalogEmailPreviewPage";
 import { ChefQuoteReceiptPage } from "./pages/chef/ChefQuoteReceiptPage";
 import { ChefOrderGuidePage } from "./pages/chef/ChefOrderGuidePage";
 import { ChefWelcomePage } from "./pages/chef/ChefWelcomePage";
@@ -144,6 +145,12 @@ export const router = createBrowserRouter([
         // Remove once wired into ChefQuoteReceiptPage (Item 4, gated on C3).
         path: "chef/_preview/quote-states",
         Component: QuoteStateDocumentPreviewPage,
+      },
+      {
+        // SU-FE-2 visual sign-off — RepCatalogEmail mobile + desktop frames.
+        // Remove once the BE wires up the rep-email trigger (or when Moose signs off).
+        path: "chef/_preview/rep-email",
+        Component: RepCatalogEmailPreviewPage,
       },
       {
         path: "chef/pull/status/:id",

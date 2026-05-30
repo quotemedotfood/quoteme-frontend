@@ -50,3 +50,7 @@ export type { RequestCatalogCalloutProps } from './RequestCatalogCallout';
 
 export { RequestCatalogAsked } from './RequestCatalogAsked';
 export type { RequestCatalogAskedProps } from './RequestCatalogAsked';
+
+// SU-FE-2 (Wave 3 · Secure Rep-Catalog Upload)
+export { RepCatalogEmail, RepCatalogEmailMobile, RepCatalogEmailDesktop } from './RepCatalogEmail';
+export type { RepCatalogEmailProps } from './RepCatalogEmail';
