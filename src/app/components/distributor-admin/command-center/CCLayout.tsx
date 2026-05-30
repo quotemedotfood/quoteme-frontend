@@ -13,13 +13,14 @@
 // CCLayout renders the desktop shell only (lg+ breakpoint would need a media
 // query — for now the layout is desktop-first per rep-suite pattern).
 
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router';
 import { ManagerSidebar } from './ManagerSidebar';
 import { CCSearchBar } from './CCSearchBar';
 import { sans, C } from './cc-atoms';
 import type { CCActiveTab, CCSidebarMode, CCManagerInfo } from './ManagerSidebar';
 import { useAuth } from '../../../contexts/AuthContext';
+import { getCommandCenterUnassigned } from '../../../services/api';
 
 // ── Sidebar context ───────────────────────────────────────────────────────────
 
@@ -52,9 +53,21 @@ function activeTabFromPath(pathname: string): CCActiveTab {
 
 export function CCLayout() {
   const [mode, setMode] = useState<CCSidebarMode>('open');
+  const [unassignedCount, setUnassignedCount] = useState(0);
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
+
+  // Fetch unassigned count once on mount so the Assignments badge is live
+  // across all CC screens without polling.
+  useEffect(() => {
+    let cancelled = false;
+    getCommandCenterUnassigned().then((res) => {
+      if (cancelled) return;
+      if (res.data) setUnassignedCount(res.data.items.length);
+    });
+    return () => { cancelled = true; };
+  }, []);
 
   const active = activeTabFromPath(location.pathname);
   const hidden = mode === 'hidden';
@@ -94,6 +107,7 @@ export function CCLayout() {
             active={active}
             onNav={onNav}
             manager={manager}
+            unassignedCount={unassignedCount}
           />
         )}
 

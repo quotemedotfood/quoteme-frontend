@@ -15,7 +15,7 @@
 //   → CCQuoteRow[] (id, rep, restaurant, city, status, sent, items, total|null, requote, wait)
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
 import { User } from 'lucide-react';
 import {
   CCStatusTag,
@@ -370,11 +370,15 @@ const noScrollbar: React.CSSProperties = {
 
 export function CCQuotesPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [rows, setRows] = useState<CCQuoteRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [repFilter, setRepFilter] = useState<string>('all');
+  // Hydrate repFilter from ?rep=<id> query param on mount.
+  // Absent → 'all'. Does not respond to subsequent param changes (stable mount).
+  const initialRep = searchParams.get('rep') ?? 'all';
+  const [repFilter, setRepFilter] = useState<string>(initialRep);
   const [statusFilter, setStatusFilter] = useState<CCQuoteStatus | 'all'>('all');
   const [rangeFilter, setRangeFilter] = useState<'week' | 'month'>('week');
 
