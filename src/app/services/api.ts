@@ -520,6 +520,39 @@ export async function updateCurrentUser(data: UpdateUserData): Promise<ApiRespon
   });
 }
 
+
+// ── Rep Profile ──────────────────────────────────────────────────────────────
+
+export interface RepProfileData {
+  id: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  role: string;
+  phone: string | null;
+  is_active: boolean | null;
+  distributor: { id: string; name: string } | null;
+}
+
+export interface UpdateRepProfilePayload {
+  first_name?: string;
+  last_name?: string;
+  phone?: string;
+}
+
+export async function getRepProfile(): Promise<ApiResponse<RepProfileData>> {
+  return fetchWithAuth('/api/v1/rep/profile');
+}
+
+export async function updateRepProfile(
+  payload: UpdateRepProfilePayload
+): Promise<ApiResponse<RepProfileData>> {
+  return fetchWithAuth('/api/v1/rep/profile', {
+    method: 'PATCH',
+    body: JSON.stringify({ profile: payload }),
+  });
+}
+
 // ============= DISTRIBUTOR SEARCH (PUBLIC) =============
 
 export interface DistributorSearchResult {

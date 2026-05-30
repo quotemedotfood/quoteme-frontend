@@ -37,6 +37,7 @@ import {
   Settings,
   PanelLeftClose,
   PanelLeftOpen,
+  UserCircle,
   X,
 } from 'lucide-react';
 import quotemeLogo from '../../../assets/quoteme-logo.png';
@@ -59,7 +60,7 @@ const serif: React.CSSProperties = {
 export type RepSidebarMode = 'open' | 'collapsed' | 'hidden';
 // 'quotes-inbound' and 'quotes-history' are sub-tab states under the Quotes parent.
 // 'quotes' is a catch-all when on a quote detail page (/rep/quotes/:id).
-export type RepActiveTab = 'quotes-inbound' | 'quotes-history' | 'quotes' | 'customers' | 'settings';
+export type RepActiveTab = 'quotes-inbound' | 'quotes-history' | 'quotes' | 'customers' | 'profile' | 'settings';
 
 // ─── Nav destination config ──────────────────────────────────────────────────
 
@@ -90,6 +91,13 @@ const NAV_ITEMS: NavDestConfig[] = [
     target: 'rep-customers',
     Icon: Users,
     group: 'daily',
+  },
+  {
+    id: 'profile',
+    label: 'My Profile',
+    target: 'rep-profile',
+    Icon: UserCircle,
+    group: 'bottom',
   },
   {
     id: 'settings',
