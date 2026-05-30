@@ -70,6 +70,7 @@ import { RepWelcomePage } from "./pages/rep/RepWelcomePage";
 import { RepTriagePage } from "./pages/rep/RepTriagePage";
 import { RepIncomingQuotePage } from "./pages/rep/RepIncomingQuotePage";
 import { RepCustomersPage } from "./pages/rep/RepCustomersPage";
+import { RepProfilePage } from "./pages/rep/RepProfilePage";
 import { RepLayout } from "./components/rep/RepLayout";
 import { useAuth } from "./contexts/AuthContext";
 
@@ -250,6 +251,7 @@ export const router = createBrowserRouter([
                 // Card 11 (Desi Lock D-2): customer list shell — list only,
                 // no Add Customer form (Moose's track).
                 { path: "customers", Component: RepCustomersPage },
+                { path: "profile", Component: RepProfilePage },
               ],
             },
           ]),
