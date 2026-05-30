@@ -2037,10 +2037,27 @@ export async function consumeChefMagicLink(
 // authenticated chef can see (via their RestaurantContacts → Restaurants
 // → DistributorRestaurantRelationships), plus the primary distributor id
 // when one is resolved.
+//
+// SU-FE-1 (Wave 3): extended with catalog-state fields for the request-catalog
+// callout. The BE serialize_distributor method needs to be updated to include
+// these fields; until then they will be undefined/null and the callout will
+// not render (graceful degradation).
+//   catalog_state: 'no_catalog' | 'provisional' | 'needs_confirmation' | 'verified' | ...
+//   drop_status:   'requested' | 'uploading' | 'loading' | 'live' | null
+//   rep_first:     rep first name for callout copy (e.g. "Marcus")
+//   catalog_held_from: human-readable date string (e.g. "Feb 3, 2026") or null
 export interface ChefDistributorSummary {
   id: string;
   name: string;
   status: string;
+  /** SU-FE-1: catalog state key. Drives request-catalog callout visibility. */
+  catalog_state?: string | null;
+  /** SU-FE-1: active drop-zone status (null if no ask has been made). */
+  drop_status?: string | null;
+  /** SU-FE-1: rep first name for callout copy interpolation. */
+  rep_first?: string | null;
+  /** SU-FE-1: human-readable date of the catalog we currently hold (e.g. "Feb 3, 2026"). */
+  catalog_held_from?: string | null;
 }
 
 export interface ChefDistributorsResponse {

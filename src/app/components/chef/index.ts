@@ -40,3 +40,13 @@ export type { HelpDrawerProps } from './HelpDrawer';
 
 export { PinToStackButton } from './PinToStackButton';
 export type { PinToStackButtonProps } from './PinToStackButton';
+
+// SU-FE-1 (Wave 3 · Secure Rep-Catalog Upload)
+export { DropStatusStepper, DROP_STATUS } from './DropStatusStepper';
+export type { DropStatusKey, DropStatus, DropStatusStepperProps } from './DropStatusStepper';
+
+export { RequestCatalogCallout } from './RequestCatalogCallout';
+export type { RequestCatalogCalloutProps } from './RequestCatalogCallout';
+
+export { RequestCatalogAsked } from './RequestCatalogAsked';
+export type { RequestCatalogAskedProps } from './RequestCatalogAsked';

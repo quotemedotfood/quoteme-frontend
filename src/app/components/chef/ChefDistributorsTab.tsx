@@ -3,6 +3,19 @@
 // V2 W4 live-data wiring: replaces hardcoded YOUR_DISTRIBUTORS + AREA_DISTRIBUTORS
 // with GET /api/v1/chef/distributors. Row clicks navigate to /chef/distributor/:id.
 //
+// SU-FE-1 (Wave 3 · Secure Rep-Catalog Upload):
+//   Connected distributors with catalog_state ∈ {no_catalog, provisional,
+//   needs_confirmation} show a RequestCatalogCallout (one Sacred Orange per tab).
+//   Tapping "Ask {rep}" fires POST /api/v1/chef/catalog_upload_links, then
+//   flips to RequestCatalogAsked + DropStatusStepper at "requested".
+//
+//   NOTE: The BE serialize_distributor (index action) currently returns only
+//   {id, name, status}. Extending it to include {catalog_state, drop_status,
+//   rep_first, catalog_held_from} is a companion BE task. Until that ships,
+//   the callout is invisible (catalog_state is undefined → no-render); the
+//   ChefDistributorDetailPage already has a "Request fresh catalog" button as
+//   a fallback for the current state.
+//
 // Original port notes (Desi V2 handoff, 2026-05-19):
 //   • PhoneShell / MobileTopBar — prototype-only chrome; not mounted here.
 //   • CSS vars (--qm-*) → inline styles using FE color constants.
@@ -14,10 +27,14 @@ import { MapPin, ArrowRight, Upload, RefreshCw } from 'lucide-react';
 import { CatalogStatusBadge } from './CatalogStatusBadge';
 import { UseDistributorForQuoteModal } from './UseDistributorForQuoteModal';
 import { PinToStackButton } from './PinToStackButton';
+import { RequestCatalogCallout } from './RequestCatalogCallout';
+import { RequestCatalogAsked } from './RequestCatalogAsked';
+import type { DropStatusKey } from './DropStatusStepper';
 import type { DistributorForModal } from './UseDistributorForQuoteModal';
 import {
   getChefDistributors,
   getChefStack,
+  requestCatalogUploadLink,
   type ChefDistributorSummary,
   type ChefStackResponse,
 } from '../../services/api';
@@ -79,6 +96,14 @@ export function ChefDistributorsTab({
   // Area distributors are not yet returned by the live API; modal wired for future use.
   const [modalDist, setModalDist] = useState<DistributorForModal | null>(null);
 
+  // SU-FE-1: per-distributor ask state map.
+  // Key = distributor id. Value = { loading, asked, dropStatus } once the chef taps.
+  // Seeded from drop_status returned by GET /api/v1/chef/distributors (when the BE
+  // exposes that field); otherwise starts undefined (no callout rendered).
+  const [askMap, setAskMap] = useState<
+    Record<string, { loading: boolean; asked: boolean; dropStatus: DropStatusKey }>
+  >({});
+
   const loadStack = useCallback(() => {
     getChefStack().then((res) => {
       // null data + no error means the chef has no stack yet.
@@ -99,6 +124,46 @@ export function ChefDistributorsTab({
       }
     });
   };
+
+  // SU-FE-1: initialise askMap from drop_status once distributors load.
+  useEffect(() => {
+    if (distributors.length === 0) return;
+    setAskMap((prev) => {
+      const next = { ...prev };
+      for (const d of distributors) {
+        if (d.drop_status && !next[d.id]) {
+          next[d.id] = {
+            loading: false,
+            asked: true,
+            dropStatus: d.drop_status as DropStatusKey,
+          };
+        }
+      }
+      return next;
+    });
+  }, [distributors]);
+
+  // SU-FE-1: fires POST /api/v1/chef/catalog_upload_links for the given distributor.
+  async function handleAskForCatalog(distributorId: string) {
+    setAskMap((prev) => ({
+      ...prev,
+      [distributorId]: { loading: true, asked: false, dropStatus: 'requested' },
+    }));
+    const res = await requestCatalogUploadLink(distributorId);
+    if (res.error || !res.data) {
+      // On error revert so the chef can retry.
+      setAskMap((prev) => {
+        const next = { ...prev };
+        delete next[distributorId];
+        return next;
+      });
+    } else {
+      setAskMap((prev) => ({
+        ...prev,
+        [distributorId]: { loading: false, asked: true, dropStatus: 'requested' },
+      }));
+    }
+  }
 
   useEffect(() => {
     load();
@@ -208,47 +273,81 @@ export function ChefDistributorsTab({
             </div>
           )}
 
-          {loadState === 'ready' && yourDistributors.map((d) => (
-            <div
-              key={d.id}
-              style={{ ...divider, display: 'flex', alignItems: 'center', gap: 10 }}
-            >
-              {/* Nav area — tapping anywhere except the pin button navigates */}
-              <button
-                type="button"
-                onClick={() => navigate(`/chef/distributor/${d.id}`)}
-                style={{
-                  flex: 1,
-                  minWidth: 0,
-                  display: 'block',
-                  textAlign: 'left',
-                  background: 'none',
-                  border: 'none',
-                  padding: '14px 0',
-                  cursor: 'pointer',
-                }}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0 flex-1">
-                    <div style={{ ...serif, fontSize: 15, fontWeight: 500, color: C.charcoal, lineHeight: 1.3 }}>
-                      {d.name}
-                    </div>
-                  </div>
-                  <CatalogStatusBadge status={d.status as 'connected' | 'uploaded'} />
-                </div>
-              </button>
+          {loadState === 'ready' && yourDistributors.map((d) => {
+            // SU-FE-1: determine if this row is catalog-thin (needs the callout).
+            // Trigger: catalog_state ∈ {no_catalog, provisional, needs_confirmation}
+            // and the distributor is Connected (status === 'connected').
+            const catalogThinStates = ['no_catalog', 'provisional', 'needs_confirmation'];
+            const isCatalogThin =
+              d.status === 'connected' &&
+              d.catalog_state != null &&
+              catalogThinStates.includes(d.catalog_state);
+            const askState = askMap[d.id];
 
-              {/* Pin-to-stack affordance */}
-              <div style={{ flexShrink: 0 }}>
-                <PinToStackButton
-                  distributorId={d.id}
-                  distributorName={d.name}
-                  stackData={stackData}
-                  onStackChange={loadStack}
-                />
+            return (
+              <div
+                key={d.id}
+                style={{ ...divider, paddingBottom: isCatalogThin ? 14 : 0 }}
+              >
+                {/* Top row: nav button + pin affordance side by side */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  {/* Nav area — tapping anywhere except the pin button navigates */}
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/chef/distributor/${d.id}`)}
+                    style={{
+                      flex: 1,
+                      minWidth: 0,
+                      display: 'block',
+                      textAlign: 'left',
+                      background: 'none',
+                      border: 'none',
+                      padding: '14px 0',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <div style={{ ...serif, fontSize: 15, fontWeight: 500, color: C.charcoal, lineHeight: 1.3 }}>
+                          {d.name}
+                        </div>
+                      </div>
+                      <CatalogStatusBadge status={d.status as 'connected' | 'uploaded'} />
+                    </div>
+                  </button>
+
+                  {/* Pin-to-stack affordance */}
+                  <div style={{ flexShrink: 0 }}>
+                    <PinToStackButton
+                      distributorId={d.id}
+                      distributorName={d.name}
+                      stackData={stackData}
+                      onStackChange={loadStack}
+                    />
+                  </div>
+                </div>
+
+                {/* SU-FE-1: request-catalog callout (catalog-thin Connected rows only) */}
+                {isCatalogThin && (
+                  askState?.asked ? (
+                    <RequestCatalogAsked
+                      repFirst={d.rep_first ?? 'your rep'}
+                      distributorName={d.name}
+                      status={askState.dropStatus}
+                    />
+                  ) : (
+                    <RequestCatalogCallout
+                      distributorName={d.name}
+                      catalogHeldFrom={d.catalog_held_from}
+                      repFirst={d.rep_first ?? 'your rep'}
+                      loading={askState?.loading ?? false}
+                      onAsk={() => handleAskForCatalog(d.id)}
+                    />
+                  )
+                )}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         {/* ── SECTION 2 · AVAILABLE IN YOUR AREA ────────────────────────────── */}
