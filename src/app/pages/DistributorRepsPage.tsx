@@ -3,7 +3,7 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Loader2, Check, Send, UserPlus, Users, X, LogIn } from 'lucide-react';
-import { inviteRep, getDistributorAdminReps, impersonateRep } from '../services/api';
+import { inviteRep, getDistributorAdminReps, impersonateRep, cancelRepInvite } from '../services/api';
 import type { DistributorRep } from '../services/api';
 
 export function DistributorRepsPage() {
@@ -18,6 +18,8 @@ export function DistributorRepsPage() {
   const [successMessage, setSuccessMessage] = useState('');
   const [impersonating, setImpersonating] = useState<string | null>(null);
   const [impersonateError, setImpersonateError] = useState<string | null>(null);
+  const [cancelling, setCancelling] = useState<string | null>(null);
+  const [cancelError, setCancelError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!document.getElementById('quoteme-fonts')) {
@@ -79,6 +81,19 @@ export function DistributorRepsPage() {
     } else {
       setImpersonateError(res.error || 'Failed to impersonate rep');
       setImpersonating(null);
+    }
+  };
+
+  const handleCancelInvite = async (rep: DistributorRep) => {
+    setCancelling(rep.id);
+    setCancelError(null);
+    const res = await cancelRepInvite(rep.id);
+    if (res.error) {
+      setCancelError(res.error);
+      setCancelling(null);
+    } else {
+      setCancelling(null);
+      loadReps();
     }
   };
 
@@ -163,6 +178,9 @@ export function DistributorRepsPage() {
 
       {impersonateError && (
         <p className="text-red-500 text-sm mb-4">{impersonateError}</p>
+      )}
+      {cancelError && (
+        <p className="text-red-500 text-sm mb-4">{cancelError}</p>
       )}
 
       {/* Reps table */}
@@ -269,7 +287,22 @@ export function DistributorRepsPage() {
                       {new Date(rep.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                     </p>
                   </td>
-                  <td className="px-6 py-4" />
+                  <td className="px-6 py-4 text-right">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={cancelling === rep.id}
+                      onClick={() => handleCancelInvite(rep)}
+                      className="text-gray-400 hover:text-red-600 text-xs"
+                      title={`Cancel invite for ${rep.first_name || rep.email}`}
+                    >
+                      {cancelling === rep.id
+                        ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        : <X className="w-3.5 h-3.5 mr-1" />
+                      }
+                      {cancelling === rep.id ? '' : 'Cancel'}
+                    </Button>
+                  </td>
                 </tr>
               ))}
               {inactiveReps.map(rep => (

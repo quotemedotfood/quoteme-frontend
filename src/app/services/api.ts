@@ -1746,6 +1746,13 @@ export async function impersonateRep(repProfileId: string): Promise<ApiResponse<
   });
 }
 
+/** DELETE /api/v1/distributor_admin/reps/invitations/:id — cancel a pending rep invite. */
+export async function cancelRepInvite(inviteId: string): Promise<ApiResponse<null>> {
+  return fetchWithAuth<null>(`/api/v1/distributor_admin/reps/invitations/${inviteId}`, {
+    method: 'DELETE',
+  });
+}
+
 // ============= ONBOARDING DOCS =============
 
 export interface OnboardingDoc {
