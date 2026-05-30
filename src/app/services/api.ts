@@ -1761,6 +1761,14 @@ export async function resendRepInvite(inviteId: string): Promise<ApiResponse<{ i
   });
 }
 
+/** PATCH /api/v1/distributor_admin/reps/:id/disable — deactivate a rep (idempotent). */
+export async function disableRep(repProfileId: string): Promise<ApiResponse<DistributorRep>> {
+  return fetchWithAuth<DistributorRep>(`/api/v1/distributor_admin/reps/${repProfileId}/disable`, {
+    method: 'PATCH',
+    body: JSON.stringify({}),
+  });
+}
+
 // ============= ONBOARDING DOCS =============
 
 export interface OnboardingDoc {
