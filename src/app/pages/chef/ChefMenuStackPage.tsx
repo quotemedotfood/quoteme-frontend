@@ -1,6 +1,7 @@
 // ChefMenuStackPage — /chef/menus/:menuId/stack
 //
 // STACK-FE-1: Stack roster + compare-spread table.
+// STACK-FE-4: Empty stack state — rendered when no distributors are pinned.
 //
 // Design source: handoff/source/screens-stack.jsx (V1, CANONICAL per Desi doctrine).
 // If this file and the .jsx ever disagree, the .jsx wins.
@@ -25,8 +26,9 @@
 //   • Cheaper-here arrow (↓) via lowestPriceIndex — operational, never qualitative
 //   • SHOW_PRICES gate (global admin flag) preserved per Justin lock May 27
 //
-// STACK-FE-3 (add-distributor drawer) and STACK-FE-4 (empty state) are
-// separate tickets. This page does NOT implement them.
+// STACK-FE-4: empty state branch (below) renders when DEMO_DISTRIBUTORS is
+//   empty — i.e., chef has not pinned any distributors to this menu's stack yet.
+//   Populated path is untouched.
 //
 // Route: /chef/menus/:menuId/stack   (registered inside ChefShellLayout)
 
@@ -225,11 +227,190 @@ interface DetailCell {
   distributor: StackDistributor;
 }
 
+// ─── StackEmptyState ──────────────────────────────────────────────────────────
+// STACK-FE-4: rendered when no distributors are pinned to this menu's stack.
+// Guidance: prompt the chef to pin distributors so the compare-spread can build.
+// Matches page chrome (back nav + serif headline) so it reads as part of the
+// same screen, not a broken or loading state.
+
+interface StackEmptyStateProps {
+  menuId: string;
+  onNavigateBack: () => void;
+}
+
+function StackEmptyState({ menuId, onNavigateBack }: StackEmptyStateProps) {
+  return (
+    <div style={{ ...sans, color: C.charcoal, maxWidth: 1200, margin: '0 auto', padding: '24px 32px 48px' }}>
+
+      {/* Back nav */}
+      <div>
+        <button
+          onClick={onNavigateBack}
+          style={{
+            ...sans,
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+            fontSize: 12.5,
+            color: C.gray500,
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            padding: 0,
+          }}
+        >
+          ← Back To Menu
+        </button>
+
+        <h1 style={{ ...serif, fontSize: 32, fontWeight: 600, color: C.charcoal, marginTop: 8, lineHeight: 1.1 }}>
+          Your Stack
+        </h1>
+        <p style={{ marginTop: 8, fontSize: 13.5, color: C.gray500, lineHeight: 1.6, maxWidth: 520 }}>
+          Pin the distributors you source from to see this menu priced side-by-side
+          across your whole stack.
+        </p>
+      </div>
+
+      {/* Empty state card */}
+      <div
+        style={{
+          marginTop: 32,
+          borderTop: `2px solid ${C.charcoal}`,
+          paddingTop: 32,
+          maxWidth: 560,
+        }}
+      >
+        {/* Step list */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          {[
+            {
+              n: '1',
+              head: 'Find Your Distributors',
+              body: 'Go to Distributors and find the reps you already work with — or browse who services your area.',
+            },
+            {
+              n: '2',
+              head: 'Pin Them To Your Stack',
+              body: 'Tap the pin on any distributor to add them. Each one becomes a column in your compare-spread.',
+            },
+            {
+              n: '3',
+              head: 'Come Back Here',
+              body: 'This menu prices against every distributor in your stack. Pick one to build an order guide, or compare across several.',
+            },
+          ].map(step => (
+            <div key={step.n} style={{ display: 'flex', alignItems: 'flex-start', gap: 16 }}>
+              <div
+                aria-hidden="true"
+                style={{
+                  flexShrink: 0,
+                  width: 28,
+                  height: 28,
+                  borderRadius: '50%',
+                  border: `1.5px solid ${C.charcoal}`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  ...serif,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: C.charcoal,
+                  marginTop: 2,
+                }}
+              >
+                {step.n}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ ...serif, fontSize: 16, fontWeight: 500, color: C.charcoal, lineHeight: 1.25 }}>
+                  {step.head}
+                </div>
+                <div style={{ fontSize: 13, color: C.gray500, marginTop: 4, lineHeight: 1.6 }}>
+                  {step.body}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* CTAs */}
+        <div style={{ marginTop: 32, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <button
+            onClick={onNavigateBack}
+            style={{
+              ...sans,
+              padding: '10px 14px',
+              fontSize: 13,
+              background: 'none',
+              border: 'none',
+              color: C.gray500,
+              cursor: 'pointer',
+              borderRadius: 6,
+            }}
+          >
+            Back To Menu
+          </button>
+          <button
+            onClick={() => {
+              // STACK-FE-4 note: routes to the chef distributors browse surface.
+              // Route is /chef/distributors per ChefShellLayout registration.
+              // Update this href if the distributors route changes.
+              window.location.href = '/chef/distributors';
+            }}
+            style={{
+              ...sans,
+              padding: '11px 20px',
+              fontSize: 14,
+              fontWeight: 500,
+              background: C.orange,
+              color: '#fff',
+              border: 'none',
+              borderRadius: 6,
+              cursor: 'pointer',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+            }}
+          >
+            Browse Distributors →
+          </button>
+        </div>
+      </div>
+
+      {/* Footnote */}
+      <div
+        style={{
+          marginTop: 28,
+          display: 'flex',
+          alignItems: 'flex-start',
+          gap: 8,
+          fontSize: 12,
+          color: C.gray500,
+          lineHeight: 1.6,
+          maxWidth: 520,
+        }}
+      >
+        <span style={{ color: C.accent, flexShrink: 0, marginTop: 1 }}>ⓘ</span>
+        <div>
+          You can have multiple distributors in your stack — some chefs split their menu
+          across a broadliner, a dairy house, and a local produce rep. Stack is your
+          operational view, not a marketplace ranking.
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── ChefMenuStackPage ────────────────────────────────────────────────────────
 
 export function ChefMenuStackPage() {
   const { menuId } = useParams<{ menuId: string }>();
   const navigate = useNavigate();
+
+  // STACK-FE-4: the populated path uses DEMO_DISTRIBUTORS (4 hardcoded entries).
+  // When that list is empty — i.e., no pins yet — the empty state renders instead.
+  // A real API integration will replace DEMO_DISTRIBUTORS with fetched pin data;
+  // this branch handles the zero-pin case transparently once that wires in.
+  const hasPins = DEMO_DISTRIBUTORS.length > 0;
 
   const cols = useMemo(() => computeColumnStats(DEMO_DISTRIBUTORS, DEMO_ROWS), []);
   const groups = useMemo(() => groupRows(DEMO_ROWS), []);
@@ -257,6 +438,16 @@ export function ChefMenuStackPage() {
   const sectionSubtotals = groups.map(g =>
     cols.map((_, ci) => g.items.reduce((s, it) => (it.offerings[ci] != null ? s + 1 : s), 0))
   );
+
+  // STACK-FE-4: empty state — no distributors pinned yet.
+  if (!hasPins) {
+    return (
+      <StackEmptyState
+        menuId={menuId ?? ''}
+        onNavigateBack={() => navigate(`/chef/menus/${menuId ?? ''}`)}
+      />
+    );
+  }
 
   return (
     <div style={{ ...sans, color: C.charcoal, maxWidth: 1200, margin: '0 auto', padding: '24px 32px 48px' }}>
