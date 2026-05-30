@@ -64,6 +64,7 @@ import { ChefDistributorDetailPage } from "./pages/chef/ChefDistributorDetailPag
 import { ChefShellLayout } from "./components/chef/ChefShellLayout";
 import { ChefMenusPage } from "./pages/chef/ChefMenusPage";
 import { ChefMenuDetailPage } from "./pages/chef/ChefMenuDetailPage";
+import { ChefMenuStackPage } from "./pages/chef/ChefMenuStackPage";
 import { CreateRestaurantPage } from "./pages/CreateRestaurantPage";
 import { isDemoMode } from "./utils/demoMode";
 import { RepWelcomePage } from "./pages/rep/RepWelcomePage";
@@ -205,6 +206,9 @@ export const router = createBrowserRouter([
               { path: "chef/quotes/:id", Component: ChefQuoteReceiptPage },
               { path: "chef/order-guide/:id", Component: ChefOrderGuidePage },
               { path: "chef/menus/:id", Component: ChefMenuDetailPage },
+              // STACK-FE-1: compare-spread table. Static segment 'stack' takes
+              // precedence over future dynamic sibling if one is added.
+              { path: "chef/menus/:menuId/stack", Component: ChefMenuStackPage },
               { path: "chef/catalog", Component: ChefCatalogSelectionPage },
               { path: "chef/distributor/new", Component: ChefDistributorEntryPage },
               // B3b: distributor detail. 'new' (static) takes precedence over

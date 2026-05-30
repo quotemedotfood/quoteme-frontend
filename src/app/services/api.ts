@@ -2896,6 +2896,54 @@ export interface RepInviteConsumeResponse {
  * existing rep users being re-linked, the BE accepts a consume without
  * a password (but the FE always collects one for safety).
  */
+// ─── Chef Stack API ───────────────────────────────────────────────────────────
+// BE: GET /api/v1/chef/stack  (Chef::StacksController#show)
+// Returns the chef's Stack with pinned distributors.
+// A per-menu product compare-spread endpoint does not exist yet (STACK-FE-1
+// uses demo data per Desi's canonical .jsx); this type covers the stack roster
+// so the compare-spread page can fetch distributor names when it ships.
+
+export interface ChefStackPin {
+  id: string;
+  distributor_id: string;
+  distributor_name: string;
+  chef_label: string | null;
+  pinned_at: string;
+  position: number | null;
+}
+
+export interface ChefStackResponse {
+  id: string;
+  name: string;
+  status: string;
+  location_id: string;
+  pins: ChefStackPin[];
+}
+
+export async function getChefStack(): Promise<ApiResponse<ChefStackResponse>> {
+  return fetchWithAuth('/api/v1/chef/stack');
+}
+
+export async function createChefStack(): Promise<ApiResponse<ChefStackResponse>> {
+  return fetchWithAuth('/api/v1/chef/stack', { method: 'POST' });
+}
+
+export async function addChefStackPin(
+  distributorId: string,
+  chefLabel?: string,
+): Promise<ApiResponse<ChefStackPin>> {
+  return fetchWithAuth('/api/v1/chef/stack/pins', {
+    method: 'POST',
+    body: JSON.stringify({ distributor_id: distributorId, chef_label: chefLabel }),
+  });
+}
+
+export async function removeChefStackPin(pinId: string): Promise<ApiResponse<void>> {
+  return fetchWithAuth(`/api/v1/chef/stack/pins/${pinId}`, { method: 'DELETE' });
+}
+
+// ─── Rep invitation ───────────────────────────────────────────────────────────
+
 export async function consumeRepInvitation(
   token: string,
   password: string,
