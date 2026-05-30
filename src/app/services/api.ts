@@ -2062,6 +2062,79 @@ export async function getCommandCenterQuote(
   );
 }
 
+// ── Command Center — Assignment Center (Section 4) ──────────────────────────
+
+export interface CCUnassignedRep {
+  id: string;
+  name: string;
+  initials: string;
+  /** Count of currently open quotes — used for load-balancing display only, never ranking. */
+  open: number;
+  /** Human-readable "when last quote was sent", e.g. "May 28" or "3 days ago". */
+  last: string;
+}
+
+export interface CCUnassignedItem {
+  /** 'quote' rows are assigned via PATCH /quotes/:id/assign.
+   *  'relationship' rows are assigned via PATCH /restaurants/:id/assign_rep.
+   *  For 'relationship' rows, `id` is the restaurant id.
+   */
+  kind: 'quote' | 'relationship';
+  /** For 'quote': quote identifier e.g. "Q-1234". For 'relationship': restaurant id. */
+  id: string;
+  restaurant: string;
+  city: string;
+  /** Present when kind='quote': formatted quote label, e.g. "Q-1034". */
+  q_label?: string;
+  /** Present when kind='quote': item count. */
+  items?: number;
+  /** Present when kind='relationship': human-readable age string, e.g. "came in 4 days ago". */
+  age?: string;
+}
+
+export interface CCUnassignedResponse {
+  items: CCUnassignedItem[];
+  reps: CCUnassignedRep[];
+}
+
+/** GET /api/v1/distributor_admin/command_center/unassigned
+ *  Returns unassigned items (quotes + ownerless inbound) and rep roster sorted by open load ascending.
+ */
+export async function getCommandCenterUnassigned(): Promise<ApiResponse<CCUnassignedResponse>> {
+  return fetchWithAuth('/api/v1/distributor_admin/command_center/unassigned');
+}
+
+/** PATCH /api/v1/distributor_admin/quotes/:id/assign
+ *  Assigns (or unassigns when repId is null) a quote to a rep.
+ *  Used for CCUnassignedItem rows where kind='quote'.
+ */
+export async function assignQuote(
+  quoteId: string,
+  repId: string | null
+): Promise<ApiResponse<{ ok: boolean }>> {
+  return fetchWithAuth(`/api/v1/distributor_admin/quotes/${encodeURIComponent(quoteId)}/assign`, {
+    method: 'PATCH',
+    body: JSON.stringify({ rep_id: repId }),
+  });
+}
+
+/** PATCH /api/v1/distributor_admin/restaurants/:id/assign_rep
+ *  Assigns (or unassigns when repId is null) a restaurant relationship to a rep.
+ *  Used for CCUnassignedItem rows where kind='relationship' (id is the restaurant id).
+ */
+export async function assignRestaurantRep(
+  restaurantId: string,
+  repId: string | null
+): Promise<ApiResponse<{ ok: boolean }>> {
+  return fetchWithAuth(
+    `/api/v1/distributor_admin/restaurants/${encodeURIComponent(restaurantId)}/assign_rep`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify({ rep_id: repId }),
+    }
+  );
+}
+
 // ── Notifications ──
 
 export async function getNotifications(): Promise<ApiResponse<{ notifications: any[]; unread_count: number }>> {
