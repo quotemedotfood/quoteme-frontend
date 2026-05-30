@@ -2959,6 +2959,83 @@ export async function removeChefStackPin(pinId: string): Promise<ApiResponse<voi
   return fetchWithAuth(`/api/v1/chef/stack/pins/${pinId}`, { method: 'DELETE' });
 }
 
+// ─── Catalog upload link (BE-4 · public, token-is-the-credential) ─────────────
+// GET  /api/v1/catalog_upload_links/:token/verify
+// POST /api/v1/catalog_upload_links/:token/upload
+// Neither call carries an auth header — the token in the path IS the credential.
+
+export interface CatalogUploadLinkVerifyResponse {
+  distributor_name: string;
+  rep_name: string;
+  expires_at: string;
+}
+
+export interface CatalogUploadLinkUploadResponse {
+  status: 'delivered';
+  distributor_name: string;
+  rep_name: string;
+}
+
+/**
+ * verifyCatalogUploadLink — GET /api/v1/catalog_upload_links/:token/verify
+ *
+ * Unauthenticated. Returns parsed body on 200; surfaces status + error string
+ * so the caller can branch on 404 (not_found) vs 410 (expired / consumed).
+ */
+export async function verifyCatalogUploadLink(
+  token: string,
+): Promise<{ data?: CatalogUploadLinkVerifyResponse; status: number; error?: string }> {
+  try {
+    const response = await fetch(
+      `${API_BASE_URL}/api/v1/catalog_upload_links/${encodeURIComponent(token)}/verify`,
+    );
+    const status = response.status;
+    if (!response.ok) {
+      const errorBody = await response.json().catch(() => ({ error: `HTTP ${status}` }));
+      return { status, error: errorBody.error || `HTTP ${status}` };
+    }
+    const data: CatalogUploadLinkVerifyResponse = await response.json();
+    return { data, status };
+  } catch (err) {
+    return { status: 0, error: err instanceof Error ? err.message : 'Network error' };
+  }
+}
+
+/**
+ * uploadCatalogViaLink — POST /api/v1/catalog_upload_links/:token/upload
+ *
+ * Unauthenticated. Sends multipart/form-data with the file under field key
+ * `file` (NOT `catalog_file`). Surfaces status + body so the caller can
+ * branch on 200, 410, 422, or 500.
+ *
+ * Named `uploadCatalogViaLink` (not `uploadCatalogFile`) to distinguish from
+ * the authenticated `uploadCatalogFile` (line ~945) which targets the rep's
+ * own catalog management endpoint.
+ */
+export async function uploadCatalogViaLink(
+  token: string,
+  file: File,
+): Promise<{ data?: CatalogUploadLinkUploadResponse; status: number; error?: string }> {
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await fetch(
+      `${API_BASE_URL}/api/v1/catalog_upload_links/${encodeURIComponent(token)}/upload`,
+      { method: 'POST', body: formData },
+    );
+    const status = response.status;
+    if (!response.ok) {
+      const errorBody = await response.json().catch(() => ({ error: `HTTP ${status}` }));
+      return { status, error: errorBody.error || `HTTP ${status}` };
+    }
+    const data: CatalogUploadLinkUploadResponse = await response.json();
+    return { data, status };
+  } catch (err) {
+    return { status: 0, error: err instanceof Error ? err.message : 'Network error' };
+  }
+}
+
 // ─── Rep invitation ───────────────────────────────────────────────────────────
 
 export async function consumeRepInvitation(

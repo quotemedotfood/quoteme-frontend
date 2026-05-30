@@ -24,21 +24,20 @@
 //   • Real file input behind the drop zone (click → browse), not prototype demo
 //     click that faked a filename.
 //
-// Upload wiring:
-//   BE-4 (upload-consume endpoint) is NOT yet on main / in api.ts as of
-//   2026-05-30. onSend transitions idle→sent via local state for now.
-//
-//   TODO(BE-4): When the secure catalog upload-consume endpoint lands, wire here:
-//     POST /api/v1/public/catalog_upload_links/:token/consume
-//     FormData: { catalog_file: File, note?: string }
-//     200  → transition to "sent"
-//     410  → transition to "expired"
-//   Replace the optimistic `setPageState('sent')` call in handleSend() below.
+// Upload wiring (BE-4 — wired 2026-05-30):
+//   On mount: GET /api/v1/catalog_upload_links/:token/verify populates live
+//   distributor/rep names. 404 routes to expired state (same recovery path).
+//   handleSend: POST /api/v1/catalog_upload_links/:token/upload (field: `file`).
+//   Both calls are unauthenticated — no Bearer/JWT headers.
 
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Upload, Check, ArrowRight, Mail } from 'lucide-react';
 import { useParams } from 'react-router';
 import quotemeLogo from '../../../assets/quoteme-logo.png';
+import {
+  verifyCatalogUploadLink,
+  uploadCatalogViaLink,
+} from '../../services/api';
 
 // ─── Demo data (locked — do not mutate during port) ──────────────────────────
 // Canonical: handoff/SECURE_REP_CATALOG_UPLOAD.md § Demo data
@@ -86,15 +85,27 @@ const serifStyle: React.CSSProperties = {
 // ─── Page state ───────────────────────────────────────────────────────────────
 export type TechLandingState = 'idle' | 'sent' | 'expired';
 
+// ─── Live context names (from BE verify response) ─────────────────────────────
+// Subcomponents receive these instead of reading SECURE directly so that
+// verified rep/distributor names replace the demo data at runtime.
+interface CtxNames {
+  repFirst: string;
+  repFull: string;
+  repEmail: string;
+  distributor: string;
+  distributorFull: string;
+}
+
 // ─── ForwardedContext ─────────────────────────────────────────────────────────
 // Header block: who asked, which distributor. Reads as a forwarded internal
 // request — Marcus (the colleague) leads, the chef is the reason.
 
 interface ForwardedContextProps {
   desktop?: boolean;
+  ctx: CtxNames;
 }
 
-function ForwardedContext({ desktop = false }: ForwardedContextProps) {
+function ForwardedContext({ desktop = false, ctx }: ForwardedContextProps) {
   return (
     <div>
       {/* Eyebrow */}
@@ -108,7 +119,7 @@ function ForwardedContext({ desktop = false }: ForwardedContextProps) {
           color: C.eyebrow,
         }}
       >
-        CATALOG REQUEST · FORWARDED BY {SECURE.repFirst.toUpperCase()}
+        CATALOG REQUEST · FORWARDED BY {ctx.repFirst.toUpperCase()}
       </div>
 
       {/* Headline */}
@@ -123,8 +134,8 @@ function ForwardedContext({ desktop = false }: ForwardedContextProps) {
           marginTop: desktop ? 14 : 10,
         }}
       >
-        {SECURE.repFull} needs your latest{' '}
-        <em style={{ fontStyle: 'italic' }}>{SECURE.distributor}</em> catalog.
+        {ctx.repFull} needs your latest{' '}
+        <em style={{ fontStyle: 'italic' }}>{ctx.distributor}</em> catalog.
       </h1>
 
       {/* Body — block-quote style */}
@@ -155,7 +166,7 @@ function ForwardedContext({ desktop = false }: ForwardedContextProps) {
           color: C.gray700,
         }}
       >
-        {SECURE.repFull} · {SECURE.distributorFull} · {SECURE.repEmail}
+        {ctx.repFull} · {ctx.distributorFull} · {ctx.repEmail}
       </div>
     </div>
   );
@@ -168,9 +179,11 @@ function ForwardedContext({ desktop = false }: ForwardedContextProps) {
 interface CatalogDropZoneV45Props {
   desktop?: boolean;
   onSend: (file: File, note: string) => void;
+  ctx: CtxNames;
+  uploadError?: string | null;
 }
 
-function CatalogDropZoneV45({ desktop = false, onSend }: CatalogDropZoneV45Props) {
+function CatalogDropZoneV45({ desktop = false, onSend, ctx, uploadError }: CatalogDropZoneV45Props) {
   const [file, setFile]       = useState<File | null>(null);
   const [fileName, setFileName] = useState('');
   const [fileSize, setFileSize] = useState('');
@@ -371,7 +384,7 @@ function CatalogDropZoneV45({ desktop = false, onSend }: CatalogDropZoneV45Props
             color: C.eyebrow,
           }}
         >
-          ANYTHING {SECURE.repFirst.toUpperCase()} SHOULD KNOW · OPTIONAL
+          ANYTHING {ctx.repFirst.toUpperCase()} SHOULD KNOW · OPTIONAL
         </div>
         <textarea
           value={note}
@@ -421,7 +434,7 @@ function CatalogDropZoneV45({ desktop = false, onSend }: CatalogDropZoneV45Props
         }}
       >
         <ArrowRight size={14} color="#fff" />
-        Send it to {SECURE.repFirst}
+        Send it to {ctx.repFirst}
       </button>
 
       {!hasFile && (
@@ -439,6 +452,21 @@ function CatalogDropZoneV45({ desktop = false, onSend }: CatalogDropZoneV45Props
           Drop the catalog first.
         </div>
       )}
+
+      {uploadError && (
+        <div
+          style={{
+            ...sans,
+            fontSize: 12.5,
+            marginTop: 10,
+            lineHeight: 1.5,
+            color: '#B00020',
+            textAlign: 'center',
+          }}
+        >
+          {uploadError}
+        </div>
+      )}
     </div>
   );
 }
@@ -448,9 +476,10 @@ function CatalogDropZoneV45({ desktop = false, onSend }: CatalogDropZoneV45Props
 
 interface V45FootnoteProps {
   desktop?: boolean;
+  ctx: CtxNames;
 }
 
-function V45Footnote({ desktop = false }: V45FootnoteProps) {
+function V45Footnote({ desktop = false, ctx }: V45FootnoteProps) {
   return (
     <div
       style={{
@@ -469,7 +498,7 @@ function V45Footnote({ desktop = false }: V45FootnoteProps) {
           maxWidth: 460,
         }}
       >
-        Your catalog stays private. Only {SECURE.repFull}'s customer sees these prices, and they're never
+        Your catalog stays private. Only {ctx.repFull}'s customer sees these prices, and they're never
         shared with other distributors.
       </p>
       <div
@@ -505,9 +534,10 @@ interface V45SentProps {
   desktop?: boolean;
   sentFileName?: string;
   sentFileSize?: string;
+  ctx: CtxNames;
 }
 
-function V45Sent({ desktop = false, sentFileName, sentFileSize }: V45SentProps) {
+function V45Sent({ desktop = false, sentFileName, sentFileSize, ctx }: V45SentProps) {
   return (
     <div
       style={{
@@ -544,7 +574,7 @@ function V45Sent({ desktop = false, sentFileName, sentFileSize }: V45SentProps) 
           lineHeight: 1.3,
         }}
       >
-        Sent to {SECURE.repFirst}. Thank you.
+        Sent to {ctx.repFirst}. Thank you.
       </div>
 
       <p
@@ -557,7 +587,7 @@ function V45Sent({ desktop = false, sentFileName, sentFileSize }: V45SentProps) 
           maxWidth: 460,
         }}
       >
-        {SECURE.repFirst} will get this, and {SECURE.restaurant} will be quoting against your
+        {ctx.repFirst} will get this, and {SECURE.restaurant} will be quoting against your
         catalog within the hour. You can close this page.
       </p>
 
@@ -584,9 +614,10 @@ function V45Sent({ desktop = false, sentFileName, sentFileSize }: V45SentProps) 
 
 interface V45ExpiredProps {
   desktop?: boolean;
+  ctx: CtxNames;
 }
 
-function V45Expired({ desktop = false }: V45ExpiredProps) {
+function V45Expired({ desktop = false, ctx }: V45ExpiredProps) {
   return (
     <div>
       {/* Eyebrow */}
@@ -600,7 +631,7 @@ function V45Expired({ desktop = false }: V45ExpiredProps) {
           color: C.eyebrow,
         }}
       >
-        CATALOG REQUEST · FORWARDED BY {SECURE.repFirst.toUpperCase()}
+        CATALOG REQUEST · FORWARDED BY {ctx.repFirst.toUpperCase()}
       </div>
 
       {/* Headline */}
@@ -630,13 +661,13 @@ function V45Expired({ desktop = false }: V45ExpiredProps) {
           borderLeft: `2px solid ${C.charcoal}`,
         }}
       >
-        Catalog links are good for seven days, then they close on their own. {SECURE.repFirst} can
+        Catalog links are good for seven days, then they close on their own. {ctx.repFirst} can
         send a fresh one in a couple of taps — the new link will work just like this one.
       </p>
 
       {/* CTA — email the rep (sacred orange, same role as Send CTA on idle) */}
       <a
-        href={`mailto:${SECURE.repEmail}?subject=${encodeURIComponent('Catalog link expired — can you resend?')}`}
+        href={`mailto:${ctx.repEmail}?subject=${encodeURIComponent('Catalog link expired — can you resend?')}`}
         style={{
           ...sans,
           display: 'inline-flex',
@@ -654,7 +685,7 @@ function V45Expired({ desktop = false }: V45ExpiredProps) {
         }}
       >
         <Mail size={15} color="#fff" />
-        Ask {SECURE.repFirst} for a fresh link
+        Ask {ctx.repFirst} for a fresh link
       </a>
 
       {/* Recovery reassurance */}
@@ -683,6 +714,8 @@ interface TechLandingDesktopProps {
   onSend?: (file: File, note: string) => void;
   sentFileName?: string;
   sentFileSize?: string;
+  ctx: CtxNames;
+  uploadError?: string | null;
 }
 
 export function TechLandingDesktop({
@@ -690,6 +723,8 @@ export function TechLandingDesktop({
   onSend = () => {},
   sentFileName,
   sentFileSize,
+  ctx,
+  uploadError,
 }: TechLandingDesktopProps) {
   return (
     <div
@@ -703,19 +738,19 @@ export function TechLandingDesktop({
       <div style={{ maxWidth: 680, margin: '0 auto', padding: '0 40px' }}>
         {state === 'expired' ? (
           <>
-            <V45Expired desktop />
-            <V45Footnote desktop />
+            <V45Expired desktop ctx={ctx} />
+            <V45Footnote desktop ctx={ctx} />
           </>
         ) : (
           <>
-            <ForwardedContext desktop />
+            <ForwardedContext desktop ctx={ctx} />
             <div style={{ marginTop: 34, borderTop: `1px solid ${C.softLine}` }} />
             {state === 'sent' ? (
-              <V45Sent desktop sentFileName={sentFileName} sentFileSize={sentFileSize} />
+              <V45Sent desktop sentFileName={sentFileName} sentFileSize={sentFileSize} ctx={ctx} />
             ) : (
-              <CatalogDropZoneV45 desktop onSend={onSend} />
+              <CatalogDropZoneV45 desktop onSend={onSend} ctx={ctx} uploadError={uploadError} />
             )}
-            <V45Footnote desktop />
+            <V45Footnote desktop ctx={ctx} />
           </>
         )}
       </div>
@@ -731,6 +766,8 @@ interface TechLandingMobileProps {
   onSend?: (file: File, note: string) => void;
   sentFileName?: string;
   sentFileSize?: string;
+  ctx: CtxNames;
+  uploadError?: string | null;
 }
 
 export function TechLandingMobile({
@@ -738,6 +775,8 @@ export function TechLandingMobile({
   onSend = () => {},
   sentFileName,
   sentFileSize,
+  ctx,
+  uploadError,
 }: TechLandingMobileProps) {
   return (
     <div
@@ -750,19 +789,19 @@ export function TechLandingMobile({
       <div style={{ padding: '32px 22px 40px' }}>
         {state === 'expired' ? (
           <>
-            <V45Expired />
-            <V45Footnote />
+            <V45Expired ctx={ctx} />
+            <V45Footnote ctx={ctx} />
           </>
         ) : (
           <>
-            <ForwardedContext />
+            <ForwardedContext ctx={ctx} />
             <div style={{ marginTop: 24, borderTop: `1px solid ${C.softLine}` }} />
             {state === 'sent' ? (
-              <V45Sent sentFileName={sentFileName} sentFileSize={sentFileSize} />
+              <V45Sent sentFileName={sentFileName} sentFileSize={sentFileSize} ctx={ctx} />
             ) : (
-              <CatalogDropZoneV45 onSend={onSend} />
+              <CatalogDropZoneV45 onSend={onSend} ctx={ctx} uploadError={uploadError} />
             )}
-            <V45Footnote />
+            <V45Footnote ctx={ctx} />
           </>
         )}
       </div>
@@ -773,15 +812,27 @@ export function TechLandingMobile({
 // ─── TechLandingPage ──────────────────────────────────────────────────────────
 // Route component for /c/:token — reads token from route params, manages
 // idle/sent/expired state, and renders responsive mobile or desktop layout.
-//
-// Upload wiring: see TODO(BE-4) at top of file. Currently transitions
-// optimistically on file selection (no network call until BE-4 lands).
+// On mount: calls verifyCatalogUploadLink to populate live rep/distributor names
+// and gate expired/not-found state. handleSend calls uploadCatalogFile.
+
+// Default names shown while verify is in flight — component renders a neutral
+// loading state (no header content) until verify resolves.
+const LOADING_CTX: CtxNames = {
+  repFirst:        '',
+  repFull:         '',
+  repEmail:        '',
+  distributor:     '',
+  distributorFull: '',
+};
 
 export function TechLandingPage() {
   const { token } = useParams<{ token: string }>();
   const [pageState, setPageState] = useState<TechLandingState>('idle');
+  const [verifying, setVerifying] = useState(true);
+  const [ctx, setCtx] = useState<CtxNames>(LOADING_CTX);
   const [sentFileName, setSentFileName] = useState<string | undefined>();
   const [sentFileSize, setSentFileSize] = useState<string | undefined>();
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const [isDesktop, setIsDesktop] = useState(() =>
     typeof window !== 'undefined' ? window.innerWidth >= 768 : false,
   );
@@ -795,34 +846,108 @@ export function TechLandingPage() {
     return () => mq.removeEventListener('change', handler);
   }, []);
 
-  // Silence the unused-variable lint if token is not yet wired to a fetch call.
-  void token;
+  // On mount: verify the token with the BE.
+  // 200  → populate live ctx (distributor_name, rep_name).
+  // 410  → expired or consumed → show expired state.
+  // 404  → not_found → same expired/invalid state (no dedicated not-found screen;
+  //         the "ask rep for a fresh link" recovery path covers both cases).
+  useEffect(() => {
+    if (!token) {
+      setPageState('expired');
+      setVerifying(false);
+      return;
+    }
 
-  const handleSend = useCallback((_file: File, _note: string) => {
-    // TODO(BE-4): Replace this block with a real fetch when the BE endpoint lands.
-    //
-    //   const formData = new FormData();
-    //   formData.append('catalog_file', _file);
-    //   if (_note.trim()) formData.append('note', _note.trim());
-    //
-    //   const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'https://web-production-9f6e9.up.railway.app';
-    //   const res = await fetch(
-    //     `${API_BASE}/api/v1/public/catalog_upload_links/${encodeURIComponent(token ?? '')}/consume`,
-    //     { method: 'POST', body: formData },
-    //   );
-    //   if (res.status === 410) { setPageState('expired'); return; }
-    //   if (!res.ok) { /* surface error */ return; }
-    //
-    setSentFileName(_file.name);
-    setSentFileSize(
-      _file.size > 1_048_576
-        ? `${(_file.size / 1_048_576).toFixed(1)} MB`
-        : `${Math.max(1, Math.round(_file.size / 1024))} KB`,
-    );
-    setPageState('sent');
+    let cancelled = false;
+    verifyCatalogUploadLink(token).then(({ data, status }) => {
+      if (cancelled) return;
+      if (data) {
+        const repParts = data.rep_name.trim().split(/\s+/);
+        setCtx({
+          repFirst:        repParts[0] ?? data.rep_name,
+          repFull:         data.rep_name,
+          repEmail:        SECURE.repEmail, // not returned by verify; keep as fallback
+          distributor:     data.distributor_name,
+          distributorFull: data.distributor_name,
+        });
+      } else if (status === 410 || status === 404) {
+        // 404 (not_found) routes to the same expired recovery surface — no
+        // dedicated screen exists and the copy is identical ("ask rep for a
+        // fresh link"). Both status codes use the SECURE fallback names since
+        // verify didn't return live data.
+        setCtx({
+          repFirst:        SECURE.repFirst,
+          repFull:         SECURE.repFull,
+          repEmail:        SECURE.repEmail,
+          distributor:     SECURE.distributor,
+          distributorFull: SECURE.distributorFull,
+        });
+        setPageState('expired');
+      }
+      setVerifying(false);
+    });
+
+    return () => { cancelled = true; };
   }, [token]);
 
-  const sharedProps = { state: pageState, onSend: handleSend, sentFileName, sentFileSize };
+  const handleSend = useCallback(async (file: File, _note: string) => {
+    if (!token) return;
+    setUploadError(null);
+
+    const result = await uploadCatalogViaLink(token, file);
+
+    if (result.data?.status === 'delivered') {
+      setSentFileName(file.name);
+      setSentFileSize(
+        file.size > 1_048_576
+          ? `${(file.size / 1_048_576).toFixed(1)} MB`
+          : `${Math.max(1, Math.round(file.size / 1024))} KB`,
+      );
+      setPageState('sent');
+      return;
+    }
+
+    if (result.status === 410) {
+      setPageState('expired');
+      return;
+    }
+
+    // 422 (file_required / no_products_found) or 500 (ingest_failed)
+    // Surface a field-voice message — no raw error codes or internal detail
+    // strings exposed to the uploader.
+    const errorCode = result.error;
+    if (errorCode === 'no_products_found') {
+      setUploadError(
+        "We couldn't read any products from that file. Try a different format — a spreadsheet or clear PDF usually works best.",
+      );
+    } else if (errorCode === 'file_required') {
+      setUploadError('Please attach a file before sending.');
+    } else {
+      setUploadError(
+        "Something went wrong on our end. Wait a moment and try again, or ask your rep to request a new link.",
+      );
+    }
+  }, [token]);
+
+  // Show nothing while verify is in flight — avoids flashing demo names.
+  if (verifying) {
+    return (
+      <div
+        style={{
+          ...sans,
+          background: C.cream,
+          minHeight: '100dvh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: C.gray500,
+          fontSize: 13,
+        }}
+      />
+    );
+  }
+
+  const sharedProps = { state: pageState, onSend: handleSend, sentFileName, sentFileSize, ctx, uploadError };
 
   return isDesktop
     ? <TechLandingDesktop {...sharedProps} />
