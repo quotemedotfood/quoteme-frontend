@@ -8,13 +8,19 @@
 //   • CSS vars (--qm-*) → inline styles using FE color constants.
 //   • UseDistributorForQuoteModal: wired for area distributor rows (B3).
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { MapPin, ArrowRight, Upload, RefreshCw } from 'lucide-react';
 import { CatalogStatusBadge } from './CatalogStatusBadge';
 import { UseDistributorForQuoteModal } from './UseDistributorForQuoteModal';
+import { PinToStackButton } from './PinToStackButton';
 import type { DistributorForModal } from './UseDistributorForQuoteModal';
-import { getChefDistributors, type ChefDistributorSummary } from '../../services/api';
+import {
+  getChefDistributors,
+  getChefStack,
+  type ChefDistributorSummary,
+  type ChefStackResponse,
+} from '../../services/api';
 
 // ─── Color constants (matches ChefDashboardPage.tsx convention) ───────────────
 const C = {
@@ -66,9 +72,19 @@ export function ChefDistributorsTab({
   const [distributors, setDistributors] = useState<ChefDistributorSummary[]>([]);
   const [errorMsg, setErrorMsg] = useState<string>('');
 
+  // Stack data for pin affordance. null = loading; undefined = no stack yet.
+  const [stackData, setStackData] = useState<ChefStackResponse | null | undefined>(null);
+
   // Modal state for "Use for a quote" on area distributor rows.
   // Area distributors are not yet returned by the live API; modal wired for future use.
   const [modalDist, setModalDist] = useState<DistributorForModal | null>(null);
+
+  const loadStack = useCallback(() => {
+    getChefStack().then((res) => {
+      // null data + no error means the chef has no stack yet.
+      setStackData(res.data ?? undefined);
+    });
+  }, []);
 
   const load = () => {
     setLoadState('loading');
@@ -86,6 +102,7 @@ export function ChefDistributorsTab({
 
   useEffect(() => {
     load();
+    loadStack();
   }, []);
 
   const yourDistributors = distributors;
@@ -192,23 +209,25 @@ export function ChefDistributorsTab({
           )}
 
           {loadState === 'ready' && yourDistributors.map((d) => (
-            <button
+            <div
               key={d.id}
-              type="button"
-              onClick={() => navigate(`/chef/distributor/${d.id}`)}
-              style={{
-                display: 'block',
-                width: '100%',
-                textAlign: 'left',
-                background: 'none',
-                border: 'none',
-                padding: 0,
-                cursor: 'pointer',
-                ...divider,
-              }}
+              style={{ ...divider, display: 'flex', alignItems: 'center', gap: 10 }}
             >
-              <div style={{ padding: '14px 0' }}>
-                {/* Title row: distributor name + status */}
+              {/* Nav area — tapping anywhere except the pin button navigates */}
+              <button
+                type="button"
+                onClick={() => navigate(`/chef/distributor/${d.id}`)}
+                style={{
+                  flex: 1,
+                  minWidth: 0,
+                  display: 'block',
+                  textAlign: 'left',
+                  background: 'none',
+                  border: 'none',
+                  padding: '14px 0',
+                  cursor: 'pointer',
+                }}
+              >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
                     <div style={{ ...serif, fontSize: 15, fontWeight: 500, color: C.charcoal, lineHeight: 1.3 }}>
@@ -217,8 +236,18 @@ export function ChefDistributorsTab({
                   </div>
                   <CatalogStatusBadge status={d.status as 'connected' | 'uploaded'} />
                 </div>
+              </button>
+
+              {/* Pin-to-stack affordance */}
+              <div style={{ flexShrink: 0 }}>
+                <PinToStackButton
+                  distributorId={d.id}
+                  distributorName={d.name}
+                  stackData={stackData}
+                  onStackChange={loadStack}
+                />
               </div>
-            </button>
+            </div>
           ))}
         </div>
 
@@ -246,13 +275,20 @@ export function ChefDistributorsTab({
           )}
 
           {areaDistributors.map((d) => (
-            <div key={d.id} style={{ ...divider, padding: '12px 0' }}>
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0 flex-1">
-                  <div style={{ ...sans, fontSize: 13.5, color: C.charcoal, lineHeight: 1.3 }}>
-                    {d.name}
-                  </div>
+            <div key={d.id} style={{ ...divider, padding: '12px 0', display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div className="min-w-0 flex-1">
+                <div style={{ ...sans, fontSize: 13.5, color: C.charcoal, lineHeight: 1.3 }}>
+                  {d.name}
                 </div>
+              </div>
+              {/* Pin-to-stack affordance on area distributor rows */}
+              <div style={{ flexShrink: 0 }}>
+                <PinToStackButton
+                  distributorId={d.id}
+                  distributorName={d.name}
+                  stackData={stackData}
+                  onStackChange={loadStack}
+                />
               </div>
             </div>
           ))}

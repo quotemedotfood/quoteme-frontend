@@ -37,3 +37,6 @@ export type { SidebarHelpInputProps } from './SidebarHelpInput';
 
 export { HelpDrawer } from './HelpDrawer';
 export type { HelpDrawerProps } from './HelpDrawer';
+
+export { PinToStackButton } from './PinToStackButton';
+export type { PinToStackButtonProps } from './PinToStackButton';

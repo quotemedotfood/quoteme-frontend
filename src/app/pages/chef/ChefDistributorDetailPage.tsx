@@ -22,15 +22,18 @@
 // Note: 'chef/distributor/new' is a static segment that takes precedence over
 // :id in react-router, so there is no collision.
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router';
 import {
   getChefDistributorDetail,
   getChefQuotes,
+  getChefStack,
   requestCatalogUploadLink,
   type ChefDistributorDetail,
   type ChefQuoteRow,
+  type ChefStackResponse,
 } from '../../services/api';
+import { PinToStackButton } from '../../components/chef/PinToStackButton';
 
 // ─── Color constants (matches ChefDashboardPage / ChefQuotesPage convention) ──
 const C = {
@@ -212,6 +215,15 @@ export function ChefDistributorDetailPage() {
   const [loadState, setLoadState] = useState<'loading' | 'ready' | 'error'>('loading');
   const [errorMsg, setErrorMsg] = useState('');
 
+  // Stack data for pin affordance. null = loading; undefined = no stack yet.
+  const [stackData, setStackData] = useState<ChefStackResponse | null | undefined>(null);
+
+  const loadStack = useCallback(() => {
+    getChefStack().then((res) => {
+      setStackData(res.data ?? undefined);
+    });
+  }, []);
+
   // Sacred Orange CTA state
   const [ctaState, setCtaState] = useState<'idle' | 'loading' | 'sent' | 'error'>('idle');
   const [ctaError, setCtaError] = useState('');
@@ -219,6 +231,8 @@ export function ChefDistributorDetailPage() {
   useEffect(() => {
     if (!id) return;
     let cancelled = false;
+
+    loadStack();
 
     async function load() {
       // Parallel: detail + quotes
@@ -284,7 +298,18 @@ export function ChefDistributorDetailPage() {
               {detail.name}
             </h1>
           </div>
-          <ClaimStatusPill status={detail.status} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+            <ClaimStatusPill status={detail.status} />
+            {/* Pin-to-stack affordance */}
+            {id && (
+              <PinToStackButton
+                distributorId={id}
+                distributorName={detail.name}
+                stackData={stackData}
+                onStackChange={loadStack}
+              />
+            )}
+          </div>
         </div>
 
         {/* ── Rep section ─────────────────────────────────────────────────── */}
