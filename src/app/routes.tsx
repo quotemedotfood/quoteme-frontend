@@ -46,6 +46,7 @@ import { CCTodayPage } from "./pages/command-center/CCTodayPage";
 import { CCQuotesPage } from "./pages/command-center/CCQuotesPage";
 import { CCQuoteDetailPage } from "./pages/command-center/CCQuoteDetailPage";
 import { CCSoonPage } from "./pages/command-center/CCSoonPage";
+import { CCAssignPage } from "./pages/command-center/CCAssignPage";
 import { CatalogManagePage } from "./pages/CatalogManagePage";
 import { CatalogConfirmationPage } from "./pages/CatalogConfirmationPage";
 import { RepInvitePage } from "./pages/RepInvitePage";
@@ -324,7 +325,7 @@ export const router = createBrowserRouter([
               { index: true,             Component: CCTodayPage },
               { path: "quotes",          Component: CCQuotesPage },
               { path: "quotes/:quoteId", Component: CCQuoteDetailPage },
-              { path: "assign",          element: <CCSoonPage title="Assignments land shortly." /> },
+              { path: "assign",          Component: CCAssignPage },
               { path: "search",          element: <CCSoonPage title="Search lands shortly." /> },
               { path: "team",            element: <CCSoonPage title="Team view lands shortly." /> },
               { path: "inbound",         element: <CCSoonPage title="Inbound lands shortly." /> },
