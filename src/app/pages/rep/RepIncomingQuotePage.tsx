@@ -35,6 +35,8 @@ import type { QuoteResponse, QuoteLineResponse } from '../../services/api';
 
 import { RepPricingOnlyView } from './RepPricingOnlyView';
 import { RepReviewThreePanelDesktop } from './RepReviewThreePanelDesktop';
+import { RepReviewMobileFallback } from './RepReviewMobileFallback';
+import { useIsMobile } from '../../components/ui/use-mobile';
 
 const serif: React.CSSProperties = {
   fontFamily: "'Playfair Display', Georgia, 'Times New Roman', serif",
@@ -89,6 +91,8 @@ export function RepIncomingQuotePage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const mode = searchParams.get('mode');
+
+  const isMobile = useIsMobile();
 
   const [quote, setQuote] = useState<QuoteResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -161,8 +165,11 @@ export function RepIncomingQuotePage() {
     return <RepPricingOnlyView quoteId={id!} />;
   }
 
-  // Review mode — desktop three-panel
+  // Review mode — desktop: three-panel (locked); mobile: single-panel swap-drawer fallback
   if (mode === 'review') {
+    if (isMobile) {
+      return <RepReviewMobileFallback quoteId={id!} />;
+    }
     return <RepReviewThreePanelDesktop quoteId={id!} />;
   }
 
