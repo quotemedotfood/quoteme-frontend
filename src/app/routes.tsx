@@ -40,7 +40,6 @@ import { QuotePreviewPage } from "./pages/QuotePreviewPage";
 import { PaywallPage } from "./pages/PaywallPage";
 import { OnboardingConfirmPage } from "./pages/OnboardingConfirmPage";
 import { DistributorHomePage } from "./pages/DistributorHomePage";
-import { DistributorCommandCenterPage } from "./pages/DistributorCommandCenterPage";
 import { CCLayout } from "./components/distributor-admin/command-center/CCLayout";
 import { CCTodayPage } from "./pages/command-center/CCTodayPage";
 import { CCQuotesPage } from "./pages/command-center/CCQuotesPage";
@@ -315,10 +314,6 @@ export const router = createBrowserRouter([
           { path: "catalog/confirmation", Component: CatalogConfirmationPage },
           // ── Command Center (B2-CC) — nested layout + routes ──────────────
           // CCLayout is the persistent shell (sidebar + sticky CCSearchBar).
-          // The old DistributorCommandCenterPage (v0 RepActivitySection table)
-          // is superseded by this nested route tree. The import is retained to
-          // avoid breaking any existing deep link until traffic confirms zero
-          // usage; it is not rendered by any active route.
           {
             path: "distributor-admin/command-center",
             Component: CCLayout,

@@ -20,7 +20,7 @@
 
 import React from 'react';
 
-const sans: React.CSSProperties = { fontFamily: 'var(--qm-sans, "DM Sans", sans-serif)' };
+const sans: React.CSSProperties = { fontFamily: "'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" };
 
 export interface QuoteStatusPillProps {
   state: string;
