@@ -13,7 +13,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
-import { ChevronLeft, SquarePen, Search, X, MessageCircle, Plus, Check, ChevronDown } from 'lucide-react';
+import { ChevronLeft, SquarePen, Search, X, Check, ChevronDown } from 'lucide-react';
 import { QuoteCoverageLabelRep } from '../../components/rep/QuoteCoverageLabelRep';
 import { LineCoverageDot } from '../../components/rep/CoverageDots';
 import { getRepQuote, repConfirmQuote } from '../../services/api';
@@ -203,18 +203,6 @@ function LineSwapDrawer({
       <div style={{ marginTop: 10, paddingTop: 8, borderTop: `1px solid ${C.softLine}`, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
         <button
           type="button"
-          style={{
-            ...sans, display: 'inline-flex', alignItems: 'center', gap: 4,
-            padding: '6px 10px', fontSize: 11.5, color: C.charcoal,
-            background: '#fff', border: `1px solid ${C.softLine}`,
-            borderRadius: 4, cursor: 'pointer',
-          }}
-        >
-          <Plus size={11} color={C.charcoal} strokeWidth={1.8} />
-          Add a different SKU
-        </button>
-        <button
-          type="button"
           onClick={onMarkUnavailable}
           style={{
             ...sans, display: 'inline-flex', alignItems: 'center', gap: 4,
@@ -225,18 +213,6 @@ function LineSwapDrawer({
         >
           <X size={11} color={C.charcoal} strokeWidth={1.8} />
           Mark unavailable
-        </button>
-        <button
-          type="button"
-          style={{
-            ...sans, display: 'inline-flex', alignItems: 'center', gap: 4,
-            padding: '6px 10px', fontSize: 11.5, color: C.charcoal,
-            background: '#fff', border: `1px solid ${C.softLine}`,
-            borderRadius: 4, cursor: 'pointer',
-          }}
-        >
-          <MessageCircle size={11} color={C.charcoal} strokeWidth={1.8} />
-          Ask the chef
         </button>
       </div>
 

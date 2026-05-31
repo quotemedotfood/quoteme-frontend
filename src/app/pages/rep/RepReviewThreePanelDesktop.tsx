@@ -15,7 +15,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
-import { ChevronLeft, Search, X, MessageCircle, Plus, SquarePen, Check } from 'lucide-react';
+import { ChevronLeft, Search, X, SquarePen, Check } from 'lucide-react';
 import { QuoteCoverageLabelRep } from '../../components/rep/QuoteCoverageLabelRep';
 import { LineCoverageDot } from '../../components/rep/CoverageDots';
 import { getRepQuote, repConfirmQuote } from '../../services/api';
@@ -333,9 +333,7 @@ export function RepReviewThreePanelDesktop({ quoteId }: { quoteId: string }) {
 
                 {/* Actions */}
                 <div style={{ marginTop: 20, paddingTop: 16, borderTop: `1px solid ${C.softLine}`, display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                  <ActionBtn icon={<Plus size={12} color={C.charcoal} strokeWidth={1.8} />} label="Add a different SKU" onClick={() => {}} />
                   <ActionBtn icon={<X size={12} color={C.charcoal} strokeWidth={1.8} />} label="Mark unavailable" onClick={() => setUnavailable((prev) => { const n = new Set(prev); n.add(selectedIdx); return n; })} />
-                  <ActionBtn icon={<MessageCircle size={12} color={C.charcoal} strokeWidth={1.8} />} label="Ask the chef about this" onClick={() => {}} />
                 </div>
 
                 {/* Inline note */}
