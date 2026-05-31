@@ -39,6 +39,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { ImagePlus, Store, Plus, Trash2, X } from 'lucide-react';
 
+import { ChefTabDesktopShell } from './ChefTabDesktopShell';
+
 import {
   SettingsSection,
   SettingRow,
@@ -80,26 +82,10 @@ const LOCATIONS = [
   { name: 'The Maple Room', city: 'Rhinebeck, NY', role: 'Visiting', current: false },
 ];
 
-// ─── B1 stubs ─────────────────────────────────────────────────────────────────
-// TODO: Remove these stubs when B1 (feat-a1-chef-sidebar-shell) merges to main.
-//       ChefTabBar → src/app/components/chef/ChefTabBar
-//       ChefTabDesktopShell → src/app/components/chef/ChefTabDesktopShell
+// B1 (feat-a1-chef-sidebar-shell) has landed — stubs removed.
+// ChefTabDesktopShell is imported from ./ChefTabDesktopShell above.
 
 function noopNav(_target: string): void {}
-
-function ChefTabDesktopShell({
-  children,
-}: {
-  active: string;
-  nav?: NavFn;
-  initialMode?: string;
-  children: React.ReactNode;
-}) {
-  // TODO: import { ChefTabDesktopShell } from './ChefTabDesktopShell'; when B1 lands.
-  return (
-    <div style={{ maxWidth: 880, margin: '0 auto', padding: '36px 40px' }}>{children}</div>
-  );
-}
 
 // ─── Edit You Drawer ─────────────────────────────────────────────────────────
 // Wired to PATCH /api/v1/users/me (first_name, last_name, email).
@@ -1036,7 +1022,7 @@ export function ChefSettingsTab({ state = 'with-data', nav = noopNav }: ChefSett
 interface ChefSettingsTabDesktopProps {
   state?: 'with-data' | 'empty';
   nav?: NavFn;
-  initialMode?: string;
+  initialMode?: 'open' | 'collapsed' | 'hidden';
 }
 
 export function ChefSettingsTabDesktop({
