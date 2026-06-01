@@ -1,6 +1,7 @@
 import { createBrowserRouter, Navigate } from "react-router";
 import { RootWrapper } from "./components/RootWrapper";
 import { RootLayout } from "./components/RootLayout";
+import { useAuth } from "./contexts/AuthContext";
 import { QMAdminLayout } from "./components/QMAdminLayout";
 import { CustomersPage } from "./pages/CustomersPage";
 import { QuoteMePage } from "./pages/QuoteMePage";
@@ -39,6 +40,14 @@ import { QuotePreviewPage } from "./pages/QuotePreviewPage";
 import { PaywallPage } from "./pages/PaywallPage";
 import { OnboardingConfirmPage } from "./pages/OnboardingConfirmPage";
 import { DistributorHomePage } from "./pages/DistributorHomePage";
+import { DistributorCommandCenterPage } from "./pages/DistributorCommandCenterPage";
+import { CCLayout } from "./components/distributor-admin/command-center/CCLayout";
+import { CCTodayPage } from "./pages/command-center/CCTodayPage";
+import { CCQuotesPage } from "./pages/command-center/CCQuotesPage";
+import { CCQuoteDetailPage } from "./pages/command-center/CCQuoteDetailPage";
+import { CCSoonPage } from "./pages/command-center/CCSoonPage";
+import { CCAssignPage } from "./pages/command-center/CCAssignPage";
+import { CCSearchPage } from "./pages/command-center/CCSearchPage";
 import { CatalogManagePage } from "./pages/CatalogManagePage";
 import { CatalogConfirmationPage } from "./pages/CatalogConfirmationPage";
 import { RepInvitePage } from "./pages/RepInvitePage";
@@ -50,14 +59,49 @@ import { LocationPage } from "./pages/LocationPage";
 import { ChefSignupPage } from "./pages/chef/ChefSignupPage";
 import { ChefEntryPage } from "./pages/chef/ChefEntryPage";
 import { ChefStatusPage } from "./pages/chef/ChefStatusPage";
+import { QuoteStateDocumentPreviewPage } from "./pages/chef/QuoteStateDocumentPreviewPage";
+import { RepCatalogEmailPreviewPage } from "./pages/chef/RepCatalogEmailPreviewPage";
+import { ChefCatalogEmailPreviewPage } from "./pages/chef/ChefCatalogEmailPreviewPage";
 import { ChefQuoteReceiptPage } from "./pages/chef/ChefQuoteReceiptPage";
 import { ChefOrderGuidePage } from "./pages/chef/ChefOrderGuidePage";
 import { ChefWelcomePage } from "./pages/chef/ChefWelcomePage";
 import { ChefCatalogSelectionPage } from "./pages/chef/ChefCatalogSelectionPage";
+import { ChefPullEntryPage } from "./pages/chef/ChefPullEntryPage";
+import { ChefPullStatusPage } from "./pages/chef/ChefPullStatusPage";
+import { ChefPullReceiptPage } from "./pages/chef/ChefPullReceiptPage";
+import { ChefDistributorEntryPage } from "./pages/chef/ChefDistributorEntryPage";
+import { ChefDistributorDetailPage } from "./pages/chef/ChefDistributorDetailPage";
+import { ChefShellLayout } from "./components/chef/ChefShellLayout";
+import { ChefMenusPage } from "./pages/chef/ChefMenusPage";
+import { ChefMenuDetailPage } from "./pages/chef/ChefMenuDetailPage";
+import { ChefMenuStackPage } from "./pages/chef/ChefMenuStackPage";
 import { CreateRestaurantPage } from "./pages/CreateRestaurantPage";
 import { isDemoMode } from "./utils/demoMode";
+import { RepWelcomePage } from "./pages/rep/RepWelcomePage";
+import { RepInviteAcceptPage } from "./pages/RepInviteAcceptPage";
+import { RepTriagePage } from "./pages/rep/RepTriagePage";
+import { RepIncomingQuotePage } from "./pages/rep/RepIncomingQuotePage";
+import { RepCustomersPage } from "./pages/rep/RepCustomersPage";
+import { RepProfilePage } from "./pages/rep/RepProfilePage";
+import { RepLayout } from "./components/rep/RepLayout";
+import { useAuth } from "./contexts/AuthContext";
+import { TechLandingPage } from "./components/chef/TechLandingPage";
+import { SecureTechPreviewPage } from "./pages/chef/SecureTechPreviewPage";
 
 const demo = isDemoMode();
+
+// RootIndex — bare domain redirect.
+// RootLayout already guards unauthenticated users (→ /auth), so by the time
+// this component renders the user is always authenticated. Send them straight
+// to /dashboard; role-routing lives inside DashboardRoleRouter.
+function RootIndex() {
+  const { isAuthenticated, isLoading } = useAuth();
+  if (isLoading) return null;
+  if (isAuthenticated) return <Navigate to="/dashboard" replace />;
+  // Unauthenticated path: RootLayout would have already redirected to /auth,
+  // but guard here defensively so landing on "/" never shows a blank screen.
+  return <Navigate to="/auth" replace />;
+}
 
 export const router = createBrowserRouter([
   {
@@ -78,28 +122,73 @@ export const router = createBrowserRouter([
         Component: ChefWelcomePage,
       },
       {
-        path: "chef/catalog",
-        Component: ChefCatalogSelectionPage,
+        // Rep magic-link landing — MUST live outside RootLayout so reps
+        // arriving via email with no JWT aren't bounced to /auth.
+        // Exactly mirrors how chef/welcome is placed.
+        path: "rep/welcome",
+        Component: RepWelcomePage,
+      },
+      {
+        // Rep invite-accept / set-password landing (LAUNCH-B1 FE-1).
+        // MUST live outside RootLayout — reps arriving via email invite link
+        // have no JWT and must not be bounced to /auth.
+        // URL shape: /rep/invite?token=<64-hex-char-token>
+        path: "rep/invite",
+        Component: RepInviteAcceptPage,
+      },
+      {
+        // SU-FE-3: Token-gated public catalog upload landing.
+        // MUST live outside RootLayout — catalog person arrives via forwarded
+        // link with no JWT and must not be bounced to /auth.
+        // No QuoteMe account required to use this page.
+        // URL shape: /c/:token  (7-day single-use token minted when chef asks)
+        path: "c/:token",
+        Component: TechLandingPage,
+      },
+      {
+        // SU-FE-3 visual sign-off — TechLandingPage idle/sent/expired frames.
+        // Remove once Moose signs off on all three states.
+        path: "chef/_preview/secure-tech",
+        Component: SecureTechPreviewPage,
       },
       {
         path: "chef",
         Component: ChefEntryPage,
       },
       {
+        // Retired route — redirects to the canonical new-distributor entry surface.
+        // ChefEntryPage.tsx is kept (its drag-zone pattern is reused in pull entry).
+        // Chef v4 Doctrine Day will restructure /chef/distributor/new further.
         path: "chef/entry",
-        Component: ChefEntryPage,
+        element: <Navigate to="/chef/distributor/new" replace />,
       },
       {
         path: "chef/status/:id",
         Component: ChefStatusPage,
       },
       {
-        path: "chef/quotes/:id",
-        Component: ChefQuoteReceiptPage,
+        // TEMPORARY — D6 QuoteStateDocument visual sign-off (Item 3).
+        // Remove once wired into ChefQuoteReceiptPage (Item 4, gated on C3).
+        path: "chef/_preview/quote-states",
+        Component: QuoteStateDocumentPreviewPage,
       },
       {
-        path: "chef/order-guide/:id",
-        Component: ChefOrderGuidePage,
+        // SU-FE-2 visual sign-off — RepCatalogEmail mobile + desktop frames.
+        // Remove once the BE wires up the rep-email trigger (or when Moose signs off).
+        path: "chef/_preview/rep-email",
+        Component: RepCatalogEmailPreviewPage,
+        // SU-FE-5 visual sign-off — ChefCatalogEmail mobile + desktop frames.
+        // Remove once the BE wires up the chef catalog-live email trigger.
+        path: "chef/_preview/chef-catalog-email",
+        Component: ChefCatalogEmailPreviewPage,
+      },
+      {
+        path: "chef/pull/status/:id",
+        Component: ChefPullStatusPage,
+      },
+      {
+        path: "chef/pull/receipt/:id",
+        Component: ChefPullReceiptPage,
       },
       {
         path: "reset-password",
@@ -139,18 +228,82 @@ export const router = createBrowserRouter([
       {
         Component: RootLayout,
         children: [
-          { index: true, Component: StartNewQuotePage },
+          { index: true, Component: RootIndex },
+          // ── Chef shell layout — persistent tab chrome across chef sub-routes ──
+          // ChefShellLayout derives activeTab from useLocation() so sidebar/bar
+          // highlight stays in sync with direct URL navigation.
+          {
+            Component: ChefShellLayout,
+            children: [
+              ...(demo ? [] : [
+                { path: "dashboard", Component: DashboardRoleRouter },
+                { path: "chef/quotes", Component: ChefQuotesPage },
+                { path: "chef/menus", Component: ChefMenusPage },
+              ]),
+              { path: "chef/quotes/:id", Component: ChefQuoteReceiptPage },
+              { path: "chef/order-guide/:id", Component: ChefOrderGuidePage },
+              { path: "chef/menus/:id", Component: ChefMenuDetailPage },
+              // STACK-FE-1: compare-spread table. Static segment 'stack' takes
+              // precedence over future dynamic sibling if one is added.
+              { path: "chef/menus/:menuId/stack", Component: ChefMenuStackPage },
+              { path: "chef/catalog", Component: ChefCatalogSelectionPage },
+              { path: "chef/distributor/new", Component: ChefDistributorEntryPage },
+              // B3b: distributor detail. 'new' (static) takes precedence over
+              // ':id' (dynamic) in react-router — no collision.
+              { path: "chef/distributor/:id", Component: ChefDistributorDetailPage },
+              // Pull-entry mounted inside the shell so it gets sidebar/tab chrome.
+              { path: "chef/pull/entry", Component: ChefPullEntryPage },
+            ],
+          },
           ...(demo ? [] : [
-            { path: "dashboard", Component: DashboardRoleRouter },
             { path: "customers", Component: CustomersPage },
             { path: "vendors", Component: VendorsPage },
             { path: "vendors/:id", Component: VendorDetailPage },
             { path: "locations", Component: LocationPage },
-            { path: "rep/quotes", Component: QuotesPage },
-            { path: "chef/quotes", Component: ChefQuotesPage },
             { path: "quotes", Component: QuotesRoleRouter },
             { path: "settings", Component: SettingsPage },
             { path: "settings/billing", Component: SettingsPage },
+            // ── Rep suite routes (auth-guarded via RootLayout) ──────────────
+            // /rep/welcome is placed OUTSIDE RootLayout (pre-auth, magic link).
+            //
+            // RepLayout is a persistent shell that holds sidebar useState — it
+            // never unmounts across /rep/* transitions, so sidebar mode (open /
+            // collapsed / hidden) survives navigation. Pages render bare content
+            // bodies; RepLayout supplies sidebar + main chrome via <Outlet />.
+            //
+            // Route hierarchy:
+            //   /rep/quotes              → redirects to /rep/quotes/inbound (index)
+            //   /rep/quotes/inbound      → RepTriagePage (was /rep/triage)
+            //   /rep/quotes/history      → QuotesPage (was /rep/quotes)
+            //   /rep/quotes/:id          → RepIncomingQuotePage (unchanged)
+            //
+            // Legacy redirect: /rep/triage → /rep/quotes/inbound
+            {
+              path: "rep/triage",
+              element: <Navigate to="/rep/quotes/inbound" replace />,
+            },
+            {
+              path: "rep",
+              Component: RepLayout,
+              children: [
+                {
+                  path: "quotes",
+                  children: [
+                    { index: true, element: <Navigate to="/rep/quotes/inbound" replace /> },
+                    { path: "inbound", Component: RepTriagePage },
+                    { path: "history", Component: QuotesPage },
+                    // Detail route must be nested here so /rep/quotes/:id still resolves.
+                    // The :id segment won't collide with "inbound"/"history" because
+                    // react-router matches static segments before dynamic ones.
+                    { path: ":id", Component: RepIncomingQuotePage },
+                  ],
+                },
+                // Card 11 (Desi Lock D-2): customer list shell — list only,
+                // no Add Customer form (Moose's track).
+                { path: "customers", Component: RepCustomersPage },
+                { path: "profile", Component: RepProfilePage },
+              ],
+            },
           ]),
           { path: "upgrade", Component: PaywallPage },
           { path: "start-new-quote", Component: StartNewQuotePage },
@@ -160,6 +313,25 @@ export const router = createBrowserRouter([
           { path: "export-finalize", Component: ExportFinalizePage },
           { path: "onboarding/confirm", Component: OnboardingConfirmPage },
           { path: "catalog/confirmation", Component: CatalogConfirmationPage },
+          // ── Command Center (B2-CC) — nested layout + routes ──────────────
+          // CCLayout is the persistent shell (sidebar + sticky CCSearchBar).
+          // The old DistributorCommandCenterPage (v0 RepActivitySection table)
+          // is superseded by this nested route tree. The import is retained to
+          // avoid breaking any existing deep link until traffic confirms zero
+          // usage; it is not rendered by any active route.
+          {
+            path: "distributor-admin/command-center",
+            Component: CCLayout,
+            children: [
+              { index: true,             Component: CCTodayPage },
+              { path: "quotes",          Component: CCQuotesPage },
+              { path: "quotes/:quoteId", Component: CCQuoteDetailPage },
+              { path: "assign",          Component: CCAssignPage },
+              { path: "search",          Component: CCSearchPage },
+              { path: "team",            element: <CCSoonPage title="Team view lands shortly." /> },
+              { path: "inbound",         element: <CCSoonPage title="Inbound lands shortly." /> },
+            ],
+          },
           { path: "distributor-admin/catalog", Component: CatalogManagePage },
           { path: "distributor-admin/invite", Component: RepInvitePage },
           { path: "distributor-admin/reps", Component: DistributorRepsPage },

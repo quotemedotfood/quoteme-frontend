@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router';
-import { getGuestQuote, acceptChefQuote, sendChefQuestion } from '../../services/api';
+import { getGuestQuote, getChefQuote, acceptChefQuote, sendChefQuestion } from '../../services/api';
 import type { QuoteResponse, QuoteLineResponse } from '../../services/api';
-import { PreviewPill } from '../../components/chef/PreviewPill';
+import {
+  QuoteStateDocument,
+  stateFromQuoteState,
+  type QuoteDocGroup,
+} from '../../components/chef/QuoteStateDocument';
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
-
-const headlineStyle: React.CSSProperties = { fontFamily: "'Playfair Display', serif" };
 
 function toTitleCase(str: string): string {
   if (!str) return '';
@@ -67,7 +69,14 @@ export function ChefQuoteReceiptPage() {
   useEffect(() => {
     if (!id) return;
     setLoading(true);
-    getGuestQuote(id).then((res) => {
+    // Prefer the chef-scoped endpoint when a Bearer token is present
+    // (authenticated chef session). The chef endpoint is scoped by
+    // RestaurantContact join so existence is never leaked to wrong chefs.
+    // Fall back to the guest endpoint when only an X-Guest-Token is
+    // present (true guest preview-link arrival, no account yet).
+    const bearerToken = localStorage.getItem('quoteme_token');
+    const fetchFn = bearerToken ? getChefQuote : getGuestQuote;
+    fetchFn(id).then((res) => {
       if (res.error) {
         setError(res.error);
         setErrorStatus(res.status ?? null);
@@ -163,97 +172,50 @@ export function ChefQuoteReceiptPage() {
   const repContact = quote.contacts?.find((c) => c.email) || null;
   const repEmail = repContact?.email || null;
 
+  // ── D6 QuoteStateDocument props ──────────────────────────────────────────────
+  // The document body (header + priced matched lines + totals) is now the
+  // state-driven QuoteStateDocument. The unmatched-lines section + decision
+  // actions below stay (Justin no-silent-drops + core chef flow).
+  const docState = quote.state
+    ? stateFromQuoteState(quote.state)
+    : quote.preview
+      ? 'preview'
+      : 'confirmed';
+  const docGroups: QuoteDocGroup[] = Array.from(grouped.entries()).map(([category, lines]) => ({
+    cat: toTitleCase(category),
+    items: lines.map((l) => ({
+      name: toTitleCase(l.product.product),
+      pack: l.product.pack_size || undefined,
+      note: l.product.brand ? toTitleCase(l.product.brand) : undefined,
+      qty: l.quantity,
+      unit: (l.unit_price_cents ?? 0) / 100,
+    })),
+  }));
+  const pricedCount = matchedLines.filter((l) => l.unit_price_cents != null).length;
+  const confirmedDate = formatDate(quote.sent_at || quote.created_at);
+
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <div className="min-h-screen bg-white flex flex-col items-center px-6 py-12">
+    <div className="flex flex-col items-center px-6 py-12">
       <div className="w-full max-w-xl">
 
-        {/* ── 1. Header block ───────────────────────────────────────────── */}
-        <div className="mb-10">
-          {/* Restaurant name in small caps */}
-          {quote.restaurant && (
-            <p
-              className="text-xs text-[#9E9E9E] tracking-widest mb-3"
-              style={{ fontVariant: 'small-caps', textTransform: 'uppercase' }}
-            >
-              {quote.restaurant}
-            </p>
-          )}
-
-          {/* Headline + PreviewPill (when quote is in preview state) */}
-          <div className="flex items-center gap-2 flex-wrap mb-4">
-            <h1
-              className="text-4xl font-bold text-[#2A2A2A] leading-tight"
-              style={headlineStyle}
-            >
-              Your Quote
-            </h1>
-            {quote.preview && <PreviewPill size="xs" />}
-          </div>
-
-          {/* Date */}
-          <p className="text-sm text-[#9E9E9E]">
-            {formatDate(quote.created_at)}
-          </p>
-
-          {/* Rep line */}
-          {(repName || repEmail) && (
-            <p className="text-sm text-[#9E9E9E] mt-1">
-              Prepared by{repName ? ` ${repName}` : ''}
-              {repEmail && (
-                <>
-                  {repName ? ' · ' : ' '}
-                  <a
-                    href={`mailto:${repEmail}`}
-                    className="underline underline-offset-2 hover:text-[#4F4F4F] transition-colors"
-                  >
-                    {repEmail}
-                  </a>
-                </>
-              )}
-            </p>
-          )}
-        </div>
-
-        {/* ── 2. Line items grouped by category ─────────────────────────── */}
-        <div className="mb-8 flex flex-col gap-8">
-          {Array.from(grouped.entries()).map(([category, lines]) => (
-            <div key={category}>
-              {/* Category heading */}
-              <p
-                className="text-xs font-semibold text-[#9E9E9E] tracking-widest uppercase mb-3 pb-2 border-b border-[#F0F0F0]"
-              >
-                {toTitleCase(category)}
-              </p>
-
-              {/* Lines */}
-              <div className="flex flex-col gap-4">
-                {lines.map((line) => (
-                  <div key={line.id} className="flex items-start justify-between gap-4">
-                    {/* Left: product name + brand */}
-                    <div className="flex flex-col gap-0.5 min-w-0">
-                      <span className="text-[#2A2A2A] text-base font-medium leading-snug">
-                        {toTitleCase(line.product.product)}
-                      </span>
-                      {line.product.brand && (
-                        <span className="text-xs text-[#BDBDBD]">
-                          {toTitleCase(line.product.brand)}
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Right: pack size */}
-                    {line.product.pack_size && (
-                      <span className="text-sm text-[#9E9E9E] whitespace-nowrap shrink-0 mt-0.5">
-                        {line.product.pack_size}
-                      </span>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
+        {/* ── 1+2. Document — D6 state-driven chrome (replaces the legacy header,
+            PreviewPill, and price-less grouped line list). Other pill contexts
+            and the match-state badge below stay untouched (Justin c11 Q7). */}
+        <div className="mb-8 overflow-hidden rounded-lg" style={{ border: '1px solid #E8E8E8' }}>
+          <QuoteStateDocument
+            state={docState}
+            restaurant={quote.restaurant}
+            quoteDate={formatDate(quote.created_at)}
+            rep={repName || 'your rep'}
+            repPhone={repContact?.phone || undefined}
+            groups={docGroups}
+            pricedCount={pricedCount}
+            totalCount={matchedLines.length}
+            lastUpdated={confirmedDate}
+            confirmedAt={confirmedDate}
+          />
         </div>
 
         {/* ── 3. Items your rep will handle ─────────────────────────────── */}
@@ -270,9 +232,14 @@ export function ChefQuoteReceiptPage() {
             <div className="flex flex-col gap-3">
               {unmatchedLines.map((line) => (
                 <div key={line.id} className="flex items-start justify-between gap-4">
-                  <span className="text-[#2A2A2A] text-base font-medium leading-snug">
-                    {toTitleCase(line.component?.name || line.category || 'Item')}
-                  </span>
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[#2A2A2A] text-base font-medium leading-snug">
+                      {toTitleCase(line.component?.name || line.category || 'Item')}
+                    </span>
+                    <span className="inline-flex self-start bg-amber-50 text-amber-800 border border-amber-200 px-2 py-0.5 rounded text-xs">
+                      {(line as any).resolution_label || 'Awaiting rep review'}
+                    </span>
+                  </div>
                   {line.category && line.component?.name && (
                     <span className="text-sm text-[#9E9E9E] whitespace-nowrap shrink-0 mt-0.5">
                       {toTitleCase(line.category)}
@@ -289,7 +256,7 @@ export function ChefQuoteReceiptPage() {
 
           {/* Question sent confirmation */}
           {questionSent && (
-            <p className="text-sm text-green-600 mb-1">
+            <p className="text-sm text-[#2A5F6F] mb-1">
               Your question has been sent. Your rep will be in touch.
             </p>
           )}

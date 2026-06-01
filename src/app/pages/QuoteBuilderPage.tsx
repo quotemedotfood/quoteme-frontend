@@ -44,12 +44,15 @@ interface ProductItem {
   sku: string;
   brand: string;
   product: string;
+  matched_product_name?: string | null;
+  sub_description?: string | null;
   pack: string;
   category: string;
   basePrice: number;
   currentPrice: number;
   percentChange: number;
   unmatched?: boolean;
+  resolution_label?: string | null;
   chefNote?: string | null;
   matchScore?: number | null;
   alignmentCandidates?: AlignmentCandidate[];
@@ -81,9 +84,10 @@ export function QuoteBuilderPage() {
   const location = useLocation();
   const { quotesRemaining } = useUser();
   const demo = isDemoMode();
-  const quoteId: string | undefined = (location.state as any)?.quoteId;
-  const isOpenQuote: boolean = (location.state as any)?.isOpenQuote || false;
-  const locationId: string | undefined = (location.state as any)?.locationId;
+  const searchParams = new URLSearchParams(location.search);
+  const quoteId: string | undefined = (location.state as any)?.quoteId || searchParams.get('quoteId') || undefined;
+  const isOpenQuote: boolean = (location.state as any)?.isOpenQuote || searchParams.get('isOpenQuote') === 'true' || false;
+  const locationId: string | undefined = (location.state as any)?.locationId || searchParams.get('locationId') || undefined;
 
   const [items, setItems] = useState<ProductItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -143,12 +147,15 @@ export function QuoteBuilderPage() {
           sku: line.product?.item_number || '',
           brand: isUnmatched ? '' : (line.product?.brand || ''),
           product: line.product?.product || '',
+          matched_product_name: (line as any).matched_product_name ?? null,
+          sub_description: (line as any).sub_description ?? null,
           pack: line.product?.pack_size || '',
           category: line.category || 'Uncategorized',
           basePrice: priceDollars,
           currentPrice: priceDollars,
           percentChange: 0,
           unmatched: isUnmatched,
+          resolution_label: (line as any).resolution_label ?? null,
           chefNote: line.chef_note,
           matchScore: bestCandidate?.score ?? null,
           alignmentCandidates: line.alignment_candidates || [],
@@ -402,7 +409,7 @@ export function QuoteBuilderPage() {
   }
 
   return (
-    <div className="p-4 md:p-8 pb-24 bg-[#FFF9F3] min-h-screen overflow-x-hidden">
+    <div className="p-4 md:p-8 pb-52 bg-[#FFF9F3] min-h-screen overflow-x-hidden">
       <div className="max-w-7xl mx-auto w-full box-border">
         {/* Header */}
         <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
@@ -442,7 +449,7 @@ export function QuoteBuilderPage() {
               </Button>
             )}
             <Button
-              onClick={() => navigate('/review', { state: { quoteId, isOpenQuote, locationId } })}
+              onClick={() => navigate(`/export-finalize?quoteId=${quoteId}`)}
               className="hidden md:flex bg-[#F9A64B] hover:bg-[#E8953A] text-white"
             >
               Finish quote
@@ -612,6 +619,11 @@ export function QuoteBuilderPage() {
                     ? toTitleCase(item.component)
                     : formatProductName(item.product, item.brand)}
                 </p>
+                {item.unmatched && (
+                  <span className="inline-flex bg-amber-50 text-amber-800 border border-amber-200 px-2 py-0.5 rounded text-xs mb-1">
+                    {item.resolution_label || 'Awaiting rep review'}
+                  </span>
+                )}
 
                 <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-gray-600 mt-2 mb-3">
                    <div className="truncate"><span className="text-gray-400">Item #:</span> {item.sku}</div>
@@ -751,6 +763,9 @@ export function QuoteBuilderPage() {
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 cursor-pointer hover:text-gray-900" onClick={() => handleSort('product')}>
                     Product {getSortIcon('product')}
                   </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-600">
+                    Sub-description
+                  </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 cursor-pointer hover:text-gray-900" onClick={() => handleSort('pack')}>
                     Pack {getSortIcon('pack')}
                   </th>
@@ -805,7 +820,17 @@ export function QuoteBuilderPage() {
                     <td className="px-4 py-3 text-sm text-[#2A2A2A]">{item.sku}</td>
                     <td className="px-4 py-3 text-sm text-[#2A2A2A]">{toTitleCase(item.brand)}</td>
                     <td className={`px-4 py-3 text-sm ${item.unmatched ? 'text-gray-400 italic' : 'text-[#2A2A2A]'}`}>
-                      {toTitleCase(item.unmatched ? item.component : item.product)}
+                      <div className="flex flex-col gap-1">
+                        <span>{toTitleCase(item.unmatched ? item.component : (item.matched_product_name || item.product))}</span>
+                        {item.unmatched && (
+                          <span className="inline-flex self-start bg-amber-50 text-amber-800 border border-amber-200 px-2 py-0.5 rounded text-xs">
+                            {item.resolution_label || 'Awaiting rep review'}
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-500">
+                      {item.sub_description ? toTitleCase(item.sub_description) : '—'}
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-500">{item.pack}</td>
                     <td className="px-4 py-3 text-sm text-gray-500">{toTitleCase(item.category)}</td>
@@ -899,7 +924,7 @@ export function QuoteBuilderPage() {
                           </button>
                         </div>
                       ) : (
-                        `$${item.currentPrice.toFixed(2)}`
+                        item.unmatched && item.currentPrice === 0 ? '—' : `$${item.currentPrice.toFixed(2)}`
                       )}
                     </td>
                     {editMode && (
@@ -927,13 +952,13 @@ export function QuoteBuilderPage() {
 
       {/* Floating Finish Quote button */}
       <button
-        onClick={() => navigate('/review', { state: { quoteId, isOpenQuote, locationId } })}
-        className="fixed bottom-[68px] right-6 bg-[#F9A64B] hover:bg-[#E8953A] text-white font-medium py-3 px-6 rounded-full shadow-lg text-base min-h-[48px] z-40"
+        onClick={() => navigate(`/export-finalize?quoteId=${quoteId}`)}
+        className="fixed bottom-[80px] right-6 bg-[#F9A64B] hover:bg-[#E8953A] text-white font-medium py-3 px-6 rounded-full shadow-lg text-base min-h-[48px] z-50"
       >
         Finish Quote
       </button>
 
-      {quoteId && <QuoteReviewBar quoteId={quoteId} onMatchesUpdated={handleMatchesUpdated} />}
+      {quoteId && <QuoteReviewBar quoteId={quoteId} onMatchesUpdated={handleMatchesUpdated} noSidebarOffset />}
 
       {/* Match Selection Drawer */}
       {matchDrawerItem && (

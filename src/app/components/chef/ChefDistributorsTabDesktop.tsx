@@ -1,8 +1,14 @@
-// ChefDistributorsTabDesktop — desktop Distributors tab (populated + empty states).
+// ChefDistributorsTabDesktop — desktop Distributors tab.
 //
-// Ported verbatim from source/screens-tabs.jsx (Desi V2 handoff, 2026-05-19).
+// Ported from source/screens-tabs.jsx (Desi V2 handoff, 2026-05-19).
 // V3 spec refs: Part 5, Part 6.7, Part 7.
 // Intended route: /dashboard/distributors (desktop breakpoint; wire-up pending A3 promotion).
+//
+// TODO (W2-5): This component is currently dead code — not rendered anywhere.
+// The mobile ChefDistributorsTab (ChefDistributorsTab.tsx) is the active variant,
+// wired in ChefDashboardPage. Wire this desktop variant when desktop breakpoint
+// switching is added. Mirror the same live-data approach from ChefDistributorsTab
+// (getChefDistributors() + useEffect + navigate to /chef/distributor/:id on row click).
 //
 // Translation notes (JSX → TSX):
 //   • ChefTabDesktopShell wraps this component (NewspaperSidebar stub inside).
@@ -10,16 +16,17 @@
 //   • CSS vars (--qm-*) → FE color constants.
 //   • UseDistributorForQuoteModal: TODO — B3 deliverable (see below).
 
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { MapPin, ArrowRight } from 'lucide-react';
 import { CatalogStatusBadge } from './CatalogStatusBadge';
-import { ChefTabDesktopShell } from './ChefTabDesktopShell';
+import { PinToStackButton } from './PinToStackButton';
 import {
   DEMO,
   YOUR_DISTRIBUTORS,
   AREA_DISTRIBUTORS,
   type AreaDistributor,
 } from './distributorsDemoData';
+import { getChefStack, type ChefStackResponse } from '../../services/api';
 
 // ─── Color constants ──────────────────────────────────────────────────────────
 const C = {
@@ -62,15 +69,28 @@ export interface ChefDistributorsTabDesktopProps {
 export function ChefDistributorsTabDesktop({
   state = 'with-data',
   nav = () => {},
-  initialMode = 'open',
+  initialMode: _initialMode = 'open',
 }: ChefDistributorsTabDesktopProps) {
   const empty = state === 'empty';
+
+  // Stack data for pin affordance. null = loading; undefined = no stack yet.
+  const [stackData, setStackData] = useState<ChefStackResponse | null | undefined>(null);
+
+  const loadStack = useCallback(() => {
+    getChefStack().then((res) => {
+      setStackData(res.data ?? undefined);
+    });
+  }, []);
+
+  useEffect(() => {
+    loadStack();
+  }, [loadStack]);
 
   // Opus c11 lock (May 18) Q4: same modal pattern as mobile.
   const [modalDist, setModalDist] = useState<AreaDistributor | null>(null);
 
   return (
-    <ChefTabDesktopShell active="distributors" nav={nav} initialMode={initialMode}>
+    <>
       {/* Page header */}
       <div>
         <h1 style={{ ...serif, fontSize: 32, fontWeight: 600, color: C.charcoal, lineHeight: 1.15 }}>
@@ -102,17 +122,20 @@ export function ChefDistributorsTabDesktop({
           <table className="w-full" style={{ fontVariantNumeric: 'tabular-nums', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ borderBottom: `1px solid ${C.softLine}` }}>
-                <th style={{ ...eyebrow, textAlign: 'left', paddingBottom: 8, paddingTop: 8, width: '30%' }}>
+                <th style={{ ...eyebrow, textAlign: 'left', paddingBottom: 8, paddingTop: 8, width: '28%' }}>
                   Distributor
                 </th>
-                <th style={{ ...eyebrow, textAlign: 'left', paddingBottom: 8, paddingTop: 8, width: '32%' }}>
+                <th style={{ ...eyebrow, textAlign: 'left', paddingBottom: 8, paddingTop: 8, width: '30%' }}>
                   Rep
                 </th>
-                <th style={{ ...eyebrow, textAlign: 'left', paddingBottom: 8, paddingTop: 8, width: '18%' }}>
+                <th style={{ ...eyebrow, textAlign: 'left', paddingBottom: 8, paddingTop: 8, width: '17%' }}>
                   Last quote
                 </th>
-                <th style={{ ...eyebrow, textAlign: 'left', paddingBottom: 8, paddingTop: 8, width: '20%' }}>
+                <th style={{ ...eyebrow, textAlign: 'left', paddingBottom: 8, paddingTop: 8, width: '17%' }}>
                   Status
+                </th>
+                <th style={{ ...eyebrow, textAlign: 'left', paddingBottom: 8, paddingTop: 8, width: '8%' }}>
+                  Stack
                 </th>
               </tr>
             </thead>
@@ -155,8 +178,19 @@ export function ChefDistributorsTabDesktop({
                       {d.quoteCount} total
                     </div>
                   </td>
-                  <td style={{ padding: '14px 0' }}>
+                  <td style={{ padding: '14px 12px 14px 0' }}>
                     <CatalogStatusBadge status={d.status} />
+                  </td>
+                  {/* Pin-to-stack affordance.
+                      TODO (W2-5 live-data): replace d.short with real d.id when
+                      this component switches to getChefDistributors() live data. */}
+                  <td style={{ padding: '14px 0', verticalAlign: 'middle' }}>
+                    <PinToStackButton
+                      distributorId={d.short}
+                      distributorName={d.short}
+                      stackData={stackData}
+                      onStackChange={loadStack}
+                    />
                   </td>
                 </tr>
               ))}
@@ -183,19 +217,22 @@ export function ChefDistributorsTabDesktop({
         <table className="w-full" style={{ fontVariantNumeric: 'tabular-nums', borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ borderBottom: `1px solid ${C.softLine}` }}>
-              <th style={{ ...eyebrow, textAlign: 'left', paddingBottom: 8, paddingTop: 8, width: '32%' }}>
+              <th style={{ ...eyebrow, textAlign: 'left', paddingBottom: 8, paddingTop: 8, width: '28%' }}>
                 Distributor
               </th>
-              <th style={{ ...eyebrow, textAlign: 'left', paddingBottom: 8, paddingTop: 8, width: '26%' }}>
+              <th style={{ ...eyebrow, textAlign: 'left', paddingBottom: 8, paddingTop: 8, width: '22%' }}>
                 Area
               </th>
-              <th style={{ ...eyebrow, textAlign: 'left', paddingBottom: 8, paddingTop: 8, width: '14%' }}>
+              <th style={{ ...eyebrow, textAlign: 'left', paddingBottom: 8, paddingTop: 8, width: '12%' }}>
                 Items
               </th>
-              <th style={{ ...eyebrow, textAlign: 'left', paddingBottom: 8, paddingTop: 8, width: '14%' }}>
+              <th style={{ ...eyebrow, textAlign: 'left', paddingBottom: 8, paddingTop: 8, width: '12%' }}>
                 Updated
               </th>
-              <th style={{ ...eyebrow, textAlign: 'left', paddingBottom: 8, paddingTop: 8, width: '14%' }}>
+              <th style={{ ...eyebrow, textAlign: 'left', paddingBottom: 8, paddingTop: 8, width: '18%' }}>
+              </th>
+              <th style={{ ...eyebrow, textAlign: 'left', paddingBottom: 8, paddingTop: 8, width: '8%' }}>
+                Stack
               </th>
             </tr>
           </thead>
@@ -228,7 +265,7 @@ export function ChefDistributorsTabDesktop({
                 <td style={{ ...sans, padding: '12px 12px 12px 0', fontSize: 12.5, color: C.gray700, fontVariantNumeric: 'tabular-nums', lineHeight: 1.3 }}>
                   {d.updated}
                 </td>
-                <td style={{ padding: '12px 0' }}>
+                <td style={{ padding: '12px 12px 12px 0' }}>
                   <button
                     type="button"
                     onClick={() => setModalDist(d)}
@@ -245,6 +282,17 @@ export function ChefDistributorsTabDesktop({
                   >
                     Use for a quote
                   </button>
+                </td>
+                {/* Pin-to-stack affordance.
+                    TODO (W2-5 live-data): replace d.short with real d.id when
+                    this component switches to getChefDistributors() live data. */}
+                <td style={{ padding: '12px 0', verticalAlign: 'middle' }}>
+                  <PinToStackButton
+                    distributorId={d.short}
+                    distributorName={d.short}
+                    stackData={stackData}
+                    onStackChange={loadStack}
+                  />
                 </td>
               </tr>
             ))}
@@ -320,6 +368,6 @@ export function ChefDistributorsTabDesktop({
           variant="desktop"
         />
       )}
-    </ChefTabDesktopShell>
+    </>
   );
 }

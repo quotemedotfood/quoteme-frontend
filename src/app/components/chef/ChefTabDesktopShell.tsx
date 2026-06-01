@@ -14,10 +14,16 @@
 //   • CSS vars (--qm-*) → FE color constants.
 
 import React, { useState } from 'react';
+import { FileText, Settings, Home, PanelLeftClose, PanelLeftOpen, Plus, Truck } from 'lucide-react';
+import quotemeLogo from '../../../assets/quoteme-logo.png';
+import { SidebarHelpInput } from './SidebarHelpInput';
 
 const C = {
   charcoal: '#2B2B2B',
-  orange: '#F9A64B',
+  // c72: Sacred Orange — canonical token is var(--primary) = #F2993D.
+  // Kept here for inline-style fallback; NOT #F9A64B (which is the legacy off-orange).
+  orange: '#F2993D',
+  orangeHover: '#E08A2E',
   warmPaper: '#FBFAF7',
   softLine: '#E8E8E8',
   gray700: '#4F4F4F',
@@ -32,7 +38,7 @@ const sans: React.CSSProperties = {
 };
 
 type SidebarMode = 'open' | 'collapsed' | 'hidden';
-type ActiveTab = 'home' | 'order-guides' | 'distributors' | 'settings';
+type ActiveTab = 'home' | 'dashboard' | 'order-guides' | 'distributors' | 'settings';
 
 export interface ChefTabDesktopShellProps {
   active: ActiveTab;
@@ -47,11 +53,13 @@ export interface ChefTabDesktopShellProps {
 // Preserves the structural contract (flex left rail, ~200px wide, collapses).
 // Full NewspaperSidebar design will be delivered in a subsequent track.
 
-const NAV_ITEMS: { id: ActiveTab; label: string; target: string }[] = [
-  { id: 'home',         label: 'Quotes',       target: 'tab-home' },
-  { id: 'order-guides', label: 'Order Guides', target: 'tab-order-guides' },
-  { id: 'distributors', label: 'Distributors', target: 'tab-distributors' },
-  { id: 'settings',     label: 'Settings',     target: 'tab-settings' },
+// c73+c75: Dashboard added. Order: Dashboard, Quotes, Distributors, Settings.
+// c72: Build Quote rendered separately ABOVE this list at position 2 (per locked IA).
+const NAV_ITEMS: { id: ActiveTab; label: string; target: string; Icon: React.ComponentType<{ size?: number; strokeWidth?: number }> }[] = [
+  { id: 'dashboard',    label: 'Dashboard',    target: 'tab-dashboard',       Icon: Home },
+  { id: 'home',         label: 'Quotes',       target: 'tab-home',            Icon: FileText },
+  { id: 'distributors', label: 'Distributors', target: 'tab-distributors',    Icon: Truck },
+  { id: 'settings',     label: 'Settings',     target: 'tab-settings',        Icon: Settings },
 ];
 
 function NewspaperSidebarStub({
@@ -69,28 +77,130 @@ function NewspaperSidebarStub({
   return (
     <div
       style={{
-        width: collapsed ? 52 : 200,
+        width: collapsed ? 64 : 200,
         flexShrink: 0,
         borderRight: `1px solid ${C.softLine}`,
         background: C.warmPaper,
         display: 'flex',
         flexDirection: 'column',
-        padding: collapsed ? '20px 0' : '20px 0',
+        padding: '12px 0 20px',
         transition: 'width 200ms ease',
         overflow: 'hidden',
+        // Sticky sidebar: stays in place while the content column scrolls.
+        position: 'sticky',
+        top: 0,
+        height: '100vh',
+        zIndex: 20,
       }}
     >
-      {/* Wordmark */}
-      {!collapsed && (
-        <div style={{ ...serif, fontSize: 17, fontWeight: 700, color: C.charcoal, padding: '0 20px 20px' }}>
-          QuoteMe
-        </div>
-      )}
+      {/* Masthead — Moose 2026-05-26 (Track 9 correction):
+          • Expanded: horizontal QuoteMe lockup at the top of the sidebar
+            (~130px wide), left-aligned. Track 7 removed the duplicate
+            wordmark from the page top-strip (ChefTopbar) — the sidebar
+            masthead is now the single brand mark, so it must render here.
+          • Collapsed: square logo (~42px), centered.
+          • Toggle sits BELOW the logo in both states; [+] Build Quote below.
+          NOTE: this does NOT reverse Track 7 — that removed the SEPARATE
+          top-strip ChefTopbar logo. This renders the SIDEBAR's own logo. */}
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: collapsed ? 'center' : 'flex-start',
+          gap: 8,
+          padding: collapsed ? '0 6px 12px' : '12px 12px 12px 20px',
+        }}
+      >
+        {/* Track 9b: expanded uses the horizontal lockup asset (public/
+            quoteme-horizontal.png, Moose-committed); collapsed keeps the
+            square src/assets logo. */}
+        <img
+          src={collapsed ? quotemeLogo : '/quoteme-horizontal.png'}
+          alt="QuoteMe"
+          style={{
+            width: collapsed ? 42 : 150,
+            height: 'auto',
+            display: 'block',
+            flexShrink: 0,
+          }}
+        />
+        {/* Toggle — sits between logo and [+] Build Quote in both states */}
+        <button
+          type="button"
+          onClick={() => onModeChange(collapsed ? 'open' : mode === 'open' ? 'collapsed' : 'open')}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: 40,
+            height: 40,
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            borderRadius: 6,
+            color: C.gray500,
+            flexShrink: 0,
+          }}
+          onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(43,43,43,.06)'; }}
+          onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'none'; }}
+          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        >
+          {collapsed
+            ? <PanelLeftOpen size={20} strokeWidth={1.6} />
+            : <PanelLeftClose size={20} strokeWidth={1.6} />}
+        </button>
+      </div>
 
       {/* Nav items */}
       <nav style={{ flex: 1 }}>
-        {NAV_ITEMS.map((item) => {
+        {/* c72: Build Quote — solid Sacred Orange CTA at position 2 (above Dashboard),
+            per locked IA. Desi spec did not place a Build Quote CTA in the desktop
+            sidebar (lives as a "Build new" sub-item under Quotes); IA lock supersedes.
+            Full mode: rectangle + Plus + text. Compact: INSET square + Plus only.
+            Plus icon is the ONE sidebar deviation to stroke 2 (white-on-orange contrast). */}
+        <div
+          style={{
+            padding: collapsed ? '4px 0 8px' : '4px 20px 8px',
+            display: 'flex',
+            justifyContent: collapsed ? 'center' : 'stretch',
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => onNav('distributor-new')}
+            aria-label="Build Quote"
+            title={collapsed ? 'Build Quote' : undefined}
+            style={{
+              ...sans,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+              // Compact: INSET square matching destination icon padding (40x40) — not full bleed
+              // Full: full-width rectangle
+              width: collapsed ? 40 : '100%',
+              height: collapsed ? 40 : 'auto',
+              padding: collapsed ? 0 : '10px 14px',
+              fontSize: 13,
+              fontWeight: 600,
+              color: '#fff',
+              background: C.orange,
+              border: 'none',
+              borderRadius: 6,
+              cursor: 'pointer',
+              transition: 'background 120ms ease',
+            }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = C.orangeHover; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = C.orange; }}
+          >
+            <Plus size={collapsed ? 20 : 16} strokeWidth={2} color="#fff" />
+            {!collapsed && <span>Build Quote</span>}
+          </button>
+        </div>
+
+        {NAV_ITEMS.filter((item) => item.id !== 'settings').map((item) => {
           const on = item.id === active;
+          const { Icon } = item;
           return (
             <button
               key={item.id}
@@ -99,7 +209,11 @@ function NewspaperSidebarStub({
               style={{
                 width: '100%',
                 textAlign: 'left',
-                padding: collapsed ? '10px 16px' : '10px 20px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+                padding: collapsed ? '10px 0' : '10px 20px',
+                justifyContent: collapsed ? 'center' : 'flex-start',
                 background: on ? 'rgba(43,43,43,.07)' : 'transparent',
                 border: 'none',
                 cursor: 'pointer',
@@ -110,54 +224,50 @@ function NewspaperSidebarStub({
                 borderLeft: on ? `3px solid ${C.charcoal}` : '3px solid transparent',
               }}
             >
-              {collapsed ? item.label[0] : item.label}
+              {/* c64 + 18d: icon-only when collapsed; icon + label side-by-side when expanded */}
+              <Icon size={18} strokeWidth={on ? 2 : 1.6} />
+              {!collapsed && <span>{item.label}</span>}
+            </button>
+          );
+        })}
+
+        {/* SidebarHelpInput — above Settings per Desi spec lock */}
+        <SidebarHelpInput collapsed={collapsed} />
+
+        {/* Settings — always last */}
+        {NAV_ITEMS.filter((item) => item.id === 'settings').map((item) => {
+          const on = item.id === active;
+          const { Icon } = item;
+          return (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => onNav(item.target)}
+              style={{
+                width: '100%',
+                textAlign: 'left',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+                padding: collapsed ? '10px 0' : '10px 20px',
+                justifyContent: collapsed ? 'center' : 'flex-start',
+                background: on ? 'rgba(43,43,43,.07)' : 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                ...sans,
+                fontSize: 14,
+                fontWeight: on ? 600 : 400,
+                color: on ? C.charcoal : C.gray700,
+                borderLeft: on ? `3px solid ${C.charcoal}` : '3px solid transparent',
+              }}
+            >
+              {/* c64 + 18d: icon-only when collapsed; icon + label side-by-side when expanded */}
+              <Icon size={18} strokeWidth={on ? 2 : 1.6} />
+              {!collapsed && <span>{item.label}</span>}
             </button>
           );
         })}
       </nav>
-
-      {/* Build Quote action */}
-      {!collapsed && (
-        <div style={{ padding: '12px 20px', borderTop: `1px solid ${C.softLine}` }}>
-          <button
-            type="button"
-            onClick={() => onNav('entry')}
-            style={{
-              ...sans,
-              width: '100%',
-              padding: '8px 0',
-              fontSize: 13,
-              fontWeight: 600,
-              color: C.orange,
-              border: `1.5px solid ${C.orange}`,
-              background: 'transparent',
-              borderRadius: 6,
-              cursor: 'pointer',
-            }}
-          >
-            Build Quote
-          </button>
-        </div>
-      )}
-
-      {/* Collapse / expand toggle */}
-      <button
-        type="button"
-        onClick={() => onModeChange(collapsed ? 'open' : collapsed ? 'open' : mode === 'open' ? 'collapsed' : 'open')}
-        style={{
-          ...sans,
-          margin: '8px auto 0',
-          fontSize: 11,
-          color: C.gray500,
-          background: 'none',
-          border: 'none',
-          cursor: 'pointer',
-          padding: '4px 8px',
-        }}
-        aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-      >
-        {collapsed ? '›' : '‹'}
-      </button>
     </div>
   );
 }
@@ -205,9 +315,12 @@ export function ChefTabDesktopShell({
   const hidden = mode === 'hidden';
 
   return (
+    // min-h-screen ensures the flex container stretches to at least the
+    // viewport height; the sticky sidebar then pins correctly relative to it.
+    // No overflow:hidden here — that would prevent position:sticky from working.
     <div
       className="flex"
-      style={{ position: 'relative', height: '100%' }}
+      style={{ position: 'relative', minHeight: '100vh' }}
     >
       {!hidden && (
         <NewspaperSidebarStub
@@ -218,14 +331,16 @@ export function ChefTabDesktopShell({
         />
       )}
 
+      {/* Content column — flex-1 so it fills remaining width. No overflow on
+          this wrapper; scrolling is inherited from the parent RootLayout <main>
+          so the sticky sidebar stays anchored to the viewport top. */}
       <div
-        className="flex flex-col overflow-hidden"
+        className="flex flex-col"
         style={{ flex: 1, minWidth: 0 }}
       >
-        {/* showTrust → TrustRibbon omitted; accepted by prop for future B4 wiring */}
-        <div className="flex-1 overflow-auto">
+        <div>
           <div style={{ padding: '36px 40px' }}>
-            <div style={{ maxWidth: 880 }}>{children}</div>
+            <div style={{ maxWidth: 880, margin: '0 auto' }}>{children}</div>
           </div>
         </div>
       </div>

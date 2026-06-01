@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
-import { Loader2, Check, Send, UserPlus, Users, X } from 'lucide-react';
-import { inviteRep, getDistributorAdminReps } from '../services/api';
+import { Loader2, Check, Send, UserPlus, Users, X, LogIn, RefreshCw, UserX } from 'lucide-react';
+import { inviteRep, getDistributorAdminReps, impersonateRep, cancelRepInvite, resendRepInvite, disableRep } from '../services/api';
 import type { DistributorRep } from '../services/api';
 
 export function DistributorRepsPage() {
@@ -16,6 +16,15 @@ export function DistributorRepsPage() {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+  const [impersonating, setImpersonating] = useState<string | null>(null);
+  const [impersonateError, setImpersonateError] = useState<string | null>(null);
+  const [cancelling, setCancelling] = useState<string | null>(null);
+  const [cancelError, setCancelError] = useState<string | null>(null);
+  const [resending, setResending] = useState<string | null>(null);
+  const [resendError, setResendError] = useState<string | null>(null);
+  const [resendSuccess, setResendSuccess] = useState<string | null>(null);
+  const [disabling, setDisabling] = useState<string | null>(null);
+  const [disableError, setDisableError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!document.getElementById('quoteme-fonts')) {
@@ -61,6 +70,62 @@ export function DistributorRepsPage() {
       loadReps();
     }
     setSending(false);
+  };
+
+  const handleImpersonate = async (rep: DistributorRep) => {
+    setImpersonating(rep.id);
+    setImpersonateError(null);
+    const res = await impersonateRep(rep.id);
+    if (res.data?.token) {
+      // Store the distributor admin's original token so they can restore it later
+      localStorage.setItem('quoteme_admin_token', localStorage.getItem('quoteme_token') || '');
+      const displayName = [rep.first_name, rep.last_name].filter(Boolean).join(' ') || rep.email;
+      localStorage.setItem('quoteme_impersonating', displayName);
+      localStorage.setItem('quoteme_token', res.data.token);
+      window.location.href = '/';
+    } else {
+      setImpersonateError(res.error || 'Failed to impersonate rep');
+      setImpersonating(null);
+    }
+  };
+
+  const handleCancelInvite = async (rep: DistributorRep) => {
+    setCancelling(rep.id);
+    setCancelError(null);
+    const res = await cancelRepInvite(rep.id);
+    if (res.error) {
+      setCancelError(res.error);
+      setCancelling(null);
+    } else {
+      setCancelling(null);
+      loadReps();
+    }
+  };
+
+  const handleResend = async (rep: DistributorRep) => {
+    setResending(rep.id);
+    setResendError(null);
+    setResendSuccess(null);
+    const res = await resendRepInvite(rep.id);
+    if (res.error) {
+      setResendError(res.error);
+    } else {
+      setResendSuccess(`Invite resent to ${rep.email}`);
+      loadReps();
+    }
+    setResending(null);
+  };
+
+  const handleDisable = async (rep: DistributorRep) => {
+    setDisabling(rep.id);
+    setDisableError(null);
+    const res = await disableRep(rep.id);
+    if (res.data) {
+      await loadReps();
+    } else {
+      setDisableError(res.error || 'Failed to disable rep');
+    }
+    setDisabling(null);
   };
 
   const activeReps = reps.filter(r => r.status === 'active');
@@ -142,6 +207,24 @@ export function DistributorRepsPage() {
         </form>
       )}
 
+      {impersonateError && (
+        <p className="text-red-500 text-sm mb-4">{impersonateError}</p>
+      )}
+      {cancelError && (
+        <p className="text-red-500 text-sm mb-4">{cancelError}</p>
+      )}
+      {resendError && (
+        <p className="text-red-500 text-sm mb-4">{resendError}</p>
+      )}
+      {resendSuccess && (
+        <p className="text-green-600 text-sm mb-4 flex items-center gap-1.5">
+          <Check className="w-4 h-4" /> {resendSuccess}
+        </p>
+      )}
+      {disableError && (
+        <p className="text-red-500 text-sm mb-4">{disableError}</p>
+      )}
+
       {/* Reps table */}
       {loading ? (
         <div className="flex items-center justify-center py-20">
@@ -176,6 +259,7 @@ export function DistributorRepsPage() {
                 <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wide px-6 py-3 hidden md:table-cell" style={{ fontFamily: "'DM Sans', sans-serif" }}>Territory</th>
                 <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wide px-6 py-3" style={{ fontFamily: "'DM Sans', sans-serif" }}>Status</th>
                 <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wide px-6 py-3 hidden lg:table-cell" style={{ fontFamily: "'DM Sans', sans-serif" }}>Joined</th>
+                <th className="px-6 py-3" />
               </tr>
             </thead>
             <tbody>
@@ -203,6 +287,38 @@ export function DistributorRepsPage() {
                       {new Date(rep.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                     </p>
                   </td>
+                  <td className="px-6 py-4 text-right">
+                    <div className="flex items-center justify-end gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        disabled={impersonating === rep.id || disabling === rep.id}
+                        onClick={() => handleImpersonate(rep)}
+                        className="text-gray-500 hover:text-[#2A2A2A] text-xs"
+                        title={`Sign in as ${rep.first_name || rep.email}`}
+                      >
+                        {impersonating === rep.id
+                          ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          : <LogIn className="w-3.5 h-3.5 mr-1" />
+                        }
+                        {impersonating === rep.id ? '' : 'Sign in as'}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        disabled={disabling === rep.id || impersonating === rep.id}
+                        onClick={() => handleDisable(rep)}
+                        className="text-gray-400 hover:text-red-600 text-xs"
+                        title={`Disable ${rep.first_name || rep.email}`}
+                      >
+                        {disabling === rep.id
+                          ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          : <UserX className="w-3.5 h-3.5 mr-1" />
+                        }
+                        {disabling === rep.id ? '' : 'Disable'}
+                      </Button>
+                    </div>
+                  </td>
                 </tr>
               ))}
               {invitedReps.map(rep => (
@@ -228,6 +344,38 @@ export function DistributorRepsPage() {
                     <p className="text-sm text-gray-500">
                       {new Date(rep.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                     </p>
+                  </td>
+                  <td className="px-6 py-4 text-right">
+                    <div className="flex items-center justify-end gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        disabled={resending === rep.id}
+                        onClick={() => handleResend(rep)}
+                        className="text-gray-500 hover:text-[#2A2A2A] text-xs"
+                        title={`Resend invite to ${rep.email}`}
+                      >
+                        {resending === rep.id
+                          ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          : <RefreshCw className="w-3.5 h-3.5 mr-1" />
+                        }
+                        {resending === rep.id ? '' : 'Resend'}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        disabled={cancelling === rep.id}
+                        onClick={() => handleCancelInvite(rep)}
+                        className="text-gray-400 hover:text-red-600 text-xs"
+                        title={`Cancel invite for ${rep.first_name || rep.email}`}
+                      >
+                        {cancelling === rep.id
+                          ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          : <X className="w-3.5 h-3.5 mr-1" />
+                        }
+                        {cancelling === rep.id ? '' : 'Cancel'}
+                      </Button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -255,6 +403,7 @@ export function DistributorRepsPage() {
                       {new Date(rep.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                     </p>
                   </td>
+                  <td className="px-6 py-4" />
                 </tr>
               ))}
             </tbody>

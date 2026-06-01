@@ -94,11 +94,10 @@ export function ChefTabBar({ active = 'home', nav = () => {} }: ChefTabBarProps)
   }, []);
 
   const tabs: TabDef[] = [
-    { id: 'home',         label: 'Quotes',       target: 'tab-home' },
-    { id: 'order-guides', label: 'Order Guides', target: 'tab-order-guides' },
-    { id: 'distributors', label: 'Distributors', target: 'tab-distributors' },
-    { id: 'settings',     label: 'Settings',     target: 'tab-settings' },
-    { id: 'build',        label: 'Build Quote',  target: 'entry', isAction: true },
+    { id: 'home',          label: 'Quotes',       target: 'tab-home' },
+    { id: 'distributors',  label: 'Distributors', target: 'tab-distributors' },
+    { id: 'settings',      label: 'Settings',     target: 'tab-settings' },
+    { id: 'build',         label: 'Build Quote',  target: 'distributor-new', isAction: true },
   ];
 
   return (
@@ -106,6 +105,11 @@ export function ChefTabBar({ active = 'home', nav = () => {} }: ChefTabBarProps)
       ref={wrapRef}
       className="flex items-stretch bg-white"
       style={{
+        position: 'fixed',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        zIndex: 50,
         flex: '0 0 56px',
         borderTop: `1px solid ${C.softLine}`,
         paddingBottom: 12, // clears home indicator on iOS

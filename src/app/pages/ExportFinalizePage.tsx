@@ -270,6 +270,18 @@ export function ExportFinalizePage() {
   const [smsSent, setSmsSent] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
 
+  // Reset email drawer state when it closes so the button label and
+  // in-flight flags don't persist as stale state on reopen.
+  // TODO(Desi): "Send Quote" (sticky footer) and "Email Quote to Chef" (send section)
+  // both open the same email drawer — confirm this is intentional.
+  useEffect(() => {
+    if (!showEmailDrawer) {
+      setEmailSent(false);
+      setSendingEmail(false);
+      setSendError(null);
+    }
+  }, [showEmailDrawer]);
+
   // Manual send inputs (for open quotes)
   const [manualEmail, setManualEmail] = useState('');
   const [manualPhone, setManualPhone] = useState('');
@@ -524,9 +536,9 @@ export function ExportFinalizePage() {
                 PREMIUM
               </div>
               
-              <h2 className="text-lg text-[#2A2A2A] mb-1 font-medium">Add Onboarding Documents & Links</h2>
+              <h2 className="text-lg text-[#2A2A2A] mb-1 font-medium">Supporting Documents & Links</h2>
               <p className="text-gray-500 text-sm mb-4">
-                Automatically include onboarding materials with your quote.
+                Attach supporting documents to your quote.
               </p>
 
               <div className="bg-orange-50 border border-orange-100 rounded-md p-4 mb-6">
@@ -550,7 +562,7 @@ export function ExportFinalizePage() {
                 <div>
                   <h3 className="text-sm font-semibold text-[#2A2A2A] mb-3 flex items-center gap-2">
                     <FileText className="w-4 h-4 text-gray-500" />
-                    Onboarding Documents
+                    Documents
                   </h3>
                   <div className="space-y-3 pl-1">
                     {onboardingDocuments.map((doc) => (
@@ -582,7 +594,7 @@ export function ExportFinalizePage() {
                 <div>
                   <h3 className="text-sm font-semibold text-[#2A2A2A] mb-3 flex items-center gap-2">
                     <LinkIcon className="w-4 h-4 text-gray-500" />
-                    Onboarding Links
+                    Links
                   </h3>
                   <div className="space-y-3 pl-1">
                     {onboardingLinks.map((link) => (

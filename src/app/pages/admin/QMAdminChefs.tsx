@@ -46,7 +46,6 @@ export function QMAdminChefs() {
   // Impersonation state
   const [impersonatingId, setImpersonatingId] = useState<string | null>(null);
   const [showReasonFor, setShowReasonFor] = useState<string | null>(null);
-  const [reasonText, setReasonText] = useState('');
 
   useEffect(() => {
     async function load() {
@@ -113,7 +112,7 @@ export function QMAdminChefs() {
     setImpersonatingId(chef.id);
     const fullName = `${chef.first_name} ${chef.last_name}`;
 
-    const res = await impersonateChef(chef.id, reasonText.trim() || undefined);
+    const res = await impersonateChef(chef.id);
 
     if (res.data?.token) {
       // Store admin credentials for restore on exit
@@ -123,15 +122,18 @@ export function QMAdminChefs() {
       localStorage.setItem('quoteme_chef_impersonation_event_id', res.data.event_id);
       // Swap the session token
       localStorage.setItem('quoteme_token', res.data.token);
-      // Navigate to the chef entry point
-      window.location.href = '/chef';
+      // Navigate to the chef dashboard. Previously '/chef' routed to the
+      // guest-quote create path, which 404'd on auth-mismatch polling
+      // (c51 — guest endpoint requires X-Guest-Token, impersonation issues
+      // a JWT). Dashboard is the correct landing for an already-impersonated
+      // chef session.
+      window.location.href = '/dashboard';
     } else {
       setError(res.error || 'Failed to impersonate chef');
       setImpersonatingId(null);
     }
 
     setShowReasonFor(null);
-    setReasonText('');
   }
 
   const statusBadge = (status: string) => {
@@ -171,23 +173,13 @@ export function QMAdminChefs() {
               Impersonate Chef
             </h2>
             <p className="text-sm text-gray-500 mb-4">
-              Optional: briefly describe why you are stepping into this account. This is logged in
-              the audit trail.
+              You'll switch into this chef's account. Your QM Admin session is restored when you
+              exit impersonation.
             </p>
-            <textarea
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[#F39839]/40"
-              rows={3}
-              placeholder="e.g. Debugging visual review issue #42 per chef report"
-              value={reasonText}
-              onChange={(e) => setReasonText(e.target.value)}
-            />
             <div className="flex justify-end gap-2 mt-4">
               <Button
                 variant="outline"
-                onClick={() => {
-                  setShowReasonFor(null);
-                  setReasonText('');
-                }}
+                onClick={() => setShowReasonFor(null)}
               >
                 Cancel
               </Button>

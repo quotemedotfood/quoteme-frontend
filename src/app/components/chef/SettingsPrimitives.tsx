@@ -41,9 +41,19 @@ interface SettingRowProps {
   label: string;
   value: React.ReactNode;
   placeholder?: boolean;
+  onEdit?: () => void;
+  editDisabled?: boolean;
+  editTooltip?: string;
 }
 
-export function SettingRow({ label, value, placeholder = false }: SettingRowProps) {
+export function SettingRow({
+  label,
+  value,
+  placeholder = false,
+  onEdit,
+  editDisabled = false,
+  editTooltip,
+}: SettingRowProps) {
   return (
     <div className="doc-divider py-3 flex items-baseline justify-between gap-3">
       <div className="qm-eyebrow shrink-0" style={{ fontSize: 9.5, width: 64, paddingTop: 2 }}>
@@ -54,7 +64,17 @@ export function SettingRow({ label, value, placeholder = false }: SettingRowProp
           {value}
         </div>
       </div>
-      <button className="text-[11.5px] ink-soft underline shrink-0">Edit</button>
+      <button
+        className={cls(
+          'text-[11.5px] ink-soft underline shrink-0',
+          editDisabled ? 'opacity-40 cursor-not-allowed' : ''
+        )}
+        onClick={editDisabled ? undefined : onEdit}
+        disabled={editDisabled}
+        title={editTooltip}
+      >
+        Edit
+      </button>
     </div>
   );
 }
@@ -65,9 +85,19 @@ interface DesktopSettingRowProps {
   label: string;
   value: React.ReactNode;
   placeholder?: boolean;
+  onEdit?: () => void;
+  editDisabled?: boolean;
+  editTooltip?: string;
 }
 
-export function DesktopSettingRow({ label, value, placeholder = false }: DesktopSettingRowProps) {
+export function DesktopSettingRow({
+  label,
+  value,
+  placeholder = false,
+  onEdit,
+  editDisabled = false,
+  editTooltip,
+}: DesktopSettingRowProps) {
   return (
     <>
       <div
@@ -82,7 +112,17 @@ export function DesktopSettingRow({ label, value, placeholder = false }: Desktop
         </div>
       </div>
       <div className="doc-divider py-3.5 self-stretch text-right">
-        <button className="text-[12px] ink-soft underline">Edit</button>
+        <button
+          className={cls(
+            'text-[12px] ink-soft underline',
+            editDisabled ? 'opacity-40 cursor-not-allowed' : ''
+          )}
+          onClick={editDisabled ? undefined : onEdit}
+          disabled={editDisabled}
+          title={editTooltip}
+        >
+          Edit
+        </button>
       </div>
     </>
   );

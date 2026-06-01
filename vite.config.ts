@@ -1,3 +1,4 @@
+/// <reference types="vitest" />
 import { defineConfig } from 'vite'
 import path from 'path'
 import tailwindcss from '@tailwindcss/vite'
@@ -36,4 +37,14 @@ export default defineConfig({
 
   // File types to support raw imports. Never add .css, .tsx, or .ts files to this.
   assetsInclude: ['**/*.svg', '**/*.csv'],
+
+  test: {
+    // Run in node environment — no DOM / jsdom needed for pure-logic unit tests.
+    // Component-level tests that require a DOM should use environment: 'jsdom'
+    // on a per-file basis once @testing-library/react is added to devDependencies.
+    environment: 'node',
+    // Only pick up files explicitly named *.test.ts / *.test.tsx so the broad
+    // glob doesn't accidentally match storybook or playground files.
+    include: ['src/**/*.test.{ts,tsx}'],
+  },
 })

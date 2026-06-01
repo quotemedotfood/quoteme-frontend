@@ -1,8 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router';
-import { createGuestQuote } from '../../services/api';
+import { useNavigate, useSearchParams, useLocation } from 'react-router';
+import { Upload, Loader2 } from 'lucide-react';
+import { createGuestQuote, extractMenuText } from '../../services/api';
 import { useUser } from '../../contexts/UserContext';
 import { MultiRestaurantConfirmModal, type ExistingRestaurant } from '../../components/MultiRestaurantConfirmModal';
+import { MENU_DRAFT_KEY } from '../../components/chef/StuckRecoveryScreen';
 
 // Session-scoped marker for the most recently submitted quote. Survives
 // back/forward navigation within the tab (which is the bug case — browser
@@ -25,6 +27,7 @@ const errorText = 'text-sm text-red-500';
 export function ChefEntryPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const location = useLocation();
   const { initGuestSession } = useUser();
   // V2 W4-3 — when the chef arrives here from /chef/catalog with a
   // distributor pre-selected, propagate the id into createGuestQuote so
@@ -32,11 +35,31 @@ export function ChefEntryPage() {
   // falling back through ChefDistributorResolutionService.
   const incomingDistributorId = searchParams.get('distributor_id');
 
+  // c144 — recovery path (b): when navigated here from StuckRecoveryScreen
+  // with { restoreMenuDraft: true }, pull the saved draft from localStorage
+  // and populate the textarea.
+  const locationState = location.state as {
+    restoreMenuDraft?: boolean;
+  } | null;
+  const shouldRestoreDraft = !!locationState?.restoreMenuDraft;
+
   const [restaurantName, setRestaurantName] = useState('');
-  const [pasteText, setPasteText] = useState('');
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [pasteText, setPasteText] = useState(() => {
+    if (shouldRestoreDraft) {
+      return localStorage.getItem(MENU_DRAFT_KEY) ?? '';
+    }
+    return '';
+  });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Track 4 (chef-entry v2) + Track 8: drag-zone + URL fetch state. ALL file
+  // types now extract to pasteText — CSV/TXT via FileReader, PDF/image/xlsx
+  // via extractMenuText({file}). The build always submits raw_text. (Track 8b
+  // removed the old selectedFile → FormData path: no file ever stays as a
+  // direct upload now.)
+  const [isDragging, setIsDragging] = useState(false);
+  const [menuUrl, setMenuUrl] = useState('');
+  const [isExtracting, setIsExtracting] = useState(false);
   // V2 W4-2 — multi-restaurant guard rail modal state. Populated when BE
   // returns 409 with error_code "multi_restaurant_confirm_required".
   const [multiRestaurantPrompt, setMultiRestaurantPrompt] = useState<{
@@ -45,11 +68,9 @@ export function ChefEntryPage() {
   } | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const cameraInputRef = useRef<HTMLInputElement>(null);
 
-  const hasContent = pasteText.trim().length > 0 || selectedFile !== null;
-  const textareaDisabled = selectedFile !== null || submitting;
-  const fileDisabled = pasteText.trim().length > 0 || submitting;
+  const hasContent = pasteText.trim().length > 0;
+  const textareaDisabled = submitting;
 
   // If the chef arrived back on this page via browser back from /chef/status/<id>,
   // forward them to that status page instead of letting them re-edit/re-submit
@@ -72,16 +93,118 @@ export function ChefEntryPage() {
     }
   }, [navigate]);
 
-  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0] ?? null;
-    setSelectedFile(file);
+  // Track 4/8: branch the file by extension. CSV / TXT read straight into
+  // pasteText via FileReader. PDF / image / xlsx extract via the rep-side
+  // extract_text endpoint. Either way the text lands in pasteText and the
+  // build submits raw_text — no file is ever held as a direct upload.
+  async function processFile(file: File | null) {
+    if (!file) return;
     setError(null);
+    const name = file.name.toLowerCase();
+    if (name.endsWith('.csv') || name.endsWith('.txt')) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const text = (e.target?.result as string) ?? '';
+        setPasteText(text);
+        if (text.trim()) {
+          localStorage.setItem(MENU_DRAFT_KEY, text);
+        }
+      };
+      reader.readAsText(file);
+      return;
+    }
+
+    // Track 8: PDF / PNG / JPG / JPEG / xlsx — extract text via the rep-side
+    // extract_text endpoint (Claude Vision / OCR) and drop it straight into
+    // the paste textarea. Moose doctrine: "extract what we see, don't validate
+    // it with the chef here" — no preview/confirm step. The chef sees the
+    // extracted text, can edit or ignore it, then clicks Build my quote against
+    // the populated textarea.
+    setIsExtracting(true);
+    try {
+      const res = await extractMenuText({ file });
+      if (res.error) {
+        const err = res.error;
+        if (err.includes('pdf_too_large')) {
+          setError("This menu is too large to read at once. Try a single section — entrees, apps, or the cocktail list.");
+        } else if (err.includes('service_busy') || err === 'service_busy') {
+          setError("Our menu service is temporarily busy. Please try again in a few seconds.");
+        } else {
+          setError(err);
+        }
+        return;
+      }
+      if (res.data?.text) {
+        setPasteText(res.data.text);
+        if (res.data.text.trim()) {
+          localStorage.setItem(MENU_DRAFT_KEY, res.data.text);
+        }
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to read text from that file');
+    } finally {
+      setIsExtracting(false);
+    }
   }
 
-  function handleClearFile() {
-    setSelectedFile(null);
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    processFile(e.target.files?.[0] ?? null);
+    // Reset the input so re-selecting the same file fires onChange again.
     if (fileInputRef.current) fileInputRef.current.value = '';
-    if (cameraInputRef.current) cameraInputRef.current.value = '';
+  }
+
+  function handleDragOver(e: React.DragEvent) {
+    e.preventDefault();
+    setIsDragging(true);
+  }
+  function handleDragLeave(e: React.DragEvent) {
+    e.preventDefault();
+    setIsDragging(false);
+  }
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0] ?? null;
+    processFile(file);
+  }
+
+  async function handleUrlExtract() {
+    const trimmed = menuUrl.trim();
+    if (!trimmed) return;
+    setIsExtracting(true);
+    setError(null);
+    try {
+      let url = trimmed;
+      if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        url = 'https://' + url;
+      }
+      const res = await extractMenuText({ url });
+      if (res.error) {
+        // Map a few common known errors to chef-readable copy; otherwise
+        // fall through to the raw message.
+        const err = res.error;
+        if (err.includes('url_fetch_failed')) {
+          setError("We couldn't fetch that URL. Check the link or try uploading the PDF directly.");
+        } else if (err.includes('url_unsupported_type')) {
+          setError("That URL didn't return a menu we can read. Try uploading the PDF directly.");
+        } else if (err.includes('service_busy') || err === 'service_busy') {
+          setError("Our menu service is temporarily busy. Please try again in a few seconds.");
+        } else {
+          setError(err);
+        }
+        return;
+      }
+      if (res.data?.text) {
+        setPasteText(res.data.text);
+        if (res.data.text.trim()) {
+          localStorage.setItem(MENU_DRAFT_KEY, res.data.text);
+        }
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to extract text from URL');
+    } finally {
+      setIsExtracting(false);
+    }
   }
 
   async function handleSubmit() {
@@ -107,50 +230,10 @@ export function ChefEntryPage() {
         await initGuestSession();
       }
 
-      if (selectedFile) {
-        // File path: send as FormData (createGuestQuote is JSON-only)
-        const formData = new FormData();
-        formData.append('file', selectedFile);
-        const sendName = opts.nameOverride ?? restaurantName.trim();
-        if (sendName) formData.append('name', sendName);
-        if (opts.confirmNew) formData.append('confirm_new_restaurant', 'true');
-        if (incomingDistributorId) formData.append('distributor_id', incomingDistributorId);
-
-        const guestToken = localStorage.getItem('quoteme_guest_token');
-        const authToken = localStorage.getItem('quoteme_token');
-        const API_BASE = import.meta.env.VITE_API_BASE_URL || 'https://web-production-9f6e9.up.railway.app';
-        const response = await fetch(`${API_BASE}/api/v1/guest/quotes`, {
-          method: 'POST',
-          headers: {
-            ...(guestToken ? { 'X-Guest-Token': guestToken } : {}),
-            ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
-          },
-          body: formData,
-        });
-
-        if (response.status === 409) {
-          const body = await response.json().catch(() => ({}));
-          if (body.error === 'multi_restaurant_confirm_required') {
-            setMultiRestaurantPrompt({
-              existing_restaurants: body.existing_restaurants || [],
-              typed_name: body.typed_name || sendName,
-            });
-            return;
-          }
-        }
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.error || `HTTP ${response.status}`);
-        }
-
-        const data = await response.json();
-        sessionStorage.setItem(RECENT_QUOTE_KEY, data.quote_id);
-        navigate(`/chef/status/${data.quote_id}`);
-        return;
-      }
-
-      // Text paste path — restaurant name is optional. When blank, omit it
-      // so BE falls back to the chef's existing RestaurantContact (P0-11).
+      // Text path — all inputs (paste, file extraction, URL fetch) land in
+      // pasteText, so the build always submits raw_text. Restaurant name is
+      // optional; when blank, BE falls back to the chef's existing
+      // RestaurantContact (P0-11).
       const sendName = opts.nameOverride ?? restaurantName.trim();
       const res = await createGuestQuote(
         {
@@ -182,14 +265,10 @@ export function ChefEntryPage() {
     }
   }
 
-  // P0-12: take over the screen with the status-page visual the moment the
-  // chef clicks "Build my quote" — no waiting for the POST response before
-  // showing feedback. When the response returns, we navigate(replace) to
-  // /chef/status/<id>; the chef perceives zero transition because
-  // ChefStatusPage renders the identical layout.
-  if (submitting) {
-    return <BuildingQuoteOverlay />;
-  }
+  // Track 22: POST now returns 202 Accepted immediately with { quote_id, status: "processing" }.
+  // We navigate to /chef/status/:id as soon as quote_id is received (~200ms vs ~20-30s).
+  // The submitting state still disables the submit button to prevent double-submission.
+  // BuildingQuoteOverlay removed — ChefStatusPage shows real pipeline stages via polling.
 
   return (
     <div className={pageWrap}>
@@ -248,25 +327,98 @@ export function ChefEntryPage() {
             />
           </div>
 
+          {/* Track 4: Drag-zone (PDF / image / CSV / text). On mobile, the
+              click handler opens the file picker which itself offers camera +
+              library — covers the prior "Add photo" affordance. Matches rep
+              visual exactly (border-2 dashed, accent-blue palette). */}
+          <div
+            className={`border-2 border-dashed rounded-lg p-10 text-center cursor-pointer transition-colors ${
+              isDragging ? 'border-[#7FAEC2] bg-[#A5CFDD]/10' : 'border-[#A5CFDD] hover:border-[#7FAEC2]'
+            } ${submitting ? 'opacity-40 cursor-not-allowed' : ''}`}
+            onClick={() => !submitting && fileInputRef.current?.click()}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+          >
+            {isExtracting ? (
+              <div className="flex flex-col items-center gap-2">
+                <Loader2 className="w-6 h-6 animate-spin text-[#A5CFDD]" />
+                <p className="text-sm text-gray-600">Reading menu...</p>
+              </div>
+            ) : (
+              <>
+                <Upload className="w-6 h-6 text-[#A5CFDD] mx-auto mb-2" />
+                <p className="text-sm text-gray-700 mb-1">Drag files here or click to browse</p>
+                <p className="text-xs text-gray-400">PDF, image, CSV, or text file</p>
+              </>
+            )}
+          </div>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".pdf,.csv,.txt,.xlsx,.xls,image/*"
+            className="hidden"
+            onChange={handleFileChange}
+          />
+
+          {/* Track 4: Menu URL row — Fetch wires to the rep-side
+              extract_text endpoint (guest-auth allowed). On success, the
+              extracted text lands in pasteText and the chef builds via the
+              existing JSON path. */}
+          <div className="flex flex-col gap-1">
+            <label className={labelStyle}>Menu URL</label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={menuUrl}
+                onChange={(e) => setMenuUrl(e.target.value)}
+                placeholder="www.example.com/menu"
+                disabled={isExtracting || submitting}
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="none"
+                spellCheck={false}
+                className={`flex-1 border border-[#E8E8E8] rounded-lg px-4 py-2.5 text-sm text-[#2B2B2B] placeholder-[#BDBDBD] focus:outline-none focus:ring-2 focus:ring-[#2B2B2B]/10 focus:border-[#E8E8E8] ${
+                  isExtracting || submitting ? 'opacity-40 cursor-not-allowed bg-[#F9F9F9]' : 'bg-white'
+                }`}
+              />
+              <button
+                type="button"
+                onClick={handleUrlExtract}
+                disabled={!menuUrl.trim() || isExtracting || submitting}
+                className="bg-[#A5CFDD] hover:bg-[#7FAEC2] disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg px-4 py-2.5 text-sm font-medium transition-colors flex items-center justify-center min-w-[72px]"
+              >
+                {isExtracting ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Fetch'}
+              </button>
+            </div>
+          </div>
+
+          {/* OR PASTE TEXT divider — matches rep flow */}
+          <div className="relative flex items-center">
+            <div className="flex-grow border-t border-[#E8E8E8]"></div>
+            <span className="flex-shrink mx-3 text-xs text-[#9E9E9E] tracking-wider">OR PASTE TEXT</span>
+            <div className="flex-grow border-t border-[#E8E8E8]"></div>
+          </div>
+
           {/* Menu paste */}
           <div className="flex flex-col gap-1">
-            <label className={labelStyle}>Paste your menu</label>
             <textarea
               value={pasteText}
               onChange={(e) => {
-                setPasteText(e.target.value);
+                const val = e.target.value;
+                setPasteText(val);
                 setError(null);
+                // c144 — persist draft so recovery path (a) mailto and
+                // path (b) return-to-edit both have the latest text.
+                if (val.trim()) {
+                  localStorage.setItem(MENU_DRAFT_KEY, val);
+                } else {
+                  localStorage.removeItem(MENU_DRAFT_KEY);
+                }
               }}
               disabled={textareaDisabled}
               placeholder="Paste your full menu here: dishes, ingredients, sections…"
               rows={8}
-              // iOS Safari's QuickType bar will silently inject autofill text
-              // into a focused textarea via an `input` event, flipping
-              // pasteText non-empty before the chef has typed. That makes the
-              // fileDisabled derivation (pasteText.trim().length > 0) flip
-              // true on first mobile mount, greying the Upload + Camera
-              // buttons. These five attributes suppress every iOS autofill
-              // surface for this field.
               autoComplete="off"
               autoCorrect="off"
               autoCapitalize="off"
@@ -278,170 +430,35 @@ export function ChefEntryPage() {
             />
           </div>
 
-          {/* Upload + camera row */}
-          <div className="flex items-center gap-3">
-            <span className="text-sm text-[#9E9E9E]">or</span>
-
-            {/* File upload */}
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={fileDisabled}
-              className={`flex items-center gap-2 border border-[#E0E0E0] rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
-                fileDisabled
-                  ? 'opacity-40 cursor-not-allowed text-[#9E9E9E]'
-                  : 'text-[#4F4F4F] hover:border-[#E5A84B] hover:text-[#E5A84B]'
-              }`}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                <polyline points="17 8 12 3 7 8" />
-                <line x1="12" y1="3" x2="12" y2="15" />
-              </svg>
-              Upload file
-            </button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".pdf,.csv,.txt,.xlsx,.xls,image/*"
-              className="hidden"
-              onChange={handleFileChange}
-            />
-
-            {/* Camera */}
-            <button
-              type="button"
-              onClick={() => cameraInputRef.current?.click()}
-              disabled={fileDisabled}
-              className={`flex items-center gap-2 border border-[#E0E0E0] rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
-                fileDisabled
-                  ? 'opacity-40 cursor-not-allowed text-[#9E9E9E]'
-                  : 'text-[#4F4F4F] hover:border-[#E5A84B] hover:text-[#E5A84B]'
-              }`}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-                <circle cx="12" cy="13" r="4" />
-              </svg>
-              Add photo
-            </button>
-            <input
-              ref={cameraInputRef}
-              type="file"
-              accept="image/*"
-              capture="environment"
-              className="hidden"
-              onChange={handleFileChange}
-            />
-          </div>
-
-          {/* Selected file chip */}
-          {selectedFile && (
-            <div className="flex items-center gap-2 bg-white border border-[#E8E8E8] rounded-lg px-4 py-2.5">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#E5A84B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                <polyline points="14 2 14 8 20 8" />
-              </svg>
-              <span className="text-sm text-[#4F4F4F] flex-1 truncate">{selectedFile.name}</span>
-              <button
-                type="button"
-                onClick={handleClearFile}
-                className="text-[#9E9E9E] hover:text-[#4F4F4F] transition-colors"
-                aria-label="Remove file"
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="18" y1="6" x2="6" y2="18" />
-                  <line x1="6" y1="6" x2="18" y2="18" />
-                </svg>
-              </button>
+          {/* Error */}
+          {error && (
+            <div className="flex flex-col gap-2">
+              <p className={errorText}>{error}</p>
+              {error.startsWith('Taking longer than usual') && (
+                <button
+                  type="button"
+                  className={primaryBtn}
+                  onClick={handleSubmit}
+                  disabled={!hasContent}
+                >
+                  Try again
+                </button>
+              )}
             </div>
           )}
 
-          {/* Error */}
-          {error && <p className={errorText}>{error}</p>}
-
           {/* Submit */}
-          <button
-            className={primaryBtn}
-            onClick={handleSubmit}
-            disabled={!hasContent || submitting}
-          >
-            {submitting ? 'Sending…' : 'Build my quote'}
-          </button>
+          {!error?.startsWith('Taking longer than usual') && (
+            <button
+              className={primaryBtn}
+              onClick={handleSubmit}
+              disabled={!hasContent || submitting}
+            >
+              {submitting ? 'Sending…' : 'Build my quote'}
+            </button>
+          )}
         </div>
       </div>
-    </div>
-  );
-}
-
-// ─── BuildingQuoteOverlay ────────────────────────────────────────────────────
-// Visual carbon-copy of ChefStatusPage so the chef perceives zero transition
-// between submit-click and the status page. Used while the POST is in flight
-// (we don't yet have a quote_id to navigate to). Stage messages tick from the
-// moment the click registers; after navigate() resolves to /chef/status/<id>
-// the timer restarts there — close enough that the chef doesn't notice.
-
-// Four canonical messages per QUOTEME_CHEF_FLOW_CANONICAL_V3 Part 6 Step 4.
-// Dots animation provides trailing ellipsis — strings omit it.
-const STATUS_STAGES: Array<{ at: number; message: string }> = [
-  { at:  0, message: 'Preparing your draft' },
-  { at:  8, message: 'Checking catalog coverage' },
-  { at: 18, message: 'Organizing menu components' },
-  { at: 30, message: 'Preparing distributor alignment' },
-];
-
-function stageFor(elapsedSec: number): string {
-  let current = STATUS_STAGES[0].message;
-  for (const stage of STATUS_STAGES) {
-    if (elapsedSec >= stage.at) current = stage.message;
-  }
-  return current;
-}
-
-function BuildingQuoteOverlay() {
-  const [dots, setDots] = useState('');
-  const [elapsed, setElapsed] = useState(0);
-  const dotsRef = useRef(0);
-  const startedAtRef = useRef<number>(Date.now());
-
-  useEffect(() => {
-    const states = ['', '.', '..', '...'];
-    const interval = setInterval(() => {
-      dotsRef.current = (dotsRef.current + 1) % states.length;
-      setDots(states[dotsRef.current]);
-    }, 500);
-    return () => clearInterval(interval);
-  }, []);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setElapsed(Math.floor((Date.now() - startedAtRef.current) / 1000));
-    }, 1000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const stageMessage = stageFor(elapsed);
-
-  return (
-    <div className="min-h-screen bg-white flex flex-col items-center justify-center p-6">
-      <div className="w-full max-w-sm flex flex-col items-center text-center gap-6">
-        <div
-          className="w-12 h-12 rounded-full border-4 border-[#E0E0E0] border-t-[#E5A84B]"
-          style={{ animation: 'spin 1s linear infinite' }}
-        />
-        <div>
-          <h1
-            className="text-2xl font-bold text-[#2B2B2B] mb-2"
-            style={headlineStyle}
-          >
-            {stageMessage}{dots}
-          </h1>
-          <p className="text-[#4F4F4F] text-base">
-            This usually takes about 30 seconds.
-          </p>
-        </div>
-      </div>
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 }

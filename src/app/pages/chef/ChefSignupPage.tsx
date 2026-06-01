@@ -401,7 +401,7 @@ function ProposalsScreen({
         return;
       }
     }
-    navigate('/chef/menu-upload');
+    navigate('/dashboard');
   };
 
   return (

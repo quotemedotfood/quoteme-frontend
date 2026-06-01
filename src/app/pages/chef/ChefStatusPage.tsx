@@ -1,75 +1,232 @@
 import { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router';
+import { useParams, useNavigate, useLocation } from 'react-router';
 import { getGuestQuote } from '../../services/api';
+import { StuckRecoveryScreen, MENU_DRAFT_KEY } from '../../components/chef/StuckRecoveryScreen';
+
+// ─── Timeout threshold ────────────────────────────────────────────────────────
+// If the quote hasn't resolved within STUCK_AFTER_MS milliseconds, transition
+// to the stuck-state recovery UI (Screen 14). Agent A's c133 work may also
+// call the parent's onTimeout prop if this page is embedded; the timeout here
+// acts as a self-contained fallback in case ChefStatusPage is reached directly.
+const STUCK_AFTER_MS = 60_000;
 
 const headlineStyle: React.CSSProperties = { fontFamily: "'Playfair Display', serif" };
 
-// Staged progress messages — cycle by elapsed time so the chef sees the
-// system working, not a stale 30s countdown. Four canonical messages per
-// QUOTEME_CHEF_FLOW_CANONICAL_V3 Part 6 Step 4. Dots animation provides
-// the trailing ellipsis affordance so strings omit it.
-const STAGES: Array<{ at: number; message: string }> = [
-  { at:  0, message: 'Preparing your draft' },
-  { at:  8, message: 'Checking catalog coverage' },
-  { at: 18, message: 'Organizing menu components' },
-  { at: 30, message: 'Preparing distributor alignment' },
-];
+// c143 — three labeled steps replace the elapsed-time cycling messages.
+// Step progression is driven by observable poll signals:
+//   Step 1 ("Reading your menu")     — complete on first successful poll response
+//   Step 2 ("Matching ingredients")  — complete when lines are populated
+//   Step 3 ("Building your quote")   — complete / navigate when lines > 0
 
-function stageFor(elapsedSec: number): string {
-  let current = STAGES[0].message;
-  for (const stage of STAGES) {
-    if (elapsedSec >= stage.at) current = stage.message;
-  }
-  return current;
+type StepState = 'pending' | 'active' | 'done';
+
+interface StepDef {
+  label: string;
+  sublabel?: string;
 }
 
-export function ChefStatusPage() {
+function buildSteps(distributorName: string | null): StepDef[] {
+  return [
+    { label: 'Reading your menu' },
+    {
+      label: 'Matching ingredients',
+      sublabel: distributorName
+        ? `Aligning to ${distributorName} catalog`
+        : 'Aligning to your distributor catalog',
+    },
+    { label: 'Building your quote' },
+  ];
+}
+
+interface StepRowProps {
+  step: StepDef;
+  state: StepState;
+  isLast: boolean;
+}
+
+function StepRow({ step, state, isLast }: StepRowProps) {
+  return (
+    <div className="flex items-start gap-4">
+      {/* Icon column */}
+      <div className="flex flex-col items-center">
+        <div
+          className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 transition-colors duration-500 ${
+            state === 'done'
+              ? 'bg-[#E5A84B]'
+              : state === 'active'
+              ? 'border-2 border-[#E5A84B] bg-white'
+              : 'border-2 border-[#E0E0E0] bg-white'
+          }`}
+        >
+          {state === 'done' ? (
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path
+                d="M2.5 7L5.5 10L11.5 4"
+                stroke="white"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          ) : state === 'active' ? (
+            <div
+              className="w-3 h-3 rounded-full border-2 border-[#E0E0E0] border-t-[#E5A84B]"
+              style={{ animation: 'spin 1s linear infinite' }}
+            />
+          ) : (
+            <div className="w-2 h-2 rounded-full bg-[#E0E0E0]" />
+          )}
+        </div>
+        {/* Connector line */}
+        {!isLast && (
+          <div
+            className={`w-0.5 h-8 mt-1 transition-colors duration-500 ${
+              state === 'done' ? 'bg-[#E5A84B]' : 'bg-[#E0E0E0]'
+            }`}
+          />
+        )}
+      </div>
+
+      {/* Text column */}
+      <div className="pt-1 pb-8">
+        <p
+          className={`text-sm font-medium transition-colors duration-500 ${
+            state === 'pending' ? 'text-[#BDBDBD]' : 'text-[#2B2B2B]'
+          }`}
+        >
+          {step.label}
+        </p>
+        {step.sublabel && state !== 'pending' && (
+          <p className="text-xs text-[#9E9E9E] mt-0.5">{step.sublabel}</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Props (Agent A integration surface) ─────────────────────────────────────
+// Agent A's c133 timeout work can pass `onTimeout` via router state or as a
+// prop if ChefStatusPage is ever rendered as a child component. When the
+// self-contained 60s timer fires, `onTimeout` is called first so Agent A's
+// code can run any cleanup; if absent the recovery screen renders directly.
+export interface ChefStatusPageProps {
+  /** Called when STUCK_AFTER_MS elapses without a resolved quote. */
+  onTimeout?: () => void;
+}
+
+export function ChefStatusPage({ onTimeout }: ChefStatusPageProps = {}) {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
 
-  const [dots, setDots] = useState('');
-  const [elapsed, setElapsed] = useState(0);
-  const dotsRef = useRef(0);
+  // c143 — step indices: 0=Reading, 1=Matching, 2=Building
+  // currentStep tracks which step is currently active (0-based).
+  // c144 — isStuck flips when the 60s stuck-timer fires; switches to StuckRecoveryScreen.
+  // repEmail/repName surface to StuckRecoveryScreen path (a) when on file.
+  const [currentStep, setCurrentStep] = useState(0);
+  const [distributorName, setDistributorName] = useState<string | null>(null);
+  const [repEmail, setRepEmail] = useState<string | undefined>(undefined);
+  const [repName, setRepName] = useState<string | undefined>(undefined);
+  const [isStuck, setIsStuck] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const startedAtRef = useRef<number>(Date.now());
+  const stuckTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Dots animation — cycles every 500ms
+  // c144 — restore menu draft from router state into localStorage so recovery
+  // paths (a) and (b) can retrieve it. ChefEntryPage's pasteText onChange also
+  // writes it; this is the fallback for direct navigation with raw_text in state.
   useEffect(() => {
-    const dotStates = ['', '.', '..', '...'];
-    const interval = setInterval(() => {
-      dotsRef.current = (dotsRef.current + 1) % dotStates.length;
-      setDots(dotStates[dotsRef.current]);
-    }, 500);
-    return () => clearInterval(interval);
-  }, []);
+    const rawText = (location.state as { raw_text?: string } | null)?.raw_text;
+    if (rawText) {
+      localStorage.setItem(MENU_DRAFT_KEY, rawText);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Elapsed-time ticker — drives staged messages
+  // c144 — 60s stuck-state timer. Fires StuckRecoveryScreen and calls any
+  // external onTimeout handler.
   useEffect(() => {
-    const interval = setInterval(() => {
-      setElapsed(Math.floor((Date.now() - startedAtRef.current) / 1000));
-    }, 1000);
-    return () => clearInterval(interval);
-  }, []);
+    stuckTimerRef.current = setTimeout(() => {
+      onTimeout?.();
+      setIsStuck(true);
+    }, STUCK_AFTER_MS);
+    return () => {
+      if (stuckTimerRef.current) clearTimeout(stuckTimerRef.current);
+    };
+  }, [onTimeout]);
 
-  // Poll quote every 4 seconds. Guest quotes are processed synchronously and
-  // stay status="draft" forever; the right signal that work is done is
-  // quote_lines being populated. Navigate as soon as we see any lines.
+  // Small delay so step 2→3 completes visually before navigating
+  const FINAL_STEP_DISPLAY_MS = 600;
+
+  // Poll quote every 4 seconds.
   useEffect(() => {
     if (!id) return;
+
+    let firstPollDone = false;
 
     async function checkStatus() {
       if (!id) return;
       const res = await getGuestQuote(id);
-      const done = res.data && (
-        (res.data.lines && res.data.lines.length > 0) ||
-        (res.data.status && res.data.status !== 'draft' && res.data.status !== 'processing')
-      );
-      if (done) {
-        if (pollRef.current) {
-          clearInterval(pollRef.current);
-          pollRef.current = null;
+
+      if (res.data) {
+        // Populate distributor/rep metadata on first successful response.
+        if (!firstPollDone) {
+          firstPollDone = true;
+          // c143 + c144 — defensive read of distributor/rep fields. These ride
+          // alongside the canonical QuoteResponse shape; BE adds them via the
+          // chef-facing serializer. When absent, sublabel falls back and
+          // StuckRecoveryScreen path (a) stays hidden.
+          const distributor = (res.data as { distributor?: { name?: string; rep?: { email?: string; name?: string } } }).distributor;
+          if (distributor?.name) setDistributorName(distributor.name);
+          if (distributor?.rep?.email) setRepEmail(distributor.rep.email);
+          if (distributor?.rep?.name) setRepName(distributor.rep.name);
         }
-        navigate(`/chef/quotes/${id}`);
+
+        // Track 22: drive step progression from real backend processing_stage.
+        const stage = res.data.processing_stage;
+
+        if (stage) {
+          // Stage-driven path — quote was created via the async Track 22 flow.
+          if (stage === 'extracting_dishes') {
+            setCurrentStep(0);
+          } else if (stage === 'aligning_products') {
+            setCurrentStep(1);
+          } else if (stage === 'building_quote') {
+            setCurrentStep(2);
+          } else if (stage === 'failed') {
+            if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
+            if (stuckTimerRef.current) { clearTimeout(stuckTimerRef.current); stuckTimerRef.current = null; }
+            // Treat a failed job the same as stuck — show recovery screen.
+            setIsStuck(true);
+            return;
+          } else if (stage === 'complete') {
+            if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
+            if (stuckTimerRef.current) { clearTimeout(stuckTimerRef.current); stuckTimerRef.current = null; }
+            localStorage.removeItem(MENU_DRAFT_KEY);
+            setCurrentStep(2);
+            setTimeout(() => { navigate(`/chef/quotes/${id}`); }, FINAL_STEP_DISPLAY_MS);
+            return;
+          }
+        } else {
+          // Fallback: legacy behavior — advance by line count.
+          // Handles quotes already in-flight at the time of Track 22 deploy,
+          // or quotes reached directly via /chef/status/:id without async creation.
+          // firstPollDone is already true at this point (set in the block above), so
+          // we check it before this block to set step 1 on the first successful poll.
+          setCurrentStep((prev) => Math.max(prev, 1));
+
+          const done =
+            (res.data.lines && res.data.lines.length > 0) ||
+            (res.data.status &&
+              res.data.status !== 'draft' &&
+              res.data.status !== 'processing');
+
+          if (done) {
+            if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
+            if (stuckTimerRef.current) { clearTimeout(stuckTimerRef.current); stuckTimerRef.current = null; }
+            localStorage.removeItem(MENU_DRAFT_KEY);
+            setCurrentStep(2);
+            setTimeout(() => { navigate(`/chef/quotes/${id}`); }, FINAL_STEP_DISPLAY_MS);
+          }
+        }
       }
     }
 
@@ -84,26 +241,45 @@ export function ChefStatusPage() {
     };
   }, [id, navigate]);
 
-  const stageMessage = stageFor(elapsed);
+  const steps = buildSteps(distributorName);
+
+  function stepState(index: number): StepState {
+    if (index < currentStep) return 'done';
+    if (index === currentStep) return 'active';
+    return 'pending';
+  }
+
+  // Transition to recovery screen once the timeout fires.
+  if (isStuck) {
+    return <StuckRecoveryScreen quoteId={id} repEmail={repEmail} repName={repName} />;
+  }
 
   return (
     <div className="min-h-screen bg-white flex flex-col items-center justify-center p-6">
-      <div className="w-full max-w-sm flex flex-col items-center text-center gap-6">
-        <div
-          className="w-12 h-12 rounded-full border-4 border-[#E0E0E0] border-t-[#E5A84B]"
-          style={{ animation: 'spin 1s linear infinite' }}
-        />
-
-        <div>
+      <div className="w-full max-w-sm">
+        {/* Heading */}
+        <div className="mb-8 text-center">
           <h1
-            className="text-2xl font-bold text-[#2A2A2A] mb-2"
+            className="text-2xl font-bold text-[#2B2B2B] mb-2"
             style={headlineStyle}
           >
-            {stageMessage}{dots}
+            Building your quote
           </h1>
-          <p className="text-[#4F4F4F] text-base">
+          <p className="text-[#4F4F4F] text-sm">
             This usually takes about 30 seconds.
           </p>
+        </div>
+
+        {/* Step list */}
+        <div className="flex flex-col">
+          {steps.map((step, i) => (
+            <StepRow
+              key={step.label}
+              step={step}
+              state={stepState(i)}
+              isLast={i === steps.length - 1}
+            />
+          ))}
         </div>
       </div>
 

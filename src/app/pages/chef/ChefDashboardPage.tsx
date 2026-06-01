@@ -17,12 +17,12 @@
 //   Discovery    — Locked placeholder for free-tier chefs.
 
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate, useLocation } from 'react-router';
 import { Lock } from 'lucide-react';
-import { getChefQuotes, type ChefQuoteRow, type ChefQuotesIndexResponse } from '../../services/api';
-import { useAuth } from '../../contexts/AuthContext';
+import { getChefQuotes, getChefOrderGuides, type ChefQuoteRow, type ChefQuotesIndexResponse, type ChefOrderGuideRow } from '../../services/api';
 import { PreviewPill } from '../../components/chef/PreviewPill';
-import { ChefTabBar, ChefTabDesktopShell, ChefDistributorsTab } from '../../components/chef';
+import { QuoteStatusPill, legacyStatusToState } from '../../components/chef/QuoteStatusPill';
+import { ChefDistributorsTab } from '../../components/chef';
 import { ChefSettingsTab } from '../../components/chef/ChefSettingsTab';
 
 const C = {
@@ -57,22 +57,30 @@ type Tab = 'home' | 'order-guides' | 'distributors' | 'settings';
 
 export function ChefDashboardPage() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const location = useLocation();
   const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading');
   const [data, setData] = useState<ChefQuotesIndexResponse | null>(null);
   const [errorMsg, setErrorMsg] = useState<string>('');
-  const [activeTab, setActiveTab] = useState<Tab>('home');
-  const [isDesktop, setIsDesktop] = useState<boolean>(
-    typeof window !== 'undefined' && window.matchMedia('(min-width: 768px)').matches
-  );
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const mq = window.matchMedia('(min-width: 768px)');
-    const handler = (e: MediaQueryListEvent) => setIsDesktop(e.matches);
-    mq.addEventListener('change', handler);
-    return () => mq.removeEventListener('change', handler);
-  }, []);
+  // Seed activeTab from router state so sidebar clicks open the right tab.
+  const initialTab = (location.state as any)?.activeTab as Tab | undefined;
+  const [activeTab, setActiveTab] = useState<Tab>(initialTab ?? 'home');
 
+  // Order Guides tab state — loaded once on page mount via dedicated endpoint.
+  const [ogRows, setOgRows] = useState<ChefOrderGuideRow[]>([]);
+  const [ogLoading, setOgLoading] = useState<boolean>(true);
+
+  // Sync activeTab when ChefShellLayout navigates to /dashboard with a
+  // different activeTab in location.state. Without this effect, useState
+  // only reads the initial value on mount, so sidebar tab clicks that
+  // land on an already-mounted /dashboard route are dead (c135).
+  useEffect(() => {
+    const incoming = (location.state as any)?.activeTab as Tab | undefined;
+    if (incoming) setActiveTab(incoming);
+  }, [location.state]);
+
+  // navTab handles intra-page tab switching. The outer ChefShellLayout
+  // owns the shell chrome (sidebar / bottom bar) and handles cross-route
+  // navigation; this adapter is kept for renderTab() dispatch.
   const navTab = (target: string) => {
     if (target === 'entry') return navigate('/chef/entry');
     if (target === 'tab-home') return setActiveTab('home');
@@ -87,6 +95,18 @@ export function ChefDashboardPage() {
   // the form instead of bouncing the chef back to their last quote.
   useEffect(() => {
     sessionStorage.removeItem('chef_recent_quote_id');
+  }, []);
+
+  // Fetch order guides from the dedicated endpoint once on mount.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const res = await getChefOrderGuides();
+      if (cancelled) return;
+      if (res.data) setOgRows(res.data);
+      setOgLoading(false);
+    })();
+    return () => { cancelled = true; };
   }, []);
 
   useEffect(() => {
@@ -128,7 +148,7 @@ export function ChefDashboardPage() {
       );
     }
     if (activeTab === 'order-guides') {
-      return <OrderGuidesTab quotes={quotes} onPick={(id) => navigate(`/chef/order-guide/${id}`)} />;
+      return <OrderGuidesTab rows={ogRows} loading={ogLoading} onPick={(id) => navigate(`/chef/order-guide/${id}`)} />;
     }
     if (activeTab === 'distributors') {
       return <ChefDistributorsTab nav={navTab} />;
@@ -139,36 +159,29 @@ export function ChefDashboardPage() {
     return null;
   };
 
-  // Pre-quote, loading, and error states render outside the tab shell.
-  if (state === 'loading') {
-    return <div className="max-w-2xl mx-auto px-5 pt-6 pb-12"><LoadingRow /></div>;
-  }
-  if (state === 'error') {
-    return <div className="max-w-2xl mx-auto px-5 pt-6 pb-12"><ErrorRow message={errorMsg} /></div>;
-  }
-  if (!hasQuotes) {
-    return <div className="max-w-2xl mx-auto px-5 pt-6 pb-12"><EmptyState /></div>;
-  }
-
-  // Tabbed shell — desktop wraps in ChefTabDesktopShell, mobile uses ChefTabBar at bottom.
-  return isDesktop ? (
-    <ChefTabDesktopShell active={activeTab} nav={navTab}>
-      {renderTab()}
-    </ChefTabDesktopShell>
-  ) : (
-    <div className="flex flex-col" style={{ color: C.charcoal, height: '100%' }}>
-      <div className="flex-1 overflow-auto chef-scroller">
-        <div className="max-w-2xl mx-auto px-5 pt-6 pb-12">{renderTab()}</div>
-      </div>
-      <ChefTabBar active={activeTab} nav={navTab} />
+  // ChefShellLayout (the parent router layout) owns the tab chrome.
+  // This page renders content-only inside the shell's <Outlet />.
+  return (
+    <div className="max-w-2xl mx-auto px-5 pt-6 pb-12">
+      {state === 'loading' && <LoadingRow />}
+      {state === 'error' && <ErrorRow message={errorMsg} />}
+      {state === 'ready' && !hasQuotes && <EmptyState />}
+      {state === 'ready' && hasQuotes && renderTab()}
     </div>
   );
 }
 
-// ─── Order Guides tab (B6 stub — lists quotes with linked order guides) ────
+// ─── Order Guides tab — consumes GET /api/v1/chef/order_guides (OG PR-C) ────
 
-function OrderGuidesTab({ quotes, onPick }: { quotes: ChefQuoteRow[]; onPick: (id: string) => void }) {
-  const withOG = quotes.filter((q) => q.has_order_guide && q.order_guide_id);
+function OrderGuidesTab({
+  rows,
+  loading,
+  onPick,
+}: {
+  rows: ChefOrderGuideRow[];
+  loading: boolean;
+  onPick: (id: string) => void;
+}) {
   return (
     <>
       <div className="mb-6 pb-5" style={{ borderBottom: `1px solid ${C.softLine}` }}>
@@ -176,21 +189,41 @@ function OrderGuidesTab({ quotes, onPick }: { quotes: ChefQuoteRow[]; onPick: (i
           Order Guides
         </h1>
       </div>
-      {withOG.length === 0 ? (
+      {loading ? (
+        <LoadingRow />
+      ) : rows.length === 0 ? (
         <p style={{ ...sans, fontSize: 14, color: C.gray500 }}>
           You don't have any order guides yet. They appear here once your distributor builds one for you.
         </p>
       ) : (
         <div className="divide-y" style={{ borderTop: `1px solid ${C.softLine}`, borderBottom: `1px solid ${C.softLine}` }}>
-          {withOG.map((q) => (
+          {rows.map((og) => (
             <button
-              key={q.id}
+              key={og.id}
               type="button"
-              onClick={() => onPick(q.order_guide_id!)}
+              onClick={() => onPick(og.id)}
               className="w-full text-left py-3 px-1 hover:bg-gray-50 flex items-baseline justify-between gap-3"
             >
-              <span style={{ ...sans, fontSize: 14, color: C.charcoal }}>{q.label}</span>
-              <span style={{ ...sans, fontSize: 11.5, color: C.gray500 }}>{q.distributor?.name ?? '—'}</span>
+              <div className="flex flex-col gap-0.5">
+                <span style={{ ...sans, fontSize: 14, color: C.charcoal }}>{og.distributor_name}</span>
+                <span style={{ ...sans, fontSize: 11.5, color: C.gray500 }}>
+                  {og.items_count} {og.items_count === 1 ? 'item' : 'items'} · {formatDate(og.created_at)}
+                </span>
+              </div>
+              <span
+                style={{
+                  ...sans,
+                  fontSize: 11,
+                  fontWeight: 500,
+                  color: og.status === 'active' ? '#166534' : C.gray500,
+                  background: og.status === 'active' ? '#DCFCE7' : '#F3F4F6',
+                  padding: '2px 7px',
+                  borderRadius: 999,
+                  flexShrink: 0,
+                }}
+              >
+                {og.status}
+              </span>
             </button>
           ))}
         </div>
@@ -205,7 +238,7 @@ const TAB_LABELS: { id: Tab; label: string }[] = [
   { id: 'overview', label: 'Overview' },
   { id: 'distributors', label: 'Distributors' },
   { id: 'settings', label: 'Settings' },
-  { id: 'discovery', label: 'Discovery' },
+  { id: 'discovery', label: 'Build my Stack' },
 ];
 
 function TabNav({ activeTab, onSelect }: { activeTab: Tab; onSelect: (t: Tab) => void }) {
@@ -547,7 +580,7 @@ function DiscoveryTab() {
         aria-hidden="true"
       />
       <p style={{ ...sans, fontSize: 15, fontWeight: 500, color: C.charcoal, marginBottom: 8 }}>
-        Discovery is available on paid plans.
+        Build my Stack is available on paid plans.
       </p>
       <p style={{ ...sans, fontSize: 13, color: C.gray700, lineHeight: 1.6 }}>
         Send one menu to multiple distributors over time.
@@ -663,7 +696,7 @@ function QuoteHistory({
                 </span>
                 {q.preview && <PreviewPill size="xs" />}
               </button>
-              <StatusPill status={q.status} hasOG={q.has_order_guide} />
+              <QuoteStatusPill state={q.state ?? legacyStatusToState(q.status)} />
             </div>
             {/* Meta line — V3 Part 3 format */}
             <div
@@ -679,36 +712,7 @@ function QuoteHistory({
   );
 }
 
-function StatusPill({ status, hasOG }: { status: string; hasOG: boolean }) {
-  let label = status;
-  let bg = '#F3F4F6';
-  let color = C.gray700;
-
-  if (status === 'won' && hasOG) { label = 'Ordered'; bg = '#DCFCE7'; color = '#166534'; }
-  else if (status === 'won') { label = 'Accepted'; bg = '#DCFCE7'; color = '#166534'; }
-  else if (status === 'pending') { label = 'Ready'; bg = 'rgba(127,174,194,.2)'; color = '#2A5F6F'; }
-  else if (status === 'sent') { label = 'Sent'; bg = 'rgba(127,174,194,.2)'; color = '#2A5F6F'; }
-  else if (status === 'draft') { label = 'Processing'; bg = '#FEF3C7'; color = '#92400E'; }
-  else if (status === 'expired') { label = 'Expired'; bg = '#F3F4F6'; color = C.gray500; }
-  else if (status === 'lost') { label = 'Closed'; bg = '#F3F4F6'; color = C.gray500; }
-
-  return (
-    <span
-      className="inline-flex items-center"
-      style={{
-        ...sans,
-        background: bg,
-        color,
-        fontSize: 10,
-        fontWeight: 500,
-        padding: '2px 8px',
-        borderRadius: 999,
-      }}
-    >
-      {label}
-    </span>
-  );
-}
+// StatusPill extracted to ../../components/chef/QuoteStatusPill (PR-redo for #50)
 
 function EmptyState() {
   return (

@@ -121,7 +121,7 @@ export function AppSidebar() {
         { icon: <Plus size={20} />, label: "New Quote", path: "/start-new-quote", highlight: true },
         { icon: <LayoutDashboard size={20} />, label: "Dashboard", path: "/distributor-admin" },
         { icon: <Package size={20} />, label: "Catalog", path: "/distributor-admin/catalog" },
-        { icon: <FileText size={20} />, label: "Quotes", path: "/rep/quotes" },
+        { icon: <FileText size={20} />, label: "Quotes", path: "/rep/quotes/inbound" },
         { icon: <Users size={20} />, label: "Customers", path: "/customers" },
         { icon: <PlusCircle size={20} />, label: "Add Restaurant", path: "/distributor-admin/restaurants/new" },
         { icon: <UserPlus size={20} />, label: "Reps", path: "/distributor-admin/reps" },
@@ -132,14 +132,14 @@ export function AppSidebar() {
         { icon: <Plus size={20} />, label: "New Quote", path: "/", highlight: true },
         { icon: <LayoutDashboard size={20} />, label: "Dashboard", path: "/dashboard" },
         { icon: <Store size={20} />, label: "Vendors", path: "/vendors" },
-        { icon: <FileText size={20} />, label: "Quotes", path: "/rep/quotes" },
+        { icon: <FileText size={20} />, label: "Quotes", path: "/rep/quotes/inbound" },
         { icon: <Building2 size={20} />, label: isMultiLocation ? "Locations" : "Location", path: "/locations" },
       ]
     : [
         { icon: <Plus size={20} />, label: "New Quote", path: "/", highlight: true },
         { icon: <LayoutDashboard size={20} />, label: "Dashboard", path: "/dashboard" },
         { icon: <Users size={20} />, label: "Customers", path: "/customers" },
-        { icon: <FileText size={20} />, label: "Quotes", path: "/rep/quotes" },
+        { icon: <FileText size={20} />, label: "Quotes", path: "/rep/quotes/inbound" },
       ];
 
   return (
@@ -158,25 +158,17 @@ export function AppSidebar() {
       {/* Location Switcher — buyer only */}
       {isBuyer && <LocationSwitcher />}
 
-      {/* Trial Badge - Only show for non-paid users */}
-      {!profile.hasPaidSubscription && (
-        <div className="mx-2 mt-4 mb-2">
-          <div className="bg-[#FFF9F3] border border-[#F2993D] rounded-lg p-2">
-            <div className="text-center">
-              <div className="text-xl font-bold text-[#F2993D]">{quotesRemaining}</div>
-              <div className="text-[9px] text-[#4F4F4F] leading-tight">Free Quotes Left</div>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Navigation */}
       <nav className="flex-1 pt-4">
         {navItems.map(item => (
             <NavItem
                 key={item.path}
                 {...item}
-                isActive={pathname === item.path}
+                isActive={
+                  item.path === '/rep/quotes/inbound'
+                    ? pathname.startsWith('/rep/quotes')
+                    : pathname === item.path
+                }
             />
         ))}
       </nav>
@@ -227,9 +219,9 @@ export function AppSidebar() {
 
           {/* Right Side */}
           <div className="flex-1 h-full bg-white border-t border-gray-200 flex justify-around items-center pb-safe">
-             <MobileNavItem 
-               {...navItems.find(i => i.label === 'Quotes')!} 
-               isActive={pathname === '/rep/quotes'}
+             <MobileNavItem
+               {...navItems.find(i => i.label === 'Quotes')!}
+               isActive={pathname.startsWith('/rep/quotes')}
              />
              <MobileNavItem 
                icon={<Settings size={20} />}

@@ -1,0 +1,669 @@
+// CCAssignPage — Assignment Center. Section 4.
+//
+// Replaces CCSoonPage at /distributor-admin/command-center/assign.
+//
+// Purpose: every unassigned quote and ownerless inbound gets a rep.
+// Must feel completable: pick a rep (load shown, never ranked) → row
+// flips to assigned confirmation with Undo. Undo reverts to unassigned.
+//
+// ONE Sacred Orange on this surface = the "Assign" button (#F2993D).
+// Nothing else orange. ToMarket Orange (#F04E23) never appears.
+//
+// No charts, no scores, no rankings. Reps sorted by open load ascending
+// (lightest first) — the copy says so and there is no score column.
+//
+// BE contract:
+//   GET  /api/v1/distributor_admin/command_center/unassigned
+//   PATCH /api/v1/distributor_admin/quotes/:id/assign         body: { rep_id }
+//   PATCH /api/v1/distributor_admin/restaurants/:id/assign_rep body: { rep_id }
+
+import React, { useEffect, useState } from 'react';
+import { FileText, RotateCcw, Check } from 'lucide-react';
+import {
+  CCSectionHead,
+  AttentionRule,
+  SoftRule,
+  RepAvatar,
+  sans,
+  serif,
+  tabular,
+  C,
+  CC_ACK_NAVY,
+  SACRED_ORANGE,
+} from '../../components/distributor-admin/command-center/cc-atoms';
+import {
+  getCommandCenterUnassigned,
+  assignQuote,
+  assignRestaurantRep,
+  type CCUnassignedItem,
+  type CCUnassignedRep,
+} from '../../services/api';
+
+// ── Row-level state ───────────────────────────────────────────────────────────
+
+interface RowState {
+  picking: boolean;
+  assignedRepId: string | null;
+  error: string | null;
+  saving: boolean;
+}
+
+// ── Rep picker row ────────────────────────────────────────────────────────────
+
+function RepPickerRow({
+  rep,
+  onPick,
+}: {
+  rep: CCUnassignedRep;
+  onPick: (rep: CCUnassignedRep) => void;
+}) {
+  const [hovered, setHovered] = useState(false);
+
+  return (
+    <button
+      type="button"
+      onClick={() => onPick(rep)}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        ...sans,
+        width: '100%',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+        padding: '8px 10px',
+        borderRadius: 6,
+        background: hovered ? '#F9FAFB' : 'transparent',
+        border: 'none',
+        cursor: 'pointer',
+        textAlign: 'left',
+        transition: 'background 150ms',
+      }}
+    >
+      <RepAvatar initials={rep.initials} name={rep.name} size={28} />
+      <span style={{ flex: 1, minWidth: 0 }}>
+        <span
+          style={{
+            display: 'block',
+            fontSize: 13,
+            color: C.charcoal,
+            lineHeight: 1.3,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {rep.name}
+        </span>
+        <span
+          style={{
+            ...tabular,
+            display: 'block',
+            fontSize: 11,
+            color: C.gray500,
+            lineHeight: 1.3,
+          }}
+        >
+          {rep.open} open · last quote {rep.last}
+        </span>
+      </span>
+    </button>
+  );
+}
+
+// ── Assign row ────────────────────────────────────────────────────────────────
+
+function AssignRow({
+  row,
+  reps,
+  isMobile,
+}: {
+  row: CCUnassignedItem;
+  reps: CCUnassignedRep[];
+  isMobile: boolean;
+}) {
+  const [state, setState] = useState<RowState>({
+    picking: false,
+    assignedRepId: null,
+    error: null,
+    saving: false,
+  });
+
+  const assignedRep = state.assignedRepId
+    ? reps.find((r) => r.id === state.assignedRepId) ?? null
+    : null;
+
+  async function handlePick(rep: CCUnassignedRep) {
+    // Optimistic: flip to assigned immediately
+    setState((s) => ({ ...s, picking: false, assignedRepId: rep.id, saving: true, error: null }));
+
+    try {
+      const res =
+        row.kind === 'quote'
+          ? await assignQuote(row.id, rep.id)
+          : await assignRestaurantRep(row.id, rep.id);
+
+      if (res.error) {
+        // Revert optimistic update on failure
+        setState((s) => ({
+          ...s,
+          assignedRepId: null,
+          saving: false,
+          error: res.error ?? 'Could not assign. Try again.',
+        }));
+      } else {
+        setState((s) => ({ ...s, saving: false, error: null }));
+      }
+    } catch {
+      setState((s) => ({
+        ...s,
+        assignedRepId: null,
+        saving: false,
+        error: 'Network error. Try again.',
+      }));
+    }
+  }
+
+  async function handleUndo() {
+    // Optimistic: return to unassigned
+    const prevRepId = state.assignedRepId;
+    setState((s) => ({ ...s, assignedRepId: null, saving: true, error: null }));
+
+    try {
+      const res =
+        row.kind === 'quote'
+          ? await assignQuote(row.id, null)
+          : await assignRestaurantRep(row.id, null);
+
+      if (res.error) {
+        // Revert: put the rep back
+        setState((s) => ({
+          ...s,
+          assignedRepId: prevRepId,
+          saving: false,
+          error: res.error ?? 'Could not undo. Try again.',
+        }));
+      } else {
+        setState((s) => ({ ...s, saving: false, error: null }));
+      }
+    } catch {
+      setState((s) => ({
+        ...s,
+        assignedRepId: prevRepId,
+        saving: false,
+        error: 'Network error. Try again.',
+      }));
+    }
+  }
+
+  // ── Assigned confirmation state ──
+  if (state.assignedRepId) {
+    const repName = assignedRep?.name ?? 'your rep';
+    const contextLabel =
+      row.kind === 'quote' && row.q_label
+        ? row.q_label
+        : row.restaurant;
+
+    return (
+      <div>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+            padding: '14px 0',
+            background: C.warmPaper,
+            borderRadius: 4,
+            paddingLeft: 10,
+            paddingRight: 10,
+            opacity: state.saving ? 0.6 : 1,
+            transition: 'opacity 150ms',
+          }}
+        >
+          <Check size={16} color={CC_ACK_NAVY} strokeWidth={2} style={{ flexShrink: 0 }} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div
+              style={{
+                ...serif,
+                fontSize: 14.5,
+                fontWeight: 500,
+                color: C.charcoal,
+                lineHeight: 1.3,
+              }}
+            >
+              {row.restaurant}
+            </div>
+            <div
+              style={{
+                ...sans,
+                fontSize: 12,
+                color: C.gray500,
+                lineHeight: 1.4,
+                marginTop: 1,
+              }}
+            >
+              Now with{' '}
+              <span style={{ color: C.charcoal }}>{repName}</span>
+              {' · '}
+              {contextLabel}
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={handleUndo}
+            disabled={state.saving}
+            style={{
+              ...sans,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+              fontSize: 11.5,
+              color: C.gray500,
+              background: 'none',
+              border: 'none',
+              cursor: state.saving ? 'default' : 'pointer',
+              padding: '4px 0',
+              flexShrink: 0,
+            }}
+            onMouseEnter={(e) => {
+              if (!state.saving)
+                (e.currentTarget as HTMLButtonElement).style.color = C.gray700;
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.color = C.gray500;
+            }}
+          >
+            <RotateCcw size={12} color="currentColor" strokeWidth={1.8} />
+            Undo
+          </button>
+        </div>
+        {state.error && (
+          <div
+            style={{ ...sans, fontSize: 11.5, color: '#C0392B', marginTop: 4, paddingLeft: 10 }}
+          >
+            {state.error}
+          </div>
+        )}
+        <SoftRule />
+      </div>
+    );
+  }
+
+  // ── Unassigned row ──
+  const metaLine =
+    row.kind === 'quote'
+      ? `${row.city}${row.items != null ? ` · ${row.items} items` : ''}`
+      : row.age ?? row.city;
+
+  const contextLabel =
+    row.kind === 'quote' && row.q_label
+      ? row.q_label
+      : null;
+
+  return (
+    <div>
+      <div style={{ padding: '14px 0' }}>
+        {/* Top row: icon + restaurant + Assign button */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+          <FileText
+            size={16}
+            color={C.gray500}
+            strokeWidth={1.6}
+            style={{ marginTop: 2, flexShrink: 0 }}
+          />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <span
+                style={{
+                  ...serif,
+                  fontSize: 14.5,
+                  fontWeight: 500,
+                  color: C.charcoal,
+                  lineHeight: 1.3,
+                }}
+              >
+                {row.restaurant}
+              </span>
+              {contextLabel && (
+                <span
+                  style={{
+                    ...sans,
+                    ...tabular,
+                    fontSize: 11,
+                    color: C.gray400,
+                  }}
+                >
+                  {contextLabel}
+                  {row.items != null ? ` · ${row.items} items` : ''}
+                </span>
+              )}
+            </div>
+            <div
+              style={{
+                ...sans,
+                fontSize: 12,
+                color: C.gray500,
+                lineHeight: 1.4,
+                marginTop: 2,
+              }}
+            >
+              {metaLine}
+            </div>
+          </div>
+          {!state.picking && (
+            <button
+              type="button"
+              onClick={() => setState((s) => ({ ...s, picking: true, error: null }))}
+              style={{
+                ...sans,
+                background: SACRED_ORANGE,
+                color: '#fff',
+                border: 'none',
+                borderRadius: 6,
+                padding: '8px 15px',
+                fontSize: 12.5,
+                fontWeight: 500,
+                cursor: 'pointer',
+                flexShrink: 0,
+                transition: 'background 150ms',
+                lineHeight: 1.4,
+              }}
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLButtonElement).style.background = '#E0852C';
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLButtonElement).style.background = SACRED_ORANGE;
+              }}
+            >
+              Assign
+            </button>
+          )}
+        </div>
+
+        {/* Inline rep picker */}
+        {state.picking && (
+          <div
+            style={{
+              marginTop: 12,
+              marginLeft: 28,
+              background: '#fff',
+              border: `1px solid ${C.softLine}`,
+              borderRadius: 8,
+              padding: 8,
+            }}
+          >
+            {/* Picker header */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '4px 4px 8px',
+                borderBottom: `1px solid ${C.softLine}`,
+                marginBottom: 4,
+              }}
+            >
+              <span
+                style={{
+                  ...sans,
+                  fontSize: 9,
+                  letterSpacing: '.14em',
+                  textTransform: 'uppercase',
+                  color: C.gray700,
+                  fontWeight: 600,
+                }}
+              >
+                PICK AN OWNER · BY CURRENT LOAD, NOT RANK
+              </span>
+              <button
+                type="button"
+                onClick={() => setState((s) => ({ ...s, picking: false }))}
+                style={{
+                  ...sans,
+                  fontSize: 11,
+                  color: C.gray500,
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: '2px 4px',
+                }}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLButtonElement).style.color = C.gray700;
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLButtonElement).style.color = C.gray500;
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+
+            {/* Rep list — desktop 2-col, mobile single col */}
+            <div
+              style={
+                isMobile
+                  ? { display: 'flex', flexDirection: 'column' }
+                  : {
+                      display: 'grid',
+                      gridTemplateColumns: '1fr 1fr',
+                      gap: 2,
+                    }
+              }
+            >
+              {/* Reps already sorted by open ascending from the endpoint — preserve order */}
+              {reps.map((rep) => (
+                <RepPickerRow key={rep.id} rep={rep} onPick={handlePick} />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {state.error && (
+          <div
+            style={{ ...sans, fontSize: 11.5, color: '#C0392B', marginTop: 6, paddingLeft: 28 }}
+          >
+            {state.error}
+          </div>
+        )}
+      </div>
+      <SoftRule />
+    </div>
+  );
+}
+
+// ── Skeleton ──────────────────────────────────────────────────────────────────
+
+function RowSkeleton() {
+  return (
+    <div>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'flex-start',
+          gap: 12,
+          padding: '14px 0',
+        }}
+      >
+        <div
+          style={{
+            width: 16,
+            height: 16,
+            background: '#E5E7EB',
+            borderRadius: 3,
+            flexShrink: 0,
+            marginTop: 2,
+          }}
+        />
+        <div style={{ flex: 1 }}>
+          <div
+            style={{
+              height: 14,
+              width: 200,
+              background: '#E5E7EB',
+              borderRadius: 4,
+              marginBottom: 6,
+            }}
+          />
+          <div
+            style={{
+              height: 11,
+              width: 140,
+              background: '#E5E7EB',
+              borderRadius: 4,
+            }}
+          />
+        </div>
+        <div
+          style={{
+            width: 70,
+            height: 32,
+            background: '#E5E7EB',
+            borderRadius: 6,
+            flexShrink: 0,
+          }}
+        />
+      </div>
+      <SoftRule />
+    </div>
+  );
+}
+
+// ── CCAssignPage ──────────────────────────────────────────────────────────────
+
+export function CCAssignPage() {
+  const [items, setItems] = useState<CCUnassignedItem[]>([]);
+  const [reps, setReps] = useState<CCUnassignedRep[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Simple mobile detection — mirrors CCQuotesPage pattern
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 1024);
+
+  useEffect(() => {
+    function onResize() {
+      setIsMobile(window.innerWidth < 1024);
+    }
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    getCommandCenterUnassigned().then((res) => {
+      if (cancelled) return;
+      if (res.data) {
+        setItems(res.data.items);
+        // Reps already sorted ascending by open from the endpoint — preserve order
+        setReps(res.data.reps);
+      } else {
+        setError(res.error ?? 'Could not load assignments.');
+      }
+      setLoading(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  return (
+    <div>
+      <CCSectionHead
+        eyebrow="ASSIGNMENTS"
+        title={isMobile ? 'Pick an owner.' : 'Unassigned — pick an owner.'}
+        sub={
+          isMobile
+            ? undefined
+            : 'Inbound interest and quotes nobody\'s holding yet. Hand each one to a rep. Loads are shown so you can spread the work — never a ranking.'
+        }
+      />
+
+      <div style={{ marginTop: 24 }}>
+        {/* WAITING ON YOU count line */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'baseline',
+            justifyContent: 'space-between',
+          }}
+        >
+          <span
+            style={{
+              ...sans,
+              fontSize: 10,
+              letterSpacing: '.14em',
+              textTransform: 'uppercase',
+              color: C.gray700,
+              fontWeight: 600,
+            }}
+          >
+            WAITING ON YOU
+          </span>
+          <span style={{ ...sans, ...tabular, fontSize: 11, color: C.gray400 }}>
+            {loading ? '—' : items.length}
+          </span>
+        </div>
+
+        <AttentionRule />
+
+        {/* Row list */}
+        {loading ? (
+          <>
+            {[...Array(4)].map((_, i) => (
+              <RowSkeleton key={i} />
+            ))}
+          </>
+        ) : error ? (
+          <div
+            style={{
+              ...sans,
+              padding: '48px 0',
+              textAlign: 'center',
+              fontSize: 13,
+              color: C.gray500,
+            }}
+          >
+            {error}
+          </div>
+        ) : items.length === 0 ? (
+          <div
+            style={{
+              ...sans,
+              padding: '48px 0',
+              textAlign: 'center',
+              fontSize: 13,
+              color: C.gray500,
+            }}
+          >
+            No unassigned items right now.
+          </div>
+        ) : (
+          items.map((item) => (
+            <AssignRow
+              key={`${item.kind}-${item.id}`}
+              row={item}
+              reps={reps}
+              isMobile={isMobile}
+            />
+          ))
+        )}
+
+        {/* Closing serif-italic line */}
+        {!loading && !error && (
+          <div
+            style={{
+              ...serif,
+              marginTop: 24,
+              fontSize: 12,
+              color: C.gray400,
+              lineHeight: 1.7,
+              fontStyle: 'italic',
+            }}
+          >
+            When this list is empty, every lead and quote has someone's name on it.
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
