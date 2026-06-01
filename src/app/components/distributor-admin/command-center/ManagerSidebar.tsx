@@ -18,6 +18,7 @@
 // NEVER use ToMarket Orange (#F04E23).
 
 import React from 'react';
+import { useNavigate } from 'react-router';
 import {
   LayoutDashboard,
   Inbox,
@@ -29,6 +30,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   X,
+  ArrowLeft,
 } from 'lucide-react';
 import { SACRED_ORANGE, sans, serif, C } from './cc-atoms';
 
@@ -213,6 +215,7 @@ export function ManagerSidebar({
   quotesCount = 0,
 }: ManagerSidebarProps) {
   const collapsed = mode === 'collapsed';
+  const navigate = useNavigate();
   const width = collapsed ? 64 : 280;
 
   const initials = manager.name
@@ -424,7 +427,7 @@ export function ManagerSidebar({
       {/* Spacer */}
       <div style={{ flex: 1 }} />
 
-      {/* Bottom: Settings + Hide */}
+      {/* Bottom: Back link + Settings + Hide */}
       <div
         style={{
           paddingTop: 8,
@@ -432,6 +435,54 @@ export function ManagerSidebar({
           borderTop: `1px solid ${C.softLine}`,
         }}
       >
+        {/* Back to Distributor Admin */}
+        <div style={{ padding: '0 12px', marginBottom: 2 }}>
+          <button
+            type="button"
+            onClick={() => navigate('/distributor-admin')}
+            title={collapsed ? 'Distributor Admin' : undefined}
+            aria-label="Back to Distributor Admin"
+            style={{
+              ...sans,
+              display: 'flex',
+              alignItems: 'center',
+              width: '100%',
+              padding: '9px 10px',
+              justifyContent: collapsed ? 'center' : 'flex-start',
+              background: 'transparent',
+              border: 'none',
+              borderLeft: '2px solid transparent',
+              borderRadius: 6,
+              cursor: 'pointer',
+              gap: 10,
+              color: C.gray500,
+            }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.background = '#F9FAFB';
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.background = 'transparent';
+            }}
+          >
+            <ArrowLeft size={16} strokeWidth={1.6} color={C.gray500} />
+            {!collapsed && (
+              <span
+                style={{
+                  fontSize: 12.5,
+                  lineHeight: 1.3,
+                  color: C.gray500,
+                  fontWeight: 400,
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                }}
+              >
+                Distributor Admin
+              </span>
+            )}
+          </button>
+        </div>
+
         <CCNavItem
           icon={Settings}
           label="Settings"
