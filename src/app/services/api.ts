@@ -215,6 +215,7 @@ export interface QuoteResponse {
   created_at: string;
   preview?: boolean;
   contacts?: QuoteContact[];
+  distributor?: { id: string; name: string } | null;
   lines: QuoteLineResponse[];
   input_mode?: string | null;
   detected_concept?: string | null;

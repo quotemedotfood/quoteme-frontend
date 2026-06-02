@@ -50,7 +50,7 @@ export interface QuoteDocLineItem {
   pack?: string;
   note?: string;
   qty: number;
-  unit: number;
+  unit: number | undefined;
 }
 export interface QuoteDocGroup {
   cat: string;
@@ -330,7 +330,7 @@ function QuoteStateGroup({
                     className={`text-[13.5px] ${state === 'confirmed' ? 'font-semibold' : 'font-medium'}`}
                     style={{ color: INK }}
                   >
-                    {money(it.unit)}
+                    {it.unit != null ? money(it.unit) : <span style={{ color: INK_FAINT }}>—</span>}
                   </div>
                 ) : (
                   <div className="text-[12.5px] italic" style={{ color: INK_FAINT }}>
