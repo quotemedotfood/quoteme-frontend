@@ -172,6 +172,18 @@ export function ChefQuoteReceiptPage() {
   const repContact = quote.contacts?.find((c) => c.email) || null;
   const repEmail = repContact?.email || null;
 
+  // ── Terminal-state lock ───────────────────────────────────────────────────────
+  // Once a quote reaches a terminal state (won/lost on the BE status axis, or
+  // accepted/declined/expired on the J1 state axis) the chef should not be
+  // able to trigger "Looks good" or "I have questions" — the action has already
+  // been recorded or the quote is no longer actionable.
+  const isLocked =
+    quote.status === 'won' ||
+    quote.status === 'lost' ||
+    quote.state === 'accepted' ||
+    quote.state === 'declined' ||
+    quote.state === 'expired';
+
   // ── D6 QuoteStateDocument props ──────────────────────────────────────────────
   // The document body (header + priced matched lines + totals) is now the
   // state-driven QuoteStateDocument. The unmatched-lines section + decision
@@ -188,7 +200,7 @@ export function ChefQuoteReceiptPage() {
       pack: l.product.pack_size || undefined,
       note: l.product.brand ? toTitleCase(l.product.brand) : undefined,
       qty: l.quantity,
-      unit: (l.unit_price_cents ?? 0) / 100,
+      unit: l.unit_price_cents != null ? l.unit_price_cents / 100 : undefined,
     })),
   }));
   const pricedCount = matchedLines.filter((l) => l.unit_price_cents != null).length;
@@ -210,6 +222,7 @@ export function ChefQuoteReceiptPage() {
             quoteDate={formatDate(quote.created_at)}
             rep={repName || 'your rep'}
             repPhone={repContact?.phone || undefined}
+            distributorShort={quote.distributor?.name ?? undefined}
             groups={docGroups}
             pricedCount={pricedCount}
             totalCount={matchedLines.length}
@@ -269,55 +282,70 @@ export function ChefQuoteReceiptPage() {
             </p>
           )}
 
-          {/* Inline question box */}
-          {questionOpen && (
-            <div className="flex flex-col gap-3 mb-1">
-              <textarea
-                value={questionText}
-                onChange={(e) => setQuestionText(e.target.value)}
-                placeholder="What would you like to ask your rep?"
-                rows={4}
-                className="border border-[#E0E0E0] rounded-lg px-4 py-3 text-sm text-[#2A2A2A] placeholder-[#BDBDBD] focus:outline-none focus:ring-2 focus:ring-[#2A2A2A]/10 focus:border-[#2A2A2A] resize-none leading-relaxed"
-                autoFocus
-              />
-              <div className="flex gap-2">
-                <button
-                  onClick={handleSendQuestion}
-                  disabled={!questionText.trim() || sending}
-                  className="flex-1 bg-[#2A2A2A] hover:bg-[#1A1A1A] text-white rounded-lg px-5 py-2.5 text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  {sending ? 'Sending…' : 'Send'}
-                </button>
-                <button
-                  onClick={() => {
-                    setQuestionOpen(false);
-                    setQuestionText('');
-                  }}
-                  className="px-5 py-2.5 text-sm font-medium text-[#9E9E9E] hover:text-[#4F4F4F] transition-colors"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          )}
+          {/* Terminal-state status line — replaces action buttons when the quote
+              is in a final state so the chef sees a clear, quiet confirmation
+              rather than disabled buttons with no explanation. */}
+          {isLocked ? (
+            <p className="text-sm text-[#4F4F4F] px-1 py-2">
+              {quote.state === 'accepted' || quote.status === 'won'
+                ? 'This quote is accepted.'
+                : quote.state === 'declined'
+                  ? 'This quote has been declined.'
+                  : 'This quote is no longer active.'}
+            </p>
+          ) : (
+            <>
+              {/* Inline question box */}
+              {questionOpen && (
+                <div className="flex flex-col gap-3 mb-1">
+                  <textarea
+                    value={questionText}
+                    onChange={(e) => setQuestionText(e.target.value)}
+                    placeholder="What would you like to ask your rep?"
+                    rows={4}
+                    className="border border-[#E0E0E0] rounded-lg px-4 py-3 text-sm text-[#2A2A2A] placeholder-[#BDBDBD] focus:outline-none focus:ring-2 focus:ring-[#2A2A2A]/10 focus:border-[#2A2A2A] resize-none leading-relaxed"
+                    autoFocus
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleSendQuestion}
+                      disabled={!questionText.trim() || sending}
+                      className="flex-1 bg-[#2A2A2A] hover:bg-[#1A1A1A] text-white rounded-lg px-5 py-2.5 text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      {sending ? 'Sending…' : 'Send'}
+                    </button>
+                    <button
+                      onClick={() => {
+                        setQuestionOpen(false);
+                        setQuestionText('');
+                      }}
+                      className="px-5 py-2.5 text-sm font-medium text-[#9E9E9E] hover:text-[#4F4F4F] transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
 
-          {/* Looks good */}
-          <button
-            onClick={handleAccept}
-            disabled={accepting}
-            className="w-full bg-[#2A2A2A] hover:bg-[#1A1A1A] text-white rounded-lg px-6 py-3.5 text-base font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {accepting ? 'Building your order guide…' : 'Looks good'}
-          </button>
+              {/* Looks good */}
+              <button
+                onClick={handleAccept}
+                disabled={accepting}
+                className="w-full bg-[#2A2A2A] hover:bg-[#1A1A1A] text-white rounded-lg px-6 py-3.5 text-base font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {accepting ? 'Building your order guide…' : 'Looks good'}
+              </button>
 
-          {/* I have questions */}
-          {!questionOpen && (
-            <button
-              onClick={() => setQuestionOpen(true)}
-              className="w-full border border-[#E0E0E0] hover:border-[#BDBDBD] text-[#4F4F4F] rounded-lg px-6 py-3.5 text-base font-medium transition-colors"
-            >
-              I have questions
-            </button>
+              {/* I have questions */}
+              {!questionOpen && (
+                <button
+                  onClick={() => setQuestionOpen(true)}
+                  className="w-full border border-[#E0E0E0] hover:border-[#BDBDBD] text-[#4F4F4F] rounded-lg px-6 py-3.5 text-base font-medium transition-colors"
+                >
+                  I have questions
+                </button>
+              )}
+            </>
           )}
 
           {/* Save for later — quote is already persisted server-side, so this

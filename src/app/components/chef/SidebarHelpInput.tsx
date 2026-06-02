@@ -129,7 +129,7 @@ export function SidebarHelpInput({ collapsed }: SidebarHelpInputProps) {
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Stuck on something? Ask Marcus or QuoteMe."
+            placeholder="Stuck on something? Ask QuoteMe."
             style={{
               ...sans,
               flex: 1,
@@ -185,7 +185,7 @@ export function SidebarHelpInput({ collapsed }: SidebarHelpInputProps) {
             lineHeight: 1.4,
           }}
         >
-          Press Enter — we'll route to Marcus or QuoteMe support.
+          Press Enter — we'll route to QuoteMe support.
         </p>
       </div>
 

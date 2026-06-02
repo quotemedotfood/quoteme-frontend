@@ -529,7 +529,7 @@ export function SettingsPage() {
         {!isBuyer && (
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <div className="flex justify-between items-center mb-1">
-            <h2 className="text-lg text-[#4F4F4F]">Distributor Settings</h2>
+            <h2 className="text-lg text-[#4F4F4F]">{user?.role === 'rep' ? 'Your Company Info' : 'Distributor Settings'}</h2>
             {!isEditingDistributor && (
               <Button
                 variant="outline"
