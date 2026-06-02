@@ -6,6 +6,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useUser } from '../contexts/UserContext';
 import { isDemoMode } from '../utils/demoMode';
 import { formatProductName } from '../utils/format';
+import { categoryLabel } from '../utils/categoryLabel';
 import { getQuote, getGuestQuote, updateQuote, updateGuestQuote, addGuestQuoteLine, removeGuestQuoteLine, createStockQuote, getMoreMatches } from '../services/api';
 import { CatalogProductSearch } from '../components/CatalogProductSearch';
 import { QuoteReviewBar } from '../components/QuoteReviewBar';
@@ -546,7 +547,7 @@ export function QuoteBuilderPage() {
               >
                 {categories.map(cat => (
                   <option key={cat} value={cat}>
-                    {cat === 'all' ? 'All Categories' : cat}
+                    {cat === 'all' ? 'All Categories' : categoryLabel(cat)}
                   </option>
                 ))}
               </select>
@@ -627,7 +628,7 @@ export function QuoteBuilderPage() {
 
                 <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-gray-600 mt-2 mb-3">
                    <div className="truncate"><span className="text-gray-400">Item #:</span> {item.sku}</div>
-                   <div className="truncate"><span className="text-gray-400">Category:</span> {toTitleCase(item.category)}</div>
+                   <div className="truncate"><span className="text-gray-400">Category:</span> {categoryLabel(item.category)}</div>
                    <div className="truncate"><span className="text-gray-400">Pack:</span> {item.pack}</div>
                    <div className="truncate"><span className="text-gray-400">Dish:</span> {item.dish}</div>
                 </div>
@@ -833,7 +834,7 @@ export function QuoteBuilderPage() {
                       {item.sub_description ? toTitleCase(item.sub_description) : '—'}
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-500">{item.pack}</td>
-                    <td className="px-4 py-3 text-sm text-gray-500">{toTitleCase(item.category)}</td>
+                    <td className="px-4 py-3 text-sm text-gray-500">{categoryLabel(item.category)}</td>
                     {editMode && (
                       <td className="px-4 py-3 text-center">
                         <div className="flex items-center justify-center gap-1">

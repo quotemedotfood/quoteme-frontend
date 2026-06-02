@@ -253,8 +253,8 @@ export function RepNewspaperSidebar({
   onModeChange,
   active,
   onNav,
-  repName = 'Marcus Rivera',
-  distributorName = "D'Lisius Distribution Co.",
+  repName = 'Rep',
+  distributorName = '',
   incomingCount = 0,
 }: RepNewspaperSidebarProps) {
   const collapsed = mode === 'collapsed';

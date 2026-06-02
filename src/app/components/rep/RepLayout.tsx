@@ -24,6 +24,7 @@ import React, { createContext, useContext, useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router';
 import { RepNewspaperSidebar } from './RepDesktopShell';
 import type { RepActiveTab, RepSidebarMode } from './RepDesktopShell';
+import { useAuth } from '../../contexts/AuthContext';
 
 // ─── Sidebar context ──────────────────────────────────────────────────────────
 
@@ -73,6 +74,12 @@ export function RepLayout({ children }: RepLayoutProps = {}) {
   const [mode, setMode] = useState<RepSidebarMode>('open');
   const location = useLocation();
   const navigate = useNavigate();
+  const { user } = useAuth();
+
+  const repName = user
+    ? [user.first_name, user.last_name].filter(Boolean).join(' ').trim() || 'Rep'
+    : 'Rep';
+  const distributorName = user?.distributor?.name ?? user?.distributor_name ?? '';
 
   const active = activeTabFromPath(location.pathname);
   const hidden = mode === 'hidden';
@@ -104,6 +111,8 @@ export function RepLayout({ children }: RepLayoutProps = {}) {
             onModeChange={setMode}
             active={active}
             onNav={nav}
+            repName={repName}
+            distributorName={distributorName}
           />
         )}
 

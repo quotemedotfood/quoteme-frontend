@@ -25,6 +25,7 @@ import { getQuote, getGuestQuote, downloadQuotePdf, downloadOrderGuide, sendQuot
 import { useUser } from '../contexts/UserContext';
 import type { QuoteResponse, QuoteLineResponse } from '../services/api';
 import { isDemoMode, PROD_SIGNUP_URL } from '../utils/demoMode';
+import { categoryLabel } from '../utils/categoryLabel';
 
 
 function toTitleCase(str: string): string {
@@ -655,7 +656,7 @@ export function ExportFinalizePage() {
                               <p className="text-xs text-gray-500 truncate">
                                 {toTitleCase(line.product?.brand || '')} {line.product?.pack_size ? `· ${line.product.pack_size}` : ''}
                               </p>
-                              <p className="text-xs text-gray-400">{toTitleCase(line.category || '')}</p>
+                              <p className="text-xs text-gray-400">{categoryLabel(line.category || '')}</p>
                             </div>
                             <div className="text-right ml-3 shrink-0">
                               <p className="text-sm font-semibold text-[#2A2A2A]">{line.unit_price || '—'}</p>
@@ -742,7 +743,7 @@ export function ExportFinalizePage() {
                                 className="grid grid-cols-6 gap-0 text-[0.5rem] border-t border-gray-100"
                                 style={{ backgroundColor: i % 2 === 1 ? '#F9FAFB' : 'white' }}
                               >
-                                <div className="px-1.5 py-0.5 truncate text-gray-600">{toTitleCase(line.category || '') || '—'}</div>
+                                <div className="px-1.5 py-0.5 truncate text-gray-600">{categoryLabel(line.category || '') || '—'}</div>
                                 <div className="px-1.5 py-0.5 truncate text-gray-600">{line.product?.item_number || '—'}</div>
                                 <div className="px-1.5 py-0.5 truncate text-gray-600">{toTitleCase(line.product?.brand || '') || '—'}</div>
                                 <div className="px-1.5 py-0.5 truncate text-gray-600 col-span-2">{toTitleCase(line.product?.product || '') || '—'}</div>

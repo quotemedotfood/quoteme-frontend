@@ -22,6 +22,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
+import { categoryLabel } from '../../utils/categoryLabel';
 import { ChevronLeft, SquarePen, DollarSign, Search, X, Flag, Bookmark, MessageCircle, Pencil } from 'lucide-react';
 
 import { RepMatchStateBadge } from '../../components/rep/RepMatchStateBadge';
@@ -761,7 +762,7 @@ function LineItemsSection({
           <div key={g.cat} style={{ marginTop: 16 }}>
             <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
               <h3 style={{ ...serif, fontSize: 13.5, fontWeight: 500, color: C.charcoal, letterSpacing: '.08em', textTransform: 'uppercase' }}>
-                {g.cat}
+                {categoryLabel(g.cat)}
               </h3>
               <span style={{ ...sans, fontSize: 11, color: C.gray500 }}>{g.items.length} items</span>
             </div>
@@ -845,7 +846,7 @@ function QuoteLine({
         <div style={{ ...sans, fontSize: 11, color: C.gray500, marginTop: 2, fontVariantNumeric: 'tabular-nums' }}>
           {line.product?.pack_size || ''}
           {line.chef_note ? ` · ${line.chef_note}` : ''}
-          {showCat && line.category ? <span style={{ color: C.gray500 }}> · {line.category.toLowerCase()}</span> : null}
+          {showCat && line.category ? <span style={{ color: C.gray500 }}> · {categoryLabel(line.category)}</span> : null}
         </div>
         {missing && (
           <div style={{ marginTop: 4, display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
