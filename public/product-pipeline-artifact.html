@@ -294,7 +294,7 @@ async function loadFromApi() {
     const res = await fetch(API_BASE + '/api/v1/admin/pipeline_cards', { headers: apiHeaders() });
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
-    const all = data.cards || [];
+    const all = Array.isArray(data) ? data : (data.cards || []);
     // board cards: placement === 'board'; backlog cards: placement === 'backlog'
     state.cards   = all.filter(c => c.placement === 'board');
     state.backlog = all.filter(c => c.placement === 'backlog');
@@ -339,7 +339,7 @@ async function save() {
     });
     if (res.ok) {
       const data = await res.json();
-      const all = data.cards || [];
+      const all = Array.isArray(data) ? data : (data.cards || []);
       // Replace local state with server response so new cards get server ids
       state.cards   = all.filter(c => c.placement === 'board');
       state.backlog = all.filter(c => c.placement === 'backlog');
