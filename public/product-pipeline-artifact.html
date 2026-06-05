@@ -151,6 +151,40 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 const SK = 'qm-pipeline-v2';
 const FK = 'qm-flows-v1';
 
+// ─── API base-URL resolution (mirrors api.ts logic; no build step so inline) ──
+// localhost → dev BE; test.quoteme.food host → Test BE; else prod BE
+(function() {
+  const h = location.hostname;
+  if (h === 'localhost' || h === '127.0.0.1') {
+    window.__PIPELINE_API_BASE = 'http://localhost:3000';
+  } else if (h === 'test.quoteme.food') {
+    window.__PIPELINE_API_BASE = 'https://web-test-a640.up.railway.app';
+  } else {
+    window.__PIPELINE_API_BASE = 'https://web-production-9f6e9.up.railway.app';
+  }
+})();
+const API_BASE = window.__PIPELINE_API_BASE;
+
+// Auth token key — must match api.ts: localStorage.getItem('quoteme_token')
+function getApiToken() { try { return localStorage.getItem('quoteme_token'); } catch(e) { return null; } }
+
+function apiHeaders() {
+  const t = getApiToken();
+  const h = { 'Content-Type': 'application/json' };
+  if (t) h['Authorization'] = 'Bearer ' + t;
+  return h;
+}
+
+function showOfflineBanner() {
+  if (document.getElementById('offline-banner')) return;
+  const b = document.createElement('div');
+  b.id = 'offline-banner';
+  b.style.cssText = 'position:fixed;top:8px;right:8px;background:#FAEEDA;color:#854F0B;border:0.5px solid #EFD9A5;border-radius:6px;padding:6px 12px;font-size:12px;z-index:999;';
+  b.textContent = 'offline — local only';
+  document.body.appendChild(b);
+  setTimeout(()=>{ const el=document.getElementById('offline-banner'); if(el) el.remove(); }, 5000);
+}
+
 let state = { columns: [
   {id:'todo',title:'To do',status:'todo'},
   {id:'inflight',title:'In flight',status:'inflight'},
@@ -253,21 +287,73 @@ const DF = [
   {id:'f5',title:'Brand flow (future)',steps:['Brand rep visits restaurant','Chef requests products','Brand rep routes to distributor','Distributor generates quote','Gap signals fire for missing SKUs'],status:'planned'},
 ];
 
-async function load() {
-  try { const r = await window.parent.storage?.get(SK, true); if (r?.value) { const d = JSON.parse(r.value); state.columns = d.columns||state.columns; state.cards = d.cards||DC; state.backlog = d.backlog||DB; } else { state.cards=DC; state.backlog=DB; } } catch(e) { state.cards=DC; state.backlog=DB; }
-  try { const r2 = await window.parent.storage?.get(FK, true); if (r2?.value) { flows=JSON.parse(r2.value); } else { flows=DF; } } catch(e) { flows=DF; }
+// ─── Persistence: shared pipeline_cards API + localStorage fallback cache ────
+
+async function loadFromApi() {
+  try {
+    const res = await fetch(API_BASE + '/api/v1/admin/pipeline_cards', { headers: apiHeaders() });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    const all = Array.isArray(data) ? data : (data.cards || []);
+    // board cards: placement === 'board'; backlog cards: placement === 'backlog'
+    state.cards   = all.filter(c => c.placement === 'board');
+    state.backlog = all.filter(c => c.placement === 'backlog');
+    // Seed columns from defaults if none on server
+    if (!state.columns || !state.columns.length) {
+      state.columns = [
+        {id:'todo',title:'To do',status:'todo'},
+        {id:'inflight',title:'In flight',status:'inflight'},
+        {id:'review',title:'Review',status:'review'},
+        {id:'done',title:'Done',status:'done'},
+      ];
+    }
+    // Fallback to DC/DB seeds only if server returned truly empty
+    if (!state.cards.length && !state.backlog.length) { state.cards = DC; state.backlog = DB; }
+    // Cache locally for offline fallback
+    try { localStorage.setItem(SK, JSON.stringify({columns:state.columns,cards:state.cards,backlog:state.backlog})); } catch(e) {}
+  } catch(err) {
+    console.warn('[pipeline] API load failed, falling back to localStorage:', err);
+    showOfflineBanner();
+    _loadLocal();
+  }
+  // Flows always from localStorage
+  try { const f = localStorage.getItem(FK); if (f) { flows=JSON.parse(f); } else { flows=DF; } } catch(e) { flows=DF; }
   render();
 }
 
-async function save() {
-  try { await window.parent.storage?.set(SK, JSON.stringify({columns:state.columns,cards:state.cards,backlog:state.backlog}), true); } catch(e) {}
-  try { await window.parent.storage?.set(FK, JSON.stringify(flows), true); } catch(e) {}
-  try { localStorage.setItem(SK, JSON.stringify({columns:state.columns,cards:state.cards,backlog:state.backlog})); localStorage.setItem(FK, JSON.stringify(flows)); } catch(e) {}
+function _loadLocal() {
+  try { const d = localStorage.getItem(SK); if (d) { const p=JSON.parse(d); state.columns=p.columns||state.columns; state.cards=p.cards||DC; state.backlog=p.backlog||DB; } else { state.cards=DC; state.backlog=DB; } } catch(e) { state.cards=DC; state.backlog=DB; }
 }
 
-function loadLocal() {
-  try { const d = localStorage.getItem(SK); if (d) { const p=JSON.parse(d); state.columns=p.columns||state.columns; state.cards=p.cards||DC; state.backlog=p.backlog||DB; } else { state.cards=DC; state.backlog=DB; } } catch(e) { state.cards=DC; state.backlog=DB; }
-  try { const f = localStorage.getItem(FK); if (f) { flows=JSON.parse(f); } else { flows=DF; } } catch(e) { flows=DF; }
+async function save() {
+  // Build payload: both board and backlog cards, tagged by placement
+  const boardCards   = state.cards.map(c => ({...c, placement:'board'}));
+  const backlogCards = state.backlog.map(c => ({...c, placement:'backlog'}));
+  const allCards = [...boardCards, ...backlogCards];
+
+  try {
+    const res = await fetch(API_BASE + '/api/v1/admin/pipeline_cards/bulk', {
+      method: 'PUT',
+      headers: apiHeaders(),
+      body: JSON.stringify({ cards: allCards }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      const all = Array.isArray(data) ? data : (data.cards || []);
+      // Replace local state with server response so new cards get server ids
+      state.cards   = all.filter(c => c.placement === 'board');
+      state.backlog = all.filter(c => c.placement === 'backlog');
+    } else {
+      console.warn('[pipeline] bulk save HTTP', res.status);
+    }
+  } catch(err) {
+    console.warn('[pipeline] bulk save failed (offline?):', err);
+  }
+
+  // Always keep localStorage as fallback cache
+  try { localStorage.setItem(SK, JSON.stringify({columns:state.columns,cards:state.cards,backlog:state.backlog})); } catch(e) {}
+  // Flows always stay in localStorage
+  try { localStorage.setItem(FK, JSON.stringify(flows)); } catch(e) {}
 }
 
 function pBadge(p) { return p ? `<span class="badge badge-${p}">${p.toUpperCase()}</span>` : ''; }
@@ -285,6 +371,12 @@ function renderBoard() {
       ${cards.map(card=>`<div class="card" draggable="true" ondragstart="dragStart(event,'${card.id}')" onclick="openCardDetail('${card.id}','board')">
         <div class="card-title">${card.title}</div>
         <div class="card-meta">${pBadge(card.priority)}${aBadge(card.area)}${card.task_id?`<span class="card-task-id">${card.task_id}</span>`:''}${card.owner?`<span class="card-owner">${card.owner}</span>`:''}</div>
+        <div class="card-claim-row" style="margin-top:6px;display:flex;align-items:center;gap:6px;" onclick="event.stopPropagation()">
+          ${card.claimed_at
+            ? `<span style="font-size:11px;color:var(--text-secondary);">&#128100; ${card.claimed_by?card.claimed_by.name:(card.owner||'Claimed')}</span><button class="btn" style="padding:2px 8px;font-size:11px;" onclick="releaseCard('${card.id}')">Release</button>`
+            : `<button class="btn" style="padding:2px 8px;font-size:11px;" onclick="claimCard('${card.id}')">Claim</button>`
+          }
+        </div>
       </div>`).join('')}
       <button class="add-card-btn" onclick="openNewCard('${col.id}','board')"><i class="ti ti-plus"></i> Add card</button>
     </div>`;
@@ -374,7 +466,19 @@ function saveCardDetail(id,source){
   save();closeModal();render();
 }
 
-function deleteCard(id,source){const isB=source==='backlog';if(isB){state.backlog=state.backlog.filter(c=>c.id!==id);}else{state.cards=state.cards.filter(c=>c.id!==id);}save();closeModal();render();}
+async function deleteCard(id,source){
+  const isB=source==='backlog';
+  const arr=isB?state.backlog:state.cards;
+  const card=arr.find(c=>c.id===id);
+  // If card has a server-assigned UUID id, call DELETE endpoint
+  if(card && card.id && /^[0-9a-f-]{36}$/.test(card.id)){
+    try {
+      await fetch(API_BASE+'/api/v1/admin/pipeline_cards/'+card.id, {method:'DELETE',headers:apiHeaders()});
+    } catch(err) { console.warn('[pipeline] DELETE failed:', err); }
+  }
+  if(isB){state.backlog=state.backlog.filter(c=>c.id!==id);}else{state.cards=state.cards.filter(c=>c.id!==id);}
+  save();closeModal();render();
+}
 function moveToBacklog(id){const card=state.cards.find(c=>c.id===id);if(!card)return;state.backlog.push({id:card.id,title:card.title,priority:card.priority,area:card.area,notes:card.notes});state.cards=state.cards.filter(c=>c.id!==id);save();closeModal();render();}
 function moveToBoard(id){const item=state.backlog.find(b=>b.id===id);if(!item)return;state.cards.push({...item,column:'todo',status:'todo',owner:''});state.backlog=state.backlog.filter(b=>b.id!==id);save();closeModal();render();}
 
@@ -387,7 +491,50 @@ function openFlowDetail(id){const flow=flows.find(f=>f.id===id);if(!flow)return;
 function saveFlowDetail(id){const flow=flows.find(f=>f.id===id);if(!flow)return;flow.title=document.getElementById('m-flow-title').value;flow.status=document.getElementById('m-flow-status').value;flow.steps=document.getElementById('m-flow-steps').value.split('\n').map(s=>s.trim()).filter(Boolean);save();closeModal();renderFlows();}
 function deleteFlow(id){flows=flows.filter(f=>f.id!==id);save();closeModal();renderFlows();}
 
-if (window.parent && window.parent.storage) { load(); } else { loadLocal(); render(); }
+// ─── Claim / Release actions ─────────────────────────────────────────────────
+
+async function claimCard(id) {
+  const card = state.cards.find(c => c.id === id);
+  if (!card) return;
+  // Only callable when card has a server UUID id
+  if (!card.id || !/^[0-9a-f-]{36}$/.test(card.id)) {
+    console.warn('[pipeline] claimCard: card has no server id, save first');
+    return;
+  }
+  try {
+    const res = await fetch(API_BASE + '/api/v1/admin/pipeline_cards/' + card.id + '/claim', {
+      method: 'POST', headers: apiHeaders(),
+    });
+    if (res.ok) {
+      const updated = await res.json();
+      Object.assign(card, updated);
+      renderBoard();
+    } else {
+      console.warn('[pipeline] claim HTTP', res.status);
+    }
+  } catch(err) { console.warn('[pipeline] claim failed:', err); }
+}
+
+async function releaseCard(id) {
+  const card = state.cards.find(c => c.id === id);
+  if (!card) return;
+  if (!card.id || !/^[0-9a-f-]{36}$/.test(card.id)) return;
+  try {
+    const res = await fetch(API_BASE + '/api/v1/admin/pipeline_cards/' + card.id + '/release', {
+      method: 'POST', headers: apiHeaders(),
+    });
+    if (res.ok) {
+      const updated = await res.json();
+      Object.assign(card, updated);
+      renderBoard();
+    } else {
+      console.warn('[pipeline] release HTTP', res.status);
+    }
+  } catch(err) { console.warn('[pipeline] release failed:', err); }
+}
+
+// ─── Boot ────────────────────────────────────────────────────────────────────
+loadFromApi();
 </script>
 </body>
 </html>
