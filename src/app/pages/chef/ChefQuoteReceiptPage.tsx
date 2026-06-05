@@ -7,6 +7,7 @@ import {
   stateFromQuoteState,
   type QuoteDocGroup,
 } from '../../components/chef/QuoteStateDocument';
+import { categoryLabel } from '../../utils/categoryLabel';
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -182,7 +183,9 @@ export function ChefQuoteReceiptPage() {
     quote.status === 'lost' ||
     quote.state === 'accepted' ||
     quote.state === 'declined' ||
-    quote.state === 'expired';
+    quote.state === 'expired' ||
+    quote.state === 'confirmed' ||
+    quote.quote_type === 'confirmed';
 
   // ── D6 QuoteStateDocument props ──────────────────────────────────────────────
   // The document body (header + priced matched lines + totals) is now the
@@ -194,7 +197,7 @@ export function ChefQuoteReceiptPage() {
       ? 'preview'
       : 'confirmed';
   const docGroups: QuoteDocGroup[] = Array.from(grouped.entries()).map(([category, lines]) => ({
-    cat: toTitleCase(category),
+    cat: categoryLabel(category),
     items: lines.map((l) => ({
       name: toTitleCase(l.product.product),
       pack: l.product.pack_size || undefined,
@@ -255,7 +258,7 @@ export function ChefQuoteReceiptPage() {
                   </div>
                   {line.category && line.component?.name && (
                     <span className="text-sm text-[#9E9E9E] whitespace-nowrap shrink-0 mt-0.5">
-                      {toTitleCase(line.category)}
+                      {categoryLabel(line.category)}
                     </span>
                   )}
                 </div>

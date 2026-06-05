@@ -204,6 +204,8 @@ export interface QuoteResponse {
   processing_stage?: string | null;
   /** J1 document-state machine: preview | distributor_quote | confirmed | accepted | declined | expired. Drives D6 QuoteStateDocument chrome. */
   state?: string | null;
+  /** rep-flow quote type: standard | preview | confirmed | guest_quote | buyer_quote. 'confirmed' locks chef actions. */
+  quote_type?: string | null;
   working_label: string;
   restaurant: string;
   rep: string;
