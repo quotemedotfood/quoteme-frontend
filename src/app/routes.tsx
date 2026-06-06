@@ -98,6 +98,7 @@ import { BrandDistributorsPage } from "./pages/brand/BrandDistributorsPage";
 import { BrandNotificationsPage } from "./pages/brand/BrandNotificationsPage";
 import { BrandSettingsPage } from "./pages/brand/BrandSettingsPage";
 import { BrandProfilePage } from "./pages/brand/BrandProfilePage";
+import { BrandTeamPage } from "./pages/brand/BrandTeamPage";
 
 const demo = isDemoMode();
 
@@ -148,6 +149,7 @@ export const router = createBrowserRouter([
           { path: "notifications", Component: BrandNotificationsPage },
           { path: "settings",      Component: BrandSettingsPage },
           { path: "profile",       Component: BrandProfilePage },
+          { path: "team",          Component: BrandTeamPage },
         ],
       },
       {

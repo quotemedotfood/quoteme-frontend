@@ -1,46 +1,15 @@
 // BrandNotificationsPage — /brand/notifications
 //
-// GET /api/v1/notifications → list of user's notifications.
-// PATCH /api/v1/notifications/:id/mark_read → mark one read.
+// Reskinned per handoff/desi-brand-suite-060626/src/screens-brand.jsx
+// (BrandNotificationsBody). All API wiring (getNotifications,
+// markNotificationRead) and mark-read flow preserved.
 //
-// DESIGN-SWAP SEAM: visual frame replaced by Desi's notifications panel.
-// Notification data shape and mark-read flow are final.
+// Read-only surface — nothing to action here except mark-read.
+// Doctrine: no incoming-quotes surface.
 
 import { useEffect, useState } from 'react';
 import { getNotifications, markNotificationRead } from '../../services/api';
-
-// ─── Design tokens ────────────────────────────────────────────────────────────
-
-const C = {
-  charcoal: '#2B2B2B',
-  softLine: '#E8E8E8',
-  warmPaper: '#FBFAF7',
-  gray500: '#6B7280',
-  gray700: '#4F4F4F',
-  ink: '#1A1A1A',
-} as const;
-
-const sans: React.CSSProperties = {
-  fontFamily: "'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-};
-
-const serif: React.CSSProperties = {
-  fontFamily: "'Playfair Display', Georgia, 'Times New Roman', serif",
-};
-
-function eyebrow(): React.CSSProperties {
-  return {
-    ...sans,
-    fontSize: 10,
-    fontWeight: 600,
-    letterSpacing: '.12em',
-    textTransform: 'uppercase',
-    color: C.gray500,
-    marginBottom: 6,
-  };
-}
-
-// ─── Page ─────────────────────────────────────────────────────────────────────
+import { NpIcon } from '../../components/newspaper/NewspaperShell';
 
 export function BrandNotificationsPage() {
   const [notifications, setNotifications] = useState<any[]>([]);
@@ -56,102 +25,82 @@ export function BrandNotificationsPage() {
   const handleMarkRead = async (id: string) => {
     await markNotificationRead(id);
     setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, read_at: new Date().toISOString() } : n))
+      prev.map((n) => (n.id === id ? { ...n, read_at: new Date().toISOString() } : n)),
     );
   };
 
   const unread = notifications.filter((n) => !n.read_at).length;
 
   return (
-    <div>
-      {/* Header */}
-      <div style={{ marginBottom: 28 }}>
-        <div style={eyebrow()}>Notifications</div>
-        <div style={{ ...serif, fontSize: 24, fontWeight: 700, color: C.charcoal }}>
-          {unread > 0 ? `${unread} unread` : 'All caught up'}
-        </div>
+    <>
+      {/* ── Header ── */}
+      <div>
+        <h1 className="serif font-semibold ink" style={{ fontSize: 32, lineHeight: 1.15 }}>Notifications</h1>
+        <p className="mt-1 ink-faint" style={{ fontSize: 13.5 }}>
+          Where every package you've sent stands. Read-only — nothing to action here.
+        </p>
       </div>
 
-      {loading ? (
-        <div style={{ ...sans, color: C.gray500, fontSize: 14 }}>Loading…</div>
-      ) : notifications.length === 0 ? (
-        <div
-          style={{
-            ...sans,
-            fontSize: 14,
-            color: C.gray500,
-            padding: '24px',
-            background: C.warmPaper,
-            borderRadius: 8,
-            textAlign: 'center',
-          }}
-        >
-          No notifications yet.
+      <div className="mt-6">
+        <div className="qm-eyebrow" style={{ fontSize: 10 }}>
+          {unread > 0 ? `${unread} UNREAD` : 'ALL NOTIFICATIONS'}
         </div>
-      ) : (
-        <div
-          style={{
-            border: `1px solid ${C.softLine}`,
-            borderRadius: 8,
-            overflow: 'hidden',
-          }}
-        >
-          {notifications.map((n: any, i: number) => (
+        <div className="mt-2 doc-divider-thick" />
+
+        {loading ? (
+          <div className="py-4 text-[14px] ink-faint" style={{ fontFamily: 'var(--qm-sans)' }}>Loading…</div>
+        ) : notifications.length === 0 ? (
+          <div
+            className="py-6 text-[13px] ink-faint text-center rounded-md mt-2"
+            style={{ background: 'var(--qm-warm-paper)', border: '1px solid var(--qm-soft-line)' }}
+          >
+            No notifications yet.
+          </div>
+        ) : (
+          notifications.map((n: any, i: number) => (
             <div
               key={n.id ?? i}
-              style={{
-                display: 'flex',
-                alignItems: 'flex-start',
-                justifyContent: 'space-between',
-                padding: '14px 16px',
-                borderBottom:
-                  i < notifications.length - 1 ? `1px solid ${C.softLine}` : 'none',
-                background: n.read_at ? '#fff' : C.warmPaper,
-                gap: 12,
-              }}
+              className="doc-divider py-3.5"
+              style={{ background: n.read_at ? 'transparent' : 'var(--qm-warm-paper)', margin: '0 -4px', padding: '12px 4px' }}
             >
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div
-                  style={{
-                    ...sans,
-                    fontSize: 13.5,
-                    color: C.ink,
-                    fontWeight: n.read_at ? 400 : 600,
-                  }}
-                >
-                  {n.body ?? n.message ?? 'Notification'}
-                </div>
-                {n.created_at && (
-                  <div style={{ ...sans, fontSize: 11.5, color: C.gray500, marginTop: 3 }}>
-                    {new Date(n.created_at).toLocaleDateString()}
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <div
+                    className="text-[14px] leading-snug"
+                    style={{
+                      color: 'var(--qm-charcoal)',
+                      fontWeight: n.read_at ? 400 : 500,
+                      fontFamily: 'var(--qm-sans)',
+                    }}
+                  >
+                    {n.body ?? n.message ?? 'Notification'}
                   </div>
+                  {n.created_at && (
+                    <div className="text-[11.5px] ink-faint num mt-1">
+                      {new Date(n.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </div>
+                  )}
+                </div>
+                {!n.read_at && n.id && (
+                  <button
+                    type="button"
+                    onClick={() => handleMarkRead(n.id)}
+                    className="qm-btn qm-btn-outline shrink-0"
+                    style={{ fontSize: 11.5, padding: '4px 10px' }}
+                  >
+                    Mark read
+                  </button>
                 )}
               </div>
-              {!n.read_at && n.id && (
-                <button
-                  type="button"
-                  onClick={() => handleMarkRead(n.id)}
-                  style={{
-                    ...sans,
-                    fontSize: 11.5,
-                    fontWeight: 600,
-                    color: C.gray500,
-                    background: 'transparent',
-                    border: `1px solid ${C.softLine}`,
-                    borderRadius: 6,
-                    padding: '4px 10px',
-                    cursor: 'pointer',
-                    whiteSpace: 'nowrap',
-                    flexShrink: 0,
-                  }}
-                >
-                  Mark read
-                </button>
-              )}
             </div>
-          ))}
-        </div>
-      )}
-    </div>
+          ))
+        )}
+      </div>
+
+      <div className="mt-6 flex items-start gap-3 text-[11.5px] ink-soft" style={{ borderTop: '1px solid var(--qm-soft-line)', paddingTop: 12 }}>
+        <NpIcon name="bell" size={14} color="var(--accent)" />
+        <div>You'll be notified as each package advances. Quotes are between chefs and distributors — they never come to you.</div>
+      </div>
+    </>
   );
 }

@@ -1,11 +1,11 @@
 // BrandPackagesPage — /brand/packages and /brand/packages/:id
 //
-// List: GET /api/v1/brand/packages, status chips, create form.
-// Detail: GET /api/v1/brand/packages/:id, items list, Send action
-//   (distributor picker from GET /brand/distributors directory).
+// Reskinned per handoff/desi-brand-suite-060626/src/screens-brand.jsx
+// (BrandPackagesBody + BrandPackageBuilderBody). All API wiring
+// (getBrandPackages, getBrandPackage, createBrandPackage, sendBrandPackage,
+// getBrandDistributors, getBrandCatalog) and state shapes preserved.
 //
-// DESIGN-SWAP SEAM: visual frame replaced by Desi's packages screen.
-// Data shape, status chip set, and send flow are final.
+// Doctrine: ONE distributor per package. No prices. No gradient colors.
 
 import { useCallback, useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router';
@@ -23,80 +23,25 @@ import type {
   BrandDistributorDirectory,
   BrandSampleProduct,
 } from '../../services/api';
+import { NpIcon } from '../../components/newspaper/NewspaperShell';
 
-// ─── Design tokens ────────────────────────────────────────────────────────────
+// ─── NotifyStatusBadge for packages ──────────────────────────────────────────
 
-const C = {
-  charcoal: '#2B2B2B',
-  softLine: '#E8E8E8',
-  warmPaper: '#FBFAF7',
-  gray500: '#6B7280',
-  gray700: '#4F4F4F',
-  ink: '#1A1A1A',
-  errorRed: '#B91C1C',
-} as const;
-
-const sans: React.CSSProperties = {
-  fontFamily: "'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-};
-
-const serif: React.CSSProperties = {
-  fontFamily: "'Playfair Display', Georgia, 'Times New Roman', serif",
-};
-
-function eyebrow(): React.CSSProperties {
-  return {
-    ...sans,
-    fontSize: 10,
-    fontWeight: 600,
-    letterSpacing: '.12em',
-    textTransform: 'uppercase',
-    color: C.gray500,
-    marginBottom: 6,
+function PkgStatusBadge({ status }: { status: string }) {
+  const map: Record<string, { bg: string; fg: string; dot: string; border?: string }> = {
+    draft:     { bg: '#fff',    fg: 'var(--qm-gray-500)', dot: 'var(--qm-gray-400)', border: '1px solid var(--qm-soft-line)' },
+    sent:      { bg: '#FFF9F3', fg: 'var(--qm-gray-700)', dot: 'var(--qm-warning)',   border: '1px solid var(--qm-soft-line)' },
+    converted: { bg: 'rgba(127,174,194,.22)', fg: '#2A5F6F', dot: 'var(--accent)' },
+    dismissed: { bg: '#FEF2F2', fg: '#B91C1C', dot: '#DC2626' },
   };
-}
-
-const STATUS_COLORS: Record<string, { bg: string; color: string }> = {
-  draft:     { bg: '#F3F4F6', color: '#374151' },
-  sent:      { bg: '#EFF6FF', color: '#1D4ED8' },
-  converted: { bg: '#F0FDF4', color: '#15803D' },
-  dismissed: { bg: '#FEF2F2', color: '#B91C1C' },
-};
-
-function StatusChip({ status }: { status: string }) {
-  const colors = STATUS_COLORS[status] ?? { bg: '#F3F4F6', color: '#374151' };
+  const m = map[status] ?? map.sent;
   return (
-    <span
-      style={{
-        ...sans,
-        fontSize: 11,
-        fontWeight: 600,
-        letterSpacing: '.05em',
-        textTransform: 'uppercase',
-        padding: '3px 9px',
-        borderRadius: 99,
-        background: colors.bg,
-        color: colors.color,
-        whiteSpace: 'nowrap',
-      }}
-    >
+    <span className="qm-pill" style={{ background: m.bg, color: m.fg, border: m.border ?? 'none', fontSize: 10, padding: '2px 8px', gap: 5 }}>
+      <span style={{ width: 5, height: 5, borderRadius: 999, background: m.dot, display: 'inline-block' }} />
       {status}
     </span>
   );
 }
-
-const inputStyle: React.CSSProperties = {
-  ...sans,
-  width: '100%',
-  padding: '9px 12px',
-  fontSize: 14,
-  border: `1px solid ${C.softLine}`,
-  borderRadius: 6,
-  outline: 'none',
-  color: C.ink,
-  background: '#fff',
-  boxSizing: 'border-box',
-};
 
 // ─── Package detail view ──────────────────────────────────────────────────────
 
@@ -108,15 +53,14 @@ function PackageDetailView({ id }: { id: string }) {
   const [selectedDist, setSelectedDist] = useState('');
   const [sending, setSending]     = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
+  const [sent, setSent]           = useState(false);
 
   useEffect(() => {
-    Promise.all([getBrandPackage(id), getBrandDistributors()]).then(
-      ([pkgRes, distRes]) => {
-        setPkg(pkgRes.data ?? null);
-        setDirectory(distRes.data?.directory ?? []);
-        setLoading(false);
-      }
-    );
+    Promise.all([getBrandPackage(id), getBrandDistributors()]).then(([pkgRes, distRes]) => {
+      setPkg(pkgRes.data ?? null);
+      setDirectory(distRes.data?.directory ?? []);
+      setLoading(false);
+    });
   }, [id]);
 
   const handleSend = async () => {
@@ -126,136 +70,113 @@ function PackageDetailView({ id }: { id: string }) {
     const res = await sendBrandPackage(id, selectedDist);
     setSending(false);
     if (res.error) { setSendError(res.error); return; }
-    // Refresh
     const updated = await getBrandPackage(id);
     setPkg(updated.data ?? null);
+    setSent(true);
   };
 
-  if (loading) return <div style={{ ...sans, color: C.gray500, fontSize: 14 }}>Loading…</div>;
-  if (!pkg) return <div style={{ ...sans, color: C.errorRed, fontSize: 14 }}>Package not found.</div>;
+  if (loading) return <div className="text-[14px] ink-faint mt-8" style={{ fontFamily: 'var(--qm-sans)' }}>Loading…</div>;
+  if (!pkg)    return <div className="text-[14px] mt-8" style={{ color: '#B91C1C', fontFamily: 'var(--qm-sans)' }}>Package not found.</div>;
+
+  const selectedDistName = directory.find((d) => d.id === selectedDist)?.name ?? null;
+
+  // ── Sent confirmation ──────────────────────────────────────────────────────
+  if (sent) {
+    return (
+      <div>
+        <div className="inline-flex items-center justify-center rounded-full" style={{ width: 44, height: 44, background: 'rgba(127,174,194,.18)' }}>
+          <NpIcon name="check" size={22} color="var(--qm-ack-navy)" />
+        </div>
+        <h1 className="serif font-medium ink mt-4" style={{ fontSize: 26, lineHeight: 1.2 }}>
+          Package sent to {selectedDistName ?? 'the distributor'}.
+        </h1>
+        <p className="ink-soft mt-2 leading-relaxed" style={{ fontSize: 14, maxWidth: 440 }}>
+          {pkg.items.length} product{pkg.items.length !== 1 ? 's' : ''} are on their way.
+          Watch it move from Sent → Opened → Loaded → In their catalog under Notifications.
+        </p>
+        <div className="mt-5 flex gap-2">
+          <button onClick={() => navigate('/brand/notifications')} className="qm-btn qm-btn-outline" style={{ fontSize: 13 }}>Track in Notifications</button>
+          <button onClick={() => navigate('/brand/packages')} className="qm-btn qm-btn-text" style={{ fontSize: 13 }}>All packages</button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>
       <button
-        type="button"
         onClick={() => navigate('/brand/packages')}
-        style={{
-          ...sans,
-          fontSize: 13,
-          color: C.gray500,
-          background: 'transparent',
-          border: 'none',
-          cursor: 'pointer',
-          padding: 0,
-          marginBottom: 20,
-        }}
+        className="text-[12px] ink-soft inline-flex items-center gap-1 mb-3"
+        style={{ background: 'transparent', border: 'none', cursor: 'pointer', minHeight: 'unset' }}
       >
-        ← All packages
+        <NpIcon name="arrow-left" size={14} /> Packages
       </button>
 
-      <div style={{ marginBottom: 24 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-          <div style={{ ...serif, fontSize: 22, fontWeight: 700, color: C.charcoal }}>
-            {pkg.title}
-          </div>
-          <StatusChip status={pkg.status} />
-        </div>
-        {pkg.notes && (
-          <div style={{ ...sans, fontSize: 13.5, color: C.gray700, marginTop: 8 }}>
-            {pkg.notes}
-          </div>
-        )}
-        {pkg.target_distributor && (
-          <div style={{ ...sans, fontSize: 13, color: C.gray500, marginTop: 4 }}>
-            Sent to: {pkg.target_distributor.name}
-          </div>
-        )}
+      <div className="flex items-start gap-3">
+        <h1 className="serif font-semibold ink" style={{ fontSize: 26, lineHeight: 1.14 }}>{pkg.title}</h1>
+        <PkgStatusBadge status={pkg.status} />
       </div>
+      {pkg.notes && <div className="text-[13.5px] ink-soft mt-2">{pkg.notes}</div>}
+      {pkg.target_distributor && (
+        <div className="text-[12px] ink-faint mt-1">Sent to: {pkg.target_distributor.name}</div>
+      )}
 
       {/* Items */}
       {pkg.items.length > 0 && (
-        <div style={{ marginBottom: 28 }}>
-          <div style={{ ...eyebrow(), marginBottom: 10 }}>
-            Items ({pkg.items.length})
+        <div className="mt-6">
+          <div className="qm-eyebrow flex items-baseline justify-between" style={{ fontSize: 10 }}>
+            <span>ITEMS</span>
+            <span className="ink-faint" style={{ letterSpacing: 0, textTransform: 'none', fontWeight: 400 }}>{pkg.items.length}</span>
           </div>
-          <div
-            style={{
-              border: `1px solid ${C.softLine}`,
-              borderRadius: 8,
-              overflow: 'hidden',
-            }}
-          >
-            {pkg.items.map((item, i) => (
-              <div
-                key={item.id}
-                style={{
-                  padding: '10px 16px',
-                  borderBottom:
-                    i < pkg.items.length - 1 ? `1px solid ${C.softLine}` : 'none',
-                }}
-              >
-                <div style={{ ...sans, fontSize: 13.5, fontWeight: 500, color: C.ink }}>
-                  {item.product_name}
-                </div>
-                {item.note && (
-                  <div style={{ ...sans, fontSize: 12, color: C.gray500, marginTop: 2 }}>
-                    {item.note}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
+          <div className="mt-2 doc-divider-thick" />
+          {pkg.items.map((item, i) => (
+            <div key={item.id} className="doc-divider py-2.5">
+              <div className="text-[13px] ink leading-snug">{item.product_name}</div>
+              {item.note && <div className="text-[11px] ink-faint leading-snug">{item.note}</div>}
+            </div>
+          ))}
         </div>
       )}
 
-      {/* Send section — only when draft or not yet sent */}
+      {/* Send section — only when draft */}
       {pkg.status === 'draft' && (
-        <div
-          style={{
-            padding: '20px',
-            background: C.warmPaper,
-            borderRadius: 8,
-            border: `1px solid ${C.softLine}`,
-          }}
-        >
-          <div style={{ ...eyebrow(), marginBottom: 10 }}>Send to a distributor</div>
-          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-            <select
-              value={selectedDist}
-              onChange={(e) => setSelectedDist(e.target.value)}
-              style={{ ...inputStyle, flex: '1 1 200px', cursor: 'pointer' }}
-            >
-              <option value="">Select distributor…</option>
-              {directory.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.name}{d.headquarters_city ? ` — ${d.headquarters_city}` : ''}
-                </option>
-              ))}
-            </select>
-            <button
-              type="button"
-              onClick={handleSend}
-              disabled={sending || !selectedDist}
-              style={{
-                ...sans,
-                padding: '9px 20px',
-                fontSize: 14,
-                fontWeight: 600,
-                color: '#fff',
-                background: sending || !selectedDist ? '#9CA3AF' : C.charcoal,
-                border: 'none',
-                borderRadius: 6,
-                cursor: sending || !selectedDist ? 'not-allowed' : 'pointer',
-              }}
-            >
-              {sending ? 'Sending…' : 'Send package'}
-            </button>
-          </div>
-          {sendError && (
-            <div style={{ ...sans, fontSize: 13, color: C.errorRed, marginTop: 10 }}>
-              {sendError}
-            </div>
-          )}
+        <div className="mt-6 px-4 py-4 rounded-md" style={{ background: 'var(--qm-warm-paper)', border: '1px solid var(--qm-soft-line)' }}>
+          <div className="qm-eyebrow mb-3" style={{ fontSize: 10 }}>SEND TO ONE DISTRIBUTOR</div>
+          <div className="mt-2 doc-divider-thick mb-3" />
+
+          {directory.map((d) => {
+            const on = selectedDist === d.id;
+            return (
+              <button
+                key={d.id}
+                onClick={() => setSelectedDist(d.id)}
+                className="w-full text-left doc-divider py-2.5 flex items-center gap-3"
+                style={{ background: 'transparent', border: 'none', cursor: 'pointer', minHeight: 'unset' }}
+              >
+                <span className="inline-flex items-center justify-center rounded-full shrink-0" style={{ width: 18, height: 18, border: `1.5px solid ${on ? 'var(--qm-charcoal)' : 'var(--qm-gray-400)'}` }}>
+                  {on && <span style={{ width: 9, height: 9, borderRadius: 999, background: 'var(--qm-charcoal)', display: 'inline-block' }} />}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="text-[13px] ink leading-snug">{d.name}</div>
+                  {d.headquarters_city && <div className="text-[11px] ink-faint leading-snug">{d.headquarters_city}</div>}
+                </div>
+              </button>
+            );
+          })}
+
+          {sendError && <div className="mt-2 text-[12.5px]" style={{ color: '#B91C1C' }}>{sendError}</div>}
+
+          <button
+            type="button"
+            onClick={handleSend}
+            disabled={sending || !selectedDist}
+            className="qm-btn qm-btn-orange qm-btn-full mt-4"
+            style={{ padding: '13px 18px', fontSize: 15, opacity: (sending || !selectedDist) ? 0.5 : 1, cursor: (sending || !selectedDist) ? 'not-allowed' : 'pointer' }}
+          >
+            <NpIcon name="send" size={16} color="#fff" />
+            {sending ? 'Sending…' : `Notify ${selectedDistName ?? 'a distributor'}`}
+          </button>
+          <div className="mt-2 text-[11px] ink-faint">One distributor per package — each stays its own thread.</div>
         </div>
       )}
     </div>
@@ -265,7 +186,7 @@ function PackageDetailView({ id }: { id: string }) {
 // ─── Package list + create form ───────────────────────────────────────────────
 
 function PackageListView() {
-  const navigate                  = useNavigate();
+  const navigate = useNavigate();
   const [packages, setPackages]   = useState<BrandPackageSummary[]>([]);
   const [loading, setLoading]     = useState(true);
   const [showCreate, setShowCreate] = useState(false);
@@ -286,9 +207,7 @@ function PackageListView() {
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
   const toggleProduct = (id: string) => {
-    setSelectedProducts((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
-    );
+    setSelectedProducts((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
   };
 
   const handleCreate = async () => {
@@ -308,64 +227,37 @@ function PackageListView() {
   };
 
   return (
-    <div>
-      {/* Header */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'flex-start',
-          justifyContent: 'space-between',
-          flexWrap: 'wrap',
-          gap: 12,
-          marginBottom: 24,
-        }}
-      >
+    <>
+      {/* ── Header ── */}
+      <div className="flex items-start justify-between gap-4">
         <div>
-          <div style={eyebrow()}>Packages</div>
-          <div style={{ ...serif, fontSize: 24, fontWeight: 700, color: C.charcoal }}>
-            Your packages
-          </div>
+          <h1 className="serif font-semibold ink" style={{ fontSize: 32, lineHeight: 1.15 }}>Packages</h1>
+          <p className="mt-1 ink-faint" style={{ fontSize: 13.5 }}>A set of your products, sent to one distributor.</p>
         </div>
         <button
-          type="button"
           onClick={() => setShowCreate((v) => !v)}
-          style={{
-            ...sans,
-            padding: '9px 16px',
-            fontSize: 13.5,
-            fontWeight: 600,
-            color: '#fff',
-            background: C.charcoal,
-            border: 'none',
-            borderRadius: 6,
-            cursor: 'pointer',
-          }}
+          className="qm-btn qm-btn-orange shrink-0"
+          style={{ padding: '10px 15px', fontSize: 13 }}
         >
-          {showCreate ? 'Cancel' : '+ New package'}
+          <NpIcon name="plus" size={15} color="#fff" />
+          {showCreate ? 'Cancel' : 'New package'}
         </button>
       </div>
 
       {loading ? (
-        <div style={{ ...sans, color: C.gray500, fontSize: 14 }}>Loading…</div>
+        <div className="mt-8 text-[14px] ink-faint" style={{ fontFamily: 'var(--qm-sans)' }}>Loading…</div>
       ) : (
         <>
           {/* Create form */}
           {showCreate && (
-            <div
-              style={{
-                padding: '20px',
-                background: C.warmPaper,
-                borderRadius: 8,
-                border: `1px solid ${C.softLine}`,
-                marginBottom: 24,
-              }}
-            >
-              <div style={{ ...eyebrow(), marginBottom: 14 }}>New package</div>
+            <div className="mt-5 px-4 py-4 rounded-md" style={{ background: 'var(--qm-warm-paper)', border: '1px solid var(--qm-soft-line)' }}>
+              <div className="qm-eyebrow mb-3" style={{ fontSize: 10 }}>NEW PACKAGE</div>
 
-              <div style={{ marginBottom: 12 }}>
-                <label style={{ ...sans, fontSize: 11, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase', color: C.gray500, display: 'block', marginBottom: 5 }}>Title</label>
+              <div className="mb-3">
+                <label className="qm-eyebrow block mb-1" style={{ fontSize: 9 }}>TITLE</label>
                 <input
-                  style={inputStyle}
+                  className="qm-input"
+                  style={{ fontSize: 14, padding: '8px 10px', minHeight: 'unset' }}
                   type="text"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
@@ -374,62 +266,44 @@ function PackageListView() {
                 />
               </div>
 
-              <div style={{ marginBottom: 14 }}>
-                <label style={{ ...sans, fontSize: 11, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase', color: C.gray500, display: 'block', marginBottom: 5 }}>Notes (optional)</label>
+              <div className="mb-3">
+                <label className="qm-eyebrow block mb-1" style={{ fontSize: 9 }}>NOTES (OPTIONAL)</label>
                 <textarea
-                  style={{ ...inputStyle, minHeight: 70, resize: 'vertical', fontFamily: 'inherit' } as React.CSSProperties}
+                  className="qm-textarea"
+                  style={{ minHeight: 60, fontSize: 14, padding: '8px 10px' }}
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   disabled={creating}
                 />
               </div>
 
-              {/* Product picker from catalog sample */}
               {catalogProducts.length > 0 && (
-                <div style={{ marginBottom: 14 }}>
-                  <label style={{ ...sans, fontSize: 11, fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase', color: C.gray500, display: 'block', marginBottom: 8 }}>
-                    Add products from catalog ({selectedProducts.length} selected)
+                <div className="mb-3">
+                  <label className="qm-eyebrow block mb-2" style={{ fontSize: 9 }}>
+                    PRODUCTS FROM CATALOG — {selectedProducts.length} selected
                   </label>
-                  <div
-                    style={{
-                      maxHeight: 220,
-                      overflowY: 'auto',
-                      border: `1px solid ${C.softLine}`,
-                      borderRadius: 6,
-                    }}
-                  >
+                  <div style={{ maxHeight: 200, overflowY: 'auto', border: '1px solid var(--qm-soft-line)', borderRadius: 6 }}>
                     {catalogProducts.map((p, i) => {
                       const isSel = selectedProducts.includes(p.id);
                       return (
                         <label
                           key={p.id}
+                          className="flex items-center gap-3"
                           style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 10,
-                            padding: '8px 12px',
-                            borderBottom:
-                              i < catalogProducts.length - 1
-                                ? `1px solid ${C.softLine}`
-                                : 'none',
+                            padding: '7px 12px',
+                            borderBottom: i < catalogProducts.length - 1 ? '1px solid var(--qm-soft-line)' : 'none',
                             cursor: 'pointer',
-                            background: isSel ? C.warmPaper : '#fff',
+                            background: isSel ? 'var(--qm-warm-paper)' : '#fff',
                           }}
                         >
-                          <input
-                            type="checkbox"
-                            checked={isSel}
-                            onChange={() => toggleProduct(p.id)}
-                            style={{ width: 14, height: 14, flexShrink: 0 }}
-                          />
-                          <div>
-                            <div style={{ ...sans, fontSize: 13, color: C.ink }}>{p.product}</div>
+                          <NpIcon name={isSel ? 'check-square' : 'square'} size={15} color={isSel ? 'var(--qm-charcoal)' : 'var(--qm-gray-400)'} />
+                          <div className="min-w-0">
+                            <div className="text-[12.5px] ink leading-snug">{p.product}</div>
                             {(p.brand || p.pack_size) && (
-                              <div style={{ ...sans, fontSize: 11.5, color: C.gray500 }}>
-                                {[p.brand, p.pack_size].filter(Boolean).join(' · ')}
-                              </div>
+                              <div className="text-[11px] ink-faint leading-snug">{[p.brand, p.pack_size].filter(Boolean).join(' · ')}</div>
                             )}
                           </div>
+                          <input type="checkbox" checked={isSel} onChange={() => toggleProduct(p.id)} style={{ display: 'none' }} />
                         </label>
                       );
                     })}
@@ -437,27 +311,14 @@ function PackageListView() {
                 </div>
               )}
 
-              {createError && (
-                <div style={{ ...sans, fontSize: 13, color: C.errorRed, marginBottom: 10 }}>
-                  {createError}
-                </div>
-              )}
+              {createError && <div className="mb-2 text-[12.5px]" style={{ color: '#B91C1C' }}>{createError}</div>}
 
               <button
                 type="button"
                 onClick={handleCreate}
                 disabled={creating || !title.trim()}
-                style={{
-                  ...sans,
-                  padding: '9px 20px',
-                  fontSize: 14,
-                  fontWeight: 600,
-                  color: '#fff',
-                  background: creating || !title.trim() ? '#9CA3AF' : C.charcoal,
-                  border: 'none',
-                  borderRadius: 6,
-                  cursor: creating || !title.trim() ? 'not-allowed' : 'pointer',
-                }}
+                className="qm-btn qm-btn-orange"
+                style={{ fontSize: 14, opacity: (creating || !title.trim()) ? 0.5 : 1, cursor: (creating || !title.trim()) ? 'not-allowed' : 'pointer' }}
               >
                 {creating ? 'Creating…' : 'Create package'}
               </button>
@@ -465,62 +326,41 @@ function PackageListView() {
           )}
 
           {/* Package list */}
-          {packages.length === 0 ? (
-            <div
-              style={{
-                ...sans,
-                fontSize: 14,
-                color: C.gray500,
-                padding: '24px',
-                background: C.warmPaper,
-                borderRadius: 8,
-                textAlign: 'center',
-              }}
-            >
-              No packages yet. Create your first package above.
-            </div>
-          ) : (
-            <div
-              style={{
-                border: `1px solid ${C.softLine}`,
-                borderRadius: 8,
-                overflow: 'hidden',
-              }}
-            >
-              {packages.map((pkg, i) => (
-                <div
-                  key={pkg.id}
-                  onClick={() => navigate(`/brand/packages/${pkg.id}`)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '12px 16px',
-                    borderBottom:
-                      i < packages.length - 1 ? `1px solid ${C.softLine}` : 'none',
-                    cursor: 'pointer',
-                    background: '#fff',
-                    gap: 12,
-                    flexWrap: 'wrap',
-                  }}
+          <div className="mt-6">
+            <div className="qm-eyebrow" style={{ fontSize: 10 }}>ALL PACKAGES</div>
+            <div className="mt-2 doc-divider-thick" />
+
+            {packages.length === 0 ? (
+              <div className="py-4 text-[13px] ink-faint">No packages yet. Create your first package above.</div>
+            ) : (
+              packages.map((p, i) => (
+                <button
+                  key={p.id ?? i}
+                  onClick={() => navigate(`/brand/packages/${p.id}`)}
+                  className="w-full text-left doc-divider py-3.5 block hover:opacity-95"
                 >
-                  <div>
-                    <div style={{ ...sans, fontSize: 14, fontWeight: 600, color: C.ink }}>
-                      {pkg.title}
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="serif text-[15px] font-medium ink leading-snug">{p.title}</div>
+                      <div className="text-[11.5px] ink-faint num leading-snug">
+                        {p.items_count} product{p.items_count !== 1 ? 's' : ''}
+                        {p.target_distributor ? ` · ${p.target_distributor.name}` : ' · no distributor selected'}
+                      </div>
                     </div>
-                    <div style={{ ...sans, fontSize: 12, color: C.gray500, marginTop: 2 }}>
-                      {pkg.items_count} item{pkg.items_count !== 1 ? 's' : ''}
-                      {pkg.target_distributor && ` · ${pkg.target_distributor.name}`}
-                    </div>
+                    <PkgStatusBadge status={p.status} />
                   </div>
-                  <StatusChip status={pkg.status} />
-                </div>
-              ))}
-            </div>
-          )}
+                  <div className="mt-1.5 text-[11px] ink-faint num">
+                    {p.status === 'draft'
+                      ? `Started ${new Date(p.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
+                      : `Sent ${new Date(p.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`}
+                  </div>
+                </button>
+              ))
+            )}
+          </div>
         </>
       )}
-    </div>
+    </>
   );
 }
 

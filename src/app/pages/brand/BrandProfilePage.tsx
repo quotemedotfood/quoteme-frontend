@@ -1,97 +1,73 @@
 // BrandProfilePage — /brand/profile
 //
-// Shows brand block from GET /api/v1/me: name, category.
-// No distributor wording. Account identity only.
+// Reskinned per handoff/desi-brand-suite-060626/src/screens-profiles.jsx
+// (BrandProfileBody) and screens-brand.jsx (BrandProfilePreviewBody).
+// Data contract (user?.brand from /me) preserved.
 //
-// DESIGN-SWAP SEAM: Profiles.html (Desi) replaces this entire page's markup.
-// The data contract (user?.brand from /me) is final.
+// Doctrine: NO prices anywhere. Products shown as names + specs only.
+// No distributor wording. No gradient colors.
 
+import { useNavigate } from 'react-router';
 import { useAuth } from '../../contexts/AuthContext';
-
-// ─── Design tokens ────────────────────────────────────────────────────────────
-
-const C = {
-  charcoal: '#2B2B2B',
-  softLine: '#E8E8E8',
-  warmPaper: '#FBFAF7',
-  gray500: '#6B7280',
-  gray700: '#4F4F4F',
-  ink: '#1A1A1A',
-} as const;
-
-const sans: React.CSSProperties = {
-  fontFamily: "'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-};
-
-const serif: React.CSSProperties = {
-  fontFamily: "'Playfair Display', Georgia, 'Times New Roman', serif",
-};
-
-function eyebrow(): React.CSSProperties {
-  return {
-    ...sans,
-    fontSize: 10,
-    fontWeight: 600,
-    letterSpacing: '.12em',
-    textTransform: 'uppercase',
-    color: C.gray500,
-    marginBottom: 6,
-  };
-}
-
-function FieldRow({ label, value }: { label: string; value: string | null | undefined }) {
-  return (
-    <div style={{ marginBottom: 18 }}>
-      <div style={eyebrow()}>{label}</div>
-      <div
-        style={{
-          ...sans,
-          fontSize: 14.5,
-          color: value ? C.ink : C.gray500,
-          fontStyle: value ? 'normal' : 'italic',
-        }}
-      >
-        {value ?? 'Not set'}
-      </div>
-    </div>
-  );
-}
-
-// ─── Page ─────────────────────────────────────────────────────────────────────
-// DESIGN-SWAP SEAM: Profiles.html (Desi) replaces this page's markup.
+import { NpIcon } from '../../components/newspaper/NewspaperShell';
+import { ProfileHeader, ProfileSection } from '../../components/brand/BrandPrimitives';
 
 export function BrandProfilePage() {
   const { user } = useAuth();
+  const navigate = useNavigate();
 
-  const fullName =
-    [user?.first_name, user?.last_name].filter(Boolean).join(' ').trim() || '—';
+  const brandName = user?.brand?.name ?? user?.first_name ?? 'Brand';
+  const brandMono = brandName.split(' ').map((s: string) => s[0]).slice(0, 2).join('').toUpperCase();
+  const brandCategory = user?.brand?.category ?? null;
+  const fullName = [user?.first_name, user?.last_name].filter(Boolean).join(' ').trim() || null;
 
   return (
     <div>
-      {/* Header */}
-      <div style={{ marginBottom: 28 }}>
-        <div style={eyebrow()}>Profile</div>
-        <div style={{ ...serif, fontSize: 24, fontWeight: 700, color: C.charcoal }}>
-          {user?.brand?.name ?? fullName}
-        </div>
+      {/* Preview notice */}
+      <div className="mb-4 px-4 py-3 rounded-md flex items-center gap-2.5" style={{ background: 'var(--qm-warm-paper)', border: '1px solid var(--qm-soft-line)' }}>
+        <NpIcon name="eye" size={14} color="var(--qm-gray-500)" />
+        <span className="text-[11.5px] ink-soft">
+          This is your public profile — how distributors and the network see you. Edit details in{' '}
+          <button
+            onClick={() => navigate('/brand/settings')}
+            className="underline ink"
+            style={{ background: 'transparent', border: 'none', cursor: 'pointer', minHeight: 'unset' }}
+          >
+            Settings
+          </button>.
+        </span>
       </div>
 
-      {/* Brand identity card */}
-      <div
-        style={{
-          background: '#fff',
-          border: `1px solid ${C.softLine}`,
-          borderRadius: 10,
-          padding: '24px',
-          maxWidth: 480,
-        }}
-      >
-        <div style={{ ...eyebrow(), marginBottom: 20 }}>Brand identity</div>
+      {/* ── Profile header ── */}
+      <ProfileHeader
+        mono={brandMono}
+        name={brandName}
+        kind={`BRAND${brandCategory ? ` · ${brandCategory.toUpperCase()}` : ''}`}
+        desktop
+        links={user?.email ? [{ icon: 'at-sign', label: user.email }] : []}
+      />
 
-        <FieldRow label="Brand name"     value={user?.brand?.name} />
-        <FieldRow label="Category"       value={user?.brand?.category} />
-        <FieldRow label="Contact name"   value={fullName !== '—' ? fullName : null} />
-        <FieldRow label="Email"          value={user?.email} />
+      {/* ── Contact ── */}
+      {fullName && (
+        <ProfileSection title="CONTACT" desktop>
+          <div className="doc-divider py-2.5 flex items-baseline justify-between gap-3">
+            <span className="qm-eyebrow" style={{ fontSize: 9 }}>NAME</span>
+            <span className="text-[13px] ink leading-snug">{fullName}</span>
+          </div>
+          <div className="doc-divider py-2.5 flex items-baseline justify-between gap-3">
+            <span className="qm-eyebrow" style={{ fontSize: 9 }}>EMAIL</span>
+            <span className="text-[13px] ink leading-snug">{user?.email ?? '—'}</span>
+          </div>
+        </ProfileSection>
+      )}
+
+      {/* ── No-prices footer (doctrine) ── */}
+      <div className="mt-8 flex items-start gap-3" style={{ borderTop: '1px solid var(--qm-soft-line)', paddingTop: 14 }}>
+        <NpIcon name="info" size={14} color="var(--accent)" style={{ marginTop: 1 }} />
+        <div className="ink-soft leading-relaxed" style={{ fontSize: 12, maxWidth: 460 }}>
+          <b className="ink">Prices are never shown here.</b> Your products show names and pack specs only.
+          Pricing lives inside a distributor's catalog — never on your profile.
+        </div>
       </div>
     </div>
   );

@@ -1,38 +1,46 @@
 // BrandShellLayout — persistent shell for all /brand/* routes.
 //
-// DESIGN-SWAP SEAM: NewspaperMobileShell (Desi) replaces this wrapper's markup
-// when Desi's brand visual layer lands. The nav contract below is final —
-// routes, active-tab derivation, and auth guard stay unchanged; only the
-// surrounding markup/styles swap.
+// Wired to NewspaperShell (Desi brand-suite-060626) per the handoff README.
+// RoleSidebar on desktop (≥768px), NewspaperMobileShell on mobile.
 //
+// Role guard: non-brand roles redirect to their canonical landing.
 // Nav contract (final, do not reorder):
 //   dashboard    → /brand
+//   capture      → /brand/capture
 //   catalog      → /brand/catalog
 //   packages     → /brand/packages
 //   distributors → /brand/distributors
 //   notifications → /brand/notifications
-//   settings     → /brand/settings
-//   profile      → /brand/profile
+//   team         → /brand/team
+//   settings     → /brand/settings   (bottom-pinned)
+//   profile      → /brand/profile    (via Settings sub)
 //
 // Doctrine: brands receive NO quotes. No "New Quote", no "Quotes", no
 // "Customers", no incoming-quote surfaces anywhere in this shell.
+//
+// SCOPE GUARD: this shell is brand-only. Chef/rep/distributor desktop shells
+// are NOT converted to NewspaperShell — that sweep is held for Moose's call.
 
-import { createContext, useContext, useState } from 'react';
+import { createContext, useContext, useEffect, useState } from 'react';
 import { Outlet, useLocation, useNavigate, Navigate } from 'react-router';
 import { useAuth } from '../../contexts/AuthContext';
+import { NewspaperShell } from '../newspaper/NewspaperShell';
+import type { NewspaperShellProps } from '../newspaper/NewspaperShell';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type BrandNavTab =
   | 'dashboard'
   | 'catalog'
+  | 'capture'
   | 'packages'
   | 'distributors'
   | 'notifications'
+  | 'team'
   | 'settings'
   | 'profile';
 
-// ─── Context (sidebar mode, for future drawer control) ────────────────────────
+// ─── Context ──────────────────────────────────────────────────────────────────
 
 interface BrandShellContextValue {
   sidebarOpen: boolean;
@@ -51,152 +59,75 @@ export function useBrandShell() {
 // ─── Active tab derivation ────────────────────────────────────────────────────
 
 function activeTabFromPath(pathname: string): BrandNavTab {
-  if (pathname.startsWith('/brand/catalog')) return 'catalog';
-  if (pathname.startsWith('/brand/packages')) return 'packages';
-  if (pathname.startsWith('/brand/distributors')) return 'distributors';
+  if (pathname.startsWith('/brand/catalog'))       return 'catalog';
+  if (pathname.startsWith('/brand/capture'))       return 'capture';
+  if (pathname.startsWith('/brand/packages'))      return 'packages';
+  if (pathname.startsWith('/brand/distributors'))  return 'distributors';
   if (pathname.startsWith('/brand/notifications')) return 'notifications';
-  if (pathname.startsWith('/brand/settings')) return 'settings';
-  if (pathname.startsWith('/brand/profile')) return 'profile';
+  if (pathname.startsWith('/brand/team'))          return 'team';
+  if (pathname.startsWith('/brand/settings'))      return 'settings';
+  if (pathname.startsWith('/brand/profile'))       return 'profile';
   return 'dashboard';
 }
 
-// ─── Design tokens ────────────────────────────────────────────────────────────
+// ─── Responsive variant hook ──────────────────────────────────────────────────
 
-const C = {
-  charcoal: '#2B2B2B',
-  softLine: '#E8E8E8',
-  warmPaper: '#FBFAF7',
-  sidebar: '#F5F4F1',
-  gray500: '#6B7280',
-  gray700: '#4F4F4F',
-  activeInk: '#1A1A1A',
-  activeBg: '#EDECE8',
-} as const;
-
-const sans: React.CSSProperties = {
-  fontFamily: "'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-};
-
-const serif: React.CSSProperties = {
-  fontFamily: "'Playfair Display', Georgia, 'Times New Roman', serif",
-};
-
-// ─── Nav items ────────────────────────────────────────────────────────────────
-
-const NAV_ITEMS: Array<{ tab: BrandNavTab; label: string; path: string }> = [
-  { tab: 'dashboard',     label: 'Dashboard',     path: '/brand' },
-  { tab: 'catalog',       label: 'Catalog',        path: '/brand/catalog' },
-  { tab: 'packages',      label: 'Packages',       path: '/brand/packages' },
-  { tab: 'distributors',  label: 'Distributors',   path: '/brand/distributors' },
-  { tab: 'notifications', label: 'Notifications',  path: '/brand/notifications' },
-  { tab: 'settings',      label: 'Settings',       path: '/brand/settings' },
-  { tab: 'profile',       label: 'Profile',        path: '/brand/profile' },
-];
-
-// ─── Sidebar ──────────────────────────────────────────────────────────────────
-
-interface SidebarProps {
-  active: BrandNavTab;
-  brandName: string;
-  onNav: (path: string) => void;
-  onLogout: () => void;
+function useVariant(): 'desktop' | 'mobile' {
+  const [variant, setVariant] = useState<'desktop' | 'mobile'>(
+    () => (window.innerWidth >= 768 ? 'desktop' : 'mobile'),
+  );
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 768px)');
+    const update = () => setVariant(mq.matches ? 'desktop' : 'mobile');
+    mq.addEventListener('change', update);
+    return () => mq.removeEventListener('change', update);
+  }, []);
+  return variant;
 }
 
-function BrandSidebar({ active, brandName, onNav, onLogout }: SidebarProps) {
-  return (
-    <aside
-      style={{
-        width: 220,
-        minHeight: '100vh',
-        background: C.sidebar,
-        borderRight: `1px solid ${C.softLine}`,
-        display: 'flex',
-        flexDirection: 'column',
-        flexShrink: 0,
-      }}
-    >
-      {/* Wordmark */}
-      <div
-        style={{
-          padding: '24px 20px 20px',
-          borderBottom: `1px solid ${C.softLine}`,
-        }}
-      >
-        <div
-          style={{
-            ...serif,
-            fontSize: 18,
-            fontWeight: 700,
-            color: C.charcoal,
-            letterSpacing: '-0.01em',
-          }}
-        >
-          QuoteMe
-        </div>
-        <div
-          style={{
-            ...sans,
-            fontSize: 11,
-            color: C.gray500,
-            marginTop: 2,
-            fontWeight: 500,
-          }}
-        >
-          {brandName}
-        </div>
-      </div>
+// ─── brandNav builder ─────────────────────────────────────────────────────────
 
-      {/* Nav */}
-      <nav style={{ flex: 1, padding: '12px 0' }}>
-        {NAV_ITEMS.map(({ tab, label, path }) => {
-          const isActive = active === tab;
-          return (
-            <button
-              key={tab}
-              type="button"
-              onClick={() => onNav(path)}
-              style={{
-                ...sans,
-                display: 'block',
-                width: '100%',
-                textAlign: 'left',
-                padding: '9px 20px',
-                fontSize: 13.5,
-                fontWeight: isActive ? 600 : 400,
-                color: isActive ? C.activeInk : C.gray700,
-                background: isActive ? C.activeBg : 'transparent',
-                border: 'none',
-                cursor: 'pointer',
-                borderRadius: 0,
-                transition: 'background 0.1s',
-              }}
-            >
-              {label}
-            </button>
-          );
-        })}
-      </nav>
+function buildBrandNav(
+  navigate: (path: string) => void,
+): NewspaperShellProps['nav'] {
+  return [
+    {
+      group: 'THE DAILY WORK',
+      items: [
+        { id: 'dashboard',     icon: 'layout-grid',  label: 'Dashboard',     onClick: () => navigate('/brand') },
+        { id: 'capture',       icon: 'scan-line',    label: 'Capture',       onClick: () => navigate('/brand/capture') },
+        { id: 'packages',      icon: 'package',      label: 'Packages',      onClick: () => navigate('/brand/packages') },
+        { id: 'notifications', icon: 'bell',         label: 'Notifications', onClick: () => navigate('/brand/notifications') },
+      ],
+    },
+    {
+      group: 'YOUR LINE',
+      items: [
+        { id: 'catalog',       icon: 'notebook-text', label: 'Catalog',      onClick: () => navigate('/brand/catalog') },
+      ],
+    },
+    {
+      group: 'NETWORK',
+      items: [
+        { id: 'distributors',  icon: 'truck',         label: 'Distributors', onClick: () => navigate('/brand/distributors') },
+        { id: 'team',          icon: 'users',         label: 'Team',         onClick: () => navigate('/brand/team') },
+      ],
+    },
+  ];
+}
 
-      {/* Bottom: sign out */}
-      <div style={{ padding: '16px 20px', borderTop: `1px solid ${C.softLine}` }}>
-        <button
-          type="button"
-          onClick={onLogout}
-          style={{
-            ...sans,
-            fontSize: 12,
-            color: C.gray500,
-            background: 'transparent',
-            border: 'none',
-            cursor: 'pointer',
-            padding: 0,
-          }}
-        >
-          Sign out
-        </button>
-      </div>
-    </aside>
-  );
+function buildBrandSettings(navigate: (path: string) => void) {
+  return {
+    id: 'settings' as const,
+    icon: 'settings',
+    label: 'Settings',
+    onClick: () => navigate('/brand/settings'),
+    sub: [
+      { label: 'Company', onClick: () => navigate('/brand/settings') },
+      { label: 'Profile', onClick: () => navigate('/brand/profile') },
+      { label: 'Billing', onClick: () => navigate('/brand/settings') },
+    ],
+  };
 }
 
 // ─── BrandShellLayout ─────────────────────────────────────────────────────────
@@ -206,65 +137,47 @@ export function BrandShellLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const variant = useVariant();
 
   // Brand guard: non-brand roles must never land here.
   if (!isLoading && user && user.role !== 'brand') {
     const landing =
-      user.role === 'quoteme_admin' ? '/qm-admin' :
+      user.role === 'quoteme_admin'     ? '/qm-admin' :
       user.role === 'distributor_admin' ? '/distributor-admin' :
-      user.role === 'rep' ? '/rep/quotes/inbound' :
+      user.role === 'rep'               ? '/rep/quotes/inbound' :
       '/dashboard';
     return <Navigate to={landing} replace />;
   }
 
   const active = activeTabFromPath(location.pathname);
   const brandName = user?.brand?.name ?? user?.first_name ?? 'Brand';
+  const brandMono = brandName.split(' ').map((s: string) => s[0]).slice(0, 2).join('').toUpperCase();
 
-  const handleLogout = () => {
-    logout();
-    navigate('/auth');
+  const identity = {
+    eyebrow: 'BRAND',
+    title: brandName,
+    sub: user?.brand?.category ?? undefined,
+    mono: brandMono,
+    initials: brandMono,
   };
+
+  const nav = buildBrandNav(navigate);
+  const settings = buildBrandSettings(navigate);
 
   return (
     <BrandShellContext.Provider value={{ sidebarOpen, setSidebarOpen }}>
-      <div
-        style={{
-          display: 'flex',
-          minHeight: '100vh',
-          background: '#fff',
-          ...sans,
-        }}
+      <NewspaperShell
+        variant={variant}
+        edition="Brand Edition"
+        identity={identity}
+        nav={nav}
+        active={active}
+        settings={settings}
+        onNav={(path) => navigate(path)}
+        maxWidth={860}
       >
-        {/* Sidebar — DESIGN-SWAP SEAM: NewspaperMobileShell replaces this aside */}
-        {sidebarOpen && (
-          <BrandSidebar
-            active={active}
-            brandName={brandName}
-            onNav={(path) => navigate(path)}
-            onLogout={handleLogout}
-          />
-        )}
-
-        {/* Main content */}
-        <main
-          style={{
-            flex: 1,
-            minWidth: 0,
-            overflowY: 'auto',
-            background: '#fff',
-          }}
-        >
-          <div
-            style={{
-              ...sans,
-              padding: '36px 40px',
-              maxWidth: 1100,
-            }}
-          >
-            <Outlet />
-          </div>
-        </main>
-      </div>
+        <Outlet />
+      </NewspaperShell>
     </BrandShellContext.Provider>
   );
 }

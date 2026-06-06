@@ -1,13 +1,11 @@
 // BrandDashboardPage — /brand (index)
 //
-// Shows: brand name, catalog item_count, packages count by status,
-// recent notifications.
+// Reskinned per handoff/desi-brand-suite-060626/src/screens-brand.jsx
+// (BrandDashboardBody). All API wiring, loading/empty/error states
+// from the previous functional scaffold are preserved.
 //
-// Doctrine: brands receive NO quotes. No inbox, no "New Quote", no
-// distributor wording beyond the distributors section.
-//
-// DESIGN-SWAP SEAM: card layouts and typography replaced by Desi's
-// brand dashboard frame. Data fetching + state shape here are final.
+// Doctrine: ONE orange CTA per page. No inbox. No incoming-quotes surface.
+// Prices never shown. No gradient colors.
 
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
@@ -18,288 +16,205 @@ import {
   getNotifications,
 } from '../../services/api';
 import type { BrandPackageSummary } from '../../services/api';
-
-// ─── Design tokens ────────────────────────────────────────────────────────────
-
-const C = {
-  charcoal: '#2B2B2B',
-  softLine: '#E8E8E8',
-  warmPaper: '#FBFAF7',
-  gray500: '#6B7280',
-  gray700: '#4F4F4F',
-  ink: '#1A1A1A',
-} as const;
-
-const sans: React.CSSProperties = {
-  fontFamily: "'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-};
-
-const serif: React.CSSProperties = {
-  fontFamily: "'Playfair Display', Georgia, 'Times New Roman', serif",
-};
-
-function eyebrow(): React.CSSProperties {
-  return {
-    ...sans,
-    fontSize: 10,
-    fontWeight: 600,
-    letterSpacing: '.12em',
-    textTransform: 'uppercase',
-    color: C.gray500,
-    marginBottom: 6,
-  };
-}
-
-// ─── Stat card ────────────────────────────────────────────────────────────────
-
-function StatCard({
-  label,
-  value,
-  onClick,
-}: {
-  label: string;
-  value: string | number;
-  onClick?: () => void;
-}) {
-  return (
-    <div
-      onClick={onClick}
-      style={{
-        background: C.warmPaper,
-        border: `1px solid ${C.softLine}`,
-        borderRadius: 10,
-        padding: '20px 22px',
-        cursor: onClick ? 'pointer' : 'default',
-        flex: '1 1 160px',
-        minWidth: 0,
-      }}
-    >
-      <div style={eyebrow()}>{label}</div>
-      <div
-        style={{
-          ...serif,
-          fontSize: 28,
-          fontWeight: 700,
-          color: C.charcoal,
-          lineHeight: 1.1,
-        }}
-      >
-        {value}
-      </div>
-    </div>
-  );
-}
-
-// ─── Package status chip ──────────────────────────────────────────────────────
-
-const STATUS_COLORS: Record<string, { bg: string; color: string }> = {
-  draft:     { bg: '#F3F4F6', color: '#374151' },
-  sent:      { bg: '#EFF6FF', color: '#1D4ED8' },
-  converted: { bg: '#F0FDF4', color: '#15803D' },
-  dismissed: { bg: '#FEF2F2', color: '#B91C1C' },
-};
-
-function StatusChip({ status }: { status: string }) {
-  const colors = STATUS_COLORS[status] ?? { bg: '#F3F4F6', color: '#374151' };
-  return (
-    <span
-      style={{
-        ...sans,
-        fontSize: 11,
-        fontWeight: 600,
-        letterSpacing: '.05em',
-        textTransform: 'uppercase',
-        padding: '2px 8px',
-        borderRadius: 99,
-        background: colors.bg,
-        color: colors.color,
-        whiteSpace: 'nowrap',
-      }}
-    >
-      {status}
-    </span>
-  );
-}
-
-// ─── Page ─────────────────────────────────────────────────────────────────────
+import { NpIcon } from '../../components/newspaper/NewspaperShell';
+import { NotifyStatusBadge, BrandMark } from '../../components/brand/BrandPrimitives';
 
 export function BrandDashboardPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  const [itemCount, setItemCount]       = useState<number | null>(null);
-  const [packages, setPackages]         = useState<BrandPackageSummary[]>([]);
+  const [itemCount, setItemCount]         = useState<number | null>(null);
+  const [packages, setPackages]           = useState<BrandPackageSummary[]>([]);
   const [notifications, setNotifications] = useState<any[]>([]);
-  const [loading, setLoading]           = useState(true);
+  const [loading, setLoading]             = useState(true);
+  const [catalogName, setCatalogName]     = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-
-    Promise.all([
-      getBrandCatalog(),
-      getBrandPackages(),
-      getNotifications(),
-    ]).then(([catRes, pkgRes, notifRes]) => {
-      if (cancelled) return;
-      setItemCount(catRes.data?.catalog?.item_count ?? null);
-      setPackages(pkgRes.data ?? []);
-      setNotifications(notifRes.data?.notifications?.slice(0, 5) ?? []);
-      setLoading(false);
-    });
-
+    Promise.all([getBrandCatalog(), getBrandPackages(), getNotifications()]).then(
+      ([catRes, pkgRes, notifRes]) => {
+        if (cancelled) return;
+        const cat = catRes.data?.catalog;
+        setItemCount(cat?.item_count ?? null);
+        setCatalogName(cat?.brand?.name ?? null);
+        setPackages(pkgRes.data ?? []);
+        setNotifications(notifRes.data?.notifications?.slice(0, 5) ?? []);
+        setLoading(false);
+      },
+    );
     return () => { cancelled = true; };
   }, []);
 
   const brandName = user?.brand?.name ?? user?.first_name ?? 'Brand';
-
-  // Package status counts
-  const pkgByStatus = packages.reduce<Record<string, number>>((acc, p) => {
-    acc[p.status] = (acc[p.status] ?? 0) + 1;
-    return acc;
-  }, {});
+  const brandMono = brandName.split(' ').map((s: string) => s[0]).slice(0, 2).join('').toUpperCase();
+  const brandCategory = user?.brand?.category ?? null;
 
   const recentPackages = [...packages]
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-    .slice(0, 5);
+    .slice(0, 4);
+
+  const pkgSentCount = packages.filter((p) => p.status === 'sent').length;
 
   return (
     <div>
-      {/* Header */}
-      <div style={{ marginBottom: 32 }}>
-        <div style={eyebrow()}>Dashboard</div>
-        <div
-          style={{
-            ...serif,
-            fontSize: 26,
-            fontWeight: 700,
-            color: C.charcoal,
-            lineHeight: 1.2,
-          }}
-        >
-          {brandName}
-        </div>
+      {/* ── Header ── */}
+      <div>
+        <h1 className="serif font-semibold ink" style={{ fontSize: 34, lineHeight: 1.12 }}>
+          Hi, {brandName.split(' ')[0]}.
+        </h1>
+        <p className="ink-faint mt-1 num" style={{ fontSize: 14 }}>
+          {brandName}{brandCategory ? ` · ${brandCategory}` : ''}
+        </p>
       </div>
 
       {loading ? (
-        <div style={{ ...sans, color: C.gray500, fontSize: 14 }}>Loading…</div>
+        <div className="mt-8 text-[14px] ink-faint" style={{ fontFamily: 'var(--qm-sans)' }}>Loading…</div>
       ) : (
-        <>
-          {/* Stat row */}
-          <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 36 }}>
-            <StatCard
-              label="Catalog items"
-              value={itemCount !== null ? itemCount.toLocaleString() : '—'}
+        <div className="mt-7" style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 32, alignItems: 'start' }}>
+          {/* ── Main column ── */}
+          <div>
+            {/* CATALOG STATUS */}
+            <div className="qm-eyebrow" style={{ fontSize: 11 }}>YOUR CATALOG</div>
+            <button
               onClick={() => navigate('/brand/catalog')}
-            />
-            <StatCard
-              label="Total packages"
-              value={packages.length}
-              onClick={() => navigate('/brand/packages')}
-            />
-            <StatCard
-              label="Sent"
-              value={pkgByStatus['sent'] ?? 0}
-              onClick={() => navigate('/brand/packages')}
-            />
-            <StatCard
-              label="Converted"
-              value={pkgByStatus['converted'] ?? 0}
-              onClick={() => navigate('/brand/packages')}
-            />
-          </div>
+              className="mt-2 w-full text-left bg-white border hairline rounded-xl hover:shadow-sm transition-shadow"
+              style={{ padding: 22 }}
+            >
+              <div className="flex items-start gap-4">
+                <BrandMark mono={brandMono} size={50} />
+                <div className="min-w-0 flex-1">
+                  <div className="serif font-medium ink leading-snug" style={{ fontSize: 18 }}>
+                    {catalogName ? `${catalogName} catalog` : 'Your catalog'}
+                  </div>
+                  <div className="ink-soft mt-1 num" style={{ fontSize: 13 }}>
+                    {itemCount != null ? `${itemCount.toLocaleString()} products` : 'No catalog uploaded'}
+                  </div>
+                  <div className="mt-2">
+                    <span
+                      className="qm-pill"
+                      style={{
+                        background: itemCount ? 'rgba(127,174,194,.22)' : 'var(--qm-gray-100)',
+                        color: itemCount ? '#2A5F6F' : 'var(--qm-gray-500)',
+                        fontSize: 10,
+                        padding: '2px 8px',
+                        gap: 5,
+                      }}
+                    >
+                      <span style={{ width: 5, height: 5, borderRadius: 999, background: itemCount ? 'var(--accent)' : 'var(--qm-gray-400)', display: 'inline-block' }} />
+                      {itemCount ? 'Active' : 'No catalog'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </button>
 
-          {/* Recent packages */}
-          {recentPackages.length > 0 && (
-            <div style={{ marginBottom: 36 }}>
-              <div style={{ ...eyebrow(), marginBottom: 12 }}>Recent packages</div>
-              <div
-                style={{
-                  border: `1px solid ${C.softLine}`,
-                  borderRadius: 8,
-                  overflow: 'hidden',
-                }}
-              >
-                {recentPackages.map((pkg, i) => (
-                  <div
-                    key={pkg.id}
-                    onClick={() => navigate(`/brand/packages/${pkg.id}`)}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      padding: '12px 16px',
-                      borderBottom: i < recentPackages.length - 1 ? `1px solid ${C.softLine}` : 'none',
-                      cursor: 'pointer',
-                      background: '#fff',
-                    }}
+            {/* ONE ORANGE CTA — capture → package */}
+            <button
+              onClick={() => navigate('/brand/capture')}
+              className="qm-btn qm-btn-orange qm-btn-full mt-4"
+              style={{ padding: '14px 18px', fontSize: 15 }}
+            >
+              <NpIcon name="scan-line" size={17} color="#fff" />
+              Capture a menu &amp; build a package
+            </button>
+            <div className="mt-2 text-[11.5px] ink-faint">
+              Paste a menu, match it to your line, and send the right products to a distributor.
+            </div>
+
+            {/* RECENT PACKAGES */}
+            <div className="mt-8">
+              <div className="qm-eyebrow flex items-baseline justify-between" style={{ fontSize: 10 }}>
+                <span>RECENT PACKAGES</span>
+                <button
+                  onClick={() => navigate('/brand/packages')}
+                  className="ink-faint"
+                  style={{ letterSpacing: 0, textTransform: 'none', fontWeight: 400, background: 'transparent', border: 'none', cursor: 'pointer', minHeight: 'unset' }}
+                >
+                  See all →
+                </button>
+              </div>
+              <div className="mt-2 doc-divider-thick" />
+
+              {recentPackages.length === 0 ? (
+                <div className="py-4 text-[13px] ink-faint">No packages yet.</div>
+              ) : (
+                recentPackages.map((p, i) => (
+                  <button
+                    key={p.id ?? i}
+                    onClick={() => navigate(p.status === 'draft' ? `/brand/packages/${p.id}` : '/brand/notifications')}
+                    className="w-full text-left doc-divider py-3 flex items-center gap-3 hover:opacity-90"
                   >
-                    <div>
-                      <div style={{ ...sans, fontSize: 14, fontWeight: 600, color: C.ink }}>
-                        {pkg.title}
-                      </div>
-                      <div style={{ ...sans, fontSize: 12, color: C.gray500, marginTop: 2 }}>
-                        {pkg.items_count} item{pkg.items_count !== 1 ? 's' : ''}
-                        {pkg.target_distributor && ` · ${pkg.target_distributor.name}`}
+                    <div className="min-w-0 flex-1">
+                      <div className="ink leading-snug" style={{ fontSize: 13.5 }}>{p.title}</div>
+                      <div className="text-[11px] ink-faint num leading-snug">
+                        {p.items_count} product{p.items_count !== 1 ? 's' : ''}
+                        {p.target_distributor ? ` · ${p.target_distributor.name}` : ' · no distributor selected'}
                       </div>
                     </div>
-                    <StatusChip status={pkg.status} />
+                    <NotifyStatusBadge status={p.status === 'draft' ? 'draft' : 'sent'} />
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* ── Right rail ── */}
+          <div>
+            {/* Notifications rail */}
+            <div className="px-4 py-4 rounded-md bg-white border hairline">
+              <div className="qm-eyebrow" style={{ fontSize: 10 }}>WHERE YOUR LINE STANDS</div>
+              <p className="mt-1 text-[11.5px] ink-faint leading-snug">
+                {pkgSentCount} active package{pkgSentCount !== 1 ? 's' : ''} sent to distributors. Quotes go to distributors, never to you.
+              </p>
+              <div className="mt-2.5 flex flex-col gap-2">
+                {packages.slice(0, 4).map((p, i) => (
+                  <div key={p.id ?? i} className="flex items-center justify-between gap-2">
+                    <span className="text-[12.5px] ink leading-snug truncate">{p.title}</span>
+                    <NotifyStatusBadge status={p.status === 'draft' ? 'draft' : 'sent'} />
                   </div>
                 ))}
               </div>
+              <button
+                onClick={() => navigate('/brand/notifications')}
+                className="mt-3 text-[11.5px] ink-soft underline inline-flex items-center gap-1"
+                style={{ background: 'transparent', border: 'none', cursor: 'pointer', minHeight: 'unset' }}
+              >
+                Track all notifications <NpIcon name="arrow-right" size={12} />
+              </button>
             </div>
-          )}
 
-          {/* Recent notifications */}
-          {notifications.length > 0 && (
-            <div>
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  marginBottom: 12,
-                }}
-              >
-                <div style={eyebrow()}>Notifications</div>
-                <button
-                  type="button"
-                  onClick={() => navigate('/brand/notifications')}
-                  style={{
-                    ...sans,
-                    fontSize: 12,
-                    color: C.gray500,
-                    background: 'transparent',
-                    border: 'none',
-                    cursor: 'pointer',
-                  }}
-                >
-                  View all
-                </button>
-              </div>
-              <div
-                style={{
-                  border: `1px solid ${C.softLine}`,
-                  borderRadius: 8,
-                  overflow: 'hidden',
-                }}
-              >
+            {/* Recent notifications */}
+            {notifications.length > 0 && (
+              <div className="mt-4">
+                <div className="qm-eyebrow" style={{ fontSize: 10 }}>RECENT NOTIFICATIONS</div>
+                <div className="mt-2 doc-divider-thick" />
                 {notifications.map((n: any, i: number) => (
                   <div
                     key={n.id ?? i}
-                    style={{
-                      padding: '12px 16px',
-                      borderBottom:
-                        i < notifications.length - 1 ? `1px solid ${C.softLine}` : 'none',
-                      background: n.read_at ? '#fff' : C.warmPaper,
-                    }}
+                    className="doc-divider py-2.5"
+                    style={{ background: n.read_at ? 'transparent' : 'var(--qm-warm-paper)', margin: '0 -4px', padding: '8px 4px' }}
                   >
-                    <div style={{ ...sans, fontSize: 13.5, color: C.ink }}>{n.body ?? n.message ?? 'Notification'}</div>
+                    <div style={{ fontSize: 12.5, color: 'var(--qm-charcoal)', fontFamily: 'var(--qm-sans)' }}>
+                      {n.body ?? n.message ?? 'Notification'}
+                    </div>
                   </div>
                 ))}
               </div>
+            )}
+
+            <div className="mt-4 px-4 py-4 rounded-md" style={{ background: 'var(--qm-warm-paper)', border: '1px solid var(--qm-soft-line)' }}>
+              <div className="qm-eyebrow" style={{ fontSize: 10 }}>GROW YOUR REACH</div>
+              <div className="serif font-medium ink mt-1" style={{ fontSize: 14.5, lineHeight: 1.3 }}>Bring on another distributor.</div>
+              <button
+                onClick={() => navigate('/brand/distributors')}
+                className="mt-2 text-[11.5px] ink-soft underline inline-flex items-center gap-1"
+                style={{ background: 'transparent', border: 'none', cursor: 'pointer', minHeight: 'unset' }}
+              >
+                See distributors <NpIcon name="arrow-right" size={12} />
+              </button>
             </div>
-          )}
-        </>
+          </div>
+        </div>
       )}
     </div>
   );
