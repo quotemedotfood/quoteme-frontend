@@ -45,6 +45,14 @@ export function RootLayout() {
     );
   }
 
+  // ROOT CAUSE FIX: brand users have their own BrandShellLayout under /brand/*.
+  // If a brand user lands in RootLayout (e.g. /dashboard fallthrough or direct
+  // URL entry to a non-brand route), redirect immediately so they never see the
+  // rep AppSidebar or chef chrome.
+  if (isAuthenticated && user?.role === 'brand' && !location.pathname.startsWith('/brand')) {
+    return <Navigate to="/brand" replace />;
+  }
+
   // Track 13: role guard for /chef/* routes. The chef flow is for chef /
   // group_admin users (+ buyers, who are chef-adjacent) and unauthenticated
   // guests building a quote via magic link. Before this guard, an

@@ -51,6 +51,8 @@ export function AuthPage() {
       case 'group_admin': return '/dashboard';
       case 'chef': return '/dashboard';
       case 'rep': return '/rep/quotes/inbound';
+      // ROOT CAUSE FIX: brand users have their own shell — never put them in rep/distributor.
+      case 'brand': return '/brand';
       default: return '/start-new-quote';
     }
   };
