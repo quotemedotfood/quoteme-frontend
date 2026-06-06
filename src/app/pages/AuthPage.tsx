@@ -423,26 +423,27 @@ export function AuthPage() {
           </div>
         </button>
 
-        {/* Brand - coming soon */}
-        <div className="flex cursor-not-allowed items-center gap-4 rounded-lg border-2 border-gray-200 bg-gray-50 px-5 py-4 opacity-60">
-          <div className="flex size-11 items-center justify-center rounded-full bg-gray-100">
-            <Building2 className="size-5 text-gray-400" />
+        {/* Brand - active (Task-2 signup: creates brand_group + brand + membership) */}
+        <button
+          onClick={() => navigate('/brand/signup')}
+          className="group flex items-center gap-4 rounded-lg border-2 bg-white px-5 py-4 text-left transition-all hover:shadow-md"
+          style={{ borderColor: '#7FAEC2' }}
+        >
+          <div
+            className="flex size-11 items-center justify-center rounded-full"
+            style={{ backgroundColor: '#E8F2F7' }}
+          >
+            <Building2 className="size-5" style={{ color: '#7FAEC2' }} />
           </div>
           <div className="flex-1">
-            <div className="flex items-center gap-2">
-              <p className="font-semibold text-gray-400">I'm a Brand</p>
-              <span
-                className="text-xs font-medium"
-                style={{ color: '#7FAEC2' }}
-              >
-                Coming Soon
-              </span>
-            </div>
-            <p className="text-sm text-gray-400">
+            <p className="font-semibold" style={{ color: '#2A2A2A' }}>
+              I'm a Brand
+            </p>
+            <p className="text-sm" style={{ color: '#4F4F4F' }}>
               Promote your products to distributors and chefs
             </p>
           </div>
-        </div>
+        </button>
       </div>
 
       <p className="text-sm" style={{ color: '#4F4F4F' }}>
