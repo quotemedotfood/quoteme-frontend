@@ -34,7 +34,9 @@ export function BrandDashboardPage() {
     Promise.all([getBrandCatalog(), getBrandPackages(), getNotifications()]).then(
       ([catRes, pkgRes, notifRes]) => {
         if (cancelled) return;
-        const cat = catRes.data?.catalog;
+        // BE returns the catalog FLAT when present; {catalog: null} only when empty.
+        const catData: any = catRes.data;
+        const cat = catData && catData.id ? catData : catData?.catalog;
         setItemCount(cat?.item_count ?? null);
         setCatalogName(cat?.brand?.name ?? null);
         setPackages(pkgRes.data ?? []);

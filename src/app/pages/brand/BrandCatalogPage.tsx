@@ -23,7 +23,9 @@ export function BrandCatalogPage() {
 
   const fetchCatalog = useCallback(async () => {
     const res = await getBrandCatalog();
-    setCatalog(res.data?.catalog ?? null);
+    // BE returns the catalog FLAT when present; {catalog: null} only when empty.
+    const d: any = res.data;
+    setCatalog(d && d.id ? d : (d?.catalog ?? null));
     setLoading(false);
   }, []);
 
