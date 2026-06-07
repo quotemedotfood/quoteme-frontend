@@ -463,7 +463,10 @@ function LanderForm({ config, desktop, onDelivered, slug }: LanderFormProps) {
       )}
 
       {/* ── Trust / header line from verbiage ──────────────────────────── */}
-      {branding.quoteme_verbiage?.header_trust_line && (
+      {/* Unfilled slots hide entirely — bracketed placeholder values must
+          never render to a real visitor (Justin's locked verbiage pending). */}
+      {branding.quoteme_verbiage?.header_trust_line &&
+        !/placeholder|\[verbiage/i.test(branding.quoteme_verbiage.header_trust_line) && (
         <div
           style={{
             ...serifStyle,

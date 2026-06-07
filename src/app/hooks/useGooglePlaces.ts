@@ -28,16 +28,21 @@ function loadGoogleMapsScript(): Promise<void> {
       return;
     }
     scriptLoading = true;
-    const script = document.createElement('script');
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places`;
-    script.async = true;
-    script.onload = () => {
+    // Modern async loading (loading=async + callback): without it, current
+    // Chrome executes the Maps JS API synchronously on the main thread —
+    // the documented "loaded directly without loading=async" warning — and
+    // can stall the renderer wherever the script lands (froze /auth Sign-In
+    // and the CC assign picker in real-browser walks, 2026-06-07).
+    (window as any).__qmGmapsOnLoad = () => {
       scriptLoaded = true;
       scriptLoading = false;
       resolve();
       loadCallbacks.forEach(cb => cb());
       loadCallbacks.length = 0;
     };
+    const script = document.createElement('script');
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places&loading=async&callback=__qmGmapsOnLoad`;
+    script.async = true;
     script.onerror = () => {
       scriptLoading = false;
       reject(new Error('Failed to load Google Maps'));
@@ -91,7 +96,11 @@ export function useGooglePlaces(
   const onSelectRef = useRef(onSelect);
   onSelectRef.current = onSelect;
 
+  // SCOPED LOADING: only pull the Maps script once the autocomplete input
+  // actually exists in the DOM (e.g. the signup address view) — never on
+  // bare page mount. Sign-In and other Places-free views load zero Maps.
   useEffect(() => {
+    if (!inputElement) return;
     if (!GOOGLE_MAPS_API_KEY) {
       setError('Google Maps API key not configured');
       return;
@@ -99,7 +108,7 @@ export function useGooglePlaces(
     loadGoogleMapsScript()
       .then(() => setReady(true))
       .catch((e) => setError(e.message));
-  }, []);
+  }, [inputElement]);
 
   // Poll for the input element since refs don't trigger re-renders
   useEffect(() => {
