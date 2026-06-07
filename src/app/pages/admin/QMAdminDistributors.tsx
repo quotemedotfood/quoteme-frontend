@@ -26,7 +26,7 @@ import {
   SubcategoryExclusionsResponse,
 } from '../../services/api';
 
-type SortField = 'name' | 'region' | 'status' | 'rep_count' | 'product_count' | 'created_at';
+type SortField = 'name' | 'region' | 'status' | 'rep_count' | 'product_count' | 'categorization_pct' | 'created_at';
 type SortDir = 'asc' | 'desc';
 
 export function QMAdminDistributors() {
@@ -125,6 +125,7 @@ export function QMAdminDistributors() {
         case 'status': cmp = (a.status || '').localeCompare(b.status || ''); break;
         case 'rep_count': cmp = (a.rep_count || 0) - (b.rep_count || 0); break;
         case 'product_count': cmp = (a.product_count || 0) - (b.product_count || 0); break;
+        case 'categorization_pct': cmp = (a.categorization_pct ?? -1) - (b.categorization_pct ?? -1); break;
         case 'created_at': cmp = new Date(a.created_at).getTime() - new Date(b.created_at).getTime(); break;
       }
       return sortDir === 'asc' ? cmp : -cmp;
@@ -257,6 +258,9 @@ export function QMAdminDistributors() {
                   <TableHead className="cursor-pointer text-right" onClick={() => toggleSort('product_count')}>
                     <div className="flex items-center justify-end gap-1">Products <SortIcon field="product_count" /></div>
                   </TableHead>
+                  <TableHead className="cursor-pointer text-right" onClick={() => toggleSort('categorization_pct')}>
+                    <div className="flex items-center justify-end gap-1">Categorized % <SortIcon field="categorization_pct" /></div>
+                  </TableHead>
                   <TableHead className="cursor-pointer" onClick={() => toggleSort('status')}>
                     <div className="flex items-center gap-1">Status <SortIcon field="status" /></div>
                   </TableHead>
@@ -287,6 +291,15 @@ export function QMAdminDistributors() {
                     <TableCell className="text-sm text-gray-500">{d.region || 'None'}</TableCell>
                     <TableCell className="text-sm text-right">{d.rep_count ?? 0}</TableCell>
                     <TableCell className="text-sm text-right">{d.product_count ?? 0}</TableCell>
+                    <TableCell className="text-sm text-right">
+                      {d.categorization_pct == null ? (
+                        <span className="text-gray-400">—</span>
+                      ) : (
+                        <span className={d.categorization_pct < 50 ? 'text-amber-600' : 'text-gray-700'}>
+                          {d.categorization_pct}%
+                        </span>
+                      )}
+                    </TableCell>
                     <TableCell>
                       <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${d.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
                         {d.status || 'unknown'}
