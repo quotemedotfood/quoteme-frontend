@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router';
-import { ArrowLeft, Package, Users, UtensilsCrossed, UserCheck } from 'lucide-react';
-import { getAdminDistributor, AdminDistributorDetail } from '../../services/adminApi';
+import { ArrowLeft, Package, Users, UtensilsCrossed, UserCheck, X } from 'lucide-react';
+import { getAdminDistributor, updateAdminDistributor, AdminDistributorDetail } from '../../services/adminApi';
 import { Button } from '../../components/ui/button';
 import {
   Table,
@@ -12,6 +12,130 @@ import {
   TableCell,
 } from '../../components/ui/table';
 import { handleImpersonate } from '../../utils/impersonate';
+
+const US_STATES = [
+  'AL','AK','AZ','AR','CA','CO','CT','DE','DC','FL',
+  'GA','HI','ID','IL','IN','IA','KS','KY','LA','ME',
+  'MD','MA','MI','MN','MS','MO','MT','NE','NV','NH',
+  'NJ','NM','NY','NC','ND','OH','OK','OR','PA','RI',
+  'SC','SD','TN','TX','UT','VT','VA','WA','WV','WI','WY',
+];
+
+// ─── StatesServedEditor ───────────────────────────────────────────────────────
+// Chip-based multi-select for the 50 US states + DC.
+// Saves via PATCH /api/v1/admin/distributors/:id.
+
+interface StatesServedEditorProps {
+  distributorId: string;
+  initialStates: string[];
+  primaryState: string | null;
+  onSaved: (updated: AdminDistributorDetail) => void;
+}
+
+function StatesServedEditor({ distributorId, initialStates, primaryState, onSaved }: StatesServedEditorProps) {
+  const [selected, setSelected] = useState<string[]>(initialStates);
+  const [dirty, setDirty] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  function toggle(state: string) {
+    setSelected((prev) => {
+      const next = prev.includes(state) ? prev.filter((s) => s !== state) : [...prev, state].sort();
+      setDirty(true);
+      return next;
+    });
+  }
+
+  function remove(state: string) {
+    setSelected((prev) => prev.filter((s) => s !== state));
+    setDirty(true);
+  }
+
+  async function handleSave() {
+    setSaving(true);
+    setSaveError(null);
+    const res = await updateAdminDistributor(distributorId, { service_states: selected });
+    setSaving(false);
+    if (res.data) {
+      setDirty(false);
+      onSaved(res.data);
+    } else {
+      setSaveError(res.error || 'Failed to save');
+    }
+  }
+
+  const available = US_STATES.filter((s) => !selected.includes(s));
+
+  return (
+    <div className="bg-white border border-gray-200 rounded-xl p-5 mb-8">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-lg font-semibold text-[#2A2A2A]" style={{ fontFamily: "'Playfair Display', serif" }}>
+          States Served
+        </h2>
+        {primaryState && (
+          <span className="text-xs text-gray-500">
+            Primary: <span className="font-medium text-[#2A2A2A]">{primaryState}</span>
+          </span>
+        )}
+      </div>
+
+      {/* Chips for selected states */}
+      {selected.length === 0 ? (
+        <p className="text-sm text-gray-400 mb-4">No states configured yet. Add states below.</p>
+      ) : (
+        <div className="flex flex-wrap gap-1.5 mb-4">
+          {selected.map((s) => (
+            <span
+              key={s}
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-[#7FAEC2]/15 text-[#4A7A92] border border-[#7FAEC2]/30"
+            >
+              {s}
+              <button
+                type="button"
+                onClick={() => remove(s)}
+                className="hover:text-[#2A2A2A] transition-colors"
+                aria-label={`Remove ${s}`}
+              >
+                <X size={10} />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* Add dropdown */}
+      {available.length > 0 && (
+        <div className="mb-4">
+          <label className="text-xs text-gray-500 mb-1 block">Add a state</label>
+          <select
+            className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-[#2A2A2A] bg-white focus:outline-none focus:ring-2 focus:ring-[#7FAEC2]/40"
+            value=""
+            onChange={(e) => { if (e.target.value) toggle(e.target.value); }}
+          >
+            <option value="">Select state…</option>
+            {available.map((s) => (
+              <option key={s} value={s}>{s}</option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {saveError && <p className="text-sm text-red-500 mb-3">{saveError}</p>}
+
+      {dirty && (
+        <Button
+          onClick={handleSave}
+          disabled={saving}
+          className="bg-[#7FAEC2] hover:bg-[#6A9AB0] text-white text-sm"
+        >
+          {saving ? 'Saving…' : 'Save states'}
+        </Button>
+      )}
+    </div>
+  );
+}
+
+// ─── QMAdminDistributorDetailPage ────────────────────────────────────────────
 
 export function QMAdminDistributorDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -94,6 +218,14 @@ export function QMAdminDistributorDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* States Served editor */}
+      <StatesServedEditor
+        distributorId={dist.id}
+        initialStates={dist.service_states ?? []}
+        primaryState={dist.primary_state ?? null}
+        onSaved={(updated) => setDist(updated)}
+      />
 
       {/* Reps */}
       <section className="mb-8">

@@ -87,6 +87,12 @@ export interface AdminDistributor {
   admin_user_id: string | null;
   admin_user_name: string | null;
   unclaimed: boolean;
+  /** Percentage of products with a non-"other" category (0–100), null if no catalog. */
+  categorization_pct: number | null;
+  /** USPS two-letter state codes this distributor services. */
+  service_states: string[];
+  /** Primary state (USPS) this distributor is headquartered in or primarily serves. */
+  primary_state: string | null;
 }
 
 export interface AdminDistributorDetail extends AdminDistributor {
@@ -243,6 +249,22 @@ export async function createDistributor(data: {
 }): Promise<ApiResponse<AdminDistributorDetail>> {
   return fetchWithAuth('/api/v1/admin/distributors', {
     method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateAdminDistributor(
+  id: string,
+  data: {
+    name?: string;
+    email_domain?: string;
+    region?: string;
+    primary_state?: string | null;
+    service_states?: string[];
+  }
+): Promise<ApiResponse<AdminDistributorDetail>> {
+  return fetchWithAuth(`/api/v1/admin/distributors/${id}`, {
+    method: 'PATCH',
     body: JSON.stringify(data),
   });
 }

@@ -2293,6 +2293,10 @@ export interface ChefDistributorSummary {
 export interface ChefDistributorsResponse {
   primary_distributor_id: string | null;
   distributors: ChefDistributorSummary[];
+  /** USPS state code of the chef's restaurant; null if not set. */
+  chef_state: string | null;
+  /** True when the returned distributor list has been filtered to those serving chef_state. */
+  geo_filtered: boolean;
 }
 
 export async function getChefDistributors(): Promise<ApiResponse<ChefDistributorsResponse>> {

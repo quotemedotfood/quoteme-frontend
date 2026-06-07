@@ -109,6 +109,8 @@ interface PickPanelProps {
 
 function PickPanel({ onSelect }: PickPanelProps) {
   const [distributors, setDistributors] = useState<ChefDistributorSummary[] | null>(null);
+  const [chefState, setChefState] = useState<string | null>(null);
+  const [geoFiltered, setGeoFiltered] = useState<boolean>(false);
   const [loading, setLoading] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
@@ -117,6 +119,9 @@ function PickPanel({ onSelect }: PickPanelProps) {
     setLoading(true);
     getChefDistributors().then((res) => {
       setDistributors(res.data?.distributors ?? []);
+      // Defensive: fall back to false/null if BE hasn't shipped the fields yet.
+      setChefState(res.data?.chef_state ?? null);
+      setGeoFiltered(res.data?.geo_filtered ?? false);
       setLoading(false);
       setLoaded(true);
     });
@@ -129,6 +134,28 @@ function PickPanel({ onSelect }: PickPanelProps) {
         Distributors with a verified catalog. Select one to build a quote.
       </p>
       <div className="mt-4 border-t border-[#E8E8E8]" />
+
+      {/* Geo nudge: shown only when the chef's state is not set and list is not geo-filtered. */}
+      {loaded && !geoFiltered && chefState === null && (
+        <div
+          className="mt-4 px-4 py-3 rounded-md text-[12px] text-[#4F4F4F] leading-relaxed"
+          style={{ background: '#FBFAF7', border: '1px solid #E8E8E8' }}
+        >
+          Set your restaurant's state to see distributors that serve your area.{' '}
+          <a
+            href="/dashboard"
+            className="underline underline-offset-2 text-[#2A2A2A] hover:opacity-70"
+            onClick={(e) => {
+              // Navigate via history so state activeTab wires correctly.
+              e.preventDefault();
+              window.history.pushState({ activeTab: 'settings' }, '', '/dashboard');
+              window.dispatchEvent(new PopStateEvent('popstate', { state: { activeTab: 'settings' } }));
+            }}
+          >
+            Update restaurant settings
+          </a>
+        </div>
+      )}
 
       {loading && (
         <div className="py-8 flex items-center justify-center gap-2 text-sm text-[#9E9E9E]">
