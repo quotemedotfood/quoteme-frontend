@@ -87,6 +87,7 @@ import { RepLayout } from "./components/rep/RepLayout";
 import { useAuth } from "./contexts/AuthContext";
 import { TechLandingPage } from "./components/chef/TechLandingPage";
 import { SecureTechPreviewPage } from "./pages/chef/SecureTechPreviewPage";
+import { DistributorLanderPage } from "./pages/DistributorLanderPage";
 // ── Brand suite ──────────────────────────────────────────────────────────────
 import { BrandShellLayout } from "./components/brand/BrandShellLayout";
 import { BrandSignupPage } from "./pages/brand/BrandSignupPage";
@@ -189,6 +190,16 @@ export const router = createBrowserRouter([
         // Remove once Moose signs off on all three states.
         path: "chef/_preview/secure-tech",
         Component: SecureTechPreviewPage,
+      },
+      {
+        // F1 branded standing lander — public, no auth required.
+        // MUST live outside RootLayout so unauthenticated visitors are not
+        // bounced to /auth.
+        // URL shape: /d/:slug  (e.g. /d/lipari, /d/sysco-test)
+        // Slug today comes from useParams; host-based resolution seam is in
+        // resolveSlug() inside DistributorLanderPage.tsx.
+        path: "d/:slug",
+        Component: DistributorLanderPage,
       },
       {
         path: "chef",
