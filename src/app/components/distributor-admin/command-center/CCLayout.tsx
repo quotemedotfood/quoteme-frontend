@@ -129,9 +129,7 @@ export function CCLayout() {
               display: 'flex',
               alignItems: 'center',
               gap: 16,
-              background: 'rgba(255,255,255,.92)',
-              backdropFilter: 'blur(6px)',
-              WebkitBackdropFilter: 'blur(6px)',
+              background: '#fff',
               borderBottom: `1px solid ${C.softLine}`,
             }}
           >
