@@ -1,6 +1,7 @@
 @import './fonts.css';
 @import './tailwind.css';
 @import './theme.css';
+@import './newspaper.css';
 
 /* Google Places autocomplete dropdown must appear above drawers/modals */
 .pac-container {

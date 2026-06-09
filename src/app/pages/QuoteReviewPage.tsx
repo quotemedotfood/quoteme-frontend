@@ -443,14 +443,14 @@ export function QuoteReviewPage() {
           {demo ? (
             <a
               href={PROD_SIGNUP_URL || 'https://prod.quoteme.food/auth'}
-              className="inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-md text-white font-medium bg-[#F9A64B] hover:bg-[#E8953A] transition-colors w-full md:w-auto min-h-[48px]"
+              className="inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-md text-white font-medium bg-[#F2993D] hover:bg-[#E8953A] transition-colors w-full md:w-auto min-h-[48px]"
             >
               <Send size={16} /> Sign up to send quotes
             </a>
           ) : (
             <Button
               onClick={() => setSendDrawerOpen(true)}
-              className="bg-[#F9A64B] hover:bg-[#E8953A] text-white px-6 w-full md:w-auto min-h-[48px]"
+              className="bg-[#F2993D] hover:bg-[#E8953A] text-white px-6 w-full md:w-auto min-h-[48px]"
             >
               <Send size={16} className="mr-2" /> Send Quote
             </Button>

@@ -19,7 +19,7 @@ import React from 'react';
 // ─── Color constants (matching ChefDistributorsTab convention) ────────────────
 const C = {
   charcoal: '#2B2B2B',
-  orange: '#F9A64B',
+  orange: '#F2993D',
   softLine: '#E8E8E8',
   // --accent maps to hoverBlue in this design system
   accent: '#7FAEC2',

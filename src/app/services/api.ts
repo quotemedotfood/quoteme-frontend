@@ -55,6 +55,12 @@ export interface User {
   unlimited_drafts?: boolean;
   quotes_used?: number;
   quotes_limit?: number;
+  // Brand users: the brand block from GET /api/v1/me
+  brand?: {
+    id: string;
+    name: string;
+    category?: string;
+  } | null;
 }
 
 export interface SignUpData {
@@ -71,6 +77,7 @@ export interface SignUpData {
   city?: string;
   state?: string;
   location_id?: string;
+  brand_name?: string;
 }
 
 export interface LoginData {
@@ -2286,6 +2293,10 @@ export interface ChefDistributorSummary {
 export interface ChefDistributorsResponse {
   primary_distributor_id: string | null;
   distributors: ChefDistributorSummary[];
+  /** USPS state code of the chef's restaurant; null if not set. */
+  chef_state: string | null;
+  /** True when the returned distributor list has been filtered to those serving chef_state. */
+  geo_filtered: boolean;
 }
 
 export async function getChefDistributors(): Promise<ApiResponse<ChefDistributorsResponse>> {
@@ -3287,4 +3298,218 @@ export async function consumeRepInvitation(
   } catch (err) {
     return { error: err instanceof Error ? err.message : 'Network error', data: undefined };
   }
+}
+
+// ═══════════════════════════════════════════════════
+// Brand API
+// All endpoints under /api/v1/brand/* — Bearer JWT, role: "brand" only.
+// ═══════════════════════════════════════════════════
+
+// ── Brand Catalog ──────────────────────────────────────────────────────────
+
+export interface BrandSampleProduct {
+  id: string;
+  item_number?: string | null;
+  brand?: string | null;
+  product: string;
+  pack_size?: string | null;
+  category?: string | null;
+}
+
+export interface BrandCatalogResponse {
+  catalog: null | {
+    id: string;
+    status: string;
+    catalog_state: string;
+    row_count: number;
+    item_count: number;
+    sample_products: BrandSampleProduct[];
+    brand: { id: string; name: string };
+  };
+}
+
+export async function getBrandCatalog(): Promise<ApiResponse<BrandCatalogResponse>> {
+  return fetchWithAuth('/api/v1/brand/catalog');
+}
+
+export async function uploadBrandCatalog(file: File): Promise<ApiResponse<{
+  id: string;
+  item_count: number;
+  data_source: string;
+  status: string;
+}>> {
+  const authToken = getAuthToken();
+  const headers: Record<string, string> = {};
+  if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
+  const formData = new FormData();
+  formData.append('file', file);
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/v1/brand/catalogs`, {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      return { error: err.error || `HTTP ${response.status}` };
+    }
+    return { data: await response.json() };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : 'Network error' };
+  }
+}
+
+// ── Brand Matches ──────────────────────────────────────────────────────────
+
+export interface BrandMatchProduct {
+  product_id: string;
+  product_name: string;
+  brand: string | null;
+  pack_size: string | null;
+  item_number: string | null;
+}
+
+export interface BrandMatchComponent {
+  dish_component_id: string;
+  name: string;
+  dish_name: string;
+  matches: BrandMatchProduct[];
+}
+
+export interface BrandMatchesResponse {
+  components: BrandMatchComponent[];
+  matched_count: number;
+  total_count: number;
+}
+
+export async function getBrandMatches(menuId: string): Promise<ApiResponse<BrandMatchesResponse>> {
+  return fetchWithAuth('/api/v1/brand/matches', {
+    method: 'POST',
+    body: JSON.stringify({ menu_id: menuId }),
+  });
+}
+
+// ── Brand Packages ─────────────────────────────────────────────────────────
+
+export interface BrandPackageSummary {
+  id: string;
+  title: string;
+  status: 'draft' | 'sent' | 'converted' | 'dismissed';
+  items_count: number;
+  target_distributor: { id: string; name: string } | null;
+  sent_at: string | null;
+  converted_quote_id: string | null;
+  created_at: string;
+}
+
+export interface BrandPackageItem {
+  id: string;
+  product_id: string;
+  product_name: string;
+  dish_component_id: string | null;
+  note: string | null;
+}
+
+export interface BrandPackageDetail extends BrandPackageSummary {
+  notes: string | null;
+  items: BrandPackageItem[];
+}
+
+export async function getBrandPackages(): Promise<ApiResponse<BrandPackageSummary[]>> {
+  return fetchWithAuth('/api/v1/brand/packages');
+}
+
+export async function getBrandPackage(id: string): Promise<ApiResponse<BrandPackageDetail>> {
+  return fetchWithAuth(`/api/v1/brand/packages/${id}`);
+}
+
+export async function createBrandPackage(data: {
+  title: string;
+  notes?: string;
+  restaurant_id?: string;
+  menu_id?: string;
+  items: Array<{ product_id: string; dish_component_id?: string; note?: string }>;
+}): Promise<ApiResponse<BrandPackageSummary>> {
+  return fetchWithAuth('/api/v1/brand/packages', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function sendBrandPackage(
+  packageId: string,
+  distributorId: string,
+): Promise<ApiResponse<BrandPackageSummary>> {
+  return fetchWithAuth(`/api/v1/brand/packages/${packageId}/send`, {
+    method: 'POST',
+    body: JSON.stringify({ distributor_id: distributorId }),
+  });
+}
+
+// ── Brand Distributors ─────────────────────────────────────────────────────
+
+export interface BrandDistributorRelationship {
+  id: string;
+  status: string;
+  initiated_by: string;
+  distributor: {
+    id: string;
+    name: string;
+    display_name?: string | null;
+    headquarters_city?: string | null;
+  };
+  created_at: string;
+}
+
+export interface BrandDistributorDirectory {
+  id: string;
+  name: string;
+  headquarters_city?: string | null;
+}
+
+export interface BrandDistributorsResponse {
+  relationships: BrandDistributorRelationship[];
+  directory: BrandDistributorDirectory[];
+}
+
+export async function getBrandDistributors(): Promise<ApiResponse<BrandDistributorsResponse>> {
+  return fetchWithAuth('/api/v1/brand/distributors');
+}
+
+export async function addBrandDistributor(distributorId: string): Promise<ApiResponse<BrandDistributorRelationship>> {
+  return fetchWithAuth('/api/v1/brand/distributors', {
+    method: 'POST',
+    body: JSON.stringify({ distributor_id: distributorId }),
+  });
+}
+
+// ── Brand Secured Upload Links (F3 brand-mint) ─────────────────────────────
+
+export interface BrandSecuredUploadLink {
+  id: string;
+  token: string;
+  url: string;
+  expires_at: string;
+  consumed_at: string | null;
+  status: 'pending' | 'consumed' | 'expired';
+  distributor: { id: string; name: string };
+}
+
+export async function getBrandSecuredUploadLinks(): Promise<ApiResponse<BrandSecuredUploadLink[]>> {
+  return fetchWithAuth('/api/v1/brand/secured_upload_links');
+}
+
+export async function createBrandSecuredUploadLink(data: {
+  distributor_id?: string;
+  distributor_name?: string;
+}): Promise<ApiResponse<{
+  token: string;
+  url: string;
+  expires_at: string;
+  distributor: { id: string; name: string };
+}>> {
+  return fetchWithAuth('/api/v1/brand/secured_upload_links', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
 }

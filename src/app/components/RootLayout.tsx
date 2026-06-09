@@ -37,12 +37,20 @@ export function RootLayout() {
         style={{ background: '#FBFAF7' }}
       >
         <div
-          className="w-10 h-10 rounded-full border-4 border-[#E8E8E8] border-t-[#F9A64B]"
+          className="w-10 h-10 rounded-full border-4 border-[#E8E8E8] border-t-[#F2993D]"
           style={{ animation: 'spin 1s linear infinite' }}
         />
         <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
     );
+  }
+
+  // ROOT CAUSE FIX: brand users have their own BrandShellLayout under /brand/*.
+  // If a brand user lands in RootLayout (e.g. /dashboard fallthrough or direct
+  // URL entry to a non-brand route), redirect immediately so they never see the
+  // rep AppSidebar or chef chrome.
+  if (isAuthenticated && user?.role === 'brand' && !location.pathname.startsWith('/brand')) {
+    return <Navigate to="/brand" replace />;
   }
 
   // Track 13: role guard for /chef/* routes. The chef flow is for chef /

@@ -1,0 +1,230 @@
+/* QuoteMe Newspaper Shell — design tokens + utility classes
+ * Ported from handoff/desi-brand-suite-060626/assets/colors_and_type.css
+ * and prototype HTML (desi-chef-v3/Chef Flow.html).
+ * Imported once at the brand-shell level via styles/index.css.
+ *
+ * DOCTRINE: No gradients. One Sacred Orange (#F2993D) per page.
+ * Playfair Display (serif) + DM Sans (sans). Whisper-soft shadows only.
+ */
+
+/* ── Color & type tokens ────────────────────────────────────────────────────── */
+:root {
+  /* Primary palette */
+  --qm-charcoal: #2B2B2B;
+  --qm-orange: #F2993D;           /* Sacred Orange — canonical primary action */
+  --qm-orange-hover: #E08A2E;
+  --qm-light-blue: #A5CFDD;
+  --qm-hover-blue: #7FAEC2;
+  --qm-hover-blue-pressed: #6A9AB0;
+  --accent: #7FAEC2;              /* Trust dots, status stepper live indicator */
+  --qm-ack-navy: #2A5F6F;         /* Acknowledgment ink — saved / sent / looks good */
+  --qm-warning: #D97706;
+
+  /* Surfaces */
+  --qm-white: #FFFFFF;
+  --qm-warm-paper: #FBFAF7;
+  --qm-cream: #FFF9F3;
+  --qm-soft-line: #E8E8E8;
+  --qm-charcoal-10: rgba(43, 43, 43, 0.1);
+
+  /* Neutrals */
+  --qm-gray-900: #2A2A2A;
+  --qm-gray-700: #4F4F4F;
+  --qm-gray-500: #6B7280;
+  --qm-gray-400: #9CA3AF;
+  --qm-gray-200: #E5E7EB;
+  --qm-gray-100: #F3F4F6;
+  --qm-gray-50:  #F9FAFB;
+
+  /* Semantic */
+  --qm-success: #16A34A;
+  --qm-danger:  #DC2626;
+  --qm-amber-bg: #FEF3C7;
+  --qm-amber-fg: #92400E;
+
+  /* Type stacks */
+  --qm-serif: 'Playfair Display', Georgia, 'Times New Roman', serif;
+  --qm-sans:  'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+
+  /* Shadows — whisper-soft only */
+  --qm-shadow-sm: 0 1px 2px rgba(43, 43, 43, 0.04);
+  --qm-shadow-md: 0 2px 6px rgba(43, 43, 43, 0.06);
+  --qm-shadow-lg: 0 8px 24px rgba(43, 43, 43, 0.08);
+}
+
+/* ── Typography utilities ───────────────────────────────────────────────────── */
+.num  { font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1; }
+.serif { font-family: var(--qm-serif); }
+.ink       { color: var(--qm-charcoal); }
+.ink-soft  { color: var(--qm-gray-700); }
+.ink-faint { color: var(--qm-gray-500); }
+
+/* ── Eyebrow label ──────────────────────────────────────────────────────────── */
+.qm-eyebrow {
+  font-family: var(--qm-sans);
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--qm-gray-700);
+}
+
+/* ── Hairline border ────────────────────────────────────────────────────────── */
+.hairline { border-color: var(--qm-soft-line); }
+
+/* ── Document dividers ──────────────────────────────────────────────────────── */
+.doc-divider-thick { border-top: 2px solid var(--qm-charcoal); }
+.doc-divider       { border-top: 1px solid var(--qm-soft-line); }
+
+/* ── Pill badge ─────────────────────────────────────────────────────────────── */
+.qm-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 500;
+  border-radius: 999px;
+  line-height: 1.4;
+}
+
+/* ── Buttons ────────────────────────────────────────────────────────────────── */
+.qm-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: var(--qm-sans);
+  font-weight: 500;
+  font-size: 15px;
+  border-radius: 6px;
+  padding: 12px 18px;
+  line-height: 1;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  cursor: pointer;
+  user-select: none;
+  border: 1px solid transparent;
+  min-height: unset; /* override mobile 48px rule for these polished buttons */
+}
+.qm-btn-orange   { background: var(--qm-orange); color: #fff; }
+.qm-btn-orange:hover { background: var(--qm-orange-hover); }
+.qm-btn-outline  { background: #fff; color: var(--qm-charcoal); border-color: var(--qm-soft-line); }
+.qm-btn-outline:hover { background: var(--qm-gray-50); }
+.qm-btn-text     { background: transparent; color: var(--qm-gray-700); padding: 12px 8px; }
+.qm-btn-text:hover { color: var(--qm-charcoal); }
+.qm-btn-full     { width: 100%; }
+
+/* ── Inputs ─────────────────────────────────────────────────────────────────── */
+.qm-input, .qm-textarea {
+  width: 100%;
+  font-family: var(--qm-sans);
+  font-size: 15px;
+  color: var(--qm-charcoal);
+  border: 1px solid var(--qm-soft-line);
+  border-radius: 6px;
+  padding: 11px 14px;
+  background: #fff;
+  line-height: 1.4;
+}
+.qm-input:focus, .qm-textarea:focus {
+  outline: none;
+  border-color: var(--qm-hover-blue);
+  box-shadow: 0 0 0 3px rgba(127, 174, 194, 0.25);
+}
+.qm-textarea { resize: none; min-height: 160px; }
+
+/* ── Scroll container (used inside mobile shell) ───────────────────────────── */
+.qm-scroller { flex: 1 1 0; overflow-y: auto; }
+.qm-scroller::-webkit-scrollbar { width: 0; }
+
+/* ── NewspaperShell layout ──────────────────────────────────────────────────── */
+.np-shell-desktop {
+  display: flex;
+  min-height: 100vh;
+  background: #fff;
+  font-family: var(--qm-sans);
+  color: var(--qm-charcoal);
+  position: relative;
+}
+
+.np-shell-desktop-main {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+}
+
+.np-shell-desktop-content {
+  padding: 36px 40px;
+}
+
+/* ── Role sidebar (desktop) ─────────────────────────────────────────────────── */
+.np-sidebar {
+  border-right: 1px solid var(--qm-soft-line);
+  flex-shrink: 0;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  transition: width 0.2s ease;
+}
+
+/* ── Mobile shell ────────────────────────────────────────────────────────────── */
+.np-mobile-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: #fff;
+  font-family: var(--qm-sans);
+  color: var(--qm-charcoal);
+  position: relative;
+  overflow: hidden;
+}
+
+.np-mobile-masthead {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--qm-soft-line);
+  background: #fff;
+  flex: 0 0 auto;
+}
+
+.np-mobile-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+  padding-bottom: 32px;
+}
+
+/* Drawer overlay */
+.np-drawer-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: rgba(31, 26, 20, 0.42);
+  transition: opacity 0.22s ease;
+}
+
+.np-drawer {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 41;
+  width: 286px;
+  max-width: 86%;
+  background: #fff;
+  box-shadow: 2px 0 28px rgba(31, 26, 20, 0.2);
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.24s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Nav destination active bar */
+.np-nav-active-bar {
+  border-left: 2px solid var(--qm-charcoal);
+}

@@ -20,6 +20,10 @@ export function DashboardRoleRouter() {
 
   if (user?.role === 'distributor_admin') return <Navigate to="/distributor-admin/" replace />;
 
+  // ROOT CAUSE FIX: brand users must never land in the rep/distributor shell.
+  // /dashboard is the post-login default; send brand users straight to /brand.
+  if (user?.role === 'brand') return <Navigate to="/brand" replace />;
+
   // Flag A fix: buyer + group_admin inherit chef-side dashboard (Justin doctrine lock).
   // isChefShellUser in ChefShellLayout already treats these roles as chef-chrome users;
   // this aligns content routing to match that chrome decision.

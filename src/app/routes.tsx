@@ -87,6 +87,19 @@ import { RepLayout } from "./components/rep/RepLayout";
 import { useAuth } from "./contexts/AuthContext";
 import { TechLandingPage } from "./components/chef/TechLandingPage";
 import { SecureTechPreviewPage } from "./pages/chef/SecureTechPreviewPage";
+import { DistributorLanderPage } from "./pages/DistributorLanderPage";
+// ── Brand suite ──────────────────────────────────────────────────────────────
+import { BrandShellLayout } from "./components/brand/BrandShellLayout";
+import { BrandSignupPage } from "./pages/brand/BrandSignupPage";
+import { BrandDashboardPage } from "./pages/brand/BrandDashboardPage";
+import { BrandCatalogPage } from "./pages/brand/BrandCatalogPage";
+import { BrandCapturePage } from "./pages/brand/BrandCapturePage";
+import { BrandPackagesPage } from "./pages/brand/BrandPackagesPage";
+import { BrandDistributorsPage } from "./pages/brand/BrandDistributorsPage";
+import { BrandNotificationsPage } from "./pages/brand/BrandNotificationsPage";
+import { BrandSettingsPage } from "./pages/brand/BrandSettingsPage";
+import { BrandProfilePage } from "./pages/brand/BrandProfilePage";
+import { BrandTeamPage } from "./pages/brand/BrandTeamPage";
 
 const demo = isDemoMode();
 
@@ -112,6 +125,33 @@ export const router = createBrowserRouter([
       {
         path: "auth",
         element: demo ? <Navigate to="/" replace /> : <AuthPage />,
+      },
+      {
+        // Brand signup — public, no JWT required.
+        // Lives outside RootLayout so brand visitors arriving directly
+        // are not bounced to /auth before they have an account.
+        path: "brand/signup",
+        Component: BrandSignupPage,
+      },
+      {
+        // Brand suite — requires role: "brand" JWT.
+        // BrandShellLayout enforces the brand guard (non-brand → redirect
+        // to their own home). ALL brand-facing surfaces live here.
+        // Doctrine: brands receive NO quotes; no rep/distributor chrome here.
+        path: "brand",
+        Component: BrandShellLayout,
+        children: [
+          { index: true,           Component: BrandDashboardPage },
+          { path: "catalog",       Component: BrandCatalogPage },
+          { path: "capture",       Component: BrandCapturePage },
+          { path: "packages",      Component: BrandPackagesPage },
+          { path: "packages/:id",  Component: BrandPackagesPage },
+          { path: "distributors",  Component: BrandDistributorsPage },
+          { path: "notifications", Component: BrandNotificationsPage },
+          { path: "settings",      Component: BrandSettingsPage },
+          { path: "profile",       Component: BrandProfilePage },
+          { path: "team",          Component: BrandTeamPage },
+        ],
       },
       {
         path: "chef/signup",
@@ -150,6 +190,16 @@ export const router = createBrowserRouter([
         // Remove once Moose signs off on all three states.
         path: "chef/_preview/secure-tech",
         Component: SecureTechPreviewPage,
+      },
+      {
+        // F1 branded standing lander — public, no auth required.
+        // MUST live outside RootLayout so unauthenticated visitors are not
+        // bounced to /auth.
+        // URL shape: /d/:slug  (e.g. /d/lipari, /d/sysco-test)
+        // Slug today comes from useParams; host-based resolution seam is in
+        // resolveSlug() inside DistributorLanderPage.tsx.
+        path: "d/:slug",
+        Component: DistributorLanderPage,
       },
       {
         path: "chef",

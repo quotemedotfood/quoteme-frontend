@@ -51,6 +51,8 @@ export function AuthPage() {
       case 'group_admin': return '/dashboard';
       case 'chef': return '/dashboard';
       case 'rep': return '/rep/quotes/inbound';
+      // ROOT CAUSE FIX: brand users have their own shell — never put them in rep/distributor.
+      case 'brand': return '/brand';
       default: return '/start-new-quote';
     }
   };
@@ -89,6 +91,10 @@ export function AuthPage() {
   const [selectedDistributor, setSelectedDistributor] =
     useState<DistributorSearchResult | null>(null);
   const [showDistributorDropdown, setShowDistributorDropdown] = useState(false);
+  // Distributor-admin signup: states served (optional).
+  // BE seam: registration service_states param pending — collected here but not
+  // forwarded until the signUp endpoint accepts it.
+  const [signupServiceStates, setSignupServiceStates] = useState<string[]>([]);
   const [firstName, setFirstName] = useState(inviteFirstName || '');
   const [lastName, setLastName] = useState(inviteLastName || '');
   // Restaurant signup fields
@@ -421,26 +427,27 @@ export function AuthPage() {
           </div>
         </button>
 
-        {/* Brand - coming soon */}
-        <div className="flex cursor-not-allowed items-center gap-4 rounded-lg border-2 border-gray-200 bg-gray-50 px-5 py-4 opacity-60">
-          <div className="flex size-11 items-center justify-center rounded-full bg-gray-100">
-            <Building2 className="size-5 text-gray-400" />
+        {/* Brand - active (Task-2 signup: creates brand_group + brand + membership) */}
+        <button
+          onClick={() => navigate('/brand/signup')}
+          className="group flex items-center gap-4 rounded-lg border-2 bg-white px-5 py-4 text-left transition-all hover:shadow-md"
+          style={{ borderColor: '#7FAEC2' }}
+        >
+          <div
+            className="flex size-11 items-center justify-center rounded-full"
+            style={{ backgroundColor: '#E8F2F7' }}
+          >
+            <Building2 className="size-5" style={{ color: '#7FAEC2' }} />
           </div>
           <div className="flex-1">
-            <div className="flex items-center gap-2">
-              <p className="font-semibold text-gray-400">I'm a Brand</p>
-              <span
-                className="text-xs font-medium"
-                style={{ color: '#7FAEC2' }}
-              >
-                Coming Soon
-              </span>
-            </div>
-            <p className="text-sm text-gray-400">
-              Promote your products to distributors and chefs
+            <p className="font-semibold" style={{ color: '#2A2A2A' }}>
+              I'm a Brand
+            </p>
+            <p className="text-sm" style={{ color: '#4F4F4F' }}>
+              Get your products into distributor catalogs.
             </p>
           </div>
-        </div>
+        </button>
       </div>
 
       <p className="text-sm" style={{ color: '#4F4F4F' }}>
@@ -730,6 +737,59 @@ export function AuthPage() {
             placeholder="(555) 123-4567"
           />
         </div>
+
+        {/* States you serve — distributor-admin signup only */}
+        {/* BE seam: registration service_states param pending — field is collected */}
+        {/* but not forwarded to signUp until the BE endpoint accepts it.          */}
+        {!isBuyerRole && (
+          <div>
+            <label className="mb-1.5 block text-sm font-medium" style={{ color: '#2A2A2A' }}>
+              States you serve{' '}
+              <span className="font-normal text-gray-400">(optional)</span>
+            </label>
+            <p className="text-xs text-gray-400 mb-2">Add any you want — you can update this later in your settings.</p>
+            {signupServiceStates.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mb-2">
+                {signupServiceStates.map((s) => (
+                  <span
+                    key={s}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-[#7FAEC2]/15 text-[#4A7A92] border border-[#7FAEC2]/30"
+                  >
+                    {s}
+                    <button
+                      type="button"
+                      onClick={() => setSignupServiceStates((prev) => prev.filter((x) => x !== s))}
+                      className="hover:text-[#2A2A2A] transition-colors"
+                      aria-label={`Remove ${s}`}
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+            <select
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-[#2A2A2A] bg-white focus:outline-none focus:ring-2 focus:ring-[#7FAEC2]/40"
+              value=""
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val && !signupServiceStates.includes(val)) {
+                  setSignupServiceStates((prev) => [...prev, val].sort());
+                }
+              }}
+            >
+              <option value="">Add a state…</option>
+              {['AL','AK','AZ','AR','CA','CO','CT','DE','DC','FL',
+                'GA','HI','ID','IL','IN','IA','KS','KY','LA','ME',
+                'MD','MA','MI','MN','MS','MO','MT','NE','NV','NH',
+                'NJ','NM','NY','NC','ND','OH','OK','OR','PA','RI',
+                'SC','SD','TN','TX','UT','VT','VA','WA','WV','WI','WY']
+                .filter((s) => !signupServiceStates.includes(s))
+                .map((s) => <option key={s} value={s}>{s}</option>)
+              }
+            </select>
+          </div>
+        )}
 
         {/* Password */}
         <div>

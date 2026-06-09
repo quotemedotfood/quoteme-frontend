@@ -222,7 +222,7 @@ export function StuckRecoveryScreen({ quoteId, repEmail, repName, onWaitItOut }:
                   )}
                   <button
                     type="submit"
-                    className="w-full bg-[#F9A64B] hover:bg-[#E8953A] text-white rounded-lg px-6 py-2.5 text-sm font-medium transition-colors"
+                    className="w-full bg-[#F2993D] hover:bg-[#E8953A] text-white rounded-lg px-6 py-2.5 text-sm font-medium transition-colors"
                   >
                     Notify me
                   </button>
