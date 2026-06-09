@@ -409,11 +409,11 @@ export function CatalogManagePage() {
               }}
               className="text-sm bg-white/10 border border-white/20 rounded px-3 py-1.5 text-white focus:outline-none focus:ring-1 focus:ring-[#A5CFDD]"
             >
-              <option value="">Assign category...</option>
+              <option value="" style={{ color: '#2A2A2A' }}>Assign category...</option>
               {allCategories().map(cat => (
-                <option key={cat} value={cat}>{formatCategory(cat)}</option>
+                <option key={cat} value={cat} style={{ color: '#2A2A2A' }}>{formatCategory(cat)}</option>
               ))}
-              <option value="__new__">+ New Category</option>
+              <option value="__new__" style={{ color: '#2A2A2A' }}>+ New Category</option>
             </select>
             <Button
               onClick={handleBulkAssign}
