@@ -55,7 +55,8 @@ export function BrandDashboardPage() {
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
     .slice(0, 4);
 
-  const pkgSentCount = packages.filter((p) => p.status === 'sent').length;
+  // Active = a package that's live with a distributor: sent or converted (not draft, not dismissed).
+  const pkgActiveCount = packages.filter((p) => p.status === 'sent' || p.status === 'converted').length;
 
   return (
     <div>
@@ -166,7 +167,7 @@ export function BrandDashboardPage() {
             <div className="px-4 py-4 rounded-md bg-white border hairline">
               <div className="qm-eyebrow" style={{ fontSize: 10 }}>WHERE YOUR LINE STANDS</div>
               <p className="mt-1 text-[11.5px] ink-faint leading-snug">
-                {pkgSentCount} active package{pkgSentCount !== 1 ? 's' : ''} sent to distributors. Quotes go to distributors, never to you.
+                {pkgActiveCount} active package{pkgActiveCount !== 1 ? 's' : ''} sent to distributors. Quotes go to distributors, never to you.
               </p>
               <div className="mt-2.5 flex flex-col gap-2">
                 {packages.slice(0, 4).map((p, i) => (
