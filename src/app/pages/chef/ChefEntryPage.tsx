@@ -18,7 +18,7 @@ const pageWrap = 'min-h-screen bg-[#FBFAF7] flex flex-col items-center justify-c
 const card = 'w-full max-w-lg';
 const headlineStyle: React.CSSProperties = { fontFamily: "'Playfair Display', serif" };
 const primaryBtn =
-  'w-full bg-[#F9A64B] hover:bg-[#E8953A] text-white rounded-lg px-6 py-3 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed';
+  'w-full bg-[#F2993D] hover:bg-[#E8953A] text-white rounded-lg px-6 py-3 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed';
 const labelStyle = 'text-sm font-medium text-[#4F4F4F]';
 const errorText = 'text-sm text-red-500';
 

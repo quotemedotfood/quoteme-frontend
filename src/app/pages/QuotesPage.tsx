@@ -384,7 +384,7 @@ export function QuotesPage() {
                     CSV
                   </button>
                   <button
-                    className="flex items-center gap-1.5 text-xs text-[#F9A64B] hover:text-[#E8953A] transition-colors"
+                    className="flex items-center gap-1.5 text-xs text-[#F2993D] hover:text-[#E8953A] transition-colors"
                     onClick={() => handleDownloadOrderGuide(quote.id)}
                   >
                     <FileSpreadsheet className="w-3.5 h-3.5" />
@@ -559,7 +559,7 @@ export function QuotesPage() {
                             title="Convert to Order Guide"
                             onClick={() => handleDownloadOrderGuide(quote.id)}
                           >
-                            <FileSpreadsheet className="w-4 h-4 text-[#F9A64B]" />
+                            <FileSpreadsheet className="w-4 h-4 text-[#F2993D]" />
                           </button>
                           {!isClosedQuote(quote.status) && (
                             <button
