@@ -1755,6 +1755,7 @@ export interface DistributorRep {
   phone: string | null;
   territory: string | null;
   is_active: boolean;
+  is_admin?: boolean;
   status: 'active' | 'deactivated' | 'invited';
   created_at: string;
 }
