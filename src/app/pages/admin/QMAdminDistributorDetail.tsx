@@ -227,6 +227,52 @@ export function QMAdminDistributorDetailPage() {
         onSaved={(updated) => setDist(updated)}
       />
 
+      {/* Admins */}
+      <section className="mb-8">
+        <h2 className="text-lg font-semibold text-[#2A2A2A] mb-3" style={{ fontFamily: "'Playfair Display', serif" }}>Admins</h2>
+        {!dist.admins?.length ? (
+          <p className="text-sm text-gray-400 py-4">No admin user yet</p>
+        ) : (
+          <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-gray-50">
+                  <TableHead>Name</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {(dist.admins || []).map((a) => (
+                  <TableRow key={a.user_id} className="hover:bg-gray-50">
+                    <TableCell className="font-medium">{a.name}</TableCell>
+                    <TableCell className="text-sm text-gray-500">{a.email}</TableCell>
+                    <TableCell>
+                      <span className={`text-xs px-2 py-0.5 rounded ${a.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
+                        {a.status.charAt(0).toUpperCase() + a.status.slice(1)}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-xs text-[#7FAEC2] hover:text-[#6A9AB0]"
+                        disabled={impersonating === a.user_id}
+                        onClick={() => handleImpersonate(a.user_id, a.name, setImpersonating, setError)}
+                      >
+                        <UserCheck size={14} className="mr-1" />
+                        {impersonating === a.user_id ? 'Switching...' : 'Impersonate'}
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </section>
+
       {/* Reps */}
       <section className="mb-8">
         <h2 className="text-lg font-semibold text-[#2A2A2A] mb-3" style={{ fontFamily: "'Playfair Display', serif" }}>Reps</h2>
