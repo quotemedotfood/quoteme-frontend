@@ -93,7 +93,7 @@ export function QuoteReviewBar({ quoteId, onMatchesUpdated, noSidebarOffset }: Q
           <button
             onClick={handleSubmit}
             disabled={!comment.trim()}
-            className="mt-3 w-full bg-[#F9A64B] hover:bg-[#E8953A] disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium py-3 px-6 rounded-lg text-sm min-h-[48px]"
+            className="mt-3 w-full bg-[#F2993D] hover:bg-[#E8953A] disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium py-3 px-6 rounded-lg text-sm min-h-[48px]"
           >
             Redo Matches
           </button>

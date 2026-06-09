@@ -42,7 +42,7 @@ import {
 // ─── Color constants (matches ChefDashboardPage.tsx convention) ───────────────
 const C = {
   charcoal: '#2B2B2B',
-  orange: '#F9A64B',
+  orange: '#F2993D',
   hoverBlue: '#7FAEC2',
   warmPaper: '#FBFAF7',
   softLine: '#E8E8E8',

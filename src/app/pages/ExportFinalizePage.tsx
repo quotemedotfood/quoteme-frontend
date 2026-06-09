@@ -911,7 +911,7 @@ export function ExportFinalizePage() {
                   PDF Quote
                 </Button>
                 <Button
-                  className="w-full justify-start bg-[#F9A64B] hover:bg-[#E8953A] text-white h-12"
+                  className="w-full justify-start bg-[#F2993D] hover:bg-[#E8953A] text-white h-12"
                   disabled={!isFinalized || downloadingOrderGuide || !quoteId}
                   onClick={handleOrderGuideDownload}
                 >
@@ -1020,7 +1020,7 @@ export function ExportFinalizePage() {
         <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 z-40">
           <a
             href={PROD_SIGNUP_URL}
-            className="block w-full md:w-auto md:min-w-[300px] md:mx-auto text-center bg-[#F9A64B] hover:bg-[#E8953A] text-white font-medium py-3 px-6 rounded-lg text-base min-h-[48px] leading-[48px]"
+            className="block w-full md:w-auto md:min-w-[300px] md:mx-auto text-center bg-[#F2993D] hover:bg-[#E8953A] text-white font-medium py-3 px-6 rounded-lg text-base min-h-[48px] leading-[48px]"
           >
             Sign up to send quote
           </a>
@@ -1032,7 +1032,7 @@ export function ExportFinalizePage() {
         <div className="fixed bottom-0 left-0 right-0 md:left-64 bg-white border-t border-gray-200 p-4 z-40">
           <button
             onClick={() => setShowEmailDrawer(true)}
-            className="w-full md:w-auto md:min-w-[200px] md:mx-auto md:block bg-[#F9A64B] hover:bg-[#E8953A] text-white font-medium py-2.5 px-5 rounded-lg text-sm"
+            className="w-full md:w-auto md:min-w-[200px] md:mx-auto md:block bg-[#F2993D] hover:bg-[#E8953A] text-white font-medium py-2.5 px-5 rounded-lg text-sm"
           >
             Send Quote
           </button>

@@ -22,7 +22,7 @@ import React, { useRef, useState, useEffect } from 'react';
 
 const C = {
   charcoal: '#2B2B2B',
-  orange: '#F9A64B',
+  orange: '#F2993D',
   gray500: '#6B7280',
   softLine: '#E8E8E8',
 } as const;

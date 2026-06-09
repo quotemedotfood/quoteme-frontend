@@ -20,7 +20,7 @@ const sans: React.CSSProperties = {
 // Design tokens from colors_and_type.css (locked palette)
 const C = {
   charcoal: '#2B2B2B',
-  orange: '#F9A64B',
+  orange: '#F2993D',
   orangeHover: '#E8953A',
   lightBlue: '#A5CFDD',
   softLine: '#E8E8E8',

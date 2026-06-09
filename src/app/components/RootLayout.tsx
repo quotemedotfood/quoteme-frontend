@@ -37,7 +37,7 @@ export function RootLayout() {
         style={{ background: '#FBFAF7' }}
       >
         <div
-          className="w-10 h-10 rounded-full border-4 border-[#E8E8E8] border-t-[#F9A64B]"
+          className="w-10 h-10 rounded-full border-4 border-[#E8E8E8] border-t-[#F2993D]"
           style={{ animation: 'spin 1s linear infinite' }}
         />
         <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>

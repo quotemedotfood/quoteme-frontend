@@ -9,7 +9,7 @@ import { QuoteStatusPill, legacyStatusToState } from '../../components/chef/Quot
 
 const C = {
   charcoal: '#2B2B2B',
-  orange: '#F9A64B',
+  orange: '#F2993D',
   softLine: '#E8E8E8',
   gray700: '#4F4F4F',
   gray500: '#6B7280',

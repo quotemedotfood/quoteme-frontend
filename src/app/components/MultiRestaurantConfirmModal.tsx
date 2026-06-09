@@ -17,7 +17,7 @@ import { useEffect } from 'react';
 
 const C = {
   charcoal: '#2B2B2B',
-  orange: '#F9A64B',
+  orange: '#F2993D',
   warmPaper: '#FBFAF7',
   softLine: '#E8E8E8',
   gray700: '#4F4F4F',

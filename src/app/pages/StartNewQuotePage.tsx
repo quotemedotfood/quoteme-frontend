@@ -1192,7 +1192,7 @@ export function StartNewQuotePage() {
         <div className="flex flex-col items-center gap-3 mb-8">
           <div className="flex flex-col sm:flex-row justify-center gap-3 w-full">
             <Button
-              className="bg-[#F9A64B] hover:bg-[#E8953A] text-white px-6"
+              className="bg-[#F2993D] hover:bg-[#E8953A] text-white px-6"
               onClick={handleSkipToExport}
               disabled={isCreatingQuote || draftLimitReached || (!pasteText && !menuPreviewText)}
             >

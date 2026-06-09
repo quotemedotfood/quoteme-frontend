@@ -27,7 +27,7 @@ import { ChefSettingsTab } from '../../components/chef/ChefSettingsTab';
 
 const C = {
   charcoal: '#2B2B2B',
-  orange: '#F9A64B',
+  orange: '#F2993D',
   lightBlue: '#A5CFDD',
   hoverBlue: '#7FAEC2',
   warmPaper: '#FBFAF7',

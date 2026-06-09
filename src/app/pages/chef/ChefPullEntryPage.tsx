@@ -40,7 +40,7 @@ import { MENU_DRAFT_KEY } from '../../components/chef/StuckRecoveryScreen';
 const labelStyle = 'text-sm font-medium text-[#4F4F4F]';
 const errorText = 'text-sm text-red-500';
 const primaryBtn =
-  'w-full bg-[#F9A64B] hover:bg-[#E8953A] text-white rounded-lg px-6 py-3 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed';
+  'w-full bg-[#F2993D] hover:bg-[#E8953A] text-white rounded-lg px-6 py-3 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed';
 const headlineStyle: React.CSSProperties = { fontFamily: "'Playfair Display', serif" };
 
 // ─── ChefPullEntryPage ─────────────────────────────────────────────────────────
