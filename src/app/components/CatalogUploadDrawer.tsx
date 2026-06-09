@@ -240,7 +240,7 @@ export function CatalogUploadDrawer({ open, onOpenChange, onUploadComplete }: Ca
                     { key: 'item_number', label: 'Item Number', required: true },
                     { key: 'product_name', label: 'Product Name', required: true },
                     { key: 'brand', label: 'Brand', required: true },
-                    { key: 'pack_size', label: 'Pack Size', required: true },
+                    { key: 'pack_size', label: 'Pack Size', required: false },
                     { key: 'category', label: 'Category', required: false },
                     { key: 'price_cents', label: 'Price', required: false },
                   ].map((col) => {
@@ -288,7 +288,7 @@ export function CatalogUploadDrawer({ open, onOpenChange, onUploadComplete }: Ca
                     { field: 'Item Number', desc: 'SKU or product code', required: true },
                     { field: 'Product Name', desc: 'Product description', required: true },
                     { field: 'Brand', desc: 'Manufacturer or brand name', required: true },
-                    { field: 'Pack Size', desc: 'e.g. 6/10#, 4/1 GAL', required: true },
+                    { field: 'Pack Size', desc: 'e.g. 6/10#, 4/1 GAL', required: false },
                     { field: 'Category', desc: 'Product category', required: false },
                     { field: 'Price', desc: 'Unit price', required: false },
                   ].map((col) => (

@@ -140,13 +140,13 @@ export function DistributorRepsPage() {
             className="text-2xl md:text-3xl font-bold text-[#2A2A2A]"
             style={{ fontFamily: "'Playfair Display', serif" }}
           >
-            Rep Management
+            Users
           </h1>
           <p
             className="text-sm text-gray-500 mt-1"
             style={{ fontFamily: "'DM Sans', sans-serif" }}
           >
-            {activeReps.length} active rep{activeReps.length !== 1 ? 's' : ''}
+            {activeReps.length} active user{activeReps.length !== 1 ? 's' : ''}
           </p>
         </div>
         <Button
@@ -278,9 +278,15 @@ export function DistributorRepsPage() {
                     <p className="text-sm text-gray-500">{rep.territory || '—'}</p>
                   </td>
                   <td className="px-6 py-4">
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
-                      Active
-                    </span>
+                    {rep.is_admin ? (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-50 text-indigo-700">
+                        Admin
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700">
+                        Active
+                      </span>
+                    )}
                   </td>
                   <td className="px-6 py-4 hidden lg:table-cell">
                     <p className="text-sm text-gray-500">
@@ -288,36 +294,39 @@ export function DistributorRepsPage() {
                     </p>
                   </td>
                   <td className="px-6 py-4 text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        disabled={impersonating === rep.id || disabling === rep.id}
-                        onClick={() => handleImpersonate(rep)}
-                        className="text-gray-500 hover:text-[#2A2A2A] text-xs"
-                        title={`Sign in as ${rep.first_name || rep.email}`}
-                      >
-                        {impersonating === rep.id
-                          ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                          : <LogIn className="w-3.5 h-3.5 mr-1" />
-                        }
-                        {impersonating === rep.id ? '' : 'Sign in as'}
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        disabled={disabling === rep.id || impersonating === rep.id}
-                        onClick={() => handleDisable(rep)}
-                        className="text-gray-400 hover:text-red-600 text-xs"
-                        title={`Disable ${rep.first_name || rep.email}`}
-                      >
-                        {disabling === rep.id
-                          ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                          : <UserX className="w-3.5 h-3.5 mr-1" />
-                        }
-                        {disabling === rep.id ? '' : 'Disable'}
-                      </Button>
-                    </div>
+                    {/* Admins are managed elsewhere — no impersonate/disable on the admin's own row */}
+                    {!rep.is_admin && (
+                      <div className="flex items-center justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          disabled={impersonating === rep.id || disabling === rep.id}
+                          onClick={() => handleImpersonate(rep)}
+                          className="text-gray-500 hover:text-[#2A2A2A] text-xs"
+                          title={`Sign in as ${rep.first_name || rep.email}`}
+                        >
+                          {impersonating === rep.id
+                            ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            : <LogIn className="w-3.5 h-3.5 mr-1" />
+                          }
+                          {impersonating === rep.id ? '' : 'Sign in as'}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          disabled={disabling === rep.id || impersonating === rep.id}
+                          onClick={() => handleDisable(rep)}
+                          className="text-gray-400 hover:text-red-600 text-xs"
+                          title={`Disable ${rep.first_name || rep.email}`}
+                        >
+                          {disabling === rep.id
+                            ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            : <UserX className="w-3.5 h-3.5 mr-1" />
+                          }
+                          {disabling === rep.id ? '' : 'Disable'}
+                        </Button>
+                      </div>
+                    )}
                   </td>
                 </tr>
               ))}
