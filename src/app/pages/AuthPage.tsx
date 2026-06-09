@@ -444,7 +444,7 @@ export function AuthPage() {
               I'm a Brand
             </p>
             <p className="text-sm" style={{ color: '#4F4F4F' }}>
-              Promote your products to distributors and chefs
+              Get your products into distributor catalogs.
             </p>
           </div>
         </button>
