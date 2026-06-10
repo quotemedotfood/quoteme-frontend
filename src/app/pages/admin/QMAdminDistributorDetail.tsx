@@ -185,6 +185,16 @@ export function QMAdminDistributorDetailPage() {
               }}>Unclaimed</span>
             )}
           </div>
+          {dist.branding_slug && (
+            <a
+              href={`/d/${dist.branding_slug}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-sm text-[#7FAEC2] hover:text-[#6A9AB0] mt-1"
+            >
+              Cold-landing page: /d/{dist.branding_slug} ↗
+            </a>
+          )}
         </div>
       </div>
 
