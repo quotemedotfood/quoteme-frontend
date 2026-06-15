@@ -91,6 +91,23 @@ function reconstructText(dishes: ParsedDish[]): string {
 let nextIngId = 1000;
 let nextDishId = 5000;
 
+// B-01: an authenticated rep in customer mode must pick a customer before matching.
+// Returns the inline error to show (and block on), or null when matching may proceed.
+// Open Quote needs no customer by design; the guest/demo flow and buyer role
+// (location-scoped) are out of scope for this guard.
+export function customerSelectionError(params: {
+  isAuthedRep: boolean;
+  isQuoteOpened: boolean;
+  isBuyerRole: boolean;
+  hasCustomer: boolean;
+}): string | null {
+  const { isAuthedRep, isQuoteOpened, isBuyerRole, hasCustomer } = params;
+  if (isAuthedRep && !isQuoteOpened && !isBuyerRole && !hasCustomer) {
+    return 'Select or add a customer to begin matching.';
+  }
+  return null;
+}
+
 export function StartNewQuotePage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -544,6 +561,17 @@ export function StartNewQuotePage() {
   const handleContinueToQuoteBuilder = async () => {
     const menuText = parsedDishes.length > 0 ? reconstructText(parsedDishes) : (pasteText || menuPreviewText);
     if (!menuText) { setError('Please paste or parse menu text before continuing.'); return; }
+
+    // B-01: block + inline message instead of firing a request that 422s silently.
+    const isAuthedRep = !(profile.isGuest || localStorage.getItem('quoteme_token') === null);
+    const customerError = customerSelectionError({
+      isAuthedRep,
+      isQuoteOpened,
+      isBuyerRole,
+      hasCustomer: !!selectedRestaurant,
+    });
+    if (customerError) { setError(customerError); return; }
+
     if (!hasQuotesRemaining()) { setIsUpgradeDrawerOpen(true); return; }
 
     setIsCreatingQuote(true);
