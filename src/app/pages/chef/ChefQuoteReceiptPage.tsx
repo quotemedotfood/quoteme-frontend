@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router';
+import { useState, useEffect, useRef } from 'react';
+import { useParams, useNavigate, useSearchParams } from 'react-router';
 import { getGuestQuote, getChefQuote, acceptChefQuote, sendChefQuestion } from '../../services/api';
+import { acceptCaptureAuthUrl } from '../../utils/captureFlow';
 import type { QuoteResponse, QuoteLineResponse } from '../../services/api';
 import {
   QuoteStateDocument,
@@ -88,8 +89,17 @@ export function ChefQuoteReceiptPage() {
     });
   }, [id]);
 
+  const [searchParams] = useSearchParams();
+  const autoAcceptedRef = useRef(false);
+
   async function handleAccept() {
     if (!id) return;
+    // P0: accept 404s for an unauthenticated guest. Capture them first — sign up
+    // (which claims this quote), then auto-fire accept on return (intent=accept).
+    if (!localStorage.getItem('quoteme_token')) {
+      navigate(acceptCaptureAuthUrl(id));
+      return;
+    }
     setActionError(null);
     setAccepting(true);
     const res = await acceptChefQuote(id);
@@ -104,6 +114,19 @@ export function ChefQuoteReceiptPage() {
       setAccepting(false);
     }
   }
+
+  // P0: on return from the capture flow (?intent=accept), once authenticated and the
+  // quote has loaded, auto-fire accept exactly once. The ref guards against re-runs.
+  useEffect(() => {
+    if (autoAcceptedRef.current) return;
+    if (searchParams.get('intent') !== 'accept') return;
+    if (!localStorage.getItem('quoteme_token')) return;
+    if (!quote) return;
+    if (quote.status === 'won' || quote.state === 'accepted') return;
+    autoAcceptedRef.current = true;
+    handleAccept();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, quote]);
 
   async function handleSendQuestion() {
     if (!id || !questionText.trim()) return;

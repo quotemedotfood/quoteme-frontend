@@ -1,4 +1,4 @@
-import { createBrowserRouter, Navigate } from "react-router";
+import { createBrowserRouter, Navigate, useSearchParams } from "react-router";
 import { RootWrapper } from "./components/RootWrapper";
 import { RootLayout } from "./components/RootLayout";
 import { useAuth } from "./contexts/AuthContext";
@@ -117,6 +117,17 @@ function RootIndex() {
   return <Navigate to={rootRedirectTarget(demo, isAuthenticated)} replace />;
 }
 
+// /auth route. In demo we normally skip the auth page (streamlined guest flow → "/"),
+// BUT a P0 capture — a guest sent here from "Looks good" (?intent=accept) or any
+// ?redirect — must render signup so we can claim their quote and return them.
+function AuthRoute() {
+  const [sp] = useSearchParams();
+  if (demo && !sp.get("intent") && !sp.get("redirect")) {
+    return <Navigate to="/" replace />;
+  }
+  return <AuthPage />;
+}
+
 export const router = createBrowserRouter([
   {
     path: "/",
@@ -125,7 +136,7 @@ export const router = createBrowserRouter([
     children: [
       {
         path: "auth",
-        element: demo ? <Navigate to="/" replace /> : <AuthPage />,
+        element: <AuthRoute />,
       },
       {
         // Brand signup — public, no JWT required.
