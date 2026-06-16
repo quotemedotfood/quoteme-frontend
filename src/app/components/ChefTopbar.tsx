@@ -56,14 +56,25 @@ export function ChefTopbar() {
         className="flex items-center justify-end px-5 py-3 bg-white"
         style={{ borderBottom: `1px solid ${C.softLine}`, flexShrink: 0 }}
       >
-        <ChefBadgePill
-          firstName={firstName || email.split('@')[0] || 'Chef'}
-          chefType={chefType}
-          currentLocationName={
-            chefType === 'multi' ? (selectedLocation?.name ?? undefined) : undefined
-          }
-          onClick={() => setDrawerOpen(true)}
-        />
+        {user ? (
+          <ChefBadgePill
+            firstName={firstName || email.split('@')[0] || 'Chef'}
+            chefType={chefType}
+            currentLocationName={
+              chefType === 'multi' ? (selectedLocation?.name ?? undefined) : undefined
+            }
+            onClick={() => setDrawerOpen(true)}
+          />
+        ) : (
+          // P1: guests have no account — show a capture CTA instead of a "Chef Chef" pill.
+          <button
+            onClick={() => navigate('/auth?intent=signup')}
+            className="text-sm font-medium text-white px-4 py-1.5 rounded-lg transition-colors"
+            style={{ backgroundColor: '#F2993D' }}
+          >
+            Sign up
+          </button>
+        )}
       </div>
 
       <ChefAccountDrawer

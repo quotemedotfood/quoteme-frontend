@@ -7,8 +7,10 @@ import {
   searchDistributors,
   getDistributorById,
   sendPasswordReset,
+  getGuestToken,
   DistributorSearchResult,
 } from '../services/api';
+import { postAuthTarget } from '../utils/captureFlow';
 import {
   Users,
   ChefHat,
@@ -58,8 +60,16 @@ export function AuthPage() {
   };
 
   useEffect(() => {
-    if (isAuthenticated && user) navigate(routeByRole(user.role));
-  }, [isAuthenticated, user, navigate]);
+    if (isAuthenticated && user) {
+      // P0: honor a capture redirect (e.g. guest accept → /auth?redirect=…&intent=accept),
+      // carrying intent so the receipt auto-fires accept. Otherwise route by role.
+      navigate(postAuthTarget({
+        redirect: searchParams.get('redirect'),
+        intent: searchParams.get('intent'),
+        roleHome: routeByRole(user.role),
+      }));
+    }
+  }, [isAuthenticated, user, navigate, searchParams]);
 
   const inviteDistributorId = searchParams.get('distributor_id');
   const inviteLocationId = searchParams.get('location_id');
@@ -68,8 +78,16 @@ export function AuthPage() {
   const inviteLastName = searchParams.get('last_name');
   const [inviteDistributor, setInviteDistributor] = useState<DistributorSearchResult | null>(null);
 
-  const [view, setView] = useState<AuthView>(inviteDistributorId || inviteLocationId ? 'signup' : 'role-select');
-  const [selectedRole, setSelectedRole] = useState<SelectedRole>(inviteLocationId ? 'buyer' : 'rep');
+  // P0 capture: a guest sent here from "Looks good" (intent=accept) is a restaurant
+  // user — jump straight to the buyer signup so the conversion claims their quote.
+  const captureAccept = searchParams.get('intent') === 'accept';
+
+  const [view, setView] = useState<AuthView>(
+    inviteDistributorId || inviteLocationId || captureAccept ? 'signup' : 'role-select'
+  );
+  const [selectedRole, setSelectedRole] = useState<SelectedRole>(
+    inviteLocationId || captureAccept ? 'buyer' : 'rep'
+  );
 
   // Fetch invite distributor info
   useEffect(() => {
@@ -210,7 +228,10 @@ export function AuthPage() {
       signupData.claimed_distributor_id = claimedId;
     }
 
-    const result = await signup(signupData as Parameters<typeof signup>[0]);
+    // P0: pass the guest token so signup runs GuestConversion — claiming the guest's
+    // quote(s) to the new account so the post-auth accept resolves (no 404).
+    const guestToken = getGuestToken() || undefined;
+    const result = await signup(signupData as Parameters<typeof signup>[0], guestToken);
     setIsSubmitting(false);
 
     if (result.success) {
