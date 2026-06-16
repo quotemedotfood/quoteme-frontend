@@ -98,6 +98,7 @@ export interface AdminDistributor {
 export interface AdminDistributorDetail extends AdminDistributor {
   order_days: string | null;
   minimum_order_cents: number;
+  branding_slug?: string | null;
   admins: Array<{
     user_id: string;
     name: string;
