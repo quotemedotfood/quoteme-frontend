@@ -77,6 +77,7 @@ import { ChefMenuDetailPage } from "./pages/chef/ChefMenuDetailPage";
 import { ChefMenuStackPage } from "./pages/chef/ChefMenuStackPage";
 import { CreateRestaurantPage } from "./pages/CreateRestaurantPage";
 import { isDemoMode } from "./utils/demoMode";
+import { rootRedirectTarget } from "./utils/rootRedirect";
 import { RepWelcomePage } from "./pages/rep/RepWelcomePage";
 import { RepInviteAcceptPage } from "./pages/RepInviteAcceptPage";
 import { RepTriagePage } from "./pages/rep/RepTriagePage";
@@ -110,10 +111,10 @@ const demo = isDemoMode();
 function RootIndex() {
   const { isAuthenticated, isLoading } = useAuth();
   if (isLoading) return null;
-  if (isAuthenticated) return <Navigate to="/dashboard" replace />;
-  // Unauthenticated path: RootLayout would have already redirected to /auth,
-  // but guard here defensively so landing on "/" never shows a blank screen.
-  return <Navigate to="/auth" replace />;
+  // Unauthenticated path: in normal mode RootLayout already redirects to /auth;
+  // in DEMO mode /auth redirects back to "/", so sending demo guests to /auth here
+  // creates an infinite /auth ↔ / loop — route them to the guest builder instead.
+  return <Navigate to={rootRedirectTarget(demo, isAuthenticated)} replace />;
 }
 
 export const router = createBrowserRouter([
