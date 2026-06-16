@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router';
 import { getGuestQuote } from '../../services/api';
 import { StuckRecoveryScreen, MENU_DRAFT_KEY } from '../../components/chef/StuckRecoveryScreen';
+import { isQuoteComplete } from '../../utils/quoteStatus';
 
 // ─── Timeout threshold ────────────────────────────────────────────────────────
 // If the quote hasn't resolved within STUCK_AFTER_MS milliseconds, transition
@@ -167,6 +168,19 @@ export function ChefStatusPage({ onTimeout }: ChefStatusPageProps = {}) {
       const res = await getGuestQuote(id);
 
       if (res.data) {
+        const wasFirstPoll = !firstPollDone;
+
+        // C-03: a guest revisiting an already-finished quote should land on the
+        // receipt immediately — no blank Step-1 flash and no FINAL_STEP_DISPLAY_MS
+        // animation delay (that delay is for the live first run, not a return visit).
+        if (wasFirstPoll && isQuoteComplete(res.data)) {
+          if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
+          if (stuckTimerRef.current) { clearTimeout(stuckTimerRef.current); stuckTimerRef.current = null; }
+          localStorage.removeItem(MENU_DRAFT_KEY);
+          navigate(`/chef/quotes/${id}`);
+          return;
+        }
+
         // Populate distributor/rep metadata on first successful response.
         if (!firstPollDone) {
           firstPollDone = true;
