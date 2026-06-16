@@ -5,8 +5,19 @@ interface ApiResponse<T> {
   error?: string;
 }
 
+// C-02: admin endpoints require admin scope. While impersonating, quoteme_token is the
+// impersonated (non-admin) JWT and quoteme_admin_token holds the real admin JWT (set on
+// impersonate, removed on un-impersonate). Prefer the admin token so admin writes
+// (e.g. "Save States" on the distributor detail) authorize instead of 403-ing.
+export function selectAdminToken(adminToken: string | null, userToken: string | null): string | null {
+  return adminToken || userToken;
+}
+
 function getAuthToken(): string | null {
-  return localStorage.getItem('quoteme_token');
+  return selectAdminToken(
+    localStorage.getItem('quoteme_admin_token'),
+    localStorage.getItem('quoteme_token'),
+  );
 }
 
 async function fetchWithAuth<T>(
