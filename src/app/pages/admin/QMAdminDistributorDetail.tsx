@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router';
 import { ArrowLeft, Package, Users, UtensilsCrossed, UserCheck, X } from 'lucide-react';
 import { getAdminDistributor, updateAdminDistributor, AdminDistributorDetail } from '../../services/adminApi';
+import { distinctUserCount } from '../../utils/userCount';
 import { Button } from '../../components/ui/button';
 import {
   Table,
@@ -205,8 +206,8 @@ export function QMAdminDistributorDetailPage() {
             <Users size={18} className="text-[#7FAEC2]" />
           </div>
           <div>
-            <div className="text-xl font-bold text-[#2A2A2A]">{dist.reps?.length ?? 0}</div>
-            <div className="text-xs text-gray-500">Reps</div>
+            <div className="text-xl font-bold text-[#2A2A2A]">{distinctUserCount(dist.admins, dist.reps)}</div>
+            <div className="text-xs text-gray-500">Users</div>
           </div>
         </div>
         <div className="bg-white border border-gray-200 rounded-xl p-4 flex items-center gap-3">
