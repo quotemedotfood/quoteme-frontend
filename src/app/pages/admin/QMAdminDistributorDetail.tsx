@@ -362,6 +362,39 @@ export function QMAdminDistributorDetailPage() {
           </div>
         )}
       </section>
+
+      {/* Catalog History (Justin) — read-only upload log */}
+      <section className="mt-8">
+        <h2 className="text-lg font-semibold text-[#2A2A2A] mb-3" style={{ fontFamily: "'Playfair Display', serif" }}>Catalog History</h2>
+        {!dist.catalogs?.length ? (
+          <p className="text-sm text-gray-400 py-4">No catalogs uploaded yet</p>
+        ) : (
+          <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-gray-50">
+                  <TableHead>Uploaded</TableHead>
+                  <TableHead>File</TableHead>
+                  <TableHead>Uploaded by</TableHead>
+                  <TableHead>Products</TableHead>
+                  <TableHead>% Uncategorized</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {(dist.catalogs || []).map((c) => (
+                  <TableRow key={c.id} className="hover:bg-gray-50">
+                    <TableCell className="text-sm text-gray-500">{c.uploaded_at ? new Date(c.uploaded_at).toLocaleDateString() : '—'}</TableCell>
+                    <TableCell className="font-medium">{c.original_filename || '—'}</TableCell>
+                    <TableCell className="text-sm text-gray-500">{c.uploaded_by || '—'}</TableCell>
+                    <TableCell className="text-sm text-gray-500">{c.product_count?.toLocaleString() ?? '—'}</TableCell>
+                    <TableCell className="text-sm text-gray-500">{c.pct_uncategorized != null ? `${c.pct_uncategorized}%` : '—'}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </section>
     </div>
   );
 }
