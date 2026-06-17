@@ -131,6 +131,15 @@ export interface AdminDistributorDetail extends AdminDistributor {
     product_count: number;
     uploaded_at: string;
   } | null;
+  catalogs?: Array<{
+    id: string;
+    uploaded_at: string;
+    original_filename: string | null;
+    uploaded_by: string | null;
+    product_count: number | null;
+    pct_uncategorized: number | null;
+    status: string;
+  }>;
   restaurants: Array<{
     id: string;
     name: string;
