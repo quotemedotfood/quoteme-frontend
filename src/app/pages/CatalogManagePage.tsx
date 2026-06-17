@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router';
 import { Button } from '../components/ui/button';
-import { Loader2, RefreshCw, Check, ChevronLeft, ChevronRight, Pencil, X, Search, Plus } from 'lucide-react';
+import { Loader2, RefreshCw, Check, ChevronLeft, ChevronRight, Pencil, X, Search, Plus, Upload } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { CatalogUploadDrawer } from '../components/CatalogUploadDrawer';
 import {
   getCatalogs,
   getCatalogStats,
@@ -52,11 +52,11 @@ function formatCategory(cat: string) {
 }
 
 export function CatalogManagePage() {
-  const navigate = useNavigate();
   const { user } = useAuth();
   const distributorName = user?.distributor?.name || user?.distributor_name || 'Your';
 
   const [catalogId, setCatalogId] = useState<string | null>(null);
+  const [uploadOpen, setUploadOpen] = useState(false);
   const [stats, setStats] = useState<CatalogStatsResponse | null>(null);
   const [products, setProducts] = useState<CatalogProductsResponse | null>(null);
   const [classStatus, setClassStatus] = useState<ClassificationStatusResponse | null>(null);
@@ -276,10 +276,35 @@ export function CatalogManagePage() {
   if (!catalogId) {
     return (
       <div className="p-6 md:p-10 max-w-5xl mx-auto">
-        <p className="text-gray-500 mb-4" style={{ fontFamily: "'DM Sans', sans-serif" }}>No active catalog found.</p>
-        <Button onClick={() => navigate('/distributor-admin')} className="bg-[#A5CFDD] hover:bg-[#7FAEC2] text-white">
-          Go to Dashboard
-        </Button>
+        <h1
+          className="text-2xl md:text-3xl font-bold text-[#2A2A2A] mb-1"
+          style={{ fontFamily: "'Playfair Display', serif" }}
+        >
+          {distributorName} Catalog
+        </h1>
+        <p className="text-sm text-[#4F4F4F] mb-6" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+          No catalog uploaded yet.
+        </p>
+        <div className="bg-white rounded-xl border border-gray-200 p-8 shadow-sm flex flex-col items-center text-center max-w-md">
+          <Upload className="w-10 h-10 text-white bg-[#A5CFDD] rounded-full p-2.5 mb-4" />
+          <h2
+            className="text-lg font-semibold text-[#2A2A2A] mb-2"
+            style={{ fontFamily: "'DM Sans', sans-serif" }}
+          >
+            Upload Catalog
+          </h2>
+          <p className="text-sm text-gray-500 mb-4" style={{ fontFamily: "'DM Sans', sans-serif" }}>
+            Import your product catalog to start quoting.
+          </p>
+          <Button onClick={() => setUploadOpen(true)} className="w-full bg-[#A5CFDD] hover:bg-[#7FAEC2] text-white">
+            Upload Catalog
+          </Button>
+        </div>
+        <CatalogUploadDrawer
+          open={uploadOpen}
+          onOpenChange={setUploadOpen}
+          onUploadComplete={() => { setUploadOpen(false); loadCatalog(); }}
+        />
       </div>
     );
   }
