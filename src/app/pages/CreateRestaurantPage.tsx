@@ -59,7 +59,7 @@ export function CreateRestaurantPage() {
   );
 
   const validate = () => {
-    if (!name.trim()) return 'Restaurant name is required.';
+    if (!name.trim()) return 'Customer name is required.';
     if (!city.trim()) return 'City is required.';
     if (!state) return 'State is required.';
     if (state && !US_STATES.includes(state.toUpperCase())) return 'Invalid state code.';
@@ -100,7 +100,7 @@ export function CreateRestaurantPage() {
 
     if ('duplicateId' in res && res.duplicateId) {
       setDuplicateId(res.duplicateId);
-      setErrorMsg(res.error || 'A restaurant with this name already exists for your distributor.');
+      setErrorMsg(res.error || 'A customer with this name already exists for your distributor.');
       return;
     }
 
@@ -127,7 +127,7 @@ export function CreateRestaurantPage() {
             <Check className="w-6 h-6 text-green-600" />
           </div>
           <h2 className="text-xl font-semibold text-[#2A2A2A] mb-1" style={{ fontFamily: "'DM Sans', sans-serif" }}>
-            Restaurant created
+            Customer created
           </h2>
           <p className="text-sm text-[#4F4F4F] mb-1" style={{ fontFamily: "'DM Sans', sans-serif" }}>
             {created.name}
@@ -160,7 +160,7 @@ export function CreateRestaurantPage() {
               }}
               className="w-full px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 text-[#4F4F4F]"
             >
-              Add another restaurant
+              Add another customer
             </button>
           </div>
         </div>
@@ -179,11 +179,11 @@ export function CreateRestaurantPage() {
             className="text-2xl font-bold text-[#2A2A2A]"
             style={{ fontFamily: "'Playfair Display', serif" }}
           >
-            Add Restaurant
+            Add Customer
           </h1>
         </div>
         <p className="text-sm text-[#4F4F4F] ml-12" style={{ fontFamily: "'DM Sans', sans-serif" }}>
-          Create a new restaurant record for your distributor.
+          Create a new customer record for your distributor.
         </p>
       </div>
 
@@ -197,13 +197,13 @@ export function CreateRestaurantPage() {
       {/* Duplicate banner */}
       {duplicateId && (
         <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
-          <p className="font-medium">A restaurant with this name already exists for your distributor.</p>
+          <p className="font-medium">A customer with this name already exists for your distributor.</p>
           <a
             href={`/customers`}
             className="mt-1 inline-block text-[#7FAEC2] underline hover:text-[#5C94AE] text-sm"
             onClick={(e) => { e.preventDefault(); navigate('/customers'); }}
           >
-            View existing restaurant
+            View existing customer
           </a>
           {' '}
           <span className="text-xs text-gray-400">(ID: {duplicateId})</span>
@@ -214,7 +214,7 @@ export function CreateRestaurantPage() {
         {/* Restaurant Name */}
         <div>
           <Label htmlFor="name" className="text-sm font-medium text-[#4F4F4F]">
-            Restaurant name <span className="text-red-500">*</span>
+            Customer name <span className="text-red-500">*</span>
           </Label>
           <Input
             id="name"
@@ -237,7 +237,7 @@ export function CreateRestaurantPage() {
           <Input
             id="autocomplete"
             ref={autocompleteRef}
-            placeholder="Start typing an address or restaurant name..."
+            placeholder="Start typing an address or customer name..."
             className="mt-1"
             autoComplete="off"
           />
@@ -382,7 +382,7 @@ export function CreateRestaurantPage() {
                 Creating...
               </>
             ) : (
-              'Create Restaurant'
+              'Create Customer'
             )}
           </Button>
         </div>
