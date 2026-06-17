@@ -123,7 +123,7 @@ export function AppSidebar() {
         { icon: <Package size={20} />, label: "Catalog", path: "/distributor-admin/catalog" },
         { icon: <FileText size={20} />, label: "Quotes", path: "/rep/quotes/inbound" },
         { icon: <Users size={20} />, label: "Customers", path: "/customers" },
-        { icon: <PlusCircle size={20} />, label: "Add Restaurant", path: "/distributor-admin/restaurants/new" },
+        { icon: <PlusCircle size={20} />, label: "Add Customer", path: "/distributor-admin/restaurants/new" },
         { icon: <UserPlus size={20} />, label: "Reps", path: "/distributor-admin/reps" },
         { icon: <ClipboardList size={20} />, label: "Onboarding", path: "/distributor-admin/onboarding-docs" },
       ]

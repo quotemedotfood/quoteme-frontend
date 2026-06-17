@@ -225,7 +225,7 @@ export function QMAdminDistributorDetailPage() {
           </div>
           <div>
             <div className="text-xl font-bold text-[#2A2A2A]">{dist.restaurants?.length ?? 0}</div>
-            <div className="text-xs text-gray-500">Restaurants</div>
+            <div className="text-xs text-gray-500">Customers</div>
           </div>
         </div>
       </div>
@@ -334,11 +334,11 @@ export function QMAdminDistributorDetailPage() {
         )}
       </section>
 
-      {/* Restaurants */}
+      {/* Customers */}
       <section>
-        <h2 className="text-lg font-semibold text-[#2A2A2A] mb-3" style={{ fontFamily: "'Playfair Display', serif" }}>Restaurants</h2>
+        <h2 className="text-lg font-semibold text-[#2A2A2A] mb-3" style={{ fontFamily: "'Playfair Display', serif" }}>Customers</h2>
         {!dist.restaurants?.length ? (
-          <p className="text-sm text-gray-400 py-4">No restaurants yet</p>
+          <p className="text-sm text-gray-400 py-4">No customers yet</p>
         ) : (
           <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
             <Table>
