@@ -13,7 +13,7 @@ import { updateCurrentUser } from '../../services/api';
 import { BrandMark } from '../../components/brand/BrandPrimitives';
 
 export function BrandSettingsPage() {
-  const { user, refreshUser } = useAuth();
+  const { user, refreshUser, logout } = useAuth();
   const navigate = useNavigate();
 
   const [firstName, setFirstName] = useState(user?.first_name ?? '');
@@ -163,6 +163,23 @@ export function BrandSettingsPage() {
             </div>
           </Section>
         </div>
+      </div>
+
+      <div
+        className="mt-10 pt-5 flex items-center justify-between gap-4"
+        style={{ borderTop: '1px solid var(--qm-soft-line)' }}
+      >
+        <div className="text-[12px] ink-faint">
+          Signed in as {user?.email ?? '—'}
+        </div>
+        <button
+          type="button"
+          onClick={() => { logout(); navigate('/auth', { replace: true }); }}
+          className="text-[12px] ink-soft underline"
+          style={{ background: 'transparent', border: 'none', cursor: 'pointer', minHeight: 'unset' }}
+        >
+          Sign out
+        </button>
       </div>
     </div>
   );
