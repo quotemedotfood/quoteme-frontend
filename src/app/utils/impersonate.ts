@@ -1,6 +1,21 @@
 import { impersonateUser } from '../services/adminApi';
 
 /**
+ * True when an admin is inside an impersonated session.
+ *
+ * `quoteme_admin_token` holds the REAL admin JWT and is set ONLY during
+ * impersonation (handleImpersonate below, plus the chef/rep impersonation
+ * paths), and removed on exit (see ImpersonationBanner). It is therefore the
+ * universal "am I currently impersonating" signal across every impersonation
+ * flow — used to suppress the QM-admin chrome (outer icon rail) so the
+ * impersonated distributor/rep view shows only its own sidebar.
+ */
+export function isImpersonating(): boolean {
+  if (typeof window === 'undefined') return false;
+  return localStorage.getItem('quoteme_admin_token') !== null;
+}
+
+/**
  * Shared impersonation handler used by QM admin surfaces.
  *
  * Calls POST /api/v1/admin/users/:userId/impersonate, swaps the JWT in

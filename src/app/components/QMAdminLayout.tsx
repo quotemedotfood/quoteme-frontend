@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import logoSquare from '/src/assets/e549e7d27b183e98e791f43494c715b8cc6ce7e9.png';
 import { useAuth } from '../contexts/AuthContext';
+import { isImpersonating } from '../utils/impersonate';
 
 const navItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/qm-admin' },
@@ -51,6 +52,11 @@ export function QMAdminLayout() {
   if (isLoading) return null;
   if (!user || user.role !== 'quoteme_admin') return <Navigate to="/auth" replace />;
 
+  // P0: during an impersonated session, suppress the QM-admin outer rail entirely
+  // so the impersonated distributor/rep sees only their own (inner) sidebar — the
+  // admin chrome must not leak into what a live distributor like Fish Guys sees.
+  const impersonating = isImpersonating();
+
   const isActive = (path: string) => {
     if (path === '/qm-admin') return location.pathname === '/qm-admin' || location.pathname === '/qm-admin/';
     return location.pathname.startsWith(path);
@@ -58,7 +64,8 @@ export function QMAdminLayout() {
 
   return (
     <div className="flex h-screen bg-gray-50">
-      {/* Desktop Sidebar */}
+      {/* Desktop Sidebar — suppressed during impersonation (P0) */}
+      {!impersonating && (
       <div className="hidden md:flex w-56 bg-white border-r border-gray-200 flex-col h-screen flex-shrink-0">
         <div className="p-4 flex items-center gap-3 border-b border-gray-200">
           <img src={logoSquare} alt="QuoteME" className="w-10 h-10 object-contain" />
@@ -103,8 +110,10 @@ export function QMAdminLayout() {
           </button>
         </div>
       </div>
+      )}
 
-      {/* Mobile Top Nav */}
+      {/* Mobile Top Nav — suppressed during impersonation (P0) */}
+      {!impersonating && (
       <div className="md:hidden fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200">
         <div className="flex items-center gap-2 px-3 py-2 overflow-x-auto">
           <img src={logoSquare} alt="QM" className="w-7 h-7 flex-shrink-0" />
@@ -124,6 +133,7 @@ export function QMAdminLayout() {
           })}
         </div>
       </div>
+      )}
 
       {/* Main Content */}
       <div className="flex-1 overflow-auto">
