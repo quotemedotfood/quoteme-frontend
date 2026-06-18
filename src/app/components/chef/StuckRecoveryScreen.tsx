@@ -12,6 +12,7 @@
 
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
+import { notifyGuestQuoteByEmail } from '../../services/api';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -47,6 +48,7 @@ export function StuckRecoveryScreen({ quoteId, repEmail, repName, onWaitItOut }:
   const navigate = useNavigate();
   const [notifyEmail, setNotifyEmail] = useState('');
   const [notifySent, setNotifySent] = useState(false);
+  const [notifySubmitting, setNotifySubmitting] = useState(false);
   const [emailError, setEmailError] = useState<string | null>(null);
   const [activePath, setActivePath] = useState<'a' | 'b' | 'c' | null>(null);
 
@@ -74,7 +76,11 @@ export function StuckRecoveryScreen({ quoteId, repEmail, repName, onWaitItOut }:
   }
 
   // ── Path (c): wait it out ───────────────────────────────────────────────
-  function handleNotifySubmit(e: React.FormEvent) {
+  // POST the address to the backend so the "we'll email you when ready"
+  // promise is actually kept (the job — or the endpoint itself if the quote
+  // already resolved — sends the email, race-safe and once-only). localStorage
+  // is kept only as a client-side hint; it is no longer the only record.
+  async function handleNotifySubmit(e: React.FormEvent) {
     e.preventDefault();
     setEmailError(null);
 
@@ -84,10 +90,23 @@ export function StuckRecoveryScreen({ quoteId, repEmail, repName, onWaitItOut }:
       return;
     }
 
-    // Persist locally so the chef knows we have their address even without
-    // a backend round-trip. A future backend endpoint can pick this up.
+    if (!quoteId) {
+      setEmailError("We couldn't find this quote. Try going back and starting again.");
+      return;
+    }
+
+    setNotifySubmitting(true);
+    const result = await notifyGuestQuoteByEmail(quoteId, trimmed);
+    setNotifySubmitting(false);
+
+    if (result.error) {
+      setEmailError(result.error || "Something went wrong. Please try again.");
+      return;
+    }
+
+    // Local hint so a returning visitor knows we have their address.
     localStorage.setItem('quoteme_notify_email', trimmed);
-    localStorage.setItem('quoteme_notify_quote_id', quoteId ?? '');
+    localStorage.setItem('quoteme_notify_quote_id', quoteId);
 
     setNotifySent(true);
     onWaitItOut?.(trimmed);
@@ -222,9 +241,10 @@ export function StuckRecoveryScreen({ quoteId, repEmail, repName, onWaitItOut }:
                   )}
                   <button
                     type="submit"
-                    className="w-full bg-[#F2993D] hover:bg-[#E8953A] text-white rounded-lg px-6 py-2.5 text-sm font-medium transition-colors"
+                    disabled={notifySubmitting}
+                    className="w-full bg-[#F2993D] hover:bg-[#E8953A] text-white rounded-lg px-6 py-2.5 text-sm font-medium transition-colors disabled:opacity-60"
                   >
-                    Notify me
+                    {notifySubmitting ? 'Saving…' : 'Notify me'}
                   </button>
                 </form>
               )}
