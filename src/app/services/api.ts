@@ -758,6 +758,20 @@ export async function getGuestQuote(id: string): Promise<ApiResponse<QuoteRespon
   return fetchWithGuest(`/api/v1/guest/quotes/${id}`);
 }
 
+// Records the chef's "email me when the quote is ready" request against the
+// quote. The backend stores the address and, if the quote is already resolved,
+// sends the email immediately; otherwise the processing job sends it on
+// completion (race-safe, once-only). Mirrors the guest X-Guest-Token auth.
+export async function notifyGuestQuoteByEmail(
+  id: string,
+  email: string,
+): Promise<ApiResponse<{ status: string; resolved: boolean; email_sent: boolean }>> {
+  return fetchWithGuest(`/api/v1/guest/quotes/${id}/notify_email`, {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+  });
+}
+
 export async function updateGuestQuote(id: string, updates: any): Promise<ApiResponse<any>> {
   return fetchWithGuest(`/api/v1/guest/quotes/${id}`, {
     method: 'PATCH',
