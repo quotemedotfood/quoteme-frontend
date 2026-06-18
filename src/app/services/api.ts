@@ -2204,6 +2204,64 @@ export async function getCommandCenterSearch(
   );
 }
 
+// ── Command Center: Inbound Routing (B2-Surface1) ────────────────────────────
+// Unified feed of inbound opportunities + quotes awaiting rep assignment/action.
+// Admin view: GET /api/v1/distributor_admin/command_center/inbound
+// Each row may be kind='opportunity' (inbound_opportunity) or kind='quote'.
+
+/** Unified inbound row returned by GET /api/v1/distributor_admin/command_center/inbound */
+export interface InboundRow {
+  kind: 'opportunity' | 'quote';
+  id: string;
+  /** Internal source code, e.g. 'website', 'referral', 'manual', 'chef_request'. */
+  source: string | null;
+  /** Human-readable source label, e.g. "Website", "Chef request". */
+  source_label: string | null;
+  /** Payload type, e.g. 'menu_upload', 'quote_request'. */
+  payload_type: string | null;
+  contact_name: string | null;
+  contact_email: string | null;
+  contact_phone: string | null;
+  restaurant_name: string | null;
+  status: string | null;
+  /** Rep currently assigned to this row, if any. */
+  assigned_rep: { id: string; name: string } | null;
+  /** How many calendar days since this row was created. */
+  age_days: number;
+  /** The downstream artifact this row is associated with (quote, opportunity, etc.). */
+  artifact: { type: string; id: string; name: string | null } | null;
+}
+
+/** GET /api/v1/distributor_admin/command_center/inbound
+ *  Returns the unified inbound feed (opportunities + quotes) for the distributor.
+ *  Pass an optional `status` string to filter by status.
+ */
+export async function getCommandCenterInbound(
+  status?: string
+): Promise<ApiResponse<InboundRow[]>> {
+  const qs = status ? `?status=${encodeURIComponent(status)}` : '';
+  return fetchWithAuth(`/api/v1/distributor_admin/command_center/inbound${qs}`);
+}
+
+/** POST /api/v1/distributor_admin/inbound_opportunities/:id/assign
+ *  Assigns an inbound_opportunity row to a rep by user_id.
+ *  Returns the updated InboundRow on success.
+ *  Returns 409 with { error } when the opportunity is already owned by a different rep —
+ *  the error message is surfaced in ApiResponse.error so callers can display the guard inline.
+ */
+export async function assignInboundOpportunity(
+  opportunityId: string,
+  repId: string
+): Promise<ApiResponse<InboundRow>> {
+  return fetchWithAuth(
+    `/api/v1/distributor_admin/inbound_opportunities/${encodeURIComponent(opportunityId)}/assign`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ rep_id: repId }),
+    }
+  );
+}
+
 // ── Notifications ──
 
 export async function getNotifications(): Promise<ApiResponse<{ notifications: any[]; unread_count: number }>> {
