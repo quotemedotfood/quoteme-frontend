@@ -2867,6 +2867,16 @@ export async function getRepIncomingQuotes(): Promise<ApiResponse<RepIncomingQuo
 }
 
 /**
+ * getRepInbound — GET /api/v1/rep/inbound (Bearer auth)
+ *
+ * Rep-scoped inbound slice: opportunities assigned to this rep + their own
+ * cold_landing/outbound quotes. Unified InboundRow shape (kind discriminator).
+ */
+export async function getRepInbound(): Promise<ApiResponse<InboundRow[]>> {
+  return fetchWithAuth<InboundRow[]>('/api/v1/rep/inbound');
+}
+
+/**
  * getRepQuote — GET /api/v1/rep/quotes/:id (Bearer auth)
  *
  * Returns the full quote document for the rep to review/price.
