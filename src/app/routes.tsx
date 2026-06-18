@@ -48,6 +48,7 @@ import { CCQuoteDetailPage } from "./pages/command-center/CCQuoteDetailPage";
 import { CCSoonPage } from "./pages/command-center/CCSoonPage";
 import { CCAssignPage } from "./pages/command-center/CCAssignPage";
 import { CCSearchPage } from "./pages/command-center/CCSearchPage";
+import { CCInboundPage } from "./pages/command-center/CCInboundPage";
 import { CatalogManagePage } from "./pages/CatalogManagePage";
 import { CatalogConfirmationPage } from "./pages/CatalogConfirmationPage";
 import { RepInvitePage } from "./pages/RepInvitePage";
@@ -391,7 +392,7 @@ export const router = createBrowserRouter([
               { path: "assign",          Component: CCAssignPage },
               { path: "search",          Component: CCSearchPage },
               { path: "team",            element: <CCSoonPage title="Team view lands shortly." /> },
-              { path: "inbound",         element: <CCSoonPage title="Inbound lands shortly." /> },
+              { path: "inbound",         Component: CCInboundPage },
             ],
           },
           { path: "distributor-admin/catalog", Component: CatalogManagePage },
