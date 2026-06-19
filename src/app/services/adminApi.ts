@@ -1567,6 +1567,66 @@ export async function listClusterLabels(
   return fetchWithAuth(`/api/v1/admin/cluster_labels${qs ? `?${qs}` : ''}`);
 }
 
+// ============= RESTAURANT GROUPS =============
+
+export interface AdminRestaurantGroup {
+  id: string;
+  name: string;
+  status: string;
+  restaurant_count: number;
+  created_at: string;
+}
+
+export interface AdminRestaurantGroupDetail extends AdminRestaurantGroup {
+  restaurants: Array<{
+    id: string;
+    name: string;
+    city: string | null;
+    state: string | null;
+    status: string;
+    contact_count: number;
+    created_at: string;
+  }>;
+}
+
+export async function getAdminRestaurantGroups(): Promise<ApiResponse<AdminRestaurantGroup[]>> {
+  return fetchWithAuth('/api/v1/restaurant_groups');
+}
+
+export async function getAdminRestaurantGroup(id: string): Promise<ApiResponse<AdminRestaurantGroupDetail>> {
+  return fetchWithAuth(`/api/v1/restaurant_groups/${id}`);
+}
+
+export async function createAdminRestaurantGroup(data: {
+  name: string;
+  status?: string;
+}): Promise<ApiResponse<AdminRestaurantGroup>> {
+  return fetchWithAuth('/api/v1/restaurant_groups', {
+    method: 'POST',
+    body: JSON.stringify({ restaurant_group: data }),
+  });
+}
+
+export async function updateAdminRestaurantGroup(
+  id: string,
+  data: { name?: string; status?: string }
+): Promise<ApiResponse<AdminRestaurantGroup>> {
+  return fetchWithAuth(`/api/v1/restaurant_groups/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ restaurant_group: data }),
+  });
+}
+
+export async function addRestaurantToGroup(
+  groupId: string,
+  data: { restaurant_id: string } | { name: string; city?: string; state?: string }
+): Promise<ApiResponse<AdminRestaurantGroupDetail>> {
+  return fetchWithAuth(`/api/v1/restaurant_groups/${groupId}/add_restaurant`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
 // ============= RESTAURANT CREATE =============
 
 export interface Restaurant {
