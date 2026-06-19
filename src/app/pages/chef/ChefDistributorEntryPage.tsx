@@ -141,7 +141,7 @@ function PickPanel({ onSelect }: PickPanelProps) {
           className="mt-4 px-4 py-3 rounded-md text-[12px] text-[#4F4F4F] leading-relaxed"
           style={{ background: '#FBFAF7', border: '1px solid #E8E8E8' }}
         >
-          Set your restaurant's state to see distributors that serve your area.{' '}
+          Set your location's state to see distributors that serve your area.{' '}
           <a
             href="/dashboard"
             className="underline underline-offset-2 text-[#2A2A2A] hover:opacity-70"
@@ -152,7 +152,7 @@ function PickPanel({ onSelect }: PickPanelProps) {
               window.dispatchEvent(new PopStateEvent('popstate', { state: { activeTab: 'settings' } }));
             }}
           >
-            Update restaurant settings
+            Update location settings
           </a>
         </div>
       )}
