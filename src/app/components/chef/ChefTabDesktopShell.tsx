@@ -14,7 +14,7 @@
 //   • CSS vars (--qm-*) → FE color constants.
 
 import React, { useState } from 'react';
-import { FileText, Settings, Home, PanelLeftClose, PanelLeftOpen, Plus, Truck } from 'lucide-react';
+import { FileText, Settings, Home, PanelLeftClose, PanelLeftOpen, Plus, Truck, Layers } from 'lucide-react';
 import quotemeLogo from '../../../assets/quoteme-logo.png';
 import { SidebarHelpInput } from './SidebarHelpInput';
 
@@ -202,32 +202,64 @@ function NewspaperSidebarStub({
           const on = item.id === active;
           const { Icon } = item;
           return (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => onNav(item.target)}
-              style={{
-                width: '100%',
-                textAlign: 'left',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 10,
-                padding: collapsed ? '10px 0' : '10px 20px',
-                justifyContent: collapsed ? 'center' : 'flex-start',
-                background: on ? 'rgba(43,43,43,.07)' : 'transparent',
-                border: 'none',
-                cursor: 'pointer',
-                ...sans,
-                fontSize: 14,
-                fontWeight: on ? 600 : 400,
-                color: on ? C.charcoal : C.gray700,
-                borderLeft: on ? `3px solid ${C.charcoal}` : '3px solid transparent',
-              }}
-            >
-              {/* c64 + 18d: icon-only when collapsed; icon + label side-by-side when expanded */}
-              <Icon size={18} strokeWidth={on ? 2 : 1.6} />
-              {!collapsed && <span>{item.label}</span>}
-            </button>
+            <React.Fragment key={item.id}>
+              <button
+                type="button"
+                onClick={() => onNav(item.target)}
+                style={{
+                  width: '100%',
+                  textAlign: 'left',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  padding: collapsed ? '10px 0' : '10px 20px',
+                  justifyContent: collapsed ? 'center' : 'flex-start',
+                  background: on ? 'rgba(43,43,43,.07)' : 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  ...sans,
+                  fontSize: 14,
+                  fontWeight: on ? 600 : 400,
+                  color: on ? C.charcoal : C.gray700,
+                  borderLeft: on ? `3px solid ${C.charcoal}` : '3px solid transparent',
+                }}
+              >
+                {/* c64 + 18d: icon-only when collapsed; icon + label side-by-side when expanded */}
+                <Icon size={18} strokeWidth={on ? 2 : 1.6} />
+                {!collapsed && <span>{item.label}</span>}
+              </button>
+              {/* PR-3: My Stack sub-item — indented under Distributors */}
+              {item.id === 'distributors' && (
+                <button
+                  type="button"
+                  onClick={() => onNav('tab-stack')}
+                  title={collapsed ? 'My Stack' : undefined}
+                  aria-label="My Stack"
+                  style={{
+                    width: '100%',
+                    textAlign: 'left',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    padding: collapsed ? '8px 0' : '8px 20px 8px 38px',
+                    justifyContent: collapsed ? 'center' : 'flex-start',
+                    background: 'transparent',
+                    border: 'none',
+                    cursor: 'pointer',
+                    ...sans,
+                    fontSize: 13,
+                    fontWeight: 400,
+                    color: C.gray500,
+                    borderLeft: '3px solid transparent',
+                  }}
+                  onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = C.charcoal; }}
+                  onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = C.gray500; }}
+                >
+                  <Layers size={15} strokeWidth={1.6} />
+                  {!collapsed && <span>My Stack</span>}
+                </button>
+              )}
+            </React.Fragment>
           );
         })}
 
