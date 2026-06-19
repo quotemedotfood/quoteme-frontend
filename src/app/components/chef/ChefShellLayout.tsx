@@ -45,6 +45,8 @@ function activeTabFromPath(pathname: string): ActiveTab {
   if (pathname.startsWith('/chef/menus')) return 'home'; // Menus sit under the Quotes/home tab
   if (pathname.startsWith('/chef/catalog')) return 'distributors';
   if (pathname.startsWith('/chef/distributor')) return 'distributors';
+  // /chef/stack — My Stack manage view lives under Distributors in the IA
+  if (pathname === '/chef/stack' || pathname.startsWith('/chef/stack/')) return 'distributors';
   // /chef/pull/entry — the pull-quote entry surface lives under Distributors
   // in the IA: a chef picks a distributor first, then lands here.
   if (pathname.startsWith('/chef/pull')) return 'distributors';
@@ -92,6 +94,7 @@ export function ChefShellLayout() {
     // Quotes has a dedicated route — navigate there directly (c135)
     if (target === 'tab-home') return navigate('/chef/quotes');
     if (target === 'tab-distributors') return navigate('/chef/distributor/new');
+    if (target === 'tab-stack') return navigate('/chef/stack');
     if (target === 'tab-settings') return navigate('/dashboard', { state: { activeTab: 'settings' } });
   };
 

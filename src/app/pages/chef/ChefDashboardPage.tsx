@@ -14,11 +14,11 @@
 //   Distributors — "Your distributors" derived from quotes payload +
 //                  "Available in your area" empty state (Phase B.2).
 //   Settings     — Contact info, restaurant, billing (read-only V1).
-//   Discovery    — Locked placeholder for free-tier chefs.
+//   Discovery    — Retired in PR-3; replaced by free /chef/stack manage view.
 
 import { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router';
-import { Lock } from 'lucide-react';
+// Lock import removed — DiscoveryTab (paid-plans stub) retired in PR-3.
 import { getChefQuotes, getChefOrderGuides, type ChefQuoteRow, type ChefQuotesIndexResponse, type ChefOrderGuideRow } from '../../services/api';
 import { PreviewPill } from '../../components/chef/PreviewPill';
 import { QuoteStatusPill, legacyStatusToState } from '../../components/chef/QuoteStatusPill';
@@ -229,51 +229,6 @@ function OrderGuidesTab({
         </div>
       )}
     </>
-  );
-}
-
-// ─── Tab nav ─────────────────────────────────────────────────────────────────
-
-const TAB_LABELS: { id: Tab; label: string }[] = [
-  { id: 'overview', label: 'Overview' },
-  { id: 'distributors', label: 'Distributors' },
-  { id: 'settings', label: 'Settings' },
-  { id: 'discovery', label: 'Build my Stack' },
-];
-
-function TabNav({ activeTab, onSelect }: { activeTab: Tab; onSelect: (t: Tab) => void }) {
-  return (
-    <nav
-      className="flex gap-6 mb-7"
-      style={{ borderBottom: `1px solid ${C.softLine}` }}
-      aria-label="Dashboard sections"
-    >
-      {TAB_LABELS.map(({ id, label }) => {
-        const isActive = id === activeTab;
-        return (
-          <button
-            key={id}
-            type="button"
-            onClick={() => onSelect(id)}
-            style={{
-              ...sans,
-              fontSize: 13,
-              fontWeight: isActive ? 600 : 400,
-              color: isActive ? C.charcoal : C.gray500,
-              background: 'none',
-              border: 'none',
-              borderBottom: isActive ? `2px solid ${C.charcoal}` : '2px solid transparent',
-              padding: '0 0 10px 0',
-              cursor: 'pointer',
-              lineHeight: 1.4,
-              transition: 'color 0.1s, border-color 0.1s',
-            }}
-          >
-            {label}
-          </button>
-        );
-      })}
-    </nav>
   );
 }
 
@@ -561,30 +516,6 @@ function SettingsRow({
     >
       <div style={{ ...sans, fontSize: 11, color: C.gray500, marginBottom: 2 }}>{label}</div>
       <div style={{ ...sans, fontSize: 14, color: C.charcoal }}>{value || 'Not on file'}</div>
-    </div>
-  );
-}
-
-// ─── Discovery tab ────────────────────────────────────────────────────────────
-
-function DiscoveryTab() {
-  return (
-    <div
-      className="flex flex-col items-center text-center py-16"
-      style={{ maxWidth: 380, margin: '0 auto' }}
-    >
-      <Lock
-        size={28}
-        strokeWidth={1.5}
-        style={{ color: C.gray400, marginBottom: 16 }}
-        aria-hidden="true"
-      />
-      <p style={{ ...sans, fontSize: 15, fontWeight: 500, color: C.charcoal, marginBottom: 8 }}>
-        Build my Stack is available on paid plans.
-      </p>
-      <p style={{ ...sans, fontSize: 13, color: C.gray700, lineHeight: 1.6 }}>
-        Send one menu to multiple distributors over time.
-      </p>
     </div>
   );
 }

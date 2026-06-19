@@ -95,7 +95,9 @@ export function ChefTabBar({ active = 'home', nav = () => {} }: ChefTabBarProps)
 
   const tabs: TabDef[] = [
     { id: 'home',          label: 'Quotes',       target: 'tab-home' },
-    { id: 'distributors',  label: 'Distributors', target: 'tab-distributors' },
+    // PR-3: Distributors tab navigates to My Stack (the manage view).
+    // Add distributor is accessible from within the Stack page.
+    { id: 'distributors',  label: 'Distributors', target: 'tab-stack' },
     { id: 'settings',      label: 'Settings',     target: 'tab-settings' },
     { id: 'build',         label: 'Build Quote',  target: 'distributor-new', isAction: true },
   ];

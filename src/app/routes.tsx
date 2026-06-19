@@ -77,6 +77,7 @@ import { ChefShellLayout } from "./components/chef/ChefShellLayout";
 import { ChefMenusPage } from "./pages/chef/ChefMenusPage";
 import { ChefMenuDetailPage } from "./pages/chef/ChefMenuDetailPage";
 import { ChefMenuStackPage } from "./pages/chef/ChefMenuStackPage";
+import { ChefStackPage } from "./pages/chef/ChefStackPage";
 import { CreateRestaurantPage } from "./pages/CreateRestaurantPage";
 import { isDemoMode } from "./utils/demoMode";
 import { rootRedirectTarget } from "./utils/rootRedirect";
@@ -311,6 +312,9 @@ export const router = createBrowserRouter([
               // STACK-FE-1: compare-spread table. Static segment 'stack' takes
               // precedence over future dynamic sibling if one is added.
               { path: "chef/menus/:menuId/stack", Component: ChefMenuStackPage },
+              // PR-3: free My Stack manage view (pin/unpin distributors).
+              // Distinct from the per-menu compare-spread above.
+              { path: "chef/stack", Component: ChefStackPage },
               { path: "chef/catalog", Component: ChefCatalogSelectionPage },
               { path: "chef/distributor/new", Component: ChefDistributorEntryPage },
               // B3b: distributor detail. 'new' (static) takes precedence over
