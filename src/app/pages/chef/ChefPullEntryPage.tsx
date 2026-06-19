@@ -365,10 +365,10 @@ export function ChefPullEntryPage() {
           </div>
 
           <div className="flex flex-col gap-6">
-            {/* Restaurant name — auto-populated, editable */}
+            {/* Location name — auto-populated, editable */}
             <div className="flex flex-col gap-1">
               <label className={labelStyle}>
-                Restaurant name{' '}
+                Location name{' '}
                 <span className="text-[#9E9E9E] font-normal">(optional)</span>
               </label>
               <input

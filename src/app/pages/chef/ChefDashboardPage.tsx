@@ -493,7 +493,7 @@ function SettingsTab({ user }: { user: import('../../services/api').User | null 
       {/* Restaurant */}
       <section>
         <h2 style={{ ...serif, fontSize: 22, fontWeight: 600, color: C.charcoal, marginBottom: 16 }}>
-          Restaurant
+          Location
         </h2>
         <div
           style={{ border: `1px solid ${C.softLine}`, borderRadius: 8, overflow: 'hidden', background: '#fff' }}
@@ -522,7 +522,7 @@ function SettingsTab({ user }: { user: import('../../services/api').User | null 
             <span style={{ ...sans, fontSize: 13, color: C.gray400 }}>Coming soon</span>
           </div>
           <div style={{ padding: '14px 16px' }}>
-            <div style={{ ...sans, fontSize: 11, color: C.gray500, marginBottom: 3 }}>Add a restaurant location</div>
+            <div style={{ ...sans, fontSize: 11, color: C.gray500, marginBottom: 3 }}>Add a location</div>
             <span style={{ ...sans, fontSize: 13, color: C.gray400 }}>Coming soon</span>
           </div>
         </div>
@@ -715,6 +715,7 @@ function QuoteHistory({
 // StatusPill extracted to ../../components/chef/QuoteStatusPill (PR-redo for #50)
 
 function EmptyState() {
+  const navigate = useNavigate();
   return (
     <div className="text-center py-16">
       <h1 style={{ ...serif, fontSize: 26, fontWeight: 600, color: C.charcoal, lineHeight: 1.15 }}>
@@ -724,9 +725,29 @@ function EmptyState() {
         className="mt-3 max-w-md mx-auto"
         style={{ ...sans, fontSize: 14, color: C.gray700, lineHeight: 1.55 }}
       >
-        Once your rep sends you a quote, it'll show up here. They can build one from a menu in a
-        minute, ask them to send it from QuoteMe.
+        Pick a distributor, send your menu, and get pricing back — no rep needed.
       </p>
+      <button
+        type="button"
+        onClick={() => navigate('/chef/distributor/new')}
+        style={{
+          ...sans,
+          marginTop: 24,
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 8,
+          padding: '11px 22px',
+          background: C.orange,
+          color: '#fff',
+          border: 'none',
+          borderRadius: 8,
+          fontSize: 14,
+          fontWeight: 600,
+          cursor: 'pointer',
+        }}
+      >
+        Get a quote from a distributor
+      </button>
     </div>
   );
 }

@@ -286,7 +286,7 @@ function EditRestaurantDrawer({
     e.preventDefault();
     setError(null);
     if (!name.trim()) {
-      setError('Restaurant name is required.');
+      setError('Location name is required.');
       return;
     }
     setSaving(true);
@@ -324,7 +324,7 @@ function EditRestaurantDrawer({
     <Sheet open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
       <SheetContent className="w-full sm:max-w-md overflow-y-auto">
         <SheetHeader>
-          <SheetTitle className="serif">Edit restaurant details</SheetTitle>
+          <SheetTitle className="serif">Edit location details</SheetTitle>
         </SheetHeader>
         <div className="px-4 pb-6">
           <form onSubmit={handleSave} className="flex flex-col gap-4 mt-2">
@@ -735,8 +735,8 @@ export function ChefSettingsTab({ state = 'with-data', nav = noopNav }: ChefSett
           />
         </SettingsSection>
 
-        {/* RESTAURANT */}
-        <SettingsSection title="RESTAURANT">
+        {/* LOCATION */}
+        <SettingsSection title="LOCATION">
           <div className="py-3 flex items-center gap-3">
             {/* Logo thumbnail — shows uploaded image when logo_url present, else initials/placeholder */}
             <div
@@ -754,7 +754,7 @@ export function ChefSettingsTab({ state = 'with-data', nav = noopNav }: ChefSett
               ) : restaurant?.logo_url ? (
                 <img
                   src={restaurant.logo_url}
-                  alt="Restaurant logo"
+                  alt="Location logo"
                   style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                 />
               ) : (
@@ -906,7 +906,7 @@ export function ChefSettingsTab({ state = 'with-data', nav = noopNav }: ChefSett
         <SettingsSection title="OTHER LOCATIONS" count={empty ? 0 : LOCATIONS.length - 1}>
           {empty ? (
             <div className="py-3 text-[12.5px] ink-faint leading-snug">
-              {restaurantDisplay} is your only kitchen right now.
+              {restaurantDisplay} is your only location right now.
             </div>
           ) : (
             LOCATIONS.filter((l) => !l.current).map((l, i) => (
@@ -926,7 +926,7 @@ export function ChefSettingsTab({ state = 'with-data', nav = noopNav }: ChefSett
             className="qm-btn qm-btn-outline mt-3 flex items-center gap-1.5"
             style={{ padding: '8px 14px', fontSize: 12.5 }}
           >
-            <Plus size={14} /> Add another restaurant
+            <Plus size={14} /> Add another location
           </button>
           <div className="text-[10.5px] ink-faint mt-2 leading-snug">
             Quotes, rep contacts, and order guides stay separate per location.
@@ -1156,10 +1156,10 @@ export function ChefSettingsTabDesktop({
             </div>
           </section>
 
-          {/* RESTAURANT */}
+          {/* LOCATION */}
           <section id="kitchen" className="mt-10">
             <div className="qm-eyebrow" style={{ fontSize: 11 }}>
-              RESTAURANT
+              LOCATION
             </div>
             <div className="mt-2 doc-divider-thick" />
             <div className="py-4 flex items-center gap-4">
@@ -1179,7 +1179,7 @@ export function ChefSettingsTabDesktop({
                 ) : restaurant?.logo_url ? (
                   <img
                     src={restaurant.logo_url}
-                    alt="Restaurant logo"
+                    alt="Location logo"
                     style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                   />
                 ) : (
@@ -1373,7 +1373,7 @@ export function ChefSettingsTabDesktop({
                 className="py-4 text-[13px] ink-faint leading-relaxed"
                 style={{ maxWidth: 480 }}
               >
-                {restaurantDisplay} is your only kitchen right now.
+                {restaurantDisplay} is your only location right now.
               </div>
             ) : (
               LOCATIONS.filter((l) => !l.current).map((l, i) => (
@@ -1393,7 +1393,7 @@ export function ChefSettingsTabDesktop({
               className="qm-btn qm-btn-outline mt-3 flex items-center gap-1.5"
               style={{ padding: '10px 16px', fontSize: 13 }}
             >
-              <Plus size={15} /> Add another restaurant
+              <Plus size={15} /> Add another location
             </button>
             <div className="text-[11.5px] ink-faint mt-2 leading-snug">
               Quotes, rep contacts, and order guides stay separate per location.

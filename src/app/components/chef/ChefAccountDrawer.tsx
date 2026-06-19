@@ -13,7 +13,7 @@
 
 import React, { useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { X, MapPin, Plus, Users, FileText, CreditCard, ChevronRight } from 'lucide-react';
+import { X, MapPin, Plus, ChevronRight } from 'lucide-react';
 import type { ChefType } from './ChefBadgePill';
 import type { LocationItem } from '../../services/api';
 
@@ -51,7 +51,7 @@ export interface ChefAccountDrawerProps {
   onAddLocation?: () => void;
   onSignOut: () => void;
   /** Navigation callback for YOU section items */
-  onNavigate?: (dest: 'profile' | 'notifications' | 'security') => void;
+  onNavigate?: (dest: 'profile') => void;
 }
 
 // ── Sub-components ─────────────────────────────────────────────────────────────
@@ -190,15 +190,6 @@ export function ChefAccountDrawer({
 
   const fullName = [firstName, lastName].filter(Boolean).join(' ');
 
-  // Group admin: show demo group locations (5 sites placeholder)
-  const groupSites = [
-    'Downtown',
-    'Midtown',
-    'West Side',
-    'Airport',
-    'Uptown',
-  ];
-
   if (!open) return null;
 
   return createPortal(
@@ -331,14 +322,6 @@ export function ChefAccountDrawer({
             onClick={() => onNavigate?.('profile')}
           />
           <DrawerRow
-            label="Notifications"
-            onClick={() => onNavigate?.('notifications')}
-          />
-          <DrawerRow
-            label="Sign-in &amp; security"
-            onClick={() => onNavigate?.('security')}
-          />
-          <DrawerRow
             label="Sign out"
             onClick={() => { onSignOut(); onClose(); }}
             danger
@@ -425,51 +408,84 @@ export function ChefAccountDrawer({
             </>
           )}
 
-          {/* GROUP LOCATIONS + GROUP ADMIN — group_admin only */}
-          {chefType === 'group' && (
+          {/* GROUP LOCATIONS — group_admin only */}
+          {chefType === 'group' && locations.length > 0 && (
             <>
               <DocDivider />
               <Eyebrow text="Group Locations" />
-              {groupSites.map((site) => (
-                <div
-                  key={site}
-                  style={{
-                    ...sans,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 8,
-                    padding: '9px 0',
-                    fontSize: 14,
-                    color: C.gray700,
-                  }}
-                >
-                  <MapPin size={14} strokeWidth={1.6} color={C.gray500} style={{ flexShrink: 0 }} />
-                  <span>{site}</span>
-                </div>
-              ))}
-
-              <DocDivider />
-              <Eyebrow text="Group Admin" />
-              <DrawerRow
-                icon={<Users size={14} strokeWidth={1.6} />}
-                label="Team &amp; roles"
-                onClick={() => onNavigate?.('profile')}
-              />
-              <DrawerRow
-                icon={<MapPin size={14} strokeWidth={1.6} />}
-                label="Restaurants"
-                onClick={() => onNavigate?.('profile')}
-              />
-              <DrawerRow
-                icon={<FileText size={14} strokeWidth={1.6} />}
-                label="Group quote rollups"
-                onClick={() => onNavigate?.('profile')}
-              />
-              <DrawerRow
-                icon={<CreditCard size={14} strokeWidth={1.6} />}
-                label="Group billing"
-                onClick={() => onNavigate?.('profile')}
-              />
+              {locations.map((loc) => {
+                const isCurrent = loc.id === currentLocationId;
+                return (
+                  <button
+                    key={loc.id}
+                    type="button"
+                    onClick={() => onSelectLocation?.(loc.id)}
+                    style={{
+                      ...sans,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      width: '100%',
+                      padding: '9px 0',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                      fontSize: 14,
+                      fontWeight: isCurrent ? 600 : 400,
+                      color: isCurrent ? C.charcoal : C.gray700,
+                      borderRadius: 4,
+                    }}
+                  >
+                    <MapPin
+                      size={14}
+                      strokeWidth={isCurrent ? 2 : 1.6}
+                      color={isCurrent ? C.orange : C.gray500}
+                      style={{ flexShrink: 0 }}
+                    />
+                    <span style={{ flex: 1 }}>
+                      {loc.name}
+                      {loc.city ? ` · ${loc.city}` : ''}
+                    </span>
+                    {isCurrent && (
+                      <span
+                        style={{
+                          ...sans,
+                          fontSize: 10,
+                          fontWeight: 600,
+                          letterSpacing: '0.06em',
+                          textTransform: 'uppercase',
+                          color: C.orange,
+                        }}
+                      >
+                        Current
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+              <button
+                type="button"
+                onClick={onAddLocation}
+                style={{
+                  ...sans,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  width: '100%',
+                  padding: '9px 0',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontSize: 14,
+                  color: C.orange,
+                  fontWeight: 500,
+                  borderRadius: 4,
+                }}
+              >
+                <Plus size={14} strokeWidth={2} color={C.orange} />
+                Add a location
+              </button>
             </>
           )}
         </div>
