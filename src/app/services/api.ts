@@ -2544,6 +2544,14 @@ export interface ChefMenuRow {
   quote_count: number;
   created_at: string;
   updated_at: string;
+  /** How this menu entered the system. BE returns since Track C source-type migration. */
+  source_type?: string | null;
+  /** Structural category (e.g. "dinner", "prix_fixe"). Optional. */
+  menu_type?: string | null;
+  /** Original URL if scraped or imported from a public source. */
+  source_url?: string | null;
+  /** Role of the user who uploaded/created this menu (e.g. "chef", "rep"). */
+  uploaded_by_role?: string | null;
 }
 
 export interface ChefMenusIndexResponse {

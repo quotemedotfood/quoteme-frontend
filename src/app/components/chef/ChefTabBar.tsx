@@ -34,7 +34,7 @@ const sans: React.CSSProperties = {
   fontFamily: "'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
 };
 
-type TabId = 'home' | 'order-guides' | 'distributors' | 'settings';
+type TabId = 'home' | 'menus' | 'order-guides' | 'distributors' | 'settings';
 
 interface TabDef {
   id: TabId | 'build';
@@ -95,10 +95,10 @@ export function ChefTabBar({ active = 'home', nav = () => {} }: ChefTabBarProps)
 
   const tabs: TabDef[] = [
     { id: 'home',          label: 'Quotes',       target: 'tab-home' },
+    { id: 'menus',         label: 'Menus',        target: 'tab-menus' },
     // PR-3: Distributors tab navigates to My Stack (the manage view).
     // Add distributor is accessible from within the Stack page.
     { id: 'distributors',  label: 'Distributors', target: 'tab-stack' },
-    { id: 'settings',      label: 'Settings',     target: 'tab-settings' },
     { id: 'build',         label: 'Build Quote',  target: 'distributor-new', isAction: true },
   ];
 
