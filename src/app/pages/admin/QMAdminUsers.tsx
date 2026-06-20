@@ -15,6 +15,7 @@ import {
   updateAdminUser,
   inviteAdminUser,
   resendInvite,
+  resendWelcome,
   getAdminDistributors,
   AdminUser,
   AdminDistributor,
@@ -164,6 +165,19 @@ export function QMAdminUsers() {
       alert(`Invite resent to ${email}`);
     } else {
       alert(res.error || 'Failed to resend invite');
+    }
+    setActionLoading(null);
+  }
+
+  const RESTAURANT_ROLES = ['chef', 'buyer', 'group_admin'];
+
+  async function handleResendWelcome(userId: string, email: string) {
+    setActionLoading(userId);
+    const res = await resendWelcome(userId);
+    if (res.data) {
+      alert(`Welcome email resent to ${res.data.sent_to || email}`);
+    } else {
+      alert(res.error || 'Failed to resend welcome email');
     }
     setActionLoading(null);
   }
@@ -469,6 +483,17 @@ export function QMAdminUsers() {
                             className="text-blue-600 border-blue-300 hover:bg-blue-50"
                           >
                             Resend Invite
+                          </Button>
+                        )}
+                        {u.status === 'active' && RESTAURANT_ROLES.includes(u.role) && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={actionLoading === u.id}
+                            onClick={() => handleResendWelcome(u.id, u.email)}
+                            className="text-teal-600 border-teal-300 hover:bg-teal-50"
+                          >
+                            Resend Welcome
                           </Button>
                         )}
                         {u.status === 'archived' && (

@@ -247,6 +247,12 @@ export async function resendInvite(userId: string): Promise<ApiResponse<{ messag
   });
 }
 
+export async function resendWelcome(userId: string): Promise<ApiResponse<{ ok: boolean; sent_to: string }>> {
+  return fetchWithAuth(`/api/v1/admin/users/${userId}/resend_welcome`, {
+    method: 'POST',
+  });
+}
+
 export async function assignDistributor(
   userId: string,
   distributorId: string
