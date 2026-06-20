@@ -88,7 +88,6 @@ import { RepIncomingQuotePage } from "./pages/rep/RepIncomingQuotePage";
 import { RepCustomersPage } from "./pages/rep/RepCustomersPage";
 import { RepProfilePage } from "./pages/rep/RepProfilePage";
 import { RepLayout } from "./components/rep/RepLayout";
-import { useAuth } from "./contexts/AuthContext";
 import { TechLandingPage } from "./components/chef/TechLandingPage";
 import { SecureTechPreviewPage } from "./pages/chef/SecureTechPreviewPage";
 import { DistributorLanderPage } from "./pages/DistributorLanderPage";
@@ -242,6 +241,8 @@ export const router = createBrowserRouter([
         // Remove once the BE wires up the rep-email trigger (or when Moose signs off).
         path: "chef/_preview/rep-email",
         Component: RepCatalogEmailPreviewPage,
+      },
+      {
         // SU-FE-5 visual sign-off — ChefCatalogEmail mobile + desktop frames.
         // Remove once the BE wires up the chef catalog-live email trigger.
         path: "chef/_preview/chef-catalog-email",
