@@ -281,7 +281,7 @@ function EmptyState({ onAddDistributor }: { onAddDistributor: () => void }) {
           lineHeight: 1.3,
         }}
       >
-        Build your Stack
+        Get a quote from a distributor
       </h2>
       <p
         style={{
@@ -293,7 +293,7 @@ function EmptyState({ onAddDistributor }: { onAddDistributor: () => void }) {
           marginBottom: 24,
         }}
       >
-        Pin the distributors you order from to compare pricing across your menus in one place.
+        Start a quote to see pricing — pinned distributors will appear here so you can compare across menus.
       </p>
       <button
         type="button"
@@ -317,7 +317,7 @@ function EmptyState({ onAddDistributor }: { onAddDistributor: () => void }) {
         onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = C.orange; }}
       >
         <Plus size={15} strokeWidth={2} color="#fff" />
-        Add a distributor
+        Browse distributors
       </button>
     </div>
   );
