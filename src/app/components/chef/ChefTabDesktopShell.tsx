@@ -14,7 +14,7 @@
 //   • CSS vars (--qm-*) → FE color constants.
 
 import React, { useState } from 'react';
-import { FileText, Settings, Home, PanelLeftClose, PanelLeftOpen, Plus, Truck, Layers } from 'lucide-react';
+import { FileText, Settings, Home, PanelLeftClose, PanelLeftOpen, Plus, Truck, Layers, BookOpen } from 'lucide-react';
 import quotemeLogo from '../../../assets/quoteme-logo.png';
 import { SidebarHelpInput } from './SidebarHelpInput';
 
@@ -38,7 +38,7 @@ const sans: React.CSSProperties = {
 };
 
 type SidebarMode = 'open' | 'collapsed' | 'hidden';
-type ActiveTab = 'home' | 'dashboard' | 'order-guides' | 'distributors' | 'settings';
+type ActiveTab = 'home' | 'dashboard' | 'menus' | 'order-guides' | 'distributors' | 'settings';
 
 export interface ChefTabDesktopShellProps {
   active: ActiveTab;
@@ -53,13 +53,14 @@ export interface ChefTabDesktopShellProps {
 // Preserves the structural contract (flex left rail, ~200px wide, collapses).
 // Full NewspaperSidebar design will be delivered in a subsequent track.
 
-// c73+c75: Dashboard added. Order: Dashboard, Quotes, Distributors, Settings.
+// c73+c75: Dashboard added. Order: Dashboard, Quotes, Menus and Order Guides, Distributors, Settings.
 // c72: Build Quote rendered separately ABOVE this list at position 2 (per locked IA).
 const NAV_ITEMS: { id: ActiveTab; label: string; target: string; Icon: React.ComponentType<{ size?: number; strokeWidth?: number }> }[] = [
-  { id: 'dashboard',    label: 'Dashboard',    target: 'tab-dashboard',       Icon: Home },
-  { id: 'home',         label: 'Quotes',       target: 'tab-home',            Icon: FileText },
-  { id: 'distributors', label: 'Distributors', target: 'tab-distributors',    Icon: Truck },
-  { id: 'settings',     label: 'Settings',     target: 'tab-settings',        Icon: Settings },
+  { id: 'dashboard',    label: 'Dashboard',             target: 'tab-dashboard',    Icon: Home },
+  { id: 'home',         label: 'Quotes',                target: 'tab-home',         Icon: FileText },
+  { id: 'menus',        label: 'Menus and Order Guides', target: 'tab-menus',       Icon: BookOpen },
+  { id: 'distributors', label: 'Distributors',          target: 'tab-distributors', Icon: Truck },
+  { id: 'settings',     label: 'Settings',              target: 'tab-settings',     Icon: Settings },
 ];
 
 function NewspaperSidebarStub({
