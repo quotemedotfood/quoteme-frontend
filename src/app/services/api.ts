@@ -2698,6 +2698,7 @@ export interface ChefDistributorCreateRequest {
   mode: 'pick' | 'upload' | 'request';
   distributor_id?: string;
   distributor_company_name?: string;
+  rep_name?: string;
   rep_contact?: ChefDistributorRepContact;
   request_message?: string;
 }

@@ -339,6 +339,10 @@ export interface AdminRestaurantDetail {
   website: string | null;
   status: string;
   created_at: string;
+  google_place_id: string | null;
+  address_verified: boolean;
+  restaurant_admin_id: string | null;
+  restaurant_admin_name: string | null;
   restaurant_group: { id: string; name: string } | null;
   contacts: Array<{
     id: string;
