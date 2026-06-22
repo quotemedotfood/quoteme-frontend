@@ -81,7 +81,7 @@ export function RootLayout() {
   ) {
     const landing =
       user?.role === 'quoteme_admin' ? '/qm-admin' :
-      user?.role === 'distributor_admin' ? '/distributor-admin' :
+      user?.role === 'distributor_admin' ? '/distributor-admin/command-center' :
       '/dashboard';
     return <Navigate to={landing} replace />;
   }
@@ -111,7 +111,7 @@ export function RootLayout() {
   return (
     <AuthSyncProvider>
       <div className="flex h-screen bg-[#FFF9F3]">
-        {!demo && user?.role !== 'rep' && !location.pathname.startsWith('/distributor-admin/command-center') && <AppSidebar />}
+        {!demo && user?.role !== 'rep' && user?.role !== 'distributor_admin' && !location.pathname.startsWith('/distributor-admin/command-center') && <AppSidebar />}
         <div className="flex-1 flex flex-col overflow-hidden">
           {demo && <DemoBanner />}
           <main className="flex-1 overflow-auto pb-24 md:pb-0">
