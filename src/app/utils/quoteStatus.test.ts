@@ -29,4 +29,17 @@ describe('isQuoteComplete', () => {
   it('is not complete for an empty/fresh quote', () => {
     expect(isQuoteComplete({})).toBe(false);
   });
+
+  it('is complete when lines exist despite a stale in-progress stage (revisit)', () => {
+    expect(
+      isQuoteComplete({ processing_stage: 'extracting_dishes', lines: [{}, {}] }),
+    ).toBe(true);
+    expect(
+      isQuoteComplete({ processing_stage: 'aligning_products', status: 'sent' }),
+    ).toBe(true);
+  });
+
+  it('is not complete when stage is failed even with lines', () => {
+    expect(isQuoteComplete({ processing_stage: 'failed', lines: [{}] })).toBe(false);
+  });
 });
