@@ -38,27 +38,79 @@ function formatAgeDays(days: number): string {
 }
 
 // ── Source badge ──────────────────────────────────────────────────────────────
-// Light inline badge — does not depend on the InboundSource union type since
-// source values here are free-form strings from the BE.
+// Colored pill — source is visually distinct from the row's status text so a
+// manager can tell "where this came from" apart from "what state it's in".
+//
+// Color map (no gradients; all flat fills):
+//   cold_landing / website / direct → slate blue tint  (#EEF2FF / #3730A3)
+//   secure_upload / upload          → teal tint         (#F0FDFA / #0F766E)
+//   brand / referral                → amber tint        (#FFFBEB / #92400E)
+//   outbound / manual               → warm paper tint   (C.warmPaper / C.gray700)
+//   (anything else)                 → plain             (#F3F4F6 / C.gray700)
 
-function InlineSourceBadge({ label }: { label: string | null }) {
+function sourceColors(source: string | null): { bg: string; color: string; border: string } {
+  const s = (source ?? '').toLowerCase();
+  if (s.includes('cold') || s.includes('website') || s.includes('direct') || s.includes('landing')) {
+    return { bg: '#EEF2FF', color: '#3730A3', border: '#C7D2FE' };
+  }
+  if (s.includes('upload') || s.includes('secure')) {
+    return { bg: '#F0FDFA', color: '#0F766E', border: '#99F6E4' };
+  }
+  if (s.includes('brand') || s.includes('referral')) {
+    return { bg: '#FFFBEB', color: '#92400E', border: '#FDE68A' };
+  }
+  if (s.includes('outbound') || s.includes('manual')) {
+    return { bg: '#FAF9F7', color: '#4B5563', border: '#E5E7EB' };
+  }
+  return { bg: '#F3F4F6', color: '#374151', border: '#E5E7EB' };
+}
+
+function InlineSourceBadge({ label, source }: { label: string | null; source?: string | null }) {
   if (!label) return <span style={{ ...sans, fontSize: 11, color: C.gray400 }}>—</span>;
+  const { bg, color, border } = sourceColors(source ?? label);
   return (
     <span
       style={{
         ...sans,
         display: 'inline-block',
         fontSize: 10.5,
-        color: C.gray700,
-        border: `1px solid ${C.softLine}`,
+        color,
+        border: `1px solid ${border}`,
         borderRadius: 999,
         padding: '2px 9px',
-        background: '#fff',
+        background: bg,
         whiteSpace: 'nowrap',
         lineHeight: 1.5,
+        fontWeight: 500,
       }}
     >
       {label}
+    </span>
+  );
+}
+
+// ── "Needs owner" badge ───────────────────────────────────────────────────────
+// Shown on unassigned rows to make assignability obvious at a glance.
+
+function NeedsOwnerBadge() {
+  return (
+    <span
+      style={{
+        ...sans,
+        display: 'inline-block',
+        fontSize: 9.5,
+        color: '#92400E',
+        background: '#FFFBEB',
+        border: '1px solid #FDE68A',
+        borderRadius: 999,
+        padding: '1px 7px',
+        lineHeight: 1.5,
+        fontWeight: 500,
+        letterSpacing: '.04em',
+        whiteSpace: 'nowrap',
+      }}
+    >
+      Needs owner
     </span>
   );
 }
@@ -153,6 +205,17 @@ function ForwardCell({ row, reps, canForward, onForward, errorByRowId }: Forward
     );
   }
 
+  // Admin view, row already assigned — show rep name; no dropdown to avoid
+  // accidental re-routing of owned rows.
+  if (row.assigned_rep) {
+    return (
+      <span style={{ ...sans, fontSize: 12.5, color: CC_ACK_NAVY, fontWeight: 500 }}>
+        {row.assigned_rep.name}
+      </span>
+    );
+  }
+
+  // Admin view, row unassigned — forward dropdown is the primary action.
   async function handleChange(e: React.ChangeEvent<HTMLSelectElement>) {
     const repId = e.currentTarget.value;
     if (!repId) return;
@@ -164,20 +227,18 @@ function ForwardCell({ row, reps, canForward, onForward, errorByRowId }: Forward
     }
   }
 
-  const currentRepId = row.assigned_rep?.id ?? '';
-
   return (
     <div>
       <select
-        value={currentRepId}
+        value=""
         onChange={handleChange}
         disabled={forwarding}
         style={{
           ...sans,
           fontSize: 12,
-          color: currentRepId ? C.charcoal : C.gray500,
+          color: C.gray500,
           background: '#fff',
-          border: `1px solid ${rowError ? '#C0392B' : C.softLine}`,
+          border: `1px solid ${rowError ? '#C0392B' : '#A5B4FC'}`,
           borderRadius: 5,
           padding: '5px 8px',
           cursor: forwarding ? 'default' : 'pointer',
@@ -185,10 +246,12 @@ function ForwardCell({ row, reps, canForward, onForward, errorByRowId }: Forward
           width: '100%',
           maxWidth: 148,
           transition: 'opacity 150ms',
+          // Subtle highlight so unassigned Forward To cells stand out
+          boxShadow: rowError ? 'none' : '0 0 0 2px #EEF2FF',
         }}
       >
         <option value="">
-          {forwarding ? 'Forwarding…' : 'Pick rep…'}
+          {forwarding ? 'Forwarding…' : 'Assign rep…'}
         </option>
         {reps.map((r) => (
           <option key={r.id} value={r.id}>
@@ -307,11 +370,17 @@ function DesktopRow({
             {locationSub}
           </div>
         )}
+        {/* Needs-owner emphasis: unassigned + canForward rows get a badge */}
+        {canForward && !row.assigned_rep && (
+          <div style={{ marginTop: 5 }}>
+            <NeedsOwnerBadge />
+          </div>
+        )}
       </div>
 
-      {/* Source */}
+      {/* Source — colored pill, visually distinct from status text */}
       <div style={{ paddingTop: 2 }}>
-        <InlineSourceBadge label={row.source_label} />
+        <InlineSourceBadge label={row.source_label} source={row.source} />
       </div>
 
       {/* Date */}
@@ -426,7 +495,7 @@ function MobileCard({
         >
           {locationPrimary}
         </div>
-        <InlineSourceBadge label={row.source_label} />
+        <InlineSourceBadge label={row.source_label} source={row.source} />
       </div>
 
       {/* Meta row */}
@@ -439,12 +508,15 @@ function MobileCard({
           display: 'flex',
           gap: 12,
           flexWrap: 'wrap',
+          alignItems: 'center',
         }}
       >
         <span style={tabular}>{formatAgeDays(row.age_days)}</span>
         {row.artifact?.name && (
           <span>{row.artifact.name}</span>
         )}
+        {/* Needs-owner badge on mobile for unassigned actionable rows */}
+        {canForward && !row.assigned_rep && <NeedsOwnerBadge />}
       </div>
 
       {/* Forward To */}
