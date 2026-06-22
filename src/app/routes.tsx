@@ -410,7 +410,7 @@ export const router = createBrowserRouter([
           { path: "distributor-admin/reps", Component: DistributorRepsPage },
           { path: "distributor-admin/onboarding-docs", Component: OnboardingDocsPage },
           { path: "distributor-admin/restaurants/new", Component: CreateRestaurantPage },
-          { path: "distributor-admin", Component: DistributorHomePage },
+          { path: "distributor-admin", element: <Navigate to="/distributor-admin/command-center" replace /> },
           { path: "liquor", Component: StartNewQuotePage },
           { path: "liquor/*", Component: StartNewQuotePage },
         ],

@@ -48,7 +48,7 @@ export function AuthPage() {
   const routeByRole = (role?: string) => {
     switch (role) {
       case 'quoteme_admin': return '/qm-admin/';
-      case 'distributor_admin': return '/distributor-admin/';
+      case 'distributor_admin': return '/distributor-admin/command-center';
       case 'buyer': return '/dashboard';
       case 'group_admin': return '/dashboard';
       case 'chef': return '/dashboard';
