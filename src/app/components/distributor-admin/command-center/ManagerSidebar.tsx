@@ -74,7 +74,7 @@ function CCNavItem({ icon: Icon, label, count, current, collapsed, muted, onClic
       <button
         type="button"
         onClick={muted ? undefined : onClick}
-        title={collapsed ? label : undefined}
+        title={collapsed ? (muted ? `${label} — coming soon` : label) : (muted ? `${label} — coming soon` : undefined)}
         aria-label={label}
         style={{
           ...sans,

@@ -147,27 +147,59 @@ export function CCInboundPage() {
       />
 
       <div style={{ marginTop: 24 }}>
-        {/* Count line */}
+        {/* Count + assignability summary */}
         <div
           style={{
             display: 'flex',
-            alignItems: 'baseline',
+            alignItems: 'flex-start',
             justifyContent: 'space-between',
+            gap: 16,
           }}
         >
-          <span
-            style={{
-              ...sans,
-              fontSize: 10,
-              letterSpacing: '.14em',
-              textTransform: 'uppercase',
-              color: C.gray700,
-              fontWeight: 600,
-            }}
-          >
-            WAITING TO BE ROUTED
-          </span>
-          <span style={{ ...sans, ...tabular, fontSize: 11, color: C.gray400 }}>
+          <div>
+            <span
+              style={{
+                ...sans,
+                fontSize: 10,
+                letterSpacing: '.14em',
+                textTransform: 'uppercase',
+                color: C.gray700,
+                fontWeight: 600,
+              }}
+            >
+              WAITING TO BE ROUTED
+            </span>
+            {/* Assignability breakdown — unassigned vs already owned */}
+            {!loading && rows.length > 0 && (() => {
+              const unassigned = rows.filter((r) => !r.assigned_rep).length;
+              const assigned = rows.length - unassigned;
+              return (
+                <div
+                  style={{
+                    ...sans,
+                    fontSize: 11.5,
+                    color: C.gray500,
+                    marginTop: 4,
+                    display: 'flex',
+                    gap: 12,
+                    flexWrap: 'wrap',
+                  }}
+                >
+                  {unassigned > 0 && (
+                    <span style={{ color: '#92400E', fontWeight: 500 }}>
+                      {unassigned} need{unassigned === 1 ? 's' : ''} an owner
+                    </span>
+                  )}
+                  {assigned > 0 && (
+                    <span>
+                      {assigned} already assigned
+                    </span>
+                  )}
+                </div>
+              );
+            })()}
+          </div>
+          <span style={{ ...sans, ...tabular, fontSize: 11, color: C.gray400, paddingTop: 2 }}>
             {loading ? '—' : rows.length}
           </span>
         </div>

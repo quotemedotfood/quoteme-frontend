@@ -588,17 +588,53 @@ export function CCQuotesPage() {
           >
             {error}
           </div>
-        ) : filtered.length === 0 ? (
+        ) : rows.length === 0 ? (
+          // No quotes at all — the global "nothing here yet" state
           <div
             style={{
               ...sans,
-              padding: '48px 0',
+              padding: '64px 0',
               textAlign: 'center',
               fontSize: 13,
               color: C.gray500,
+              lineHeight: 1.7,
             }}
           >
-            No quotes match that filter.
+            <div style={{ fontSize: 15, color: C.charcoal, fontWeight: 500, marginBottom: 6 }}>
+              No quotes yet.
+            </div>
+            <div>Once reps send quotes this week, they'll show up here.</div>
+          </div>
+        ) : filtered.length === 0 ? (
+          // Quotes exist, but none match the active filters — show in-table message
+          // with filter chips still visible above
+          <div
+            style={{
+              ...sans,
+              padding: '40px 0',
+              textAlign: 'center',
+              fontSize: 13,
+              color: C.gray500,
+              lineHeight: 1.7,
+            }}
+          >
+            {(() => {
+              const activeStatus = statusFilters.find((s) => s.id === statusFilter);
+              const activeRep = reps.find((r) => r.id === repFilter);
+              const statusLabel = activeStatus && activeStatus.id !== 'all' ? activeStatus.label.toLowerCase() : null;
+              const repLabel = activeRep ? activeRep.name.split(' ')[0] : null;
+
+              if (statusLabel && repLabel) {
+                return `No ${statusLabel} quotes for ${repLabel} this period.`;
+              }
+              if (statusLabel) {
+                return `No ${statusLabel} quotes this period.`;
+              }
+              if (repLabel) {
+                return `No quotes for ${repLabel} this period.`;
+              }
+              return 'No quotes match that filter.';
+            })()}
           </div>
         ) : (
           filtered.map((q) => (
