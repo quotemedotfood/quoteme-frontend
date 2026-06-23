@@ -4,6 +4,7 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { resetPassword } from '../services/api';
 import { Eye, EyeOff, AlertCircle, Check } from 'lucide-react';
+import { PasswordRequirements, passwordMeetsRequirements } from '../components/PasswordRequirements';
 
 export function ResetPasswordPage() {
   const navigate = useNavigate();
@@ -21,7 +22,7 @@ export function ResetPasswordPage() {
   const handleSubmit = async () => {
     const newErrors: Record<string, string> = {};
     if (!password) newErrors.password = 'Password is required';
-    else if (password.length < 8) newErrors.password = 'Password must be at least 8 characters';
+    else if (!passwordMeetsRequirements(password)) newErrors.password = 'Password must be at least 8 characters with one uppercase letter, one number, and one special character';
     if (!confirmPassword) newErrors.confirm = 'Please confirm your password';
     else if (password !== confirmPassword) newErrors.confirm = 'Passwords do not match';
     if (!token) newErrors.form = 'Invalid or missing reset token';
@@ -118,6 +119,7 @@ export function ResetPasswordPage() {
               {errors.password && (
                 <p className="text-xs text-red-500 mt-1">{errors.password}</p>
               )}
+              <PasswordRequirements password={password} />
             </div>
 
             {/* Confirm password field */}
