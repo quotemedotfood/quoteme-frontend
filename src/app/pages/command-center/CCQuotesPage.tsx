@@ -173,7 +173,7 @@ function RepChip({
 
 // ── Desktop row ───────────────────────────────────────────────────────────────
 
-function DeskRow({ q, onClick }: { q: CCQuoteRow; onClick: () => void }) {
+function DeskRow({ q, onClick, onRepClick }: { q: CCQuoteRow; onClick: () => void; onRepClick?: (repId: string, e: React.MouseEvent) => void }) {
   const [hovered, setHovered] = useState(false);
 
   return (
@@ -217,18 +217,40 @@ function DeskRow({ q, onClick }: { q: CCQuoteRow; onClick: () => void }) {
             <User size={13} color={C.gray400} strokeWidth={1.6} />
           </span>
         )}
-        <span
-          style={{
-            ...sans,
-            fontSize: 13,
-            color: C.charcoal,
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          {q.rep ? q.rep.name : 'Unassigned'}
-        </span>
+        {q.rep ? (
+          <span
+            role="button"
+            tabIndex={0}
+            onClick={(e) => onRepClick?.(q.rep!.id, e)}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onRepClick?.(q.rep!.id, e as unknown as React.MouseEvent); }}
+            style={{
+              ...sans,
+              fontSize: 13,
+              color: CC_ACK_NAVY,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              textDecoration: 'underline',
+              textUnderlineOffset: 2,
+              cursor: 'pointer',
+            }}
+          >
+            {q.rep.name}
+          </span>
+        ) : (
+          <span
+            style={{
+              ...sans,
+              fontSize: 13,
+              color: C.charcoal,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            Unassigned
+          </span>
+        )}
       </div>
 
       {/* RESTAURANT */}
@@ -281,7 +303,7 @@ function DeskRow({ q, onClick }: { q: CCQuoteRow; onClick: () => void }) {
 
 // ── Mobile row ────────────────────────────────────────────────────────────────
 
-function PhoneRow({ q, onClick }: { q: CCQuoteRow; onClick: () => void }) {
+function PhoneRow({ q, onClick, onRepClick }: { q: CCQuoteRow; onClick: () => void; onRepClick?: (repId: string, e: React.MouseEvent) => void }) {
   const [hovered, setHovered] = useState(false);
 
   return (
@@ -343,7 +365,26 @@ function PhoneRow({ q, onClick }: { q: CCQuoteRow; onClick: () => void }) {
           </span>
         </div>
         <div style={{ ...sans, ...tabular, fontSize: 11.5, color: C.gray700, lineHeight: 1.3 }}>
-          {q.id} · {q.rep ? q.rep.name : 'unassigned'} · {q.items} items
+          {q.id} ·{' '}
+          {q.rep ? (
+            <span
+              role="button"
+              tabIndex={0}
+              onClick={(e) => onRepClick?.(q.rep!.id, e)}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onRepClick?.(q.rep!.id, e as unknown as React.MouseEvent); }}
+              style={{
+                color: CC_ACK_NAVY,
+                textDecoration: 'underline',
+                textUnderlineOffset: 2,
+                cursor: 'pointer',
+              }}
+            >
+              {q.rep.name}
+            </span>
+          ) : (
+            'unassigned'
+          )}{' '}
+          · {q.items} items
         </div>
         <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 8 }}>
           <CCStatusTag status={q.status} size="xs" />
@@ -435,6 +476,13 @@ export function CCQuotesPage() {
 
   const goToDetail = (quoteId: string) => {
     navigate(`/distributor-admin/command-center/quotes/${encodeURIComponent(quoteId)}`);
+  };
+
+  const goToRep = (repId: string, e: React.MouseEvent) => {
+    e.stopPropagation(); // Don't also trigger the row's goToDetail
+    navigate(`/distributor-admin/command-center/quotes?rep=${encodeURIComponent(repId)}`);
+    // Also update local repFilter so the chips reflect the navigation
+    setRepFilter(repId);
   };
 
   return (
@@ -641,11 +689,11 @@ export function CCQuotesPage() {
             <React.Fragment key={q.id}>
               {/* Desktop row — hidden on small screens */}
               <div className="hidden lg:block">
-                <DeskRow q={q} onClick={() => goToDetail(q.id)} />
+                <DeskRow q={q} onClick={() => goToDetail(q.id)} onRepClick={goToRep} />
               </div>
               {/* Mobile row — hidden on large screens */}
               <div className="lg:hidden">
-                <PhoneRow q={q} onClick={() => goToDetail(q.id)} />
+                <PhoneRow q={q} onClick={() => goToDetail(q.id)} onRepClick={goToRep} />
               </div>
             </React.Fragment>
           ))

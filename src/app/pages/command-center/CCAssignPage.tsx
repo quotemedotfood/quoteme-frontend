@@ -29,7 +29,6 @@ import {
   tabular,
   C,
   CC_ACK_NAVY,
-  SACRED_ORANGE,
 } from '../../components/distributor-admin/command-center/cc-atoms';
 import {
   getCommandCenterUnassigned,
@@ -356,23 +355,24 @@ function AssignRow({
               onClick={() => setState((s) => ({ ...s, picking: true, error: null }))}
               style={{
                 ...sans,
-                background: SACRED_ORANGE,
-                color: '#fff',
-                border: 'none',
-                borderRadius: 6,
-                padding: '8px 15px',
-                fontSize: 12.5,
+                background: '#fff',
+                color: C.charcoal,
+                border: '1px solid #A5B4FC',
+                borderRadius: 5,
+                padding: '5px 14px',
+                fontSize: 12,
                 fontWeight: 500,
                 cursor: 'pointer',
                 flexShrink: 0,
-                transition: 'background 150ms',
+                transition: 'box-shadow 150ms',
                 lineHeight: 1.4,
+                boxShadow: '0 0 0 2px #EEF2FF',
               }}
               onMouseEnter={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.background = '#E0852C';
+                (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 0 0 3px #C7D2FE';
               }}
               onMouseLeave={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.background = SACRED_ORANGE;
+                (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 0 0 2px #EEF2FF';
               }}
             >
               Assign

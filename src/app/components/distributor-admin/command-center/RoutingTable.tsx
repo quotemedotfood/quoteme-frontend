@@ -7,16 +7,25 @@
 //   Location  · Source  · Date  · Items  · Forward To  · Actions
 //
 // Forward To:
-//   canForward=true  → <select> rep list; calls onForward(row, repId) on change.
-//                      Shows assigned rep name pre-selected when row.assigned_rep set.
-//                      409 guard: errorByRowId[row.id] shown inline in red.
-//   canForward=false → plain text (assigned rep name or "—")
+//   canForward=true + unassigned  → <select> rep list; calls onForward(row, repId) on change.
+//   canForward=true + assigned    → disabled <select> pre-selected to the rep (same outline,
+//                                   non-actionable; reassigning is blocked BE-side 409).
+//   canForward=false              → plain text (assigned rep name or "—")
+//
+// Sortable headers: Location · Source · Date · Items · Forward To (toggle asc/desc).
+//
+// Date column: "Today" when received_at matches today; else short calendar date (e.g. "Jun 18").
+//   Fallback: age_days=0 → "Today"; else compute calendar date from age_days.
+//
+// Rep names in Forward-To (assigned rows) link to CC quotes filtered by rep.
 //
 // Mobile: stacked cards below 768px, mirroring CCQuotesPage ManagerPhone pattern.
 //
 // NO gradients. No orange on this surface (read-only routing table).
 
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router';
+import { ChevronUp, ChevronDown } from 'lucide-react';
 import {
   sans,
   serif,
@@ -27,14 +36,46 @@ import {
 } from './cc-atoms';
 import type { InboundRow } from '../../../services/api';
 
-// ── Age helper ────────────────────────────────────────────────────────────────
+// ── Date helper ────────────────────────────────────────────────────────────────
 
-function formatAgeDays(days: number): string {
-  if (days === 0) return 'today';
-  if (days === 1) return '1 day ago';
-  if (days < 7) return `${days} days ago`;
-  const weeks = Math.floor(days / 7);
-  return weeks === 1 ? '1 week ago' : `${weeks} weeks ago`;
+function formatRowDate(received_at: string | null | undefined, age_days: number): string {
+  const now = new Date();
+
+  if (received_at) {
+    const d = new Date(received_at);
+    if (isNaN(d.getTime())) {
+      // Fallback if parse fails
+      return age_days === 0 ? 'Today' : formatFromAgeDays(age_days, now);
+    }
+    // Same calendar day?
+    if (
+      d.getFullYear() === now.getFullYear() &&
+      d.getMonth() === now.getMonth() &&
+      d.getDate() === now.getDate()
+    ) {
+      return 'Today';
+    }
+    return formatShortDate(d, now);
+  }
+
+  // Fallback: use age_days
+  if (age_days === 0) return 'Today';
+  return formatFromAgeDays(age_days, now);
+}
+
+function formatFromAgeDays(age_days: number, now: Date): string {
+  const d = new Date(now);
+  d.setDate(d.getDate() - age_days);
+  return formatShortDate(d, now);
+}
+
+function formatShortDate(d: Date, now: Date): string {
+  const sameYear = d.getFullYear() === now.getFullYear();
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const mon = months[d.getMonth()];
+  const day = d.getDate();
+  return sameYear ? `${mon} ${day}` : `${mon} ${day}, ${d.getFullYear()}`;
 }
 
 // ── Source badge ──────────────────────────────────────────────────────────────
@@ -115,6 +156,63 @@ function NeedsOwnerBadge() {
   );
 }
 
+// ── Sort types ────────────────────────────────────────────────────────────────
+
+type SortCol = 'location' | 'source' | 'date' | 'items' | 'forwardTo';
+type SortDir = 'asc' | 'desc';
+
+function sortRows(rows: InboundRow[], col: SortCol, dir: SortDir): InboundRow[] {
+  const now = new Date();
+  const asc = dir === 'asc';
+
+  return [...rows].sort((a, b) => {
+    let cmp = 0;
+
+    if (col === 'location') {
+      const la = (a.restaurant_name || a.contact_name || '').toLowerCase();
+      const lb = (b.restaurant_name || b.contact_name || '').toLowerCase();
+      cmp = la.localeCompare(lb);
+    } else if (col === 'source') {
+      const sa = (a.source_label || a.source || '').toLowerCase();
+      const sb = (b.source_label || b.source || '').toLowerCase();
+      cmp = sa.localeCompare(sb);
+    } else if (col === 'date') {
+      // Sort by received_at timestamp first; fallback to age_days
+      let ta: number;
+      let tb: number;
+      if (a.received_at) {
+        ta = new Date(a.received_at).getTime();
+      } else {
+        ta = now.getTime() - a.age_days * 86400000;
+      }
+      if (b.received_at) {
+        tb = new Date(b.received_at).getTime();
+      } else {
+        tb = now.getTime() - b.age_days * 86400000;
+      }
+      // Newer = smaller age → ascending means "oldest first" (earliest date)
+      cmp = ta - tb;
+    } else if (col === 'items') {
+      const na = a.artifact?.name?.toLowerCase() ?? '';
+      const nb = b.artifact?.name?.toLowerCase() ?? '';
+      // Try numeric first (for item count strings), else alphabetic
+      const numA = parseFloat(na);
+      const numB = parseFloat(nb);
+      if (!isNaN(numA) && !isNaN(numB)) {
+        cmp = numA - numB;
+      } else {
+        cmp = na.localeCompare(nb);
+      }
+    } else if (col === 'forwardTo') {
+      const fa = (a.assigned_rep?.name ?? '').toLowerCase();
+      const fb = (b.assigned_rep?.name ?? '').toLowerCase();
+      cmp = fa.localeCompare(fb);
+    }
+
+    return asc ? cmp : -cmp;
+  });
+}
+
 // ── RoutingTable props ────────────────────────────────────────────────────────
 
 export interface RoutingTableProps {
@@ -182,6 +280,22 @@ function TableRowSkeleton({ isMobile }: { isMobile: boolean }) {
   );
 }
 
+// ── Shared select styling ─────────────────────────────────────────────────────
+// Both the active dropdown and the disabled (assigned) control share the same
+// outline/border so the column reads as one consistent control type.
+
+const FORWARD_SELECT_BASE: React.CSSProperties = {
+  ...sans,
+  fontSize: 12,
+  background: '#fff',
+  border: `1px solid #A5B4FC`,
+  borderRadius: 5,
+  padding: '5px 8px',
+  width: '100%',
+  maxWidth: 148,
+  boxSizing: 'border-box',
+};
+
 // ── Row-level forwarding cell ─────────────────────────────────────────────────
 
 interface ForwardCellProps {
@@ -195,6 +309,7 @@ interface ForwardCellProps {
 function ForwardCell({ row, reps, canForward, onForward, errorByRowId }: ForwardCellProps) {
   const [forwarding, setForwarding] = useState(false);
   const rowError = errorByRowId?.[row.id];
+  const navigate = useNavigate();
 
   if (!canForward) {
     // Rep view — plain text
@@ -205,13 +320,53 @@ function ForwardCell({ row, reps, canForward, onForward, errorByRowId }: Forward
     );
   }
 
-  // Admin view, row already assigned — show rep name; no dropdown to avoid
-  // accidental re-routing of owned rows.
+  // Admin view, row already assigned — render a DISABLED select with the same
+  // outline styling as the active dropdown. This keeps the column visually
+  // consistent (one control type top to bottom). BE blocks reassignment (409),
+  // so we don't enable it here. The rep name is a link to their activity.
   if (row.assigned_rep) {
+    const rep = row.assigned_rep;
     return (
-      <span style={{ ...sans, fontSize: 12.5, color: CC_ACK_NAVY, fontWeight: 500 }}>
-        {row.assigned_rep.name}
-      </span>
+      <div>
+        <select
+          value={rep.id}
+          disabled
+          onChange={() => {/* intentionally no-op: disabled */}}
+          style={{
+            ...FORWARD_SELECT_BASE,
+            color: CC_ACK_NAVY,
+            fontWeight: 500,
+            cursor: 'default',
+            opacity: 1,
+          }}
+        >
+          <option value={rep.id}>{rep.name}</option>
+        </select>
+        {/* Rep name link beneath — navigates to their activity */}
+        <button
+          type="button"
+          onClick={() =>
+            navigate(
+              `/distributor-admin/command-center/quotes?rep=${encodeURIComponent(rep.id)}`
+            )
+          }
+          style={{
+            ...sans,
+            display: 'block',
+            fontSize: 10.5,
+            color: CC_ACK_NAVY,
+            background: 'none',
+            border: 'none',
+            padding: '2px 0 0',
+            cursor: 'pointer',
+            textDecoration: 'underline',
+            textUnderlineOffset: 2,
+            textDecorationColor: '#A5B4FC',
+          }}
+        >
+          View activity ↗
+        </button>
+      </div>
     );
   }
 
@@ -234,17 +389,11 @@ function ForwardCell({ row, reps, canForward, onForward, errorByRowId }: Forward
         onChange={handleChange}
         disabled={forwarding}
         style={{
-          ...sans,
-          fontSize: 12,
+          ...FORWARD_SELECT_BASE,
           color: C.gray500,
-          background: '#fff',
           border: `1px solid ${rowError ? '#C0392B' : '#A5B4FC'}`,
-          borderRadius: 5,
-          padding: '5px 8px',
           cursor: forwarding ? 'default' : 'pointer',
           opacity: forwarding ? 0.6 : 1,
-          width: '100%',
-          maxWidth: 148,
           transition: 'opacity 150ms',
           // Subtle highlight so unassigned Forward To cells stand out
           boxShadow: rowError ? 'none' : '0 0 0 2px #EEF2FF',
@@ -276,17 +425,75 @@ function ForwardCell({ row, reps, canForward, onForward, errorByRowId }: Forward
   );
 }
 
+// ── Sort arrow indicator ──────────────────────────────────────────────────────
+
+function SortArrow({ col, active, dir }: { col: SortCol; active: SortCol; dir: SortDir }) {
+  if (active !== col) {
+    return (
+      <span
+        style={{
+          display: 'inline-flex',
+          flexDirection: 'column',
+          marginLeft: 3,
+          verticalAlign: 'middle',
+          opacity: 0.3,
+        }}
+      >
+        <ChevronUp size={8} strokeWidth={2} style={{ display: 'block', marginBottom: -1 }} />
+        <ChevronDown size={8} strokeWidth={2} style={{ display: 'block' }} />
+      </span>
+    );
+  }
+  return (
+    <span
+      style={{
+        display: 'inline-flex',
+        marginLeft: 3,
+        verticalAlign: 'middle',
+        color: C.charcoal,
+      }}
+    >
+      {dir === 'asc' ? (
+        <ChevronUp size={10} strokeWidth={2.5} />
+      ) : (
+        <ChevronDown size={10} strokeWidth={2.5} />
+      )}
+    </span>
+  );
+}
+
 // ── Desktop header ────────────────────────────────────────────────────────────
 
-function TableHeader() {
-  const cell = (label: string): React.CSSProperties => ({
+interface TableHeaderProps {
+  sortCol: SortCol;
+  sortDir: SortDir;
+  onSort: (col: SortCol) => void;
+}
+
+function TableHeader({ sortCol, sortDir, onSort }: TableHeaderProps) {
+  const headerCols: { col: SortCol; label: string }[] = [
+    { col: 'location', label: 'Location' },
+    { col: 'source', label: 'Source' },
+    { col: 'date', label: 'Date' },
+    { col: 'items', label: 'Items' },
+    { col: 'forwardTo', label: 'Forward To' },
+  ];
+
+  const cell = (isActive: boolean): React.CSSProperties => ({
     ...sans,
     fontSize: 9.5,
     letterSpacing: '.12em',
     textTransform: 'uppercase',
-    color: C.gray500,
+    color: isActive ? C.charcoal : C.gray500,
     fontWeight: 600,
     lineHeight: 1.4,
+    display: 'inline-flex',
+    alignItems: 'center',
+    cursor: 'pointer',
+    userSelect: 'none',
+    background: 'none',
+    border: 'none',
+    padding: 0,
   });
 
   return (
@@ -299,12 +506,30 @@ function TableHeader() {
         borderBottom: `2px solid ${C.charcoal}`,
       }}
     >
-      <span style={cell('Location')}>Location</span>
-      <span style={cell('Source')}>Source</span>
-      <span style={cell('Date')}>Date</span>
-      <span style={cell('Items')}>Items</span>
-      <span style={cell('Forward To')}>Forward To</span>
-      <span style={cell('Actions')}>Actions</span>
+      {headerCols.map(({ col, label }) => (
+        <button
+          key={col}
+          type="button"
+          onClick={() => onSort(col)}
+          style={cell(sortCol === col)}
+        >
+          {label}
+          <SortArrow col={col} active={sortCol} dir={sortDir} />
+        </button>
+      ))}
+      <span
+        style={{
+          ...sans,
+          fontSize: 9.5,
+          letterSpacing: '.12em',
+          textTransform: 'uppercase',
+          color: C.gray500,
+          fontWeight: 600,
+          lineHeight: 1.4,
+        }}
+      >
+        Actions
+      </span>
     </div>
   );
 }
@@ -383,7 +608,7 @@ function DesktopRow({
         <InlineSourceBadge label={row.source_label} source={row.source} />
       </div>
 
-      {/* Date */}
+      {/* Date — "Today" or short calendar date */}
       <div
         style={{
           ...sans,
@@ -394,7 +619,7 @@ function DesktopRow({
           paddingTop: 3,
         }}
       >
-        {formatAgeDays(row.age_days)}
+        {formatRowDate(row.received_at, row.age_days)}
       </div>
 
       {/* Items */}
@@ -511,7 +736,7 @@ function MobileCard({
           alignItems: 'center',
         }}
       >
-        <span style={tabular}>{formatAgeDays(row.age_days)}</span>
+        <span style={tabular}>{formatRowDate(row.received_at, row.age_days)}</span>
         {row.artifact?.name && (
           <span>{row.artifact.name}</span>
         )}
@@ -549,6 +774,8 @@ export function RoutingTable({
   errorByRowId = {},
 }: RoutingTableProps) {
   const [isMobile, setIsMobile] = React.useState(() => window.innerWidth < 768);
+  const [sortCol, setSortCol] = React.useState<SortCol>('date');
+  const [sortDir, setSortDir] = React.useState<SortDir>('desc');
 
   React.useEffect(() => {
     function onResize() {
@@ -558,10 +785,21 @@ export function RoutingTable({
     return () => window.removeEventListener('resize', onResize);
   }, []);
 
+  function handleSort(col: SortCol) {
+    if (sortCol === col) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortCol(col);
+      setSortDir('asc');
+    }
+  }
+
   if (loading) {
     return (
       <div>
-        {!isMobile && <TableHeader />}
+        {!isMobile && (
+          <TableHeader sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
+        )}
         {[...Array(4)].map((_, i) => (
           <TableRowSkeleton key={i} isMobile={isMobile} />
         ))}
@@ -573,10 +811,14 @@ export function RoutingTable({
     return null; // Caller renders the empty state so it can carry the section context.
   }
 
+  const sorted = sortRows(rows, sortCol, sortDir);
+
   return (
     <div>
-      {!isMobile && <TableHeader />}
-      {rows.map((row) =>
+      {!isMobile && (
+        <TableHeader sortCol={sortCol} sortDir={sortDir} onSort={handleSort} />
+      )}
+      {sorted.map((row) =>
         isMobile ? (
           <MobileCard
             key={`${row.kind}-${row.id}`}
