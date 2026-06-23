@@ -361,6 +361,22 @@ export interface AdminRestaurantDetail {
   }>;
 }
 
+// ============= ADMIN USERS SINGLE =============
+
+export async function getAdminUser(id: string): Promise<ApiResponse<AdminUser>> {
+  return fetchWithAuth(`/api/v1/admin/users/${id}`);
+}
+
+export async function assignDistributorAdmin(
+  distributorId: string,
+  userId: string
+): Promise<ApiResponse<{ ok: boolean }>> {
+  return fetchWithAuth(`/api/v1/admin/distributors/${distributorId}/assign_admin`, {
+    method: 'POST',
+    body: JSON.stringify({ user_id: userId }),
+  });
+}
+
 // ============= ADMIN RESTAURANTS =============
 
 export async function getAdminRestaurants(): Promise<ApiResponse<AdminRestaurant[]>> {

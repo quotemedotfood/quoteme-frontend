@@ -1,9 +1,18 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router';
-import { ArrowLeft, Package, Users, UtensilsCrossed, UserCheck, X } from 'lucide-react';
-import { getAdminDistributor, updateAdminDistributor, AdminDistributorDetail } from '../../services/adminApi';
+import { ArrowLeft, Package, Users, UtensilsCrossed, UserCheck, UserPlus, X } from 'lucide-react';
+import {
+  getAdminDistributor,
+  updateAdminDistributor,
+  inviteAdminUser,
+  assignDistributorAdmin,
+  getAdminUsers,
+  AdminDistributorDetail,
+  AdminUser,
+} from '../../services/adminApi';
 import { distinctUserCount } from '../../utils/userCount';
 import { Button } from '../../components/ui/button';
+import { Input } from '../../components/ui/input';
 import {
   Table,
   TableHeader,
@@ -145,6 +154,25 @@ export function QMAdminDistributorDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [impersonating, setImpersonating] = useState<string | null>(null);
 
+  // Add Admin modal state
+  const [showAddAdmin, setShowAddAdmin] = useState(false);
+  const [addAdminTab, setAddAdminTab] = useState<'invite' | 'assign'>('invite');
+  // Invite-new state
+  const [inviteFirst, setInviteFirst] = useState('');
+  const [inviteLast, setInviteLast] = useState('');
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteSubmitting, setInviteSubmitting] = useState(false);
+  const [inviteMsg, setInviteMsg] = useState<string | null>(null);
+  const [inviteError, setInviteError] = useState<string | null>(null);
+  // Assign-existing state
+  const [existingUsers, setExistingUsers] = useState<AdminUser[]>([]);
+  const [existingLoading, setExistingLoading] = useState(false);
+  const [existingSearch, setExistingSearch] = useState('');
+  const [selectedUserId, setSelectedUserId] = useState('');
+  const [assignSubmitting, setAssignSubmitting] = useState(false);
+  const [assignMsg, setAssignMsg] = useState<string | null>(null);
+  const [assignError, setAssignError] = useState<string | null>(null);
+
   useEffect(() => {
     if (!id) return;
     async function load() {
@@ -155,6 +183,72 @@ export function QMAdminDistributorDetailPage() {
     }
     load();
   }, [id]);
+
+  // Load distributor_admin users when assign tab is open
+  useEffect(() => {
+    if (!showAddAdmin || addAdminTab !== 'assign') return;
+    setExistingLoading(true);
+    getAdminUsers({ role: 'distributor_admin' }).then((res) => {
+      setExistingUsers(res.data ?? []);
+      setExistingLoading(false);
+    });
+  }, [showAddAdmin, addAdminTab]);
+
+  function closeAddAdmin() {
+    setShowAddAdmin(false);
+    setInviteFirst(''); setInviteLast(''); setInviteEmail('');
+    setInviteMsg(null); setInviteError(null); setInviteSubmitting(false);
+    setExistingSearch(''); setSelectedUserId('');
+    setAssignMsg(null); setAssignError(null); setAssignSubmitting(false);
+    setAddAdminTab('invite');
+  }
+
+  async function handleInviteAdmin(e: React.FormEvent) {
+    e.preventDefault();
+    if (!id) return;
+    setInviteError(null);
+    if (!inviteFirst.trim() || !inviteLast.trim() || !inviteEmail.trim()) {
+      setInviteError('All fields are required.');
+      return;
+    }
+    setInviteSubmitting(true);
+    // Path (a): create new user as distributor_admin linked to this distributor
+    const res = await inviteAdminUser({
+      first_name: inviteFirst.trim(),
+      last_name: inviteLast.trim(),
+      email: inviteEmail.trim(),
+      role: 'distributor_admin',
+      distributor_id: id,
+    });
+    setInviteSubmitting(false);
+    if (res.error) { setInviteError(res.error); return; }
+    setInviteMsg(`Invite sent to ${inviteEmail.trim()}.`);
+    // Refresh distributor detail
+    const refreshed = await getAdminDistributor(id);
+    if (refreshed.data) setDist(refreshed.data);
+    setTimeout(() => closeAddAdmin(), 2000);
+  }
+
+  async function handleAssignAdmin() {
+    if (!id || !selectedUserId) return;
+    setAssignError(null);
+    setAssignSubmitting(true);
+    // Path (b): assign existing user as distributor_admin via dedicated endpoint
+    const res = await assignDistributorAdmin(id, selectedUserId);
+    setAssignSubmitting(false);
+    if (res.error) { setAssignError(res.error); return; }
+    setAssignMsg('Admin assigned.');
+    const refreshed = await getAdminDistributor(id);
+    if (refreshed.data) setDist(refreshed.data);
+    setTimeout(() => closeAddAdmin(), 2000);
+  }
+
+  const filteredExisting = existingUsers.filter(
+    (u) =>
+      !existingSearch ||
+      u.email.toLowerCase().includes(existingSearch.toLowerCase()) ||
+      `${u.first_name} ${u.last_name}`.toLowerCase().includes(existingSearch.toLowerCase())
+  );
 
   if (loading) return <div className="p-10 text-gray-400">Loading...</div>;
   if (error) return <div className="p-10 text-red-500">{error}</div>;
@@ -238,9 +332,148 @@ export function QMAdminDistributorDetailPage() {
         onSaved={(updated) => setDist(updated)}
       />
 
+      {/* Add Admin Modal */}
+      {showAddAdmin && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-md mx-4">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-bold text-[#2A2A2A]" style={{ fontFamily: "'Playfair Display', serif" }}>
+                Add Distributor Admin
+              </h2>
+              <button onClick={closeAddAdmin} className="text-gray-400 hover:text-gray-600">
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Tab switcher */}
+            <div className="flex border-b border-gray-200 mb-5">
+              <button
+                type="button"
+                onClick={() => setAddAdminTab('invite')}
+                className={`px-4 py-2 text-sm font-medium transition-colors ${
+                  addAdminTab === 'invite'
+                    ? 'text-[#7FAEC2] border-b-2 border-[#7FAEC2]'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                Invite new user
+              </button>
+              <button
+                type="button"
+                onClick={() => setAddAdminTab('assign')}
+                className={`px-4 py-2 text-sm font-medium transition-colors ${
+                  addAdminTab === 'assign'
+                    ? 'text-[#7FAEC2] border-b-2 border-[#7FAEC2]'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                Assign existing user
+              </button>
+            </div>
+
+            {/* Invite tab */}
+            {addAdminTab === 'invite' && (
+              <form onSubmit={handleInviteAdmin} className="space-y-4">
+                {inviteError && <p className="text-sm text-red-500">{inviteError}</p>}
+                {inviteMsg && <p className="text-sm text-green-600">{inviteMsg}</p>}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-[#4F4F4F] mb-1">First Name</label>
+                    <Input value={inviteFirst} onChange={(e) => setInviteFirst(e.target.value)} placeholder="First name" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-[#4F4F4F] mb-1">Last Name</label>
+                    <Input value={inviteLast} onChange={(e) => setInviteLast(e.target.value)} placeholder="Last name" />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-[#4F4F4F] mb-1">Email</label>
+                  <Input type="email" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} placeholder="admin@distributor.com" />
+                </div>
+                <p className="text-xs text-gray-400">
+                  Will be created as <span className="font-medium">distributor_admin</span> linked to {dist.name}.
+                </p>
+                <div className="flex justify-end gap-2 pt-1">
+                  <Button variant="outline" type="button" onClick={closeAddAdmin}>Cancel</Button>
+                  <Button
+                    type="submit"
+                    disabled={inviteSubmitting || !inviteFirst.trim() || !inviteLast.trim() || !inviteEmail.trim()}
+                    className="bg-[#7FAEC2] hover:bg-[#6a9ab0] text-white"
+                  >
+                    {inviteSubmitting ? 'Sending...' : 'Send Invite'}
+                  </Button>
+                </div>
+              </form>
+            )}
+
+            {/* Assign existing tab */}
+            {addAdminTab === 'assign' && (
+              <div className="space-y-4">
+                {assignError && <p className="text-sm text-red-500">{assignError}</p>}
+                {assignMsg && <p className="text-sm text-green-600">{assignMsg}</p>}
+                <div>
+                  <label className="block text-sm font-medium text-[#4F4F4F] mb-1">Search by email or name</label>
+                  <Input
+                    value={existingSearch}
+                    onChange={(e) => { setExistingSearch(e.target.value); setSelectedUserId(''); }}
+                    placeholder="Filter distributor admins..."
+                  />
+                </div>
+                {existingLoading && <p className="text-sm text-gray-400">Loading users...</p>}
+                {!existingLoading && filteredExisting.length === 0 && (
+                  <p className="text-sm text-gray-400">No distributor_admin users found.</p>
+                )}
+                {!existingLoading && filteredExisting.length > 0 && (
+                  <div className="border border-gray-200 rounded-lg divide-y divide-gray-100 max-h-48 overflow-y-auto">
+                    {filteredExisting.map((u) => (
+                      <button
+                        key={u.id}
+                        type="button"
+                        onClick={() => setSelectedUserId(u.id)}
+                        className={`w-full text-left px-4 py-2.5 flex items-start gap-3 transition-colors ${
+                          selectedUserId === u.id
+                            ? 'bg-[#A5CFDD]/15 border-l-2 border-[#7FAEC2]'
+                            : 'hover:bg-gray-50'
+                        }`}
+                      >
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-[#2A2A2A] truncate">{u.first_name} {u.last_name}</p>
+                          <p className="text-xs text-gray-500 truncate">{u.email}</p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <div className="flex justify-end gap-2 pt-1">
+                  <Button variant="outline" type="button" onClick={closeAddAdmin}>Cancel</Button>
+                  <Button
+                    type="button"
+                    disabled={!selectedUserId || assignSubmitting}
+                    onClick={handleAssignAdmin}
+                    className="bg-[#7FAEC2] hover:bg-[#6a9ab0] text-white"
+                  >
+                    {assignSubmitting ? 'Assigning...' : 'Assign Admin'}
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Admins */}
       <section className="mb-8">
-        <h2 className="text-lg font-semibold text-[#2A2A2A] mb-3" style={{ fontFamily: "'Playfair Display', serif" }}>Admins</h2>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-lg font-semibold text-[#2A2A2A]" style={{ fontFamily: "'Playfair Display', serif" }}>Admins</h2>
+          <Button
+            size="sm"
+            onClick={() => setShowAddAdmin(true)}
+            className="bg-[#7FAEC2] hover:bg-[#6a9ab0] text-white text-xs"
+          >
+            <UserPlus size={14} className="mr-1" />
+            Add Admin
+          </Button>
+        </div>
         {!dist.admins?.length ? (
           <p className="text-sm text-gray-400 py-4">No admin user yet</p>
         ) : (
