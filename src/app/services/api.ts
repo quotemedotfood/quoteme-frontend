@@ -203,6 +203,14 @@ export interface QuoteContact {
   is_primary: boolean;
 }
 
+export interface QuoteRestaurantContact {
+  first_name: string;
+  last_name: string;
+  email: string | null;
+  phone: string | null;
+  role: string | null;
+}
+
 export interface QuoteResponse {
   id: string;
   status: string;
@@ -224,6 +232,8 @@ export interface QuoteResponse {
   created_at: string;
   preview?: boolean;
   contacts?: QuoteContact[];
+  /** Primary contact for the restaurant, returned by rep/quotes/:id */
+  restaurant_contact?: QuoteRestaurantContact | null;
   distributor?: { id: string; name: string } | null;
   lines: QuoteLineResponse[];
   input_mode?: string | null;
@@ -1730,10 +1740,22 @@ export async function updateDistributorName(name: string): Promise<ApiResponse<{
   });
 }
 
-/** PATCH /api/v1/distributor_admin/settings — update distributor_admin org settings (e.g. name). */
+export interface DistributorAdminSettings {
+  name?: string;
+  email?: string;
+  website?: string;
+  phone?: string;
+}
+
+/** GET /api/v1/distributor_admin/settings — fetch current distributor org settings. */
+export async function getDistributorAdminSettings(): Promise<ApiResponse<DistributorAdminSettings>> {
+  return fetchWithAuth('/api/v1/distributor_admin/settings');
+}
+
+/** PATCH /api/v1/distributor_admin/settings — update distributor_admin org settings. */
 export async function updateDistributorAdminSettings(
-  params: { name?: string }
-): Promise<ApiResponse<{ name?: string }>> {
+  params: DistributorAdminSettings
+): Promise<ApiResponse<DistributorAdminSettings>> {
   return fetchWithAuth('/api/v1/distributor_admin/settings', {
     method: 'PATCH',
     body: JSON.stringify(params),

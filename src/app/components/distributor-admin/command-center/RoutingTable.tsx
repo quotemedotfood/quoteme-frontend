@@ -619,7 +619,7 @@ function DesktopRow({
         {row.kind === 'quote' ? (
           <QuoteRowActions
             quoteId={row.id}
-            onEdit={() => navigate(`/distributor-admin/command-center/quotes/${row.id}`)}
+            onEdit={() => navigate(`/rep/quotes/${row.id}`)}
           />
         ) : (
           <button
@@ -740,7 +740,7 @@ function MobileCard({
         <div style={{ marginTop: 10 }}>
           <QuoteRowActions
             quoteId={row.id}
-            onEdit={() => navigate(`/distributor-admin/command-center/quotes/${row.id}`)}
+            onEdit={() => navigate(`/rep/quotes/${row.id}`)}
           />
         </div>
       )}

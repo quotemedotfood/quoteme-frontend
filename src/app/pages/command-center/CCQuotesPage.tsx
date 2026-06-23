@@ -689,11 +689,11 @@ export function CCQuotesPage() {
             <React.Fragment key={q.id}>
               {/* Desktop row — hidden on small screens */}
               <div className="hidden lg:block">
-                <DeskRow q={q} onClick={() => goToDetail(q.id)} onEdit={() => goToDetail(q.id)} onRepClick={goToRep} />
+                <DeskRow q={q} onClick={() => goToDetail(q.id)} onEdit={() => navigate(`/rep/quotes/${q.id}`)} onRepClick={goToRep} />
               </div>
               {/* Mobile row — hidden on large screens */}
               <div className="lg:hidden">
-                <PhoneRow q={q} onClick={() => goToDetail(q.id)} onEdit={() => goToDetail(q.id)} onRepClick={goToRep} />
+                <PhoneRow q={q} onClick={() => goToDetail(q.id)} onEdit={() => navigate(`/rep/quotes/${q.id}`)} onRepClick={goToRep} />
               </div>
             </React.Fragment>
           ))
