@@ -1727,6 +1727,16 @@ export async function updateDistributorName(name: string): Promise<ApiResponse<{
   });
 }
 
+/** PATCH /api/v1/distributor_admin/settings — update distributor_admin org settings (e.g. name). */
+export async function updateDistributorAdminSettings(
+  params: { name?: string }
+): Promise<ApiResponse<{ name?: string }>> {
+  return fetchWithAuth('/api/v1/distributor_admin/settings', {
+    method: 'PATCH',
+    body: JSON.stringify(params),
+  });
+}
+
 export interface DistributorHomeData {
   distributor_name: string;
   has_catalog: boolean;
