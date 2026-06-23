@@ -1740,10 +1740,22 @@ export async function updateDistributorName(name: string): Promise<ApiResponse<{
   });
 }
 
-/** PATCH /api/v1/distributor_admin/settings — update distributor_admin org settings (e.g. name). */
+export interface DistributorAdminSettings {
+  name?: string;
+  email?: string;
+  website?: string;
+  phone?: string;
+}
+
+/** GET /api/v1/distributor_admin/settings — fetch current distributor org settings. */
+export async function getDistributorAdminSettings(): Promise<ApiResponse<DistributorAdminSettings>> {
+  return fetchWithAuth('/api/v1/distributor_admin/settings');
+}
+
+/** PATCH /api/v1/distributor_admin/settings — update distributor_admin org settings. */
 export async function updateDistributorAdminSettings(
-  params: { name?: string }
-): Promise<ApiResponse<{ name?: string }>> {
+  params: DistributorAdminSettings
+): Promise<ApiResponse<DistributorAdminSettings>> {
   return fetchWithAuth('/api/v1/distributor_admin/settings', {
     method: 'PATCH',
     body: JSON.stringify(params),

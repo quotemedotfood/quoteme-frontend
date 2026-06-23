@@ -5,7 +5,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router';
 import { useUser } from '../contexts/UserContext';
 import { useAuth } from '../contexts/AuthContext';
-import { updateCurrentUser, getBilling, createCheckoutSession, createPortalSession, sendPasswordReset, getLocations, addLocationToGroup, getLocationGroupBilling, createLocationGroupPortalSession, updateDistributorAdminSettings, getDistributorAdminBilling, type LocationItem, type DistributorAdminBilling } from '../services/api';
+import { updateCurrentUser, getBilling, createCheckoutSession, createPortalSession, sendPasswordReset, getLocations, addLocationToGroup, getLocationGroupBilling, createLocationGroupPortalSession, updateDistributorAdminSettings, getDistributorAdminSettings, getDistributorAdminBilling, type LocationItem, type DistributorAdminBilling } from '../services/api';
 import { AuthDrawer } from '../components/AuthDrawer';
 import { isBuyerRole } from '../utils/roles';
 import { ManagerSidebar } from '../components/distributor-admin/command-center/ManagerSidebar';
@@ -133,11 +133,24 @@ export function SettingsPage() {
       if (s.payment_terms) setPaymentTerms(s.payment_terms);
       // Prefer rep_settings logo, fall back to distributor.logo_url
       const logoUrl = s.company_logo_url || user.distributor?.logo_url || null;
-      setCompanyLogo(logoUrl ?? null);
+      setCompanyLogo(logoUrl || null);
       setLogoLoadError(false);
       if (user.avatar_url) setProfilePhoto(user.avatar_url);
     }
   }, [user]);
+
+  // For distributor_admin: load org-level email/website/phone from settings endpoint
+  useEffect(() => {
+    if (isDistributorAdmin && user) {
+      getDistributorAdminSettings().then((res) => {
+        if (res.data) {
+          if (res.data.email) setCompanyEmail(res.data.email);
+          if (res.data.website) setWebsiteUrl(res.data.website);
+          if (res.data.phone) setCompanyPhone(res.data.phone);
+        }
+      });
+    }
+  }, [isDistributorAdmin, user]);
 
   // Fetch billing data for logged-in users
   useEffect(() => {
@@ -208,10 +221,15 @@ export function SettingsPage() {
     setIsSavingCompany(true);
     setError(null);
 
-    // For distributor_admin: also persist company name via distributor_admin/settings
+    // For distributor_admin: persist org-level fields via distributor_admin/settings
     // so distributor.name on /me reflects the new value in the CC footer.
-    if (isDistributorAdmin && companyName.trim()) {
-      await updateDistributorAdminSettings({ name: companyName.trim() });
+    if (isDistributorAdmin) {
+      await updateDistributorAdminSettings({
+        ...(companyName.trim() ? { name: companyName.trim() } : {}),
+        email: companyEmail || undefined,
+        website: websiteUrl || undefined,
+        phone: companyPhone || undefined,
+      });
     }
 
     const response = await updateCurrentUser({
