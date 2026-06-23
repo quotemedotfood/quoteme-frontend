@@ -116,7 +116,7 @@ function buildBrandNav(
   ];
 }
 
-function buildBrandSettings(navigate: (path: string) => void, onSignOut: () => void) {
+function buildBrandSettings(navigate: (path: string) => void) {
   return {
     id: 'settings' as const,
     icon: 'settings',
@@ -126,9 +126,6 @@ function buildBrandSettings(navigate: (path: string) => void, onSignOut: () => v
       { label: 'Company', onClick: () => navigate('/brand/settings') },
       { label: 'Profile', onClick: () => navigate('/brand/profile') },
       { label: 'Billing', onClick: () => navigate('/brand/settings') },
-      // B-PORTAL-01: brand portal had no sign-out (logout was wired in useAuth but
-      // never surfaced). Add it to the Settings menu.
-      { label: 'Sign out', onClick: onSignOut },
     ],
   };
 }
@@ -165,10 +162,11 @@ export function BrandShellLayout() {
   };
 
   const nav = buildBrandNav(navigate);
-  const settings = buildBrandSettings(navigate, () => {
+  const handleSignOut = () => {
     logout();
-    navigate('/auth');
-  });
+    navigate('/auth', { replace: true });
+  };
+  const settings = buildBrandSettings(navigate);
 
   return (
     <BrandShellContext.Provider value={{ sidebarOpen, setSidebarOpen }}>
@@ -179,6 +177,7 @@ export function BrandShellLayout() {
         nav={nav}
         active={active}
         settings={settings}
+        onSignOut={handleSignOut}
         onNav={(path) => navigate(path)}
         maxWidth={860}
       >
