@@ -25,16 +25,17 @@
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router';
-import { ChevronUp, ChevronDown } from 'lucide-react';
+import { ChevronUp, ChevronDown, ArrowUpRight } from 'lucide-react';
 import {
   sans,
   serif,
   tabular,
-  SoftRule,
   C,
   CC_ACK_NAVY,
 } from './cc-atoms';
 import type { InboundRow } from '../../../services/api';
+import { RepTypeahead } from './RepTypeahead';
+import { QuoteRowActions } from './QuoteRowActions';
 
 // ── Date helper ────────────────────────────────────────────────────────────────
 
@@ -108,7 +109,9 @@ function sourceColors(source: string | null): { bg: string; color: string; borde
 
 function InlineSourceBadge({ label, source }: { label: string | null; source?: string | null }) {
   if (!label) return <span style={{ ...sans, fontSize: 11, color: C.gray400 }}>—</span>;
-  const { bg, color, border } = sourceColors(source ?? label);
+  // P2: color by rendered label so identical labels always get identical chips.
+  // Fall back to raw source only when label is absent (already guarded above).
+  const { bg, color, border } = sourceColors(label ?? source ?? '');
   return (
     <span
       style={{
@@ -280,22 +283,6 @@ function TableRowSkeleton({ isMobile }: { isMobile: boolean }) {
   );
 }
 
-// ── Shared select styling ─────────────────────────────────────────────────────
-// Both the active dropdown and the disabled (assigned) control share the same
-// outline/border so the column reads as one consistent control type.
-
-const FORWARD_SELECT_BASE: React.CSSProperties = {
-  ...sans,
-  fontSize: 12,
-  background: '#fff',
-  border: `1px solid #A5B4FC`,
-  borderRadius: 5,
-  padding: '5px 8px',
-  width: '100%',
-  maxWidth: 148,
-  boxSizing: 'border-box',
-};
-
 // ── Row-level forwarding cell ─────────────────────────────────────────────────
 
 interface ForwardCellProps {
@@ -320,59 +307,56 @@ function ForwardCell({ row, reps, canForward, onForward, errorByRowId }: Forward
     );
   }
 
-  // Admin view, row already assigned — render a DISABLED select with the same
-  // outline styling as the active dropdown. This keeps the column visually
-  // consistent (one control type top to bottom). BE blocks reassignment (409),
-  // so we don't enable it here. The rep name is a link to their activity.
+  // Bug 1 — Admin view, row already assigned: plain read-only rep name.
+  // NO select element (not even disabled). The rep name is followed by an icon
+  // button (P1) with a native tooltip that navigates to their activity feed.
   if (row.assigned_rep) {
     const rep = row.assigned_rep;
     return (
-      <div>
-        <select
-          value={rep.id}
-          disabled
-          onChange={() => {/* intentionally no-op: disabled */}}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <span
           style={{
-            ...FORWARD_SELECT_BASE,
+            ...sans,
+            fontSize: 12.5,
             color: CC_ACK_NAVY,
             fontWeight: 500,
-            cursor: 'default',
-            opacity: 1,
+            lineHeight: 1.3,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
           }}
         >
-          <option value={rep.id}>{rep.name}</option>
-        </select>
-        {/* Rep name link beneath — navigates to their activity */}
+          {rep.name}
+        </span>
+        {/* P1 — icon button with native tooltip instead of "View activity ↗" text */}
         <button
           type="button"
+          title="View activity"
           onClick={() =>
             navigate(
               `/distributor-admin/command-center/quotes?rep=${encodeURIComponent(rep.id)}`
             )
           }
           style={{
-            ...sans,
-            display: 'block',
-            fontSize: 10.5,
-            color: CC_ACK_NAVY,
+            display: 'inline-flex',
+            alignItems: 'center',
             background: 'none',
             border: 'none',
-            padding: '2px 0 0',
+            padding: 2,
             cursor: 'pointer',
-            textDecoration: 'underline',
-            textUnderlineOffset: 2,
-            textDecorationColor: '#A5B4FC',
+            color: CC_ACK_NAVY,
+            flexShrink: 0,
+            opacity: 0.7,
           }}
         >
-          View activity ↗
+          <ArrowUpRight size={13} strokeWidth={2} />
         </button>
       </div>
     );
   }
 
-  // Admin view, row unassigned — forward dropdown is the primary action.
-  async function handleChange(e: React.ChangeEvent<HTMLSelectElement>) {
-    const repId = e.currentTarget.value;
+  // P3 — Admin view, row unassigned: RepTypeahead with typeahead filter.
+  async function handleRepSelect(repId: string) {
     if (!repId) return;
     setForwarding(true);
     try {
@@ -384,30 +368,12 @@ function ForwardCell({ row, reps, canForward, onForward, errorByRowId }: Forward
 
   return (
     <div>
-      <select
-        value=""
-        onChange={handleChange}
+      <RepTypeahead
+        reps={reps}
+        onSelect={handleRepSelect}
+        placeholder={forwarding ? 'Forwarding…' : 'Assign rep…'}
         disabled={forwarding}
-        style={{
-          ...FORWARD_SELECT_BASE,
-          color: C.gray500,
-          border: `1px solid ${rowError ? '#C0392B' : '#A5B4FC'}`,
-          cursor: forwarding ? 'default' : 'pointer',
-          opacity: forwarding ? 0.6 : 1,
-          transition: 'opacity 150ms',
-          // Subtle highlight so unassigned Forward To cells stand out
-          boxShadow: rowError ? 'none' : '0 0 0 2px #EEF2FF',
-        }}
-      >
-        <option value="">
-          {forwarding ? 'Forwarding…' : 'Assign rep…'}
-        </option>
-        {reps.map((r) => (
-          <option key={r.id} value={r.id}>
-            {r.name}
-          </option>
-        ))}
-      </select>
+      />
       {rowError && (
         <div
           style={{
@@ -549,6 +515,7 @@ function DesktopRow({
   onForward: (row: InboundRow, repId: string) => Promise<void>;
   errorByRowId?: Record<string, string>;
 }) {
+  const navigate = useNavigate();
   const locationPrimary = row.restaurant_name || row.contact_name || '—';
   const locationSub = row.contact_name && row.restaurant_name ? row.contact_name : null;
 
@@ -647,24 +614,31 @@ function DesktopRow({
         errorByRowId={errorByRowId}
       />
 
-      {/* Actions — placeholder slot */}
+      {/* P6 — Actions: quote rows get View (PDF) + Edit buttons; others placeholder */}
       <div style={{ paddingTop: 3 }}>
-        <button
-          type="button"
-          disabled
-          style={{
-            ...sans,
-            fontSize: 11.5,
-            color: C.gray400,
-            background: 'none',
-            border: `1px solid ${C.softLine}`,
-            borderRadius: 5,
-            padding: '4px 10px',
-            cursor: 'default',
-          }}
-        >
-          View
-        </button>
+        {row.kind === 'quote' ? (
+          <QuoteRowActions
+            quoteId={row.id}
+            onEdit={() => navigate(`/distributor-admin/command-center/quotes/${row.id}`)}
+          />
+        ) : (
+          <button
+            type="button"
+            disabled
+            style={{
+              ...sans,
+              fontSize: 11.5,
+              color: C.gray400,
+              background: 'none',
+              border: `1px solid ${C.softLine}`,
+              borderRadius: 5,
+              padding: '4px 10px',
+              cursor: 'default',
+            }}
+          >
+            View
+          </button>
+        )}
       </div>
     </div>
   );
@@ -685,6 +659,7 @@ function MobileCard({
   onForward: (row: InboundRow, repId: string) => Promise<void>;
   errorByRowId?: Record<string, string>;
 }) {
+  const navigate = useNavigate();
   const locationPrimary = row.restaurant_name || row.contact_name || '—';
 
   return (
@@ -757,6 +732,16 @@ function MobileCard({
       {!canForward && row.assigned_rep && (
         <div style={{ ...sans, fontSize: 12, color: CC_ACK_NAVY }}>
           {row.assigned_rep.name}
+        </div>
+      )}
+
+      {/* P6 — quote-kind rows: View (PDF) + Edit actions */}
+      {row.kind === 'quote' && (
+        <div style={{ marginTop: 10 }}>
+          <QuoteRowActions
+            quoteId={row.id}
+            onEdit={() => navigate(`/distributor-admin/command-center/quotes/${row.id}`)}
+          />
         </div>
       )}
     </div>
