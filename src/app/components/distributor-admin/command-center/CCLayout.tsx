@@ -90,7 +90,7 @@ export function CCLayout() {
     else if (dest === 'quotes')  navigate('/distributor-admin/command-center/quotes');
     else if (dest === 'assign')  navigate('/distributor-admin/command-center/assign');
     else if (dest === 'search')  navigate('/distributor-admin/command-center/search');
-    else if (dest === 'team')    navigate('/distributor-admin/command-center/team');
+    else if (dest === 'team')    navigate('/distributor-admin/reps');
     else if (dest === 'inbound') navigate('/distributor-admin/command-center/inbound');
     else if (dest === 'settings') navigate('/settings');
   };

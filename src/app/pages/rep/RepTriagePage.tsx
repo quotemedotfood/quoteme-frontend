@@ -47,6 +47,7 @@ import { getRepIncomingQuotes, getRepInbound } from '../../services/api';
 import type { RepIncomingQuote, InboundRow } from '../../services/api';
 import { repRowFlags, REP_FLAG_META } from './repRowFlags';
 import type { RepFlagKey } from './repRowFlags';
+import { useAuth } from '../../contexts/AuthContext';
 
 const serif: React.CSSProperties = {
   fontFamily: "'Playfair Display', Georgia, 'Times New Roman', serif",
@@ -115,10 +116,13 @@ function adaptInboundRow(row: InboundRow): RepRow {
 // ─── Page ──────────────────────────────────────────────────────────────────
 export function RepTriagePage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [quotes, setQuotes] = useState<RepIncomingQuote[]>([]);
   const [inbound, setInbound] = useState<InboundRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [bannerDismissed, setBannerDismissed] = useState(false);
+  // P7: CatalogConfirmBanner is admin-only — never shown to pure reps.
+  const isDistributorAdmin = user?.role === 'distributor_admin';
 
   useEffect(() => {
     Promise.all([getRepIncomingQuotes(), getRepInbound()]).then(([quotesRes, inboundRes]) => {
@@ -145,6 +149,7 @@ export function RepTriagePage() {
       nav={nav}
       bannerDismissed={bannerDismissed}
       onDismissBanner={() => setBannerDismissed(true)}
+      showCatalogBanner={isDistributorAdmin}
     />
   );
 
@@ -187,6 +192,7 @@ function TriageBody({
   nav,
   bannerDismissed,
   onDismissBanner,
+  showCatalogBanner,
 }: {
   quotes: RepIncomingQuote[];
   inbound: InboundRow[];
@@ -194,6 +200,7 @@ function TriageBody({
   nav: (dest: string, opts?: { quoteId?: string }) => void;
   bannerDismissed: boolean;
   onDismissBanner: () => void;
+  showCatalogBanner?: boolean;
 }) {
   const [filter, setFilter] = useState<'all' | 'inbound'>('all');
 
@@ -252,6 +259,9 @@ function TriageBody({
     ? { key: 'inbound', label: 'Inbound', state: 'inbound', rows: inboundRows }
     : null;
 
+  // allGroups: inbound always included (shown in 'all' view and 'inbound' filter).
+  // This ensures a freshly forwarded quote is never hidden behind a filter the rep
+  // didn't click — Bug 2 FE fix: inbound bucket always visible in default 'all' view.
   const allGroups: Group[] = [
     ...incomingByState,
     inProgress.length > 0
@@ -263,7 +273,8 @@ function TriageBody({
     inboundGroup,
   ].filter(Boolean) as Group[];
 
-  // Filtered view: 'inbound' chip shows only the inbound group.
+  // Filtered view: 'inbound' chip shows only the inbound group; 'all' shows everything
+  // (including inbound — so admin-forwarded items are always visible by default).
   const groups = filter === 'inbound'
     ? allGroups.filter((g) => g.key === 'inbound')
     : allGroups;
@@ -285,8 +296,8 @@ function TriageBody({
         </p>
       </div>
 
-      {/* Catalog banner — only on this page, dismissable */}
-      {!bannerDismissed && (
+      {/* Catalog banner — only on this page, dismissable; P7: admin-only */}
+      {showCatalogBanner && !bannerDismissed && (
         <div style={{ marginTop: 16 }}>
           <CatalogConfirmBanner
             onReview={() => nav('rep-catalog')}
@@ -441,23 +452,17 @@ function TriageRow({
   isDone: boolean;
   nav: (dest: string, opts?: { quoteId?: string }) => void;
 }) {
-  // Inbound opportunity rows (kind discriminator from _inbound + no item_count > 0
-  // with no label set to a real quote id) are non-clickable — no nav, cursor default.
-  // Inbound quote rows may keep normal click-to-open behavior.
-  // We detect opportunity rows by _inbound=true AND item_count===0 (adaptor sets 0 for opps).
-  // A simpler heuristic: _inbound rows whose _statusLabel or _sourceLabel are set
-  // but have no priced_count are opportunities. Most reliable: stash kind on _sourceLabel.
-  // The adaptor sets item_count=0 for ALL inbound rows; for inbound quotes there would
-  // typically be a linked artifact. We use _inbound + item_count===0 + no confirmed.
-  // IMPORTANT: The spec says kind='opportunity' rows are non-clickable; kind='quote' rows
-  // may keep normal behavior. Since we don't store kind on RepRow, we use the heuristic
-  // that inbound rows with no priced_count AND _inbound=true behave as non-clickable
-  // unless we have a real quote id (checked by whether _flags are set without _sourceLabel
-  // pointing to 'quote'). Most conservative: all _inbound rows are non-clickable except
-  // those whose label looks like a real quote (has an artifact name). We keep it simple:
-  // all _inbound rows are non-clickable (no D5 icons), matching canForward=false doctrine.
+  // Bug 2 FE: inbound QUOTE rows must be actionable so reps can open/price them.
+  // Inbound opportunity rows (no linked artifact/quote) stay non-clickable.
+  // Heuristic: an inbound row is a quote if it has a real artifact label (anything
+  // other than the fallback 'Inbound') or if _sourceLabel is 'quote'. Opportunity
+  // rows come through with label='Inbound' and no artifact name.
   const isInbound = !!q._inbound;
-  const isClickable = !isDone && !isInbound;
+  const isInboundQuote = isInbound && (
+    (q.label && q.label !== 'Inbound') ||
+    q._sourceLabel === 'quote'
+  );
+  const isClickable = !isDone && (!isInbound || isInboundQuote);
 
   const flags = q._flags ?? [];
 
@@ -517,8 +522,8 @@ function TriageRow({
         )}
       </div>
 
-      {/* D5 icons — normal (non-inbound, non-done) rows only */}
-      {!isDone && !isInbound ? (
+      {/* D5 icons — normal rows + inbound quote rows (actionable). Inbound opportunity rows: none. */}
+      {!isDone && (!isInbound || isInboundQuote) ? (
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
           <RowIconBtn
             onClick={(e) => { e.stopPropagation(); nav('rep-incoming', { quoteId: q.id }); }}

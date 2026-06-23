@@ -33,6 +33,7 @@ import { RepCtaStrip } from '../../components/rep/RepCtaStrip';
 import { CatalogConfirmBanner } from '../../components/rep/CatalogConfirmBanner';
 import { getRepQuote, repPriceQuote, repConfirmQuote } from '../../services/api';
 import type { QuoteResponse, QuoteLineResponse } from '../../services/api';
+import { useAuth } from '../../contexts/AuthContext';
 
 import { RepPricingOnlyView } from './RepPricingOnlyView';
 import { RepReviewThreePanelDesktop } from './RepReviewThreePanelDesktop';
@@ -92,6 +93,9 @@ export function RepIncomingQuotePage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const mode = searchParams.get('mode');
+  const { user } = useAuth();
+  // P7: CatalogConfirmBanner is admin-only — never shown to pure reps.
+  const isDistributorAdmin = user?.role === 'distributor_admin';
 
   const isMobile = useIsMobile();
 
@@ -214,8 +218,8 @@ export function RepIncomingQuotePage() {
       </div>
 
       <div style={{ overflowY: 'auto' }}>
-        {/* Catalog banner — first quote receipt only */}
-        {!bannerDismissed && (
+        {/* Catalog banner — first quote receipt only; P7: admin-only */}
+        {isDistributorAdmin && !bannerDismissed && (
           <div style={{ padding: '12px 20px 0' }}>
             <CatalogConfirmBanner
               onReview={() => nav('rep-catalog')}
@@ -478,6 +482,7 @@ export function RepIncomingQuotePage() {
           sentAt={sentAt}
           bannerDismissed={bannerDismissed}
           setBannerDismissed={setBannerDismissed}
+          showCatalogBanner={isDistributorAdmin}
           showAutoFireToast={showAutoFireToast}
           pricedLines={pricedLines}
           isEmptyMenu={isEmptyMenu}
@@ -511,6 +516,7 @@ function RepDesktopQuoteView({
   sentAt,
   bannerDismissed,
   setBannerDismissed,
+  showCatalogBanner,
   showAutoFireToast,
   pricedLines,
   isEmptyMenu,
@@ -534,6 +540,7 @@ function RepDesktopQuoteView({
   sentAt: string;
   bannerDismissed: boolean;
   setBannerDismissed: (v: boolean) => void;
+  showCatalogBanner?: boolean;
   showAutoFireToast: boolean;
   pricedLines: QuoteLineResponse[];
   isEmptyMenu: boolean;
@@ -550,8 +557,8 @@ function RepDesktopQuoteView({
         <ChevronLeft size={14} strokeWidth={1.8} /> Triage
       </button>
 
-      {/* Catalog banner */}
-      {!bannerDismissed && (
+      {/* Catalog banner — P7: admin-only, never shown to pure reps */}
+      {showCatalogBanner && !bannerDismissed && (
         <div style={{ marginBottom: 16 }}>
           <CatalogConfirmBanner
             onReview={() => nav('rep-catalog')}

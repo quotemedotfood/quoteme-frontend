@@ -408,9 +408,9 @@ export function ManagerSidebar({
         <CCNavItem
           icon={Users}
           label="Team"
-          current={false}
+          current={active === 'team'}
           collapsed={collapsed}
-          muted
+          onClick={() => onNav('team')}
         />
 
         <CCGroupLabel label="DESIGN-AHEAD" collapsed={collapsed} />
