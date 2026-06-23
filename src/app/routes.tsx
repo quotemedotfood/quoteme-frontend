@@ -405,11 +405,22 @@ export const router = createBrowserRouter([
               { path: "inbound",         Component: CCInboundPage },
             ],
           },
-          { path: "distributor-admin/catalog", Component: CatalogManagePage },
-          { path: "distributor-admin/invite", Component: RepInvitePage },
-          { path: "distributor-admin/reps", Component: DistributorRepsPage },
-          { path: "distributor-admin/onboarding-docs", Component: OnboardingDocsPage },
-          { path: "distributor-admin/restaurants/new", Component: CreateRestaurantPage },
+          // ── Distributor-admin satellite pages inside the CC shell ─────────
+          // These routes share the same absolute URLs but render INSIDE CCLayout
+          // so the ManagerSidebar persists (stat cards on CCTodayPage navigate here).
+          // A pathless layout route wraps them: React Router v6 renders the
+          // Component for layout-only ancestors without consuming a path segment,
+          // so children keep their full absolute paths.
+          {
+            Component: CCLayout,
+            children: [
+              { path: "distributor-admin/catalog", Component: CatalogManagePage },
+              { path: "distributor-admin/invite", Component: RepInvitePage },
+              { path: "distributor-admin/reps", Component: DistributorRepsPage },
+              { path: "distributor-admin/onboarding-docs", Component: OnboardingDocsPage },
+              { path: "distributor-admin/restaurants/new", Component: CreateRestaurantPage },
+            ],
+          },
           { path: "distributor-admin", element: <Navigate to="/distributor-admin/command-center" replace /> },
           { path: "liquor", Component: StartNewQuotePage },
           { path: "liquor/*", Component: StartNewQuotePage },

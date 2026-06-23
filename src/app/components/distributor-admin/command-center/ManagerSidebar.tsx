@@ -141,8 +141,8 @@ function CCNavItem({ icon: Icon, label, count, current, collapsed, muted, onClic
                   ...sans,
                   fontSize: 11,
                   fontVariantNumeric: 'tabular-nums',
-                  color: count.attention ? SACRED_ORANGE : C.gray500,
-                  fontWeight: count.attention ? 600 : 400,
+                  color: count.attention ? C.charcoal : C.gray500,
+                  fontWeight: count.attention ? 700 : 400,
                   flexShrink: 0,
                   paddingLeft: 8,
                 }}
@@ -408,10 +408,9 @@ export function ManagerSidebar({
         <CCNavItem
           icon={Users}
           label="Team"
-          current={active === 'team'}
+          current={false}
           collapsed={collapsed}
-          count={{ n: coldRepsCount, attention: coldRepsCount > 0 }}
-          onClick={() => onNav('team')}
+          muted
         />
 
         <CCGroupLabel label="DESIGN-AHEAD" collapsed={collapsed} />

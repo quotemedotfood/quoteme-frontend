@@ -20,7 +20,7 @@ import { CCSearchBar } from './CCSearchBar';
 import { sans, C } from './cc-atoms';
 import type { CCActiveTab, CCSidebarMode, CCManagerInfo } from './ManagerSidebar';
 import { useAuth } from '../../../contexts/AuthContext';
-import { getCommandCenterUnassigned } from '../../../services/api';
+import { getCommandCenterUnassigned, getCommandCenterInbound } from '../../../services/api';
 
 // ── Sidebar context ───────────────────────────────────────────────────────────
 
@@ -54,17 +54,22 @@ function activeTabFromPath(pathname: string): CCActiveTab {
 export function CCLayout() {
   const [mode, setMode] = useState<CCSidebarMode>('open');
   const [unassignedCount, setUnassignedCount] = useState(0);
+  const [inboundOpenCount, setInboundOpenCount] = useState(0);
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  // Fetch unassigned count once on mount so the Assignments badge is live
-  // across all CC screens without polling.
+  // Fetch unassigned + inbound counts once on mount so sidebar badges are live
+  // across all CC screens (including satellite pages like catalog/reps) without polling.
   useEffect(() => {
     let cancelled = false;
     getCommandCenterUnassigned().then((res) => {
       if (cancelled) return;
       if (res.data) setUnassignedCount(res.data.items.length);
+    });
+    getCommandCenterInbound().then((res) => {
+      if (cancelled) return;
+      if (res.data) setInboundOpenCount(res.data.length);
     });
     return () => { cancelled = true; };
   }, []);
@@ -108,6 +113,7 @@ export function CCLayout() {
             onNav={onNav}
             manager={manager}
             unassignedCount={unassignedCount}
+            inboundOpenCount={inboundOpenCount}
           />
         )}
 
