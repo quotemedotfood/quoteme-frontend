@@ -833,6 +833,17 @@ export function CCTodayPage() {
           >
             See all rep activity.
           </button>
+          {' '}
+          <span
+            style={{
+              ...sans,
+              fontSize: 11,
+              color: C.gray500,
+              fontStyle: 'italic',
+            }}
+          >
+            (Quotes created / sent / accepted are all-time per rep.)
+          </span>
         </div>
       )}
     </div>
