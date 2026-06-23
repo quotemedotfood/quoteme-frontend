@@ -11,6 +11,7 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router';
 import { signUp } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
+import { PasswordRequirements, passwordMeetsRequirements } from '../../components/PasswordRequirements';
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 
@@ -50,6 +51,10 @@ export function BrandSignupPage() {
     setError(null);
     if (!firstName.trim() || !lastName.trim() || !brandName.trim() || !email.trim() || !password) {
       setError('All fields are required.');
+      return;
+    }
+    if (!passwordMeetsRequirements(password)) {
+      setError('Password must be at least 8 characters with one uppercase letter, one number, and one special character.');
       return;
     }
     setLoading(true);
@@ -201,6 +206,7 @@ export function BrandSignupPage() {
               onChange={(e) => setPassword(e.target.value)}
               disabled={loading}
             />
+            <PasswordRequirements password={password} />
           </div>
 
           {/* Error */}
