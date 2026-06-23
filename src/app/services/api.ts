@@ -343,6 +343,9 @@ async function fetchWithAuth<T>(
       const errorData = await response.json().catch(() => ({}));
       return {
         error: errorData.error || errorData.message || `HTTP ${response.status}`,
+        error_code: errorData.error,
+        error_data: errorData,
+        status: response.status,
         data: undefined,
       };
     }
@@ -1782,6 +1785,7 @@ export interface DistributorRep {
   is_admin?: boolean;
   status: 'active' | 'deactivated' | 'invited';
   created_at: string;
+  last_activity_at: string | null;
 }
 
 export async function getDistributorAdminReps(): Promise<ApiResponse<DistributorRep[]>> {
@@ -1835,6 +1839,30 @@ export async function disableRep(repProfileId: string): Promise<ApiResponse<Dist
     method: 'PATCH',
     body: JSON.stringify({}),
   });
+}
+
+// ============= DISTRIBUTOR ADMIN BILLING =============
+
+export interface DistributorAdminBillingRep {
+  id: string;
+  name: string;
+  quotes_used: number;
+  quota: number;
+  quota_reached: boolean;
+}
+
+export interface DistributorAdminBilling {
+  seat_count: number;
+  price_per_seat_dollars: number;
+  monthly_total_dollars: number;
+  free_quota_per_rep: number;
+  bonus_free_quotes: number;
+  effective_quota: number;
+  reps: DistributorAdminBillingRep[];
+}
+
+export async function getDistributorAdminBilling(): Promise<ApiResponse<DistributorAdminBilling>> {
+  return fetchWithAuth('/api/v1/distributor_admin/billing');
 }
 
 // ============= ONBOARDING DOCS =============

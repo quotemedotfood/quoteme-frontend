@@ -156,6 +156,7 @@ export function StartNewQuotePage() {
   const [catalogUploading, setCatalogUploading] = useState(false);
   const [catalogUploadResult, setCatalogUploadResult] = useState<{ message: string; isError: boolean; catalogId?: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [quotaBlockMessage, setQuotaBlockMessage] = useState<string | null>(null);
   const [isDraggingCatalog, setIsDraggingCatalog] = useState(false);
   const catalogFileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -615,6 +616,10 @@ export function StartNewQuotePage() {
         if (response.error) {
           if (isServiceBusyError(response.error)) { setServiceBusy(true); return; }
           if (response.error.includes('2 quotes in progress')) { setDraftLimitReached(true); return; }
+          if (response.status === 402 || (response as any).error_code === 'free_quotes_exhausted') {
+            setQuotaBlockMessage((response as any).error_data?.message || response.error);
+            return;
+          }
           setError(`Failed to create quote: ${response.error}`);
           return;
         }
@@ -683,6 +688,10 @@ export function StartNewQuotePage() {
         if (response.error) {
           if (isServiceBusyError(response.error)) { setServiceBusy(true); return; }
           if (response.error.includes('2 quotes in progress')) { setDraftLimitReached(true); return; }
+          if (response.status === 402 || (response as any).error_code === 'free_quotes_exhausted') {
+            setQuotaBlockMessage((response as any).error_data?.message || response.error);
+            return;
+          }
           setError(`Failed to create quote: ${response.error}`);
           return;
         }
@@ -770,7 +779,14 @@ export function StartNewQuotePage() {
     <div className="p-4 md:p-8">
       <div className="max-w-5xl mx-auto">
 
-        {error && (
+        {quotaBlockMessage && (
+          <div className="mx-0 mt-0 mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-sm font-medium text-red-800 mb-1">Quote limit reached</p>
+            <p className="text-sm text-red-700">{quotaBlockMessage}</p>
+          </div>
+        )}
+
+        {!quotaBlockMessage && error && (
           <div className="mx-0 mt-0 mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600 flex items-center justify-between">
             <span>{error}</span>
             <button onClick={() => setError(null)} className="text-red-400 hover:text-red-600 ml-2">

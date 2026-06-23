@@ -5,7 +5,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router';
 import { useUser } from '../contexts/UserContext';
 import { useAuth } from '../contexts/AuthContext';
-import { updateCurrentUser, getBilling, createCheckoutSession, createPortalSession, sendPasswordReset, getLocations, addLocationToGroup, getLocationGroupBilling, createLocationGroupPortalSession, updateDistributorAdminSettings, type LocationItem } from '../services/api';
+import { updateCurrentUser, getBilling, createCheckoutSession, createPortalSession, sendPasswordReset, getLocations, addLocationToGroup, getLocationGroupBilling, createLocationGroupPortalSession, updateDistributorAdminSettings, getDistributorAdminBilling, type LocationItem, type DistributorAdminBilling } from '../services/api';
 import { AuthDrawer } from '../components/AuthDrawer';
 import { isBuyerRole } from '../utils/roles';
 import { ManagerSidebar } from '../components/distributor-admin/command-center/ManagerSidebar';
@@ -52,6 +52,7 @@ export function SettingsPage() {
   const [billingData, setBillingData] = useState<any>(null);
   const [billingLoading, setBillingLoading] = useState(false);
   const [billingActionLoading, setBillingActionLoading] = useState(false);
+  const [distAdminBilling, setDistAdminBilling] = useState<DistributorAdminBilling | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
@@ -144,6 +145,15 @@ export function SettingsPage() {
       });
     }
   }, [profile.isGuest]);
+
+  // Fetch distributor_admin billing
+  useEffect(() => {
+    if (isDistributorAdmin && !profile.isGuest) {
+      getDistributorAdminBilling().then((res) => {
+        if (res.data) setDistAdminBilling(res.data);
+      });
+    }
+  }, [isDistributorAdmin, profile.isGuest]);
 
   const handleSaveProfile = async () => {
     if (profile.isGuest) {
@@ -1015,6 +1025,77 @@ export function SettingsPage() {
             <div className="text-center py-8">
               <p className="text-sm text-[#4F4F4F]">Loading billing information...</p>
             </div>
+          ) : isDistributorAdmin ? (
+            /* ── Distributor-admin billing view ── */
+            distAdminBilling ? (
+              <div className="space-y-6">
+                {/* Seat summary */}
+                <div className="bg-gray-50 rounded-lg p-4 space-y-2">
+                  <div className="flex justify-between items-center">
+                    <p className="text-sm text-[#4F4F4F]">Active rep seats</p>
+                    <p className="text-sm font-medium text-[#2A2A2A]">{distAdminBilling.seat_count}</p>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <p className="text-sm text-[#4F4F4F]">Price per seat</p>
+                    <p className="text-sm font-medium text-[#2A2A2A]">${distAdminBilling.price_per_seat_dollars}/mo</p>
+                  </div>
+                  <div className="flex justify-between items-center border-t border-gray-200 pt-2 mt-2">
+                    <p className="text-sm font-medium text-[#2A2A2A]">Monthly total</p>
+                    <p className="text-sm font-semibold text-[#2A2A2A]">${distAdminBilling.monthly_total_dollars}/month</p>
+                  </div>
+                  <p className="text-xs text-gray-500 pt-1">Recurring charge per active rep seat.</p>
+                </div>
+
+                {/* Free quota line */}
+                <div className="flex items-start gap-2">
+                  <div>
+                    <p className="text-sm font-medium text-[#2A2A2A]">Free quote quota per rep</p>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      {distAdminBilling.bonus_free_quotes > 0
+                        ? `5 base + ${distAdminBilling.bonus_free_quotes} granted = ${distAdminBilling.effective_quota} free quotes per rep`
+                        : `${distAdminBilling.effective_quota} free quotes per rep`}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Per-rep usage table */}
+                {distAdminBilling.reps.length > 0 && (
+                  <div>
+                    <p className="text-sm font-medium text-[#2A2A2A] mb-3">Rep quota usage</p>
+                    <div className="rounded-lg border border-gray-200 overflow-hidden">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="bg-gray-50 border-b border-gray-100">
+                            <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wide px-4 py-2">Rep</th>
+                            <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wide px-4 py-2">Usage</th>
+                            <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wide px-4 py-2 hidden sm:table-cell">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {distAdminBilling.reps.map((rep) => (
+                            <tr key={rep.id} className="border-b border-gray-50 last:border-0">
+                              <td className="px-4 py-3 text-sm text-[#2A2A2A]">{rep.name}</td>
+                              <td className="px-4 py-3 text-sm text-gray-600">{rep.quotes_used} of {rep.quota} free used</td>
+                              <td className="px-4 py-3 hidden sm:table-cell">
+                                {rep.quota_reached && (
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                    Quota reached
+                                  </span>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-sm text-[#4F4F4F]">Loading billing information...</p>
+              </div>
+            )
           ) : (
             <>
               {/* Usage Banner - Only show for non-paid users */}
