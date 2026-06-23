@@ -259,6 +259,7 @@ export function DistributorRepsPage() {
                 <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wide px-6 py-3 hidden md:table-cell" style={{ fontFamily: "'DM Sans', sans-serif" }}>Territory</th>
                 <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wide px-6 py-3" style={{ fontFamily: "'DM Sans', sans-serif" }}>Status</th>
                 <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wide px-6 py-3 hidden lg:table-cell" style={{ fontFamily: "'DM Sans', sans-serif" }}>Joined</th>
+                <th className="text-left text-xs font-medium text-gray-500 uppercase tracking-wide px-6 py-3 hidden xl:table-cell" style={{ fontFamily: "'DM Sans', sans-serif" }}>Last active</th>
                 <th className="px-6 py-3" />
               </tr>
             </thead>
@@ -291,6 +292,13 @@ export function DistributorRepsPage() {
                   <td className="px-6 py-4 hidden lg:table-cell">
                     <p className="text-sm text-gray-500">
                       {new Date(rep.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </p>
+                  </td>
+                  <td className="px-6 py-4 hidden xl:table-cell">
+                    <p className="text-sm text-gray-500">
+                      {rep.last_activity_at
+                        ? new Date(rep.last_activity_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                        : '—'}
                     </p>
                   </td>
                   <td className="px-6 py-4 text-right">
@@ -354,6 +362,9 @@ export function DistributorRepsPage() {
                       {new Date(rep.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                     </p>
                   </td>
+                  <td className="px-6 py-4 hidden xl:table-cell">
+                    <p className="text-sm text-gray-500">—</p>
+                  </td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end gap-1">
                       <Button
@@ -410,6 +421,13 @@ export function DistributorRepsPage() {
                   <td className="px-6 py-4 hidden lg:table-cell">
                     <p className="text-sm text-gray-400">
                       {new Date(rep.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </p>
+                  </td>
+                  <td className="px-6 py-4 hidden xl:table-cell">
+                    <p className="text-sm text-gray-400">
+                      {rep.last_activity_at
+                        ? new Date(rep.last_activity_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                        : '—'}
                     </p>
                   </td>
                   <td className="px-6 py-4" />
