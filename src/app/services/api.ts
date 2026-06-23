@@ -2228,6 +2228,8 @@ export interface InboundRow {
   assigned_rep: { id: string; name: string } | null;
   /** How many calendar days since this row was created. */
   age_days: number;
+  /** ISO 8601 timestamp when this row was received. Preferred over age_days for date display. */
+  received_at?: string | null;
   /** The downstream artifact this row is associated with (quote, opportunity, etc.). */
   artifact: { type: string; id: string; name: string | null } | null;
 }
