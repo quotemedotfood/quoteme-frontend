@@ -9,7 +9,7 @@
 // Manager destinations (locked order per README):
 //   THE FLOOR:  Today · Inbound · Rep activity
 //   NEEDS YOU:  Assignments · Team
-//   DESIGN-AHEAD: Inside sales (muted, "Soon")
+//               └─ Inside sales (muted sub-item, "Soon", no section label)
 //
 // Mode: 'open' (280px) · 'collapsed' (64px) · 'hidden' (no sidebar — layout handles)
 // Persistence: caller owns state (CCLayout holds useState).
@@ -412,15 +412,58 @@ export function ManagerSidebar({
           collapsed={collapsed}
           onClick={() => onNav('team')}
         />
-
-        <CCGroupLabel label="DESIGN-AHEAD" collapsed={collapsed} />
-        <CCNavItem
-          icon={Headphones}
-          label="Inside sales"
-          current={false}
-          collapsed={collapsed}
-          muted
-        />
+        {/* Inside sales — muted sub-item under Team, no Design-Ahead label */}
+        {!collapsed && (
+          <div style={{ padding: '0 12px 0 28px' }}>
+            <button
+              type="button"
+              disabled
+              title="Inside sales — coming soon"
+              aria-label="Inside sales — coming soon"
+              style={{
+                ...sans,
+                display: 'flex',
+                alignItems: 'center',
+                width: '100%',
+                padding: '6px 10px',
+                background: 'none',
+                border: 'none',
+                borderLeft: '2px solid transparent',
+                borderRadius: 6,
+                cursor: 'default',
+                opacity: 0.5,
+                gap: 10,
+              }}
+            >
+              <Headphones size={15} strokeWidth={1.6} color={C.gray500} />
+              <span
+                style={{
+                  flex: 1,
+                  textAlign: 'left',
+                  fontSize: 12.5,
+                  lineHeight: 1.3,
+                  color: C.gray500,
+                  fontWeight: 400,
+                  fontStyle: 'italic',
+                }}
+              >
+                Inside sales
+              </span>
+              <span
+                style={{
+                  fontSize: 9.5,
+                  color: C.gray500,
+                  letterSpacing: '.1em',
+                  textTransform: 'uppercase',
+                  flexShrink: 0,
+                  paddingLeft: 8,
+                }}
+              >
+                Soon
+              </span>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Spacer */}

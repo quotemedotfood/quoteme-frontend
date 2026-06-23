@@ -1,18 +1,19 @@
 // QuoteRowActions — View (PDF) + Edit (flow) affordances for quote-kind rows
 // in RoutingTable. Used in the Actions column.
 //
-// View  → opens quote PDF in a new tab via API_BASE_URL/api/v1/quotes/:id/pdf.
-//         Uses quotePdfUrl() helper from api.ts so the URL construction lives in
-//         one place.
-// Edit  → calls the onEdit callback (caller navigates to CCQuoteDetailPage).
+// View  → fetches the quote PDF with an authed Bearer request, creates a
+//         blob URL, and opens it in a new tab. Revokes the URL after 30s.
+//         Shows a brief "Loading…" state during fetch and an "Error" state
+//         if the request fails.
+// Edit  → calls the onEdit callback (caller navigates to rep build flow).
 //
 // Icons: Eye for View, SquarePen for Edit (both already in lucide-react).
 // No new colors — uses existing C tokens from cc-atoms.
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Eye, SquarePen } from 'lucide-react';
 import { sans, C, CC_ACK_NAVY } from './cc-atoms';
-import { quotePdfUrl } from '../../../services/api';
+import { downloadQuotePdf } from '../../../services/api';
 
 export interface QuoteRowActionsProps {
   quoteId: string;
@@ -37,20 +38,39 @@ const BTN: React.CSSProperties = {
 };
 
 export function QuoteRowActions({ quoteId, onEdit }: QuoteRowActionsProps) {
-  function handleView() {
-    window.open(quotePdfUrl(quoteId), '_blank', 'noopener,noreferrer');
+  const [viewState, setViewState] = useState<'idle' | 'loading' | 'error'>('idle');
+
+  async function handleView() {
+    if (viewState === 'loading') return;
+    setViewState('loading');
+    const result = await downloadQuotePdf(quoteId);
+    if (result.error || !result.blob) {
+      setViewState('error');
+      setTimeout(() => setViewState('idle'), 3000);
+      return;
+    }
+    const blobUrl = URL.createObjectURL(result.blob);
+    window.open(blobUrl, '_blank', 'noopener,noreferrer');
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 30_000);
+    setViewState('idle');
   }
 
   return (
     <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
       <button
         type="button"
-        title="View quote PDF"
+        title={viewState === 'error' ? 'Failed to load PDF' : 'View quote PDF'}
         onClick={handleView}
-        style={BTN}
+        disabled={viewState === 'loading'}
+        style={{
+          ...BTN,
+          opacity: viewState === 'loading' ? 0.65 : 1,
+          cursor: viewState === 'loading' ? 'wait' : 'pointer',
+          color: viewState === 'error' ? '#B91C1C' : CC_ACK_NAVY,
+        }}
       >
         <Eye size={12} strokeWidth={1.8} />
-        View
+        {viewState === 'loading' ? 'Loading…' : viewState === 'error' ? 'Error' : 'View'}
       </button>
       <button
         type="button"
