@@ -203,6 +203,14 @@ export interface QuoteContact {
   is_primary: boolean;
 }
 
+export interface QuoteRestaurantContact {
+  first_name: string;
+  last_name: string;
+  email: string | null;
+  phone: string | null;
+  role: string | null;
+}
+
 export interface QuoteResponse {
   id: string;
   status: string;
@@ -224,6 +232,8 @@ export interface QuoteResponse {
   created_at: string;
   preview?: boolean;
   contacts?: QuoteContact[];
+  /** Primary contact for the restaurant, returned by rep/quotes/:id */
+  restaurant_contact?: QuoteRestaurantContact | null;
   distributor?: { id: string; name: string } | null;
   lines: QuoteLineResponse[];
   input_mode?: string | null;

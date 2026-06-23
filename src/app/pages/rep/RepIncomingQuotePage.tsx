@@ -32,7 +32,7 @@ import { ItemsToConfirm } from '../../components/rep/ItemsToConfirm';
 import { RepCtaStrip } from '../../components/rep/RepCtaStrip';
 import { CatalogConfirmBanner } from '../../components/rep/CatalogConfirmBanner';
 import { getRepQuote, repPriceQuote, repConfirmQuote } from '../../services/api';
-import type { QuoteResponse, QuoteLineResponse } from '../../services/api';
+import type { QuoteResponse, QuoteLineResponse, QuoteRestaurantContact } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 
 import { RepPricingOnlyView } from './RepPricingOnlyView';
@@ -62,6 +62,20 @@ function eyebrow(size = 10): React.CSSProperties {
     ...sans, fontSize: size, fontWeight: 600,
     letterSpacing: '.12em', textTransform: 'uppercase', color: C.gray700,
   };
+}
+
+// Contact chip — shows primary contact name + email (or phone) if present
+function ContactChip({ contact }: { contact: QuoteRestaurantContact }) {
+  const name = [contact.first_name, contact.last_name].filter(Boolean).join(' ');
+  const reach = contact.email || contact.phone || null;
+  if (!name && !reach) return null;
+  return (
+    <div style={{ ...sans, fontSize: 11.5, color: C.gray700, marginTop: 4, lineHeight: 1.4 }}>
+      {name && <span style={{ color: C.charcoal }}>{name}</span>}
+      {name && reach && <span style={{ color: C.gray500 }}> · </span>}
+      {reach && <span>{reach}</span>}
+    </div>
+  );
 }
 
 type SortBy = 'category' | 'component' | 'match';
@@ -236,6 +250,9 @@ export function RepIncomingQuotePage() {
           <h1 style={{ ...serif, fontSize: 24, fontWeight: 600, color: C.charcoal, marginTop: 4, lineHeight: 1.15 }}>
             {quote?.restaurant || '—'}
           </h1>
+          {quote?.restaurant_contact && (
+            <ContactChip contact={quote.restaurant_contact} />
+          )}
           <div style={{ ...sans, fontSize: 12.5, color: C.gray700, marginTop: 4, lineHeight: 1.5 }}>
             From <span style={{ color: C.charcoal }}>{quote?.rep || '—'}</span>
           </div>
@@ -487,6 +504,7 @@ export function RepIncomingQuotePage() {
           pricedLines={pricedLines}
           isEmptyMenu={isEmptyMenu}
           chefRequestMessage={chefRequestMessage}
+          restaurantContact={quote?.restaurant_contact ?? null}
         />
       </div>
       <div className="block md:hidden">
@@ -521,6 +539,7 @@ function RepDesktopQuoteView({
   pricedLines,
   isEmptyMenu,
   chefRequestMessage,
+  restaurantContact,
 }: {
   quote: QuoteResponse | null;
   quoteId: string;
@@ -545,6 +564,7 @@ function RepDesktopQuoteView({
   pricedLines: QuoteLineResponse[];
   isEmptyMenu: boolean;
   chefRequestMessage?: string | null;
+  restaurantContact?: QuoteRestaurantContact | null;
 }) {
   return (
     <div style={{ maxWidth: 900 }}>
@@ -574,6 +594,7 @@ function RepDesktopQuoteView({
           <h1 style={{ ...serif, fontSize: 32, fontWeight: 600, color: C.charcoal, marginTop: 4, lineHeight: 1.1 }}>
             {quote?.restaurant || '—'}
           </h1>
+          {restaurantContact && <ContactChip contact={restaurantContact} />}
           <div style={{ ...sans, fontSize: 13, color: C.gray700, marginTop: 4, lineHeight: 1.5 }}>
             From <span style={{ color: C.charcoal }}>{quote?.rep || '—'}</span>
             {sentAt && <span style={{ color: C.gray500 }}> · {sentAt}</span>}

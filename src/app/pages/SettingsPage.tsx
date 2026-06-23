@@ -118,6 +118,9 @@ export function SettingsPage() {
     };
   }, [profile]);
 
+  // Track logo load failure so we can fall back to the initials placeholder
+  const [logoLoadError, setLogoLoadError] = useState(false);
+
   // Load rep_settings and avatar from authenticated user
   useEffect(() => {
     if (user) {
@@ -128,7 +131,10 @@ export function SettingsPage() {
       if (s.delivery_days) setDeliveryDays(s.delivery_days);
       if (s.minimum_order) setMinimumOrder(s.minimum_order);
       if (s.payment_terms) setPaymentTerms(s.payment_terms);
-      if (s.company_logo_url) setCompanyLogo(s.company_logo_url);
+      // Prefer rep_settings logo, fall back to distributor.logo_url
+      const logoUrl = s.company_logo_url || user.distributor?.logo_url || null;
+      setCompanyLogo(logoUrl ?? null);
+      setLogoLoadError(false);
       if (user.avatar_url) setProfilePhoto(user.avatar_url);
     }
   }, [user]);
@@ -253,6 +259,7 @@ export function SettingsPage() {
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
+        setLogoLoadError(false);
         setCompanyLogo(reader.result as string);
       };
       reader.readAsDataURL(file);
@@ -607,8 +614,13 @@ export function SettingsPage() {
                 <label className="block text-sm text-[#4F4F4F] mb-2">Company Logo</label>
                 <div className="flex items-center gap-4">
                   <div className="w-20 h-20 bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden">
-                    {companyLogo ? (
-                      <img src={companyLogo} alt="Company Logo" className="w-full h-full object-cover" />
+                    {companyLogo && !logoLoadError ? (
+                      <img
+                        src={companyLogo}
+                        alt="Company Logo"
+                        className="w-full h-full object-cover"
+                        onError={() => setLogoLoadError(true)}
+                      />
                     ) : (
                       <div className="w-full h-full bg-[#2A2A2A] flex items-center justify-center text-white text-2xl">
                         {companyName.charAt(0).toUpperCase()}
