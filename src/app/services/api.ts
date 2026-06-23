@@ -2264,6 +2264,13 @@ export async function assignInboundOpportunity(
   );
 }
 
+/** Returns the authenticated PDF URL for a quote (opens in new tab).
+ *  The caller is responsible for opening it: window.open(quotePdfUrl(id), '_blank').
+ */
+export function quotePdfUrl(id: string): string {
+  return `${API_BASE_URL}/api/v1/quotes/${id}/pdf`;
+}
+
 // ── Notifications ──
 
 export async function getNotifications(): Promise<ApiResponse<{ notifications: any[]; unread_count: number }>> {
