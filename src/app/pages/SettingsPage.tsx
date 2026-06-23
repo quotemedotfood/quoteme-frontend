@@ -1,13 +1,15 @@
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
-import { Upload, Edit, Camera, X, Plus, MapPin } from 'lucide-react';
-import { useState, useEffect, useRef } from 'react';
-import { useLocation, useNavigate } from 'react-router';
+import { Upload, Edit, Camera, X, Plus, MapPin, ArrowLeft } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { useLocation, useNavigate, Link } from 'react-router';
 import { useUser } from '../contexts/UserContext';
 import { useAuth } from '../contexts/AuthContext';
-import { updateCurrentUser, getBilling, createCheckoutSession, createPortalSession, sendPasswordReset, getLocations, addLocationToGroup, getLocationGroupBilling, createLocationGroupPortalSession, type LocationItem } from '../services/api';
+import { updateCurrentUser, getBilling, createCheckoutSession, createPortalSession, sendPasswordReset, getLocations, addLocationToGroup, getLocationGroupBilling, createLocationGroupPortalSession, updateDistributorAdminSettings, type LocationItem } from '../services/api';
 import { AuthDrawer } from '../components/AuthDrawer';
 import { isBuyerRole } from '../utils/roles';
+import { ManagerSidebar } from '../components/distributor-admin/command-center/ManagerSidebar';
+import type { CCSidebarMode, CCManagerInfo } from '../components/distributor-admin/command-center/ManagerSidebar';
 
 export function SettingsPage() {
   const { profile, updateProfile } = useUser();
@@ -15,6 +17,10 @@ export function SettingsPage() {
   const navigate = useNavigate();
   const [isSaving, setIsSaving] = useState(false);
   const [isSavingCompany, setIsSavingCompany] = useState(false);
+
+  // Distributor admin sidebar shell
+  const isDistributorAdmin = user?.role === 'distributor_admin';
+  const [sidebarMode, setSidebarMode] = useState<CCSidebarMode>('open');
 
   // Edit mode states
   const [isEditingAccount, setIsEditingAccount] = useState(false);
@@ -184,6 +190,14 @@ export function SettingsPage() {
       return;
     }
     setIsSavingCompany(true);
+    setError(null);
+
+    // For distributor_admin: also persist company name via distributor_admin/settings
+    // so distributor.name on /me reflects the new value in the CC footer.
+    if (isDistributorAdmin && companyName.trim()) {
+      await updateDistributorAdminSettings({ name: companyName.trim() });
+    }
+
     const response = await updateCurrentUser({
       rep_settings: {
         company_email: companyEmail,
@@ -202,6 +216,8 @@ export function SettingsPage() {
         distributorName: companyName,
         distributorLogo: companyLogo,
       });
+      // Refetch /me so distributor.name propagates to CC sidebar footer
+      await refreshUser();
       setIsEditingDistributor(false);
     } else {
       setError(response.error || 'Failed to save distributor settings');
@@ -354,9 +370,38 @@ export function SettingsPage() {
     }
   };
 
-  return (
+  // Build manager info for distributor_admin sidebar shell
+  const ccManager: CCManagerInfo = {
+    name: user ? `${user.first_name ?? ''} ${user.last_name ?? ''}`.trim() || 'Manager' : 'Manager',
+    role: 'Sales lead',
+    company: user?.distributor?.name ?? user?.distributor_name ?? 'Your company',
+    region: '',
+    today: new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }),
+  };
+
+  const ccOnNav = (dest: string) => {
+    if (dest === 'today')   navigate('/distributor-admin/command-center');
+    else if (dest === 'quotes')  navigate('/distributor-admin/command-center/quotes');
+    else if (dest === 'assign')  navigate('/distributor-admin/command-center/assign');
+    else if (dest === 'search')  navigate('/distributor-admin/command-center/search');
+    else if (dest === 'team')    navigate('/distributor-admin/reps');
+    else if (dest === 'inbound') navigate('/distributor-admin/command-center/inbound');
+    else if (dest === 'settings') navigate('/settings');
+  };
+
+  const settingsContent = (
     <div className="p-4 md:p-8 bg-[#FFF9F3] min-h-screen">
       <div className="max-w-4xl mx-auto space-y-8">
+        {/* Back to Board — distributor_admin only */}
+        {isDistributorAdmin && (
+          <Link
+            to="/distributor-admin/command-center"
+            className="inline-flex items-center gap-1.5 text-sm text-[#6B7280] hover:text-[#2B2B2B] transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to Board
+          </Link>
+        )}
         {error && (
           <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600 flex items-center justify-between">
             <span>{error}</span>
@@ -1109,4 +1154,50 @@ export function SettingsPage() {
       />
     </div>
   );
+
+  // For distributor_admin: wrap in the CC sidebar shell so navigation is never lost
+  if (isDistributorAdmin) {
+    return (
+      <div style={{ display: 'flex', minHeight: '100vh', background: '#fff', position: 'relative' }}>
+        <ManagerSidebar
+          mode={sidebarMode}
+          onModeChange={setSidebarMode}
+          active="settings"
+          onNav={ccOnNav as (dest: import('../components/distributor-admin/command-center/ManagerSidebar').CCActiveTab) => void}
+          manager={ccManager}
+        />
+        <main style={{ flex: 1, minWidth: 0, overflowY: 'auto', background: '#fff' }}>
+          {settingsContent}
+        </main>
+        {/* Restore FAB when sidebar hidden */}
+        {sidebarMode === 'hidden' && (
+          <button
+            type="button"
+            onClick={() => setSidebarMode('open')}
+            aria-label="Show sidebar"
+            style={{
+              position: 'absolute',
+              left: 12,
+              top: '50%',
+              transform: 'translateY(-50%)',
+              fontFamily: "'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+              fontSize: 11,
+              color: '#6B7280',
+              background: '#FBFAF7',
+              border: '1px solid #E8E8E8',
+              borderRadius: 6,
+              padding: '6px 10px',
+              cursor: 'pointer',
+              zIndex: 10,
+              writingMode: 'vertical-rl' as React.CSSProperties['writingMode'],
+            }}
+          >
+            › sidebar
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  return settingsContent;
 }
