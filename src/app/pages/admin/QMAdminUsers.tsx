@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router';
 import { Search, ArrowUpDown, ArrowUp, ArrowDown, UserPlus, X } from 'lucide-react';
 import { Input } from '../../components/ui/input';
 import { Button } from '../../components/ui/button';
@@ -51,7 +52,38 @@ function formatDate(d: string) {
   });
 }
 
+const ROLE_BADGE: Record<string, string> = {
+  quoteme_admin: 'bg-purple-100 text-purple-700',
+  distributor_admin: 'bg-blue-100 text-blue-700',
+  rep: 'bg-sky-100 text-sky-700',
+  chef: 'bg-amber-100 text-amber-700',
+  buyer: 'bg-orange-100 text-orange-700',
+  group_admin: 'bg-teal-100 text-teal-700',
+  brand: 'bg-pink-100 text-pink-700',
+};
+
+const ROLE_LABEL: Record<string, string> = {
+  quoteme_admin: 'QM Admin',
+  distributor_admin: 'Dist. Admin',
+  rep: 'Rep',
+  chef: 'Chef',
+  buyer: 'Buyer',
+  group_admin: 'Group Admin',
+  brand: 'Brand',
+};
+
+function roleBadge(role: string) {
+  const cls = ROLE_BADGE[role] || 'bg-gray-100 text-gray-600';
+  const label = ROLE_LABEL[role] || role;
+  return (
+    <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${cls}`}>
+      {label}
+    </span>
+  );
+}
+
 export function QMAdminUsers() {
+  const navigate = useNavigate();
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -393,6 +425,7 @@ export function QMAdminUsers() {
                       Email <SortIcon field="email" />
                     </div>
                   </TableHead>
+                  <TableHead>Role</TableHead>
                   <TableHead className="cursor-pointer" onClick={() => toggleSort('status')}>
                     <div className="flex items-center gap-1">
                       Status <SortIcon field="status" />
@@ -416,11 +449,21 @@ export function QMAdminUsers() {
               </TableHeader>
               <TableBody>
                 {filtered.map((u) => (
-                  <TableRow key={u.id} className="hover:bg-gray-50">
+                  <TableRow
+                    key={u.id}
+                    className="hover:bg-gray-50 cursor-pointer"
+                    onClick={(e) => {
+                      // Don't navigate if clicking an action button
+                      const target = e.target as HTMLElement;
+                      if (target.closest('button')) return;
+                      navigate(`/qm-admin/users/${u.id}`);
+                    }}
+                  >
                     <TableCell className="font-medium text-[#2A2A2A]">
                       {u.first_name} {u.last_name}
                     </TableCell>
                     <TableCell className="text-sm text-[#4F4F4F]">{u.email}</TableCell>
+                    <TableCell>{roleBadge(u.role)}</TableCell>
                     <TableCell>{statusBadge(u.status)}</TableCell>
                     <TableCell className="text-sm text-gray-500">
                       {formatRelativeTime(u.last_login_at)}
