@@ -306,10 +306,10 @@ export function ChefEntryPage() {
         </div>
 
         <div className="flex flex-col gap-6">
-          {/* Restaurant name (optional) */}
+          {/* Location name (optional) */}
           <div className="flex flex-col gap-1">
             <label className={labelStyle}>
-              Restaurant name{' '}
+              Location name{' '}
               <span className="text-[#9E9E9E] font-normal">(optional)</span>
             </label>
             <input

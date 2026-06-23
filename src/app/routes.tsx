@@ -25,6 +25,7 @@ import { QMAdminDistributorDetailPage } from "./pages/admin/QMAdminDistributorDe
 import { QMAdminUnassociatedReps } from "./pages/admin/QMAdminUnassociatedReps";
 import { QMAdminRestaurants } from "./pages/admin/QMAdminRestaurants";
 import { QMAdminRestaurantDetailPage } from "./pages/admin/QMAdminRestaurantDetail";
+import { QMAdminRestaurantGroups } from "./pages/admin/QMAdminRestaurantGroups";
 import { QMAdminConferenceCommand } from "./pages/admin/QMAdminConferenceCommand";
 import { QMAdminHealth } from "./pages/admin/QMAdminHealth";
 import { QMAdminUsers } from "./pages/admin/QMAdminUsers";
@@ -48,6 +49,7 @@ import { CCQuoteDetailPage } from "./pages/command-center/CCQuoteDetailPage";
 import { CCSoonPage } from "./pages/command-center/CCSoonPage";
 import { CCAssignPage } from "./pages/command-center/CCAssignPage";
 import { CCSearchPage } from "./pages/command-center/CCSearchPage";
+import { CCInboundPage } from "./pages/command-center/CCInboundPage";
 import { CatalogManagePage } from "./pages/CatalogManagePage";
 import { CatalogConfirmationPage } from "./pages/CatalogConfirmationPage";
 import { RepInvitePage } from "./pages/RepInvitePage";
@@ -71,10 +73,12 @@ import { ChefPullStatusPage } from "./pages/chef/ChefPullStatusPage";
 import { ChefPullReceiptPage } from "./pages/chef/ChefPullReceiptPage";
 import { ChefDistributorEntryPage } from "./pages/chef/ChefDistributorEntryPage";
 import { ChefDistributorDetailPage } from "./pages/chef/ChefDistributorDetailPage";
+import { ChefRequestSentPage } from "./pages/chef/ChefRequestSentPage";
 import { ChefShellLayout } from "./components/chef/ChefShellLayout";
 import { ChefMenusPage } from "./pages/chef/ChefMenusPage";
 import { ChefMenuDetailPage } from "./pages/chef/ChefMenuDetailPage";
 import { ChefMenuStackPage } from "./pages/chef/ChefMenuStackPage";
+import { ChefStackPage } from "./pages/chef/ChefStackPage";
 import { CreateRestaurantPage } from "./pages/CreateRestaurantPage";
 import { isDemoMode } from "./utils/demoMode";
 import { rootRedirectTarget } from "./utils/rootRedirect";
@@ -273,6 +277,7 @@ export const router = createBrowserRouter([
           { path: "unassociated-reps", Component: QMAdminUnassociatedReps },
           { path: "restaurants", Component: QMAdminRestaurants },
           { path: "restaurants/:id", Component: QMAdminRestaurantDetailPage },
+          { path: "restaurant-groups", Component: QMAdminRestaurantGroups },
           { path: "matching-engine", Component: QMAdminMatchingEngine },
           { path: "brands", Component: QMAdminBrands },
           { path: "brand-rules", Component: QMAdminBrandRules },
@@ -309,11 +314,16 @@ export const router = createBrowserRouter([
               // STACK-FE-1: compare-spread table. Static segment 'stack' takes
               // precedence over future dynamic sibling if one is added.
               { path: "chef/menus/:menuId/stack", Component: ChefMenuStackPage },
+              // PR-3: free My Stack manage view (pin/unpin distributors).
+              // Distinct from the per-menu compare-spread above.
+              { path: "chef/stack", Component: ChefStackPage },
               { path: "chef/catalog", Component: ChefCatalogSelectionPage },
               { path: "chef/distributor/new", Component: ChefDistributorEntryPage },
               // B3b: distributor detail. 'new' (static) takes precedence over
               // ':id' (dynamic) in react-router — no collision.
               { path: "chef/distributor/:id", Component: ChefDistributorDetailPage },
+              // Confirmation page: BE redirects here after "Request from a rep" succeeds.
+              { path: "chef/distributor/:id/sent", Component: ChefRequestSentPage },
               // Pull-entry mounted inside the shell so it gets sidebar/tab chrome.
               { path: "chef/pull/entry", Component: ChefPullEntryPage },
             ],
@@ -392,15 +402,26 @@ export const router = createBrowserRouter([
               { path: "assign",          Component: CCAssignPage },
               { path: "search",          Component: CCSearchPage },
               { path: "team",            element: <CCSoonPage title="Team view lands shortly." /> },
-              { path: "inbound",         element: <CCSoonPage title="Inbound lands shortly." /> },
+              { path: "inbound",         Component: CCInboundPage },
             ],
           },
-          { path: "distributor-admin/catalog", Component: CatalogManagePage },
-          { path: "distributor-admin/invite", Component: RepInvitePage },
-          { path: "distributor-admin/reps", Component: DistributorRepsPage },
-          { path: "distributor-admin/onboarding-docs", Component: OnboardingDocsPage },
-          { path: "distributor-admin/restaurants/new", Component: CreateRestaurantPage },
-          { path: "distributor-admin", Component: DistributorHomePage },
+          // ── Distributor-admin satellite pages inside the CC shell ─────────
+          // These routes share the same absolute URLs but render INSIDE CCLayout
+          // so the ManagerSidebar persists (stat cards on CCTodayPage navigate here).
+          // A pathless layout route wraps them: React Router v6 renders the
+          // Component for layout-only ancestors without consuming a path segment,
+          // so children keep their full absolute paths.
+          {
+            Component: CCLayout,
+            children: [
+              { path: "distributor-admin/catalog", Component: CatalogManagePage },
+              { path: "distributor-admin/invite", Component: RepInvitePage },
+              { path: "distributor-admin/reps", Component: DistributorRepsPage },
+              { path: "distributor-admin/onboarding-docs", Component: OnboardingDocsPage },
+              { path: "distributor-admin/restaurants/new", Component: CreateRestaurantPage },
+            ],
+          },
+          { path: "distributor-admin", element: <Navigate to="/distributor-admin/command-center" replace /> },
           { path: "liquor", Component: StartNewQuotePage },
           { path: "liquor/*", Component: StartNewQuotePage },
         ],

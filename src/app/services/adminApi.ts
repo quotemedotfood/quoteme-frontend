@@ -247,6 +247,12 @@ export async function resendInvite(userId: string): Promise<ApiResponse<{ messag
   });
 }
 
+export async function resendWelcome(userId: string): Promise<ApiResponse<{ ok: boolean; sent_to: string }>> {
+  return fetchWithAuth(`/api/v1/admin/users/${userId}/resend_welcome`, {
+    method: 'POST',
+  });
+}
+
 export async function assignDistributor(
   userId: string,
   distributorId: string
@@ -333,6 +339,10 @@ export interface AdminRestaurantDetail {
   website: string | null;
   status: string;
   created_at: string;
+  google_place_id: string | null;
+  address_verified: boolean;
+  restaurant_admin_id: string | null;
+  restaurant_admin_name: string | null;
   restaurant_group: { id: string; name: string } | null;
   contacts: Array<{
     id: string;
@@ -1565,6 +1575,66 @@ export async function listClusterLabels(
   if (filters.sort) params.set('sort', filters.sort);
   const qs = params.toString();
   return fetchWithAuth(`/api/v1/admin/cluster_labels${qs ? `?${qs}` : ''}`);
+}
+
+// ============= RESTAURANT GROUPS =============
+
+export interface AdminRestaurantGroup {
+  id: string;
+  name: string;
+  status: string;
+  restaurant_count: number;
+  created_at: string;
+}
+
+export interface AdminRestaurantGroupDetail extends AdminRestaurantGroup {
+  restaurants: Array<{
+    id: string;
+    name: string;
+    city: string | null;
+    state: string | null;
+    status: string;
+    contact_count: number;
+    created_at: string;
+  }>;
+}
+
+export async function getAdminRestaurantGroups(): Promise<ApiResponse<AdminRestaurantGroup[]>> {
+  return fetchWithAuth('/api/v1/restaurant_groups');
+}
+
+export async function getAdminRestaurantGroup(id: string): Promise<ApiResponse<AdminRestaurantGroupDetail>> {
+  return fetchWithAuth(`/api/v1/restaurant_groups/${id}`);
+}
+
+export async function createAdminRestaurantGroup(data: {
+  name: string;
+  status?: string;
+}): Promise<ApiResponse<AdminRestaurantGroup>> {
+  return fetchWithAuth('/api/v1/restaurant_groups', {
+    method: 'POST',
+    body: JSON.stringify({ restaurant_group: data }),
+  });
+}
+
+export async function updateAdminRestaurantGroup(
+  id: string,
+  data: { name?: string; status?: string }
+): Promise<ApiResponse<AdminRestaurantGroup>> {
+  return fetchWithAuth(`/api/v1/restaurant_groups/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ restaurant_group: data }),
+  });
+}
+
+export async function addRestaurantToGroup(
+  groupId: string,
+  data: { restaurant_id: string } | { name: string; city?: string; state?: string }
+): Promise<ApiResponse<AdminRestaurantGroupDetail>> {
+  return fetchWithAuth(`/api/v1/restaurant_groups/${groupId}/add_restaurant`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
 }
 
 // ============= RESTAURANT CREATE =============

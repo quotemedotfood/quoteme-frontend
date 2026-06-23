@@ -74,7 +74,7 @@ function CCNavItem({ icon: Icon, label, count, current, collapsed, muted, onClic
       <button
         type="button"
         onClick={muted ? undefined : onClick}
-        title={collapsed ? label : undefined}
+        title={collapsed ? (muted ? `${label} — coming soon` : label) : (muted ? `${label} — coming soon` : undefined)}
         aria-label={label}
         style={{
           ...sans,
@@ -141,8 +141,8 @@ function CCNavItem({ icon: Icon, label, count, current, collapsed, muted, onClic
                   ...sans,
                   fontSize: 11,
                   fontVariantNumeric: 'tabular-nums',
-                  color: count.attention ? SACRED_ORANGE : C.gray500,
-                  fontWeight: count.attention ? 600 : 400,
+                  color: count.attention ? C.charcoal : C.gray500,
+                  fontWeight: count.attention ? 700 : 400,
                   flexShrink: 0,
                   paddingLeft: 8,
                 }}
@@ -410,7 +410,6 @@ export function ManagerSidebar({
           label="Team"
           current={active === 'team'}
           collapsed={collapsed}
-          count={{ n: coldRepsCount, attention: coldRepsCount > 0 }}
           onClick={() => onNav('team')}
         />
 

@@ -16,6 +16,7 @@
 import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { consumeRepInvitation } from '../services/api';
+import { PasswordRequirements, passwordMeetsRequirements } from '../components/PasswordRequirements';
 
 // ─── Style constants (match RepWelcomePage palette) ──────────────────────────
 const C = {
@@ -148,7 +149,7 @@ export function RepInviteAcceptPage() {
     const errs: { password?: string; confirm?: string } = {};
 
     if (!password) errs.password = 'Password is required';
-    else if (password.length < 8) errs.password = 'Password must be at least 8 characters';
+    else if (!passwordMeetsRequirements(password)) errs.password = 'Password must be at least 8 characters with one uppercase letter, one number, and one special character';
     if (!confirmPassword) errs.confirm = 'Please confirm your password';
     else if (password !== confirmPassword) errs.confirm = 'Passwords do not match';
 
@@ -287,6 +288,7 @@ export function RepInviteAcceptPage() {
                   {fieldErrors.password}
                 </p>
               )}
+              <PasswordRequirements password={password} />
             </div>
 
             {/* Confirm password */}

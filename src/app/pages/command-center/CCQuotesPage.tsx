@@ -29,6 +29,7 @@ import {
   C,
   CC_ACK_NAVY,
 } from '../../components/distributor-admin/command-center/cc-atoms';
+import { QuoteRowActions } from '../../components/distributor-admin/command-center/QuoteRowActions';
 import {
   getCommandCenterQuotes,
   type CCQuoteRow,
@@ -48,14 +49,14 @@ function RowSkeleton() {
     <div
       style={{
         display: 'grid',
-        gridTemplateColumns: '180px 1fr 78px 130px 64px',
+        gridTemplateColumns: '180px 1fr 78px 170px 64px',
         gap: 12,
         padding: '14px 0',
         borderBottom: `1px solid ${C.softLine}`,
         alignItems: 'center',
       }}
     >
-      {[180, 240, 60, 120, 50].map((w, i) => (
+      {[180, 240, 60, 120, 80].map((w, i) => (
         <div
           key={i}
           style={{
@@ -173,29 +174,27 @@ function RepChip({
 
 // ── Desktop row ───────────────────────────────────────────────────────────────
 
-function DeskRow({ q, onClick }: { q: CCQuoteRow; onClick: () => void }) {
+function DeskRow({ q, onClick, onEdit, onRepClick }: { q: CCQuoteRow; onClick: () => void; onEdit: () => void; onRepClick?: (repId: string, e: React.MouseEvent) => void }) {
   const [hovered, setHovered] = useState(false);
 
   return (
-    <button
-      type="button"
-      onClick={onClick}
+    <div
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
         display: 'grid',
-        gridTemplateColumns: '180px 1fr 78px 130px 64px',
+        gridTemplateColumns: '180px 1fr 78px 170px 64px',
         gap: 12,
         width: '100%',
-        textAlign: 'left',
         alignItems: 'center',
         padding: '14px 0',
         background: hovered ? '#F9FAFB' : 'transparent',
-        border: 'none',
         borderBottom: `1px solid ${C.softLine}`,
         cursor: 'pointer',
         transition: 'background 150ms',
       }}
+      role="row"
+      onClick={onClick}
     >
       {/* REP */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
@@ -217,18 +216,40 @@ function DeskRow({ q, onClick }: { q: CCQuoteRow; onClick: () => void }) {
             <User size={13} color={C.gray400} strokeWidth={1.6} />
           </span>
         )}
-        <span
-          style={{
-            ...sans,
-            fontSize: 13,
-            color: C.charcoal,
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          {q.rep ? q.rep.name : 'Unassigned'}
-        </span>
+        {q.rep ? (
+          <span
+            role="button"
+            tabIndex={0}
+            onClick={(e) => onRepClick?.(q.rep!.id, e)}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onRepClick?.(q.rep!.id, e as unknown as React.MouseEvent); }}
+            style={{
+              ...sans,
+              fontSize: 13,
+              color: CC_ACK_NAVY,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              textDecoration: 'underline',
+              textUnderlineOffset: 2,
+              cursor: 'pointer',
+            }}
+          >
+            {q.rep.name}
+          </span>
+        ) : (
+          <span
+            style={{
+              ...sans,
+              fontSize: 13,
+              color: C.charcoal,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            Unassigned
+          </span>
+        )}
       </div>
 
       {/* RESTAURANT */}
@@ -271,38 +292,36 @@ function DeskRow({ q, onClick }: { q: CCQuoteRow; onClick: () => void }) {
         <CCStatusTag status={q.status} />
       </div>
 
-      {/* SENT */}
-      <div style={{ ...sans, ...tabular, fontSize: 12, color: C.gray500, textAlign: 'right' }}>
-        {q.sent}
+      {/* ACTIONS — View PDF + Edit; stop propagation so row click doesn't also fire */}
+      <div onClick={(e) => e.stopPropagation()}>
+        <QuoteRowActions quoteId={q.id} onEdit={onEdit} />
       </div>
-    </button>
+    </div>
   );
 }
 
 // ── Mobile row ────────────────────────────────────────────────────────────────
 
-function PhoneRow({ q, onClick }: { q: CCQuoteRow; onClick: () => void }) {
+function PhoneRow({ q, onClick, onEdit, onRepClick }: { q: CCQuoteRow; onClick: () => void; onEdit: () => void; onRepClick?: (repId: string, e: React.MouseEvent) => void }) {
   const [hovered, setHovered] = useState(false);
 
   return (
-    <button
-      type="button"
-      onClick={onClick}
+    <div
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
+      onClick={onClick}
       style={{
         display: 'flex',
         alignItems: 'flex-start',
         gap: 12,
         width: '100%',
-        textAlign: 'left',
         padding: '12px 0',
         background: hovered ? '#F9FAFB' : 'transparent',
-        border: 'none',
         borderBottom: `1px solid ${C.softLine}`,
         cursor: 'pointer',
         transition: 'background 150ms',
       }}
+      role="row"
     >
       {q.rep ? (
         <RepAvatar initials={q.rep.initials} name={q.rep.name} size={30} />
@@ -343,18 +362,41 @@ function PhoneRow({ q, onClick }: { q: CCQuoteRow; onClick: () => void }) {
           </span>
         </div>
         <div style={{ ...sans, ...tabular, fontSize: 11.5, color: C.gray700, lineHeight: 1.3 }}>
-          {q.id} · {q.rep ? q.rep.name : 'unassigned'} · {q.items} items
+          {q.id} ·{' '}
+          {q.rep ? (
+            <span
+              role="button"
+              tabIndex={0}
+              onClick={(e) => onRepClick?.(q.rep!.id, e)}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onRepClick?.(q.rep!.id, e as unknown as React.MouseEvent); }}
+              style={{
+                color: CC_ACK_NAVY,
+                textDecoration: 'underline',
+                textUnderlineOffset: 2,
+                cursor: 'pointer',
+              }}
+            >
+              {q.rep.name}
+            </span>
+          ) : (
+            'unassigned'
+          )}{' '}
+          · {q.items} items
         </div>
-        <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <CCStatusTag status={q.status} size="xs" />
           {q.requote > 0 && (
             <span style={{ ...sans, ...tabular, fontSize: 10.5, color: C.gray500 }}>
               re-quoted {q.requote}×
             </span>
           )}
+          {/* Actions inline on mobile row — stop propagation so row click doesn't also fire */}
+          <div onClick={(e) => e.stopPropagation()}>
+            <QuoteRowActions quoteId={q.id} onEdit={onEdit} />
+          </div>
         </div>
       </div>
-    </button>
+    </div>
   );
 }
 
@@ -435,6 +477,13 @@ export function CCQuotesPage() {
 
   const goToDetail = (quoteId: string) => {
     navigate(`/distributor-admin/command-center/quotes/${encodeURIComponent(quoteId)}`);
+  };
+
+  const goToRep = (repId: string, e: React.MouseEvent) => {
+    e.stopPropagation(); // Don't also trigger the row's goToDetail
+    navigate(`/distributor-admin/command-center/quotes?rep=${encodeURIComponent(repId)}`);
+    // Also update local repFilter so the chips reflect the navigation
+    setRepFilter(repId);
   };
 
   return (
@@ -547,12 +596,12 @@ export function CCQuotesPage() {
           className="hidden lg:grid"
           style={{
             display: 'grid',
-            gridTemplateColumns: '180px 1fr 78px 130px 64px',
+            gridTemplateColumns: '180px 1fr 78px 170px 64px',
             gap: 12,
             paddingBottom: 8,
           }}
         >
-          {(['REP', 'RESTAURANT', 'TOTAL', 'STATUS', 'SENT'] as const).map((h, i) => (
+          {(['REP', 'RESTAURANT', 'TOTAL', 'STATUS', 'ACTIONS'] as const).map((h) => (
             <div
               key={h}
               style={{
@@ -562,7 +611,6 @@ export function CCQuotesPage() {
                 textTransform: 'uppercase',
                 color: C.gray700,
                 fontWeight: 600,
-                textAlign: i === 4 ? 'right' : 'left',
               }}
             >
               {h}
@@ -588,28 +636,64 @@ export function CCQuotesPage() {
           >
             {error}
           </div>
-        ) : filtered.length === 0 ? (
+        ) : rows.length === 0 ? (
+          // No quotes at all — the global "nothing here yet" state
           <div
             style={{
               ...sans,
-              padding: '48px 0',
+              padding: '64px 0',
               textAlign: 'center',
               fontSize: 13,
               color: C.gray500,
+              lineHeight: 1.7,
             }}
           >
-            No quotes match that filter.
+            <div style={{ fontSize: 15, color: C.charcoal, fontWeight: 500, marginBottom: 6 }}>
+              No quotes yet.
+            </div>
+            <div>Once reps send quotes this week, they'll show up here.</div>
+          </div>
+        ) : filtered.length === 0 ? (
+          // Quotes exist, but none match the active filters — show in-table message
+          // with filter chips still visible above
+          <div
+            style={{
+              ...sans,
+              padding: '40px 0',
+              textAlign: 'center',
+              fontSize: 13,
+              color: C.gray500,
+              lineHeight: 1.7,
+            }}
+          >
+            {(() => {
+              const activeStatus = statusFilters.find((s) => s.id === statusFilter);
+              const activeRep = reps.find((r) => r.id === repFilter);
+              const statusLabel = activeStatus && activeStatus.id !== 'all' ? activeStatus.label.toLowerCase() : null;
+              const repLabel = activeRep ? activeRep.name.split(' ')[0] : null;
+
+              if (statusLabel && repLabel) {
+                return `No ${statusLabel} quotes for ${repLabel} this period.`;
+              }
+              if (statusLabel) {
+                return `No ${statusLabel} quotes this period.`;
+              }
+              if (repLabel) {
+                return `No quotes for ${repLabel} this period.`;
+              }
+              return 'No quotes match that filter.';
+            })()}
           </div>
         ) : (
           filtered.map((q) => (
             <React.Fragment key={q.id}>
               {/* Desktop row — hidden on small screens */}
               <div className="hidden lg:block">
-                <DeskRow q={q} onClick={() => goToDetail(q.id)} />
+                <DeskRow q={q} onClick={() => goToDetail(q.id)} onEdit={() => goToDetail(q.id)} onRepClick={goToRep} />
               </div>
               {/* Mobile row — hidden on large screens */}
               <div className="lg:hidden">
-                <PhoneRow q={q} onClick={() => goToDetail(q.id)} />
+                <PhoneRow q={q} onClick={() => goToDetail(q.id)} onEdit={() => goToDetail(q.id)} onRepClick={goToRep} />
               </div>
             </React.Fragment>
           ))

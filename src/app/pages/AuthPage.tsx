@@ -23,6 +23,7 @@ import {
   Check,
 } from 'lucide-react';
 import { useGooglePlaces } from '../hooks/useGooglePlaces';
+import { PasswordRequirements, passwordMeetsRequirements } from '../components/PasswordRequirements';
 
 const BLOCKED_DOMAINS = [
   'gmail.com',
@@ -48,7 +49,7 @@ export function AuthPage() {
   const routeByRole = (role?: string) => {
     switch (role) {
       case 'quoteme_admin': return '/qm-admin/';
-      case 'distributor_admin': return '/distributor-admin/';
+      case 'distributor_admin': return '/distributor-admin/command-center';
       case 'buyer': return '/dashboard';
       case 'group_admin': return '/dashboard';
       case 'chef': return '/dashboard';
@@ -189,8 +190,8 @@ export function AuthPage() {
     if (emailError) newErrors.email = emailError;
 
     if (!signupPassword) newErrors.password = 'Password is required';
-    else if (signupPassword.length < 8)
-      newErrors.password = 'Password must be at least 8 characters';
+    else if (!passwordMeetsRequirements(signupPassword))
+      newErrors.password = 'Password must be at least 8 characters with one uppercase letter, one number, and one special character';
 
     if (!verifyPassword)
       newErrors.verifyPassword = 'Please verify your password';
@@ -848,6 +849,7 @@ export function AuthPage() {
             </button>
           </div>
           {renderFieldError('password')}
+          <PasswordRequirements password={signupPassword} />
         </div>
 
         {/* Verify password */}

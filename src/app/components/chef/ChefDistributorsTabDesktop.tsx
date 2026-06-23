@@ -314,7 +314,7 @@ export function ChefDistributorsTabDesktop({
       >
         <MapPin size={14} color={C.hoverBlue} style={{ flexShrink: 0, marginTop: 1 }} />
         <div style={sans}>
-          Area set by your restaurant address. Update it in Settings to change what shows here.
+          Area set by your location's address. Update it in Settings to change what shows here.
         </div>
       </div>
 

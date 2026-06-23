@@ -18,7 +18,7 @@ export function DashboardRoleRouter() {
     return null; // RootWrapper already shows a loading shell on initial mount
   }
 
-  if (user?.role === 'distributor_admin') return <Navigate to="/distributor-admin/" replace />;
+  if (user?.role === 'distributor_admin') return <Navigate to="/distributor-admin/command-center" replace />;
 
   // ROOT CAUSE FIX: brand users must never land in the rep/distributor shell.
   // /dashboard is the post-login default; send brand users straight to /brand.

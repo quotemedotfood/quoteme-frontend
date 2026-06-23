@@ -98,7 +98,9 @@ export function ChefTopbar() {
         onSignOut={handleSignOut}
         onNavigate={(dest) => {
           setDrawerOpen(false);
-          navigate('/dashboard', { state: { activeTab: 'settings' } });
+          if (dest === 'profile') {
+            navigate('/dashboard', { state: { activeTab: 'settings' } });
+          }
         }}
       />
     </>

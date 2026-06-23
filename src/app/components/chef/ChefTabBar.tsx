@@ -3,11 +3,19 @@
 // Ported verbatim from source/screens-tabs.jsx (Desi V2 handoff, 2026-05-19).
 // V3 spec refs: Part 6.7.
 //
-// May 19 locks:
-//   • 4 destinations: Quotes / Distributors / Settings + "Build Quote" outlined-orange pill.
-//   • Tab order: Quotes · Distributors · Settings (never adds Discovery / Browse / Marketplace).
-//   • Scroll-hide: hides on scroll-down >24px (6px deadzone), reveals on scroll-up.
+// Current destinations (4 total):
+//   • Quotes        — tab-home    (chef's quote list)
+//   • Menus         — tab-menus   (chef's menu library)
+//   • Distributors  — tab-stack   (navigates to My Stack, the pin-manage view)
+//   • Build Quote   — distributor-new  (outlined-orange pill; starts a new quote flow)
+//
+//   Tab order: Quotes · Menus · Distributors · Build Quote
+//   Settings has moved to the profile-badge drawer (not a tab destination).
+//   Never adds Discovery / Browse / Marketplace tabs.
+//
+// Design locks:
 //   • "Build Quote" is an OUTLINED-orange pill (not solid) — one-solid-orange-per-screen rule.
+//   • Scroll-hide: hides on scroll-down >24px (6px deadzone), reveals on scroll-up.
 //
 // Translation notes (JSX → TSX):
 //   • PhoneShell context (wrapRef.current.closest(".screen")) → adapted to use
@@ -15,8 +23,6 @@
 //     containers should add className="chef-scroller" to their overflow-auto div.
 //   • cls() → inline ternary strings.
 //   • CSS vars → FE color constants.
-//
-// Intended route: /dashboard/distributors (wire-up pending A3 promotion).
 
 import React, { useRef, useState, useEffect } from 'react';
 
@@ -34,7 +40,7 @@ const sans: React.CSSProperties = {
   fontFamily: "'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
 };
 
-type TabId = 'home' | 'order-guides' | 'distributors' | 'settings';
+type TabId = 'home' | 'menus' | 'order-guides' | 'distributors' | 'settings';
 
 interface TabDef {
   id: TabId | 'build';
@@ -95,8 +101,10 @@ export function ChefTabBar({ active = 'home', nav = () => {} }: ChefTabBarProps)
 
   const tabs: TabDef[] = [
     { id: 'home',          label: 'Quotes',       target: 'tab-home' },
-    { id: 'distributors',  label: 'Distributors', target: 'tab-distributors' },
-    { id: 'settings',      label: 'Settings',     target: 'tab-settings' },
+    { id: 'menus',         label: 'Menus',        target: 'tab-menus' },
+    // PR-3: Distributors tab navigates to My Stack (the manage view).
+    // Add distributor is accessible from within the Stack page.
+    { id: 'distributors',  label: 'Distributors', target: 'tab-stack' },
     { id: 'build',         label: 'Build Quote',  target: 'distributor-new', isAction: true },
   ];
 

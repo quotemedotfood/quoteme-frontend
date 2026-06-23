@@ -141,7 +141,7 @@ function PickPanel({ onSelect }: PickPanelProps) {
           className="mt-4 px-4 py-3 rounded-md text-[12px] text-[#4F4F4F] leading-relaxed"
           style={{ background: '#FBFAF7', border: '1px solid #E8E8E8' }}
         >
-          Set your restaurant's state to see distributors that serve your area.{' '}
+          Set your location's state to see distributors that serve your area.{' '}
           <a
             href="/dashboard"
             className="underline underline-offset-2 text-[#2A2A2A] hover:opacity-70"
@@ -152,7 +152,7 @@ function PickPanel({ onSelect }: PickPanelProps) {
               window.dispatchEvent(new PopStateEvent('popstate', { state: { activeTab: 'settings' } }));
             }}
           >
-            Update restaurant settings
+            Update location settings
           </a>
         </div>
       )}
@@ -477,6 +477,7 @@ function RequestPanel({ restaurantName }: RequestPanelProps) {
     `Hi — building out our spring menu at ${restaurantName || 'our restaurant'} and would love to see your latest price list. Happy to send over what we're looking at.`;
 
   const [distName, setDistName] = useState('');
+  const [repName, setRepName] = useState('');
   const [repEmail, setRepEmail] = useState('');
   const [note, setNote] = useState(defaultNote);
   const [submitting, setSubmitting] = useState(false);
@@ -492,10 +493,16 @@ function RequestPanel({ restaurantName }: RequestPanelProps) {
     setError(null);
     setSubmitting(true);
     try {
+      const rep_contact =
+        repName.trim() || repEmail.trim()
+          ? { name: repName.trim() || undefined, email: repEmail.trim() || undefined }
+          : undefined;
+
       const res = await createChefDistributor({
         mode: 'request',
         distributor_company_name: distName.trim(),
-        rep_contact: repEmail.trim() ? { email: repEmail.trim() } : undefined,
+        rep_name: repName.trim() || undefined,
+        rep_contact,
         request_message: note.trim(),
       });
 
@@ -537,8 +544,24 @@ function RequestPanel({ restaurantName }: RequestPanelProps) {
       </div>
 
       <div className="mt-3">
+        <label className={`${eyebrowClass} block mb-1`} htmlFor="rq_rep_name" style={{ fontSize: 9 }}>
+          REP NAME (OPTIONAL)
+        </label>
+        <input
+          id="rq_rep_name"
+          type="text"
+          value={repName}
+          onChange={(e) => setRepName(e.target.value)}
+          placeholder="e.g. Jamie Torres"
+          disabled={submitting}
+          autoComplete="off"
+          className={inputClass}
+        />
+      </div>
+
+      <div className="mt-3">
         <label className={`${eyebrowClass} block mb-1`} htmlFor="rq_email" style={{ fontSize: 9 }}>
-          REP EMAIL
+          REP EMAIL (OPTIONAL)
         </label>
         <input
           id="rq_email"

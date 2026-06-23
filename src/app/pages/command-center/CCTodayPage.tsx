@@ -1,6 +1,11 @@
 // CCTodayPage — The Board. Landing dispatch surface for the Command Center.
 //
-// Three reads (thin, derived from existing endpoints):
+// Reads:
+//   0. STAT CARDS    — Products (from getDistributorHome), Inbound Quotes
+//                       (from getCommandCenterInbound), Reps (from getDistributorHome).
+//                       All three are clickable.
+//   0b. INBOUND TABLE — compact RoutingTable of unrouted leads. Reason the
+//                       manager logs in. Loads getCommandCenterInbound rows.
 //   1. NEEDS AN OWNER — from getCommandCenterUnassigned() items
 //   2. MOVING         — from getCommandCenterQuotes(): accepted count + recent accepted rows
 //   3. RECENCY        — thin signal only from getCommandCenterRepActivity(): count of
@@ -9,7 +14,6 @@
 // What is deliberately NOT here:
 //   - Going-Cold / Team Health full block (Section 5 excluded)
 //   - Per-rep cold list with rankings or scoreboard
-//   - Section 1 (Inbound) — endpoint doesn't return it
 //   - KPI tiles, charts, trends, percentages
 //
 // Exactly ONE Sacred Orange on this surface: the "Pick owners →" button.
@@ -18,7 +22,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
-import { ArrowRight, FileText, ChevronRight } from 'lucide-react';
+import { ArrowRight, FileText, ChevronRight, Package, Inbox, Users } from 'lucide-react';
 import {
   CCSectionHead,
   RepAvatar,
@@ -32,14 +36,99 @@ import {
   SACRED_ORANGE,
   CC_ACK_NAVY,
 } from '../../components/distributor-admin/command-center/cc-atoms';
+import { RoutingTable } from '../../components/distributor-admin/command-center/RoutingTable';
 import {
   getCommandCenterUnassigned,
   getCommandCenterQuotes,
   getCommandCenterRepActivity,
+  getCommandCenterInbound,
+  getDistributorAdminReps,
+  getDistributorHome,
+  assignInboundOpportunity,
+  assignQuote,
   type CCUnassignedItem,
   type CCQuoteRow,
   type RepActivityRow,
+  type InboundRow,
+  type DistributorRep,
 } from '../../services/api';
+
+// ── Stat card ─────────────────────────────────────────────────────────────────
+
+interface StatCardProps {
+  icon: React.ReactNode;
+  count: number | null;
+  label: string;
+  onClick: () => void;
+}
+
+function StatCard({ icon, count, label, onClick }: StatCardProps) {
+  const [hovered, setHovered] = useState(false);
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        flex: '1 1 0',
+        minWidth: 0,
+        display: 'flex',
+        alignItems: 'center',
+        gap: 14,
+        padding: '16px 18px',
+        background: hovered ? '#F9FAFB' : '#fff',
+        border: `1px solid ${hovered ? '#A5CFDD' : C.softLine}`,
+        borderRadius: 10,
+        cursor: 'pointer',
+        textAlign: 'left',
+        transition: 'background 150ms, border-color 150ms',
+      }}
+    >
+      <div
+        style={{
+          width: 36,
+          height: 36,
+          borderRadius: '50%',
+          background: '#E8F2F7',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexShrink: 0,
+          color: '#7FAEC2',
+        }}
+      >
+        {icon}
+      </div>
+      <div>
+        <div
+          style={{
+            ...serif,
+            fontSize: 22,
+            fontWeight: 600,
+            color: C.charcoal,
+            lineHeight: 1.1,
+            ...tabular,
+          }}
+        >
+          {count === null ? '—' : count}
+        </div>
+        <div
+          style={{
+            ...sans,
+            fontSize: 11.5,
+            color: C.gray500,
+            marginTop: 2,
+            lineHeight: 1.3,
+          }}
+        >
+          {label}
+        </div>
+      </div>
+    </button>
+  );
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -323,6 +412,16 @@ function AcceptedRow({
 export function CCTodayPage() {
   const navigate = useNavigate();
 
+  // Stat cards: home data (product count, rep count)
+  const [productCount, setProductCount] = useState<number | null>(null);
+  const [homeRepCount, setHomeRepCount] = useState<number | null>(null);
+
+  // Inbound table: rows + reps for routing
+  const [inboundRows, setInboundRows] = useState<InboundRow[]>([]);
+  const [inboundReps, setInboundReps] = useState<{ id: string; name: string }[]>([]);
+  const [inboundLoading, setInboundLoading] = useState(true);
+  const [inboundErrorByRowId, setInboundErrorByRowId] = useState<Record<string, string>>({});
+
   // Read 1: Needs an owner
   const [unassignedItems, setUnassignedItems] = useState<CCUnassignedItem[]>([]);
   const [unassignedLoading, setUnassignedLoading] = useState(true);
@@ -337,6 +436,34 @@ export function CCTodayPage() {
 
   useEffect(() => {
     let cancelled = false;
+
+    // Stat cards: home data
+    getDistributorHome().then((res) => {
+      if (cancelled) return;
+      if (res.data) {
+        setProductCount(res.data.catalog_product_count);
+        setHomeRepCount(res.data.rep_count);
+      }
+    });
+
+    // Inbound table: rows + rep list
+    Promise.all([
+      getCommandCenterInbound(),
+      getDistributorAdminReps(),
+    ]).then(([inboundRes, repsRes]) => {
+      if (cancelled) return;
+      setInboundRows(inboundRes.data ?? []);
+      if (repsRes.data) {
+        const mapped = (repsRes.data as DistributorRep[])
+          .filter((r) => r.is_active && r.user_id)
+          .map((r) => ({
+            id: r.user_id as string,
+            name: [r.first_name, r.last_name].filter(Boolean).join(' ') || r.email,
+          }));
+        setInboundReps(mapped);
+      }
+      setInboundLoading(false);
+    });
 
     getCommandCenterUnassigned().then((res) => {
       if (cancelled) return;
@@ -358,6 +485,37 @@ export function CCTodayPage() {
 
     return () => { cancelled = true; };
   }, []);
+
+  // ── Inbound forward handler (mirrors CCInboundPage) ────────────────────────
+  const handleInboundForward = React.useCallback(
+    async (row: InboundRow, repId: string) => {
+      setInboundErrorByRowId((prev) => {
+        const next = { ...prev };
+        delete next[row.id];
+        return next;
+      });
+
+      const res = row.kind === 'opportunity'
+        ? await assignInboundOpportunity(row.id, repId)
+        : await assignQuote(row.id, repId);
+
+      if (res.error) {
+        setInboundErrorByRowId((prev) => ({ ...prev, [row.id]: res.error! }));
+        return;
+      }
+
+      const rep = inboundReps.find((r) => r.id === repId);
+      const updatedRep = rep ? { id: rep.id, name: rep.name } : null;
+      setInboundRows((prev) =>
+        prev.map((r) =>
+          r.id === row.id && r.kind === row.kind
+            ? { ...r, assigned_rep: updatedRep }
+            : r
+        )
+      );
+    },
+    [inboundReps]
+  );
 
   // ── Derived counts ────────────────────────────────────────────────────────
 
@@ -399,8 +557,129 @@ export function CCTodayPage() {
         title="What needs you this morning."
       />
 
+      {/* ── STAT CARDS ── Products / Inbound Quotes / Reps ─────────────── */}
+      <div
+        style={{
+          display: 'flex',
+          gap: 12,
+          marginTop: 20,
+          flexWrap: 'wrap',
+        }}
+      >
+        <StatCard
+          icon={<Package size={17} />}
+          count={productCount}
+          label="Products"
+          onClick={() => navigate('/distributor-admin/catalog')}
+        />
+        <StatCard
+          icon={<Inbox size={17} />}
+          count={inboundLoading ? null : inboundRows.length}
+          label="Inbound Quotes"
+          onClick={() => navigate('/distributor-admin/command-center/inbound')}
+        />
+        <StatCard
+          icon={<Users size={17} />}
+          count={homeRepCount}
+          label="Reps"
+          onClick={() => navigate('/distributor-admin/reps')}
+        />
+      </div>
+
+      {/* ── INBOUND QUOTES TABLE ─────────────────────────────────────────── */}
+      <Read>
+        <SectionHead
+          eyebrow="INBOUND QUOTES"
+          eyebrowColor={CC_ACK_NAVY}
+          title={
+            inboundLoading
+              ? 'Loading…'
+              : inboundRows.length === 0
+              ? 'No inbound leads right now.'
+              : `${inboundRows.length} ${inboundRows.length === 1 ? 'lead' : 'leads'} waiting to be routed.`
+          }
+          right={
+            !inboundLoading && inboundRows.length > 0 ? (
+              <button
+                type="button"
+                onClick={() => navigate('/distributor-admin/command-center/inbound')}
+                style={{
+                  ...sans,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  background: 'none',
+                  color: CC_ACK_NAVY,
+                  border: `1px solid ${CC_ACK_NAVY}`,
+                  borderRadius: 6,
+                  padding: '7px 13px',
+                  fontSize: 12,
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  flexShrink: 0,
+                }}
+              >
+                See all
+                <ArrowRight size={12} color={CC_ACK_NAVY} />
+              </button>
+            ) : undefined
+          }
+        />
+
+        {inboundLoading ? (
+          <>
+            <RowSkeleton />
+            <RowSkeleton />
+            <RowSkeleton />
+          </>
+        ) : inboundRows.length === 0 ? (
+          <div
+            style={{
+              ...sans,
+              padding: '20px 0',
+              fontSize: 13,
+              color: C.gray500,
+            }}
+          >
+            No inbound opportunities yet.
+          </div>
+        ) : (
+          <div style={{ marginTop: 12 }}>
+            <RoutingTable
+              rows={inboundRows.slice(0, 8)}
+              reps={inboundReps}
+              onForward={handleInboundForward}
+              canForward
+              loading={false}
+              errorByRowId={inboundErrorByRowId}
+            />
+            {inboundRows.length > 8 && (
+              <div style={{ marginTop: 12 }}>
+                <button
+                  type="button"
+                  onClick={() => navigate('/distributor-admin/command-center/inbound')}
+                  style={{
+                    ...sans,
+                    fontSize: 12.5,
+                    color: CC_ACK_NAVY,
+                    background: 'none',
+                    border: 'none',
+                    padding: 0,
+                    cursor: 'pointer',
+                    textDecoration: 'underline',
+                    textUnderlineOffset: 2,
+                  }}
+                >
+                  View all {inboundRows.length} inbound leads →
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </Read>
+
       {/* Count line — attention signals, not KPI tiles */}
-      <div style={{ marginTop: 16 }}>
+      <div style={{ marginTop: 28 }}>
         {quotesLoading ? (
           <LineSkeleton width={400} />
         ) : (
@@ -554,6 +833,17 @@ export function CCTodayPage() {
           >
             See all rep activity.
           </button>
+          {' '}
+          <span
+            style={{
+              ...sans,
+              fontSize: 11,
+              color: C.gray500,
+              fontStyle: 'italic',
+            }}
+          >
+            (Quotes created / sent / accepted are all-time per rep.)
+          </span>
         </div>
       )}
     </div>

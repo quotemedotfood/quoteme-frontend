@@ -1,23 +1,35 @@
 // ChefMenusPage — /chef/menus
 //
-// Reverse-chronological list of the chef's saved menus.
-// Populated state: rows with name, item count, last-quoted date, quote
-// count, "Use for a quote" CTA, kebab (Rename / Delete), and a "Draft"
-// pill for never-quoted menus.
+// "Menus and Order Guides" — two sections on one surface:
 //
-// Empty state: minimal, doctrine-quiet — no onboarding theater. Brief
-// copy + primary action to create a first menu via /chef/entry.
+//   1. Menus — reverse-chronological list of the chef's saved menus.
+//      Each row carries a small source badge derived from source_type:
+//        public_scrape → "Scraped"
+//        chef_upload   → "Uploaded"
+//        rep_upload    → "From your rep"
+//        direct_import → "Imported"
+//        OCR_photo     → "Photo"
+//        pasted_text | paste → "Pasted"
+//      Existing affordances preserved: name, item_count, last_quoted,
+//      quote_count, "Use for a quote" CTA, kebab (Rename / Delete), Draft pill.
 //
-// BE not yet live (Track C, Agent C4). Endpoint 404s render the empty
-// state cleanly — no crash.
+//   2. Order Guides — flat list from GET /api/v1/chef/order_guides.
+//      Columns: distributor name, status pill, item count, date.
+//      PDF and Excel download links.
+//      Empty state: "No order guides yet."
+//
+// No new routes — both live at /chef/menus (ChefMenusPage).
+// BE 404s on either endpoint render graceful empty states.
 
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import {
   getChefMenus,
+  getChefOrderGuides,
   renameChefMenu,
   deleteChefMenu,
   type ChefMenuRow,
+  type ChefOrderGuideRow,
 } from '../../services/api';
 
 // ─── Palette ──────────────────────────────────────────────────────────────────
@@ -53,11 +65,62 @@ function formatDate(iso: string): string {
   }
 }
 
+/** Map BE source_type to a short human label. */
+function sourceLabel(sourceType: string | null | undefined): string | null {
+  if (!sourceType) return null;
+  switch (sourceType) {
+    case 'public_scrape':  return 'Scraped';
+    case 'chef_upload':    return 'Uploaded';
+    case 'rep_upload':     return 'From your rep';
+    case 'direct_import':  return 'Imported';
+    case 'OCR_photo':      return 'Photo';
+    case 'pasted_text':
+    case 'paste':          return 'Pasted';
+    default:               return null;
+  }
+}
+
+/** Map OG status to a pill style. */
+function statusPillStyle(status: string): React.CSSProperties {
+  const base: React.CSSProperties = {
+    ...sans,
+    fontSize: 10.5,
+    fontWeight: 500,
+    padding: '2px 8px',
+    borderRadius: 999,
+    whiteSpace: 'nowrap' as const,
+    flexShrink: 0,
+  };
+  switch (status) {
+    case 'finalized':
+    case 'accepted':
+      return { ...base, color: '#065F46', background: '#D1FAE5' };
+    case 'draft':
+      return { ...base, color: '#92400E', background: '#FEF3C7' };
+    case 'sent':
+    case 'submitted':
+      return { ...base, color: '#1E3A5F', background: '#DBEAFE' };
+    default:
+      return { ...base, color: C.gray700, background: '#F3F4F6' };
+  }
+}
+
+function statusLabel(status: string): string {
+  switch (status) {
+    case 'finalized': return 'Finalized';
+    case 'accepted':  return 'Accepted';
+    case 'draft':     return 'Draft';
+    case 'sent':      return 'Sent';
+    case 'submitted': return 'Submitted';
+    default:          return status.charAt(0).toUpperCase() + status.slice(1);
+  }
+}
+
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 function Spinner() {
   return (
-    <div className="flex flex-col items-center gap-3 py-20">
+    <div className="flex flex-col items-center gap-3 py-16">
       <div
         className="w-8 h-8 rounded-full border-4"
         style={{
@@ -71,9 +134,9 @@ function Spinner() {
   );
 }
 
-function EmptyState({ onNew }: { onNew: () => void }) {
+function MenusEmptyState({ onNew }: { onNew: () => void }) {
   return (
-    <div className="py-20 text-center max-w-sm mx-auto">
+    <div className="py-14 text-center max-w-sm mx-auto">
       <p style={{ ...sans, fontSize: 14, color: C.gray700, lineHeight: 1.6 }}>
         You haven't saved any menus yet. Start a quote and your menu will be saved here for
         re-use.
@@ -101,11 +164,11 @@ function EmptyState({ onNew }: { onNew: () => void }) {
   );
 }
 
-function ErrorState({ message }: { message: string }) {
+function ErrorInline({ message }: { message: string }) {
   return (
-    <div className="py-20 text-center">
-      <p style={{ ...sans, fontSize: 14, color: C.gray700 }}>
-        {message || "Couldn't load your menus right now."}
+    <div className="py-10 text-center">
+      <p style={{ ...sans, fontSize: 13.5, color: C.gray700 }}>
+        {message || "Couldn't load right now."}
       </p>
     </div>
   );
@@ -126,6 +189,28 @@ function DraftPill() {
       }}
     >
       Draft
+    </span>
+  );
+}
+
+function SourceBadge({ sourceType }: { sourceType: string | null | undefined }) {
+  const label = sourceLabel(sourceType);
+  if (!label) return null;
+  return (
+    <span
+      style={{
+        ...sans,
+        fontSize: 10,
+        fontWeight: 500,
+        color: '#374151',
+        background: '#F3F4F6',
+        border: '1px solid #E5E7EB',
+        padding: '2px 7px',
+        borderRadius: 999,
+        flexShrink: 0,
+      }}
+    >
+      {label}
     </span>
   );
 }
@@ -305,7 +390,8 @@ function MenuRow({
               textAlign: 'left',
               display: 'flex',
               alignItems: 'center',
-              gap: 8,
+              flexWrap: 'wrap',
+              gap: 6,
               maxWidth: '100%',
             }}
           >
@@ -319,6 +405,7 @@ function MenuRow({
               {menu.name}
             </span>
             {isDraft && <DraftPill />}
+            <SourceBadge sourceType={menu.source_type} />
           </button>
         )}
         <div
@@ -394,32 +481,190 @@ function MenuRow({
   );
 }
 
+// Single order guide row
+function OrderGuideRow({ og }: { og: ChefOrderGuideRow }) {
+  const API_BASE = import.meta.env.VITE_API_BASE_URL || 'https://web-production-9f6e9.up.railway.app';
+
+  return (
+    <div
+      style={{
+        borderBottom: `1px solid ${C.softLine}`,
+        padding: '13px 0',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 12,
+      }}
+    >
+      {/* Distributor name + meta */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div
+          style={{
+            ...sans,
+            fontSize: 14,
+            fontWeight: 500,
+            color: C.charcoal,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            flexWrap: 'wrap',
+          }}
+        >
+          <span
+            style={{
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {og.distributor_name ?? 'Unknown distributor'}
+          </span>
+          <span style={statusPillStyle(og.status)}>{statusLabel(og.status)}</span>
+        </div>
+        <div style={{ ...sans, fontSize: 11.5, color: C.gray500, marginTop: 3 }}>
+          {og.items_count} {og.items_count === 1 ? 'item' : 'items'}
+          {' · '}
+          {formatDate(og.created_at)}
+        </div>
+      </div>
+
+      {/* Download links */}
+      <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+        <a
+          href={`${API_BASE}/api/v1/chef/order_guides/${og.id}/pdf`}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            ...sans,
+            fontSize: 12,
+            fontWeight: 600,
+            color: C.charcoal,
+            border: `1px solid ${C.softLine}`,
+            borderRadius: 6,
+            padding: '6px 11px',
+            textDecoration: 'none',
+            whiteSpace: 'nowrap',
+            background: '#fff',
+          }}
+        >
+          PDF
+        </a>
+        <a
+          href={`${API_BASE}/api/v1/chef/order_guides/${og.id}/excel`}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            ...sans,
+            fontSize: 12,
+            fontWeight: 600,
+            color: C.charcoal,
+            border: `1px solid ${C.softLine}`,
+            borderRadius: 6,
+            padding: '6px 11px',
+            textDecoration: 'none',
+            whiteSpace: 'nowrap',
+            background: '#fff',
+          }}
+        >
+          Excel
+        </a>
+      </div>
+    </div>
+  );
+}
+
+// Section header with count badge
+function SectionHeader({ title, count }: { title: string; count?: number }) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'baseline',
+        gap: 8,
+        borderBottom: `1px solid ${C.softLine}`,
+        paddingBottom: 10,
+        marginBottom: 0,
+      }}
+    >
+      <h2
+        style={{
+          ...serif,
+          fontSize: 19,
+          fontWeight: 600,
+          color: C.charcoal,
+          margin: 0,
+          lineHeight: 1.2,
+        }}
+      >
+        {title}
+      </h2>
+      {typeof count === 'number' && count > 0 && (
+        <span
+          style={{
+            ...sans,
+            fontSize: 11,
+            fontWeight: 500,
+            color: C.gray500,
+            background: '#F3F4F6',
+            border: '1px solid #E5E7EB',
+            borderRadius: 999,
+            padding: '1px 8px',
+          }}
+        >
+          {count}
+        </span>
+      )}
+    </div>
+  );
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export function ChefMenusPage() {
   const navigate = useNavigate();
-  const [loadState, setLoadState] = useState<'loading' | 'ready' | 'error'>('loading');
+
+  // Menus state
+  const [menusLoad, setMenusLoad] = useState<'loading' | 'ready' | 'error'>('loading');
   const [menus, setMenus] = useState<ChefMenuRow[]>([]);
-  const [errorMsg, setErrorMsg] = useState('');
+  const [menusError, setMenusError] = useState('');
+
+  // Order Guides state
+  const [ogsLoad, setOgsLoad] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [ogs, setOgs] = useState<ChefOrderGuideRow[]>([]);
 
   useEffect(() => {
     let cancelled = false;
+
+    // Fetch menus
     (async () => {
       const res = await getChefMenus();
       if (cancelled) return;
       if (res.data) {
         setMenus(res.data.menus);
-        setLoadState('ready');
+        setMenusLoad('ready');
       } else {
-        // BE not yet live — treat 404 / empty as no menus rather than hard error
+        // BE not yet live — treat 404 as empty rather than error
         setMenus([]);
-        setLoadState('ready');
+        setMenusLoad('ready');
         if (res.error && !res.error.includes('404') && !res.error.includes('HTTP 404')) {
-          setErrorMsg(res.error);
-          setLoadState('error');
+          setMenusError(res.error);
+          setMenusLoad('error');
         }
       }
     })();
+
+    // Fetch order guides
+    (async () => {
+      const res = await getChefOrderGuides();
+      if (cancelled) return;
+      if (res.data) {
+        setOgs(res.data);
+        setOgsLoad('ready');
+      } else {
+        setOgs([]);
+        setOgsLoad('ready');
+      }
+    })();
+
     return () => { cancelled = true; };
   }, []);
 
@@ -449,7 +694,7 @@ export function ChefMenusPage() {
         style={{
           borderBottom: `1px solid ${C.softLine}`,
           paddingBottom: 18,
-          marginBottom: 8,
+          marginBottom: 28,
         }}
       >
         <h1
@@ -462,7 +707,7 @@ export function ChefMenusPage() {
             margin: 0,
           }}
         >
-          Menus
+          Menus and Order Guides
         </h1>
         <p
           style={{
@@ -473,32 +718,70 @@ export function ChefMenusPage() {
             lineHeight: 1.5,
           }}
         >
-          Every menu you've built or quoted from, saved for re-use.
+          Every menu you've built or quoted from, and the order guides generated from them.
         </p>
       </div>
 
-      {/* Body */}
-      {loadState === 'loading' && <Spinner />}
-      {loadState === 'error' && <ErrorState message={errorMsg} />}
-      {loadState === 'ready' && menus.length === 0 && (
-        <EmptyState onNew={() => navigate('/chef/entry')} />
-      )}
-      {loadState === 'ready' && menus.length > 0 && (
-        <div style={{ borderTop: `1px solid ${C.softLine}` }}>
-          {menus.map((menu) => (
-            <MenuRow
-              key={menu.id}
-              menu={menu}
-              onOpen={() => navigate(`/chef/menus/${menu.id}`)}
-              onUseForQuote={() =>
-                navigate('/chef/pull/entry', { state: { menu_id: menu.id } })
-              }
-              onRename={(name) => handleRename(menu.id, name)}
-              onDelete={() => handleDelete(menu.id)}
-            />
-          ))}
-        </div>
-      )}
+      {/* ── Menus section ─────────────────────────────────────────── */}
+      <div style={{ marginBottom: 40 }}>
+        <SectionHeader
+          title="Menus"
+          count={menusLoad === 'ready' ? menus.length : undefined}
+        />
+
+        {menusLoad === 'loading' && <Spinner />}
+        {menusLoad === 'error' && <ErrorInline message={menusError} />}
+        {menusLoad === 'ready' && menus.length === 0 && (
+          <MenusEmptyState onNew={() => navigate('/chef/entry')} />
+        )}
+        {menusLoad === 'ready' && menus.length > 0 && (
+          <div>
+            {menus.map((menu) => (
+              <MenuRow
+                key={menu.id}
+                menu={menu}
+                onOpen={() => navigate(`/chef/menus/${menu.id}`)}
+                onUseForQuote={() =>
+                  navigate('/chef/pull/entry', { state: { menu_id: menu.id } })
+                }
+                onRename={(name) => handleRename(menu.id, name)}
+                onDelete={() => handleDelete(menu.id)}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* ── Order Guides section ───────────────────────────────────── */}
+      <div>
+        <SectionHeader
+          title="Order Guides"
+          count={ogsLoad === 'ready' ? ogs.length : undefined}
+        />
+
+        {ogsLoad === 'loading' && <Spinner />}
+        {ogsLoad === 'ready' && ogs.length === 0 && (
+          <div className="py-12 text-center">
+            <p style={{ ...sans, fontSize: 13.5, color: C.gray500, lineHeight: 1.5 }}>
+              No order guides yet.
+            </p>
+          </div>
+        )}
+        {ogsLoad === 'ready' && ogs.length > 0 && (
+          <div>
+            {ogs.map((og) => (
+              <OrderGuideRow key={og.id} og={og} />
+            ))}
+          </div>
+        )}
+        {ogsLoad === 'error' && (
+          <div className="py-10 text-center">
+            <p style={{ ...sans, fontSize: 13.5, color: C.gray500 }}>
+              Couldn't load order guides right now.
+            </p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

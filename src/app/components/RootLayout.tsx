@@ -81,21 +81,19 @@ export function RootLayout() {
   ) {
     const landing =
       user?.role === 'quoteme_admin' ? '/qm-admin' :
-      user?.role === 'distributor_admin' ? '/distributor-admin' :
+      user?.role === 'distributor_admin' ? '/distributor-admin/command-center' :
       '/dashboard';
     return <Navigate to={landing} replace />;
   }
 
-  // V2 fix (smoke P0-A): chef-role + group_admin users get the minimal chef
-  // layout — wordmark + identity + sign-out only, no AppSidebar.
-  // Distributors/Locations/Quotes routes don't exist as chef-facing surfaces
-  // in V2 scope, so showing rep-flavored nav to a chef is both confusing and
-  // 404-prone. Buyer stays on AppSidebar; rep flow unchanged.
+  // V2 fix (smoke P0-A): chef-role + group_admin + buyer users get the minimal
+  // chef layout — wordmark + identity + sign-out only, no AppSidebar.
+  // Buyer is chef-side per Justin doctrine lock (see DashboardRoleRouter.tsx:27-30).
   // P0 (Bug #1): a guest viewing the chef receipt has no user/role yet;
   // without this override they'd render the rep AppSidebar around the
   // receipt. Force the minimal chef layout for that case.
   const isChefLayout =
-    isGuestChefReceipt || ['chef', 'group_admin'].includes(user?.role ?? '');
+    isGuestChefReceipt || ['chef', 'group_admin', 'buyer'].includes(user?.role ?? '');
 
   if (isChefLayout) {
     return (
@@ -113,7 +111,7 @@ export function RootLayout() {
   return (
     <AuthSyncProvider>
       <div className="flex h-screen bg-[#FFF9F3]">
-        {!demo && user?.role !== 'rep' && !location.pathname.startsWith('/distributor-admin/command-center') && <AppSidebar />}
+        {!demo && user?.role !== 'rep' && user?.role !== 'distributor_admin' && !location.pathname.startsWith('/distributor-admin/command-center') && <AppSidebar />}
         <div className="flex-1 flex flex-col overflow-hidden">
           {demo && <DemoBanner />}
           <main className="flex-1 overflow-auto pb-24 md:pb-0">
