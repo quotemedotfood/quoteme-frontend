@@ -29,6 +29,7 @@ import {
   C,
   CC_ACK_NAVY,
 } from '../../components/distributor-admin/command-center/cc-atoms';
+import { QuoteRowActions } from '../../components/distributor-admin/command-center/QuoteRowActions';
 import {
   getCommandCenterQuotes,
   type CCQuoteRow,
@@ -48,14 +49,14 @@ function RowSkeleton() {
     <div
       style={{
         display: 'grid',
-        gridTemplateColumns: '180px 1fr 78px 130px 64px',
+        gridTemplateColumns: '180px 1fr 78px 170px 64px',
         gap: 12,
         padding: '14px 0',
         borderBottom: `1px solid ${C.softLine}`,
         alignItems: 'center',
       }}
     >
-      {[180, 240, 60, 120, 50].map((w, i) => (
+      {[180, 240, 60, 120, 80].map((w, i) => (
         <div
           key={i}
           style={{
@@ -173,29 +174,27 @@ function RepChip({
 
 // ── Desktop row ───────────────────────────────────────────────────────────────
 
-function DeskRow({ q, onClick, onRepClick }: { q: CCQuoteRow; onClick: () => void; onRepClick?: (repId: string, e: React.MouseEvent) => void }) {
+function DeskRow({ q, onClick, onEdit, onRepClick }: { q: CCQuoteRow; onClick: () => void; onEdit: () => void; onRepClick?: (repId: string, e: React.MouseEvent) => void }) {
   const [hovered, setHovered] = useState(false);
 
   return (
-    <button
-      type="button"
-      onClick={onClick}
+    <div
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
         display: 'grid',
-        gridTemplateColumns: '180px 1fr 78px 130px 64px',
+        gridTemplateColumns: '180px 1fr 78px 170px 64px',
         gap: 12,
         width: '100%',
-        textAlign: 'left',
         alignItems: 'center',
         padding: '14px 0',
         background: hovered ? '#F9FAFB' : 'transparent',
-        border: 'none',
         borderBottom: `1px solid ${C.softLine}`,
         cursor: 'pointer',
         transition: 'background 150ms',
       }}
+      role="row"
+      onClick={onClick}
     >
       {/* REP */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
@@ -293,38 +292,36 @@ function DeskRow({ q, onClick, onRepClick }: { q: CCQuoteRow; onClick: () => voi
         <CCStatusTag status={q.status} />
       </div>
 
-      {/* SENT */}
-      <div style={{ ...sans, ...tabular, fontSize: 12, color: C.gray500, textAlign: 'right' }}>
-        {q.sent}
+      {/* ACTIONS — View PDF + Edit; stop propagation so row click doesn't also fire */}
+      <div onClick={(e) => e.stopPropagation()}>
+        <QuoteRowActions quoteId={q.id} onEdit={onEdit} />
       </div>
-    </button>
+    </div>
   );
 }
 
 // ── Mobile row ────────────────────────────────────────────────────────────────
 
-function PhoneRow({ q, onClick, onRepClick }: { q: CCQuoteRow; onClick: () => void; onRepClick?: (repId: string, e: React.MouseEvent) => void }) {
+function PhoneRow({ q, onClick, onEdit, onRepClick }: { q: CCQuoteRow; onClick: () => void; onEdit: () => void; onRepClick?: (repId: string, e: React.MouseEvent) => void }) {
   const [hovered, setHovered] = useState(false);
 
   return (
-    <button
-      type="button"
-      onClick={onClick}
+    <div
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
+      onClick={onClick}
       style={{
         display: 'flex',
         alignItems: 'flex-start',
         gap: 12,
         width: '100%',
-        textAlign: 'left',
         padding: '12px 0',
         background: hovered ? '#F9FAFB' : 'transparent',
-        border: 'none',
         borderBottom: `1px solid ${C.softLine}`,
         cursor: 'pointer',
         transition: 'background 150ms',
       }}
+      role="row"
     >
       {q.rep ? (
         <RepAvatar initials={q.rep.initials} name={q.rep.name} size={30} />
@@ -386,16 +383,20 @@ function PhoneRow({ q, onClick, onRepClick }: { q: CCQuoteRow; onClick: () => vo
           )}{' '}
           · {q.items} items
         </div>
-        <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <CCStatusTag status={q.status} size="xs" />
           {q.requote > 0 && (
             <span style={{ ...sans, ...tabular, fontSize: 10.5, color: C.gray500 }}>
               re-quoted {q.requote}×
             </span>
           )}
+          {/* Actions inline on mobile row — stop propagation so row click doesn't also fire */}
+          <div onClick={(e) => e.stopPropagation()}>
+            <QuoteRowActions quoteId={q.id} onEdit={onEdit} />
+          </div>
         </div>
       </div>
-    </button>
+    </div>
   );
 }
 
@@ -595,12 +596,12 @@ export function CCQuotesPage() {
           className="hidden lg:grid"
           style={{
             display: 'grid',
-            gridTemplateColumns: '180px 1fr 78px 130px 64px',
+            gridTemplateColumns: '180px 1fr 78px 170px 64px',
             gap: 12,
             paddingBottom: 8,
           }}
         >
-          {(['REP', 'RESTAURANT', 'TOTAL', 'STATUS', 'SENT'] as const).map((h, i) => (
+          {(['REP', 'RESTAURANT', 'TOTAL', 'STATUS', 'ACTIONS'] as const).map((h) => (
             <div
               key={h}
               style={{
@@ -610,7 +611,6 @@ export function CCQuotesPage() {
                 textTransform: 'uppercase',
                 color: C.gray700,
                 fontWeight: 600,
-                textAlign: i === 4 ? 'right' : 'left',
               }}
             >
               {h}
@@ -689,11 +689,11 @@ export function CCQuotesPage() {
             <React.Fragment key={q.id}>
               {/* Desktop row — hidden on small screens */}
               <div className="hidden lg:block">
-                <DeskRow q={q} onClick={() => goToDetail(q.id)} onRepClick={goToRep} />
+                <DeskRow q={q} onClick={() => goToDetail(q.id)} onEdit={() => goToDetail(q.id)} onRepClick={goToRep} />
               </div>
               {/* Mobile row — hidden on large screens */}
               <div className="lg:hidden">
-                <PhoneRow q={q} onClick={() => goToDetail(q.id)} onRepClick={goToRep} />
+                <PhoneRow q={q} onClick={() => goToDetail(q.id)} onEdit={() => goToDetail(q.id)} onRepClick={goToRep} />
               </div>
             </React.Fragment>
           ))

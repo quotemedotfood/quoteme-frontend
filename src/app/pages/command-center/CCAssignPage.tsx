@@ -3,11 +3,12 @@
 // Replaces CCSoonPage at /distributor-admin/command-center/assign.
 //
 // Purpose: every unassigned quote and ownerless inbound gets a rep.
-// Must feel completable: pick a rep (load shown, never ranked) → row
-// flips to assigned confirmation with Undo. Undo reverts to unassigned.
+// Must feel completable: pick a rep via RepTypeahead → row flips to
+// assigned confirmation with Undo. Undo reverts to unassigned.
 //
-// ONE Sacred Orange on this surface = the "Assign" button (#F2993D).
-// Nothing else orange. ToMarket Orange (#F04E23) never appears.
+// P3+P4: The separate "Assign" button + inline picker have been removed.
+// The single assign workflow is now the RepTypeahead control inline on
+// each row — consistent with the Inbound Forward-To pattern.
 //
 // No charts, no scores, no rankings. Reps sorted by open load ascending
 // (lightest first) — the copy says so and there is no score column.
@@ -23,13 +24,13 @@ import {
   CCSectionHead,
   AttentionRule,
   SoftRule,
-  RepAvatar,
   sans,
   serif,
   tabular,
   C,
   CC_ACK_NAVY,
 } from '../../components/distributor-admin/command-center/cc-atoms';
+import { RepTypeahead } from '../../components/distributor-admin/command-center/RepTypeahead';
 import {
   getCommandCenterUnassigned,
   assignQuote,
@@ -41,73 +42,9 @@ import {
 // ── Row-level state ───────────────────────────────────────────────────────────
 
 interface RowState {
-  picking: boolean;
   assignedRepId: string | null;
   error: string | null;
   saving: boolean;
-}
-
-// ── Rep picker row ────────────────────────────────────────────────────────────
-
-function RepPickerRow({
-  rep,
-  onPick,
-}: {
-  rep: CCUnassignedRep;
-  onPick: (rep: CCUnassignedRep) => void;
-}) {
-  const [hovered, setHovered] = useState(false);
-
-  return (
-    <button
-      type="button"
-      onClick={() => onPick(rep)}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      style={{
-        ...sans,
-        width: '100%',
-        display: 'flex',
-        alignItems: 'center',
-        gap: 10,
-        padding: '8px 10px',
-        borderRadius: 6,
-        background: hovered ? '#F9FAFB' : 'transparent',
-        border: 'none',
-        cursor: 'pointer',
-        textAlign: 'left',
-        transition: 'background 150ms',
-      }}
-    >
-      <RepAvatar initials={rep.initials} name={rep.name} size={28} />
-      <span style={{ flex: 1, minWidth: 0 }}>
-        <span
-          style={{
-            display: 'block',
-            fontSize: 13,
-            color: C.charcoal,
-            lineHeight: 1.3,
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          {rep.name}
-        </span>
-        <span
-          style={{
-            ...tabular,
-            display: 'block',
-            fontSize: 11,
-            color: C.gray500,
-            lineHeight: 1.3,
-          }}
-        >
-          {rep.open} open · last quote {rep.last}
-        </span>
-      </span>
-    </button>
-  );
 }
 
 // ── Assign row ────────────────────────────────────────────────────────────────
@@ -115,14 +52,11 @@ function RepPickerRow({
 function AssignRow({
   row,
   reps,
-  isMobile,
 }: {
   row: CCUnassignedItem;
   reps: CCUnassignedRep[];
-  isMobile: boolean;
 }) {
   const [state, setState] = useState<RowState>({
-    picking: false,
     assignedRepId: null,
     error: null,
     saving: false,
@@ -132,15 +66,16 @@ function AssignRow({
     ? reps.find((r) => r.id === state.assignedRepId) ?? null
     : null;
 
-  async function handlePick(rep: CCUnassignedRep) {
+  async function handlePick(repId: string) {
     // Optimistic: flip to assigned immediately
-    setState((s) => ({ ...s, picking: false, assignedRepId: rep.id, saving: true, error: null }));
+    setState((s) => ({ ...s, assignedRepId: repId, saving: true, error: null }));
+    const rep = reps.find((r) => r.id === repId);
 
     try {
       const res =
         row.kind === 'quote'
-          ? await assignQuote(row.id, rep.id)
-          : await assignRestaurantRep(row.id, rep.id);
+          ? await assignQuote(row.id, repId)
+          : await assignRestaurantRep(row.id, repId);
 
       if (res.error) {
         // Revert optimistic update on failure
@@ -302,7 +237,7 @@ function AssignRow({
   return (
     <div>
       <div style={{ padding: '14px 0' }}>
-        {/* Top row: icon + restaurant + Assign button */}
+        {/* Row: icon + restaurant info + RepTypeahead inline assign */}
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
           <FileText
             size={16}
@@ -349,114 +284,17 @@ function AssignRow({
               {metaLine}
             </div>
           </div>
-          {!state.picking && (
-            <button
-              type="button"
-              onClick={() => setState((s) => ({ ...s, picking: true, error: null }))}
-              style={{
-                ...sans,
-                background: '#fff',
-                color: C.charcoal,
-                border: '1px solid #A5B4FC',
-                borderRadius: 5,
-                padding: '5px 14px',
-                fontSize: 12,
-                fontWeight: 500,
-                cursor: 'pointer',
-                flexShrink: 0,
-                transition: 'box-shadow 150ms',
-                lineHeight: 1.4,
-                boxShadow: '0 0 0 2px #EEF2FF',
-              }}
-              onMouseEnter={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 0 0 3px #C7D2FE';
-              }}
-              onMouseLeave={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 0 0 2px #EEF2FF';
-              }}
-            >
-              Assign
-            </button>
-          )}
-        </div>
-
-        {/* Inline rep picker */}
-        {state.picking && (
-          <div
-            style={{
-              marginTop: 12,
-              marginLeft: 28,
-              background: '#fff',
-              border: `1px solid ${C.softLine}`,
-              borderRadius: 8,
-              padding: 8,
-            }}
-          >
-            {/* Picker header */}
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '4px 4px 8px',
-                borderBottom: `1px solid ${C.softLine}`,
-                marginBottom: 4,
-              }}
-            >
-              <span
-                style={{
-                  ...sans,
-                  fontSize: 9,
-                  letterSpacing: '.14em',
-                  textTransform: 'uppercase',
-                  color: C.gray700,
-                  fontWeight: 600,
-                }}
-              >
-                PICK AN OWNER · BY CURRENT LOAD, NOT RANK
-              </span>
-              <button
-                type="button"
-                onClick={() => setState((s) => ({ ...s, picking: false }))}
-                style={{
-                  ...sans,
-                  fontSize: 11,
-                  color: C.gray500,
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  padding: '2px 4px',
-                }}
-                onMouseEnter={(e) => {
-                  (e.currentTarget as HTMLButtonElement).style.color = C.gray700;
-                }}
-                onMouseLeave={(e) => {
-                  (e.currentTarget as HTMLButtonElement).style.color = C.gray500;
-                }}
-              >
-                Cancel
-              </button>
-            </div>
-
-            {/* Rep list — desktop 2-col, mobile single col */}
-            <div
-              style={
-                isMobile
-                  ? { display: 'flex', flexDirection: 'column' }
-                  : {
-                      display: 'grid',
-                      gridTemplateColumns: '1fr 1fr',
-                      gap: 2,
-                    }
-              }
-            >
-              {/* Reps already sorted by open ascending from the endpoint — preserve order */}
-              {reps.map((rep) => (
-                <RepPickerRow key={rep.id} rep={rep} onPick={handlePick} />
-              ))}
-            </div>
+          {/* Single assign workflow: RepTypeahead (consistent with Inbound Forward-To) */}
+          <div style={{ flexShrink: 0 }}>
+            <RepTypeahead
+              reps={reps}
+              value={undefined}
+              onSelect={handlePick}
+              placeholder="Assign rep…"
+              disabled={state.saving}
+            />
           </div>
-        )}
+        </div>
 
         {state.error && (
           <div
@@ -536,17 +374,6 @@ export function CCAssignPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Simple mobile detection — mirrors CCQuotesPage pattern
-  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 1024);
-
-  useEffect(() => {
-    function onResize() {
-      setIsMobile(window.innerWidth < 1024);
-    }
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
-  }, []);
-
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
@@ -570,12 +397,8 @@ export function CCAssignPage() {
     <div>
       <CCSectionHead
         eyebrow="ASSIGNMENTS"
-        title={isMobile ? 'Pick an owner.' : 'Unassigned — pick an owner.'}
-        sub={
-          isMobile
-            ? undefined
-            : 'Inbound interest and quotes nobody\'s holding yet. Hand each one to a rep. Loads are shown so you can spread the work — never a ranking.'
-        }
+        title="Unassigned — pick an owner."
+        sub="Inbound interest and quotes nobody's holding yet. Hand each one to a rep. Loads are shown so you can spread the work — never a ranking."
       />
 
       <div style={{ marginTop: 24 }}>
@@ -643,7 +466,6 @@ export function CCAssignPage() {
               key={`${item.kind}-${item.id}`}
               row={item}
               reps={reps}
-              isMobile={isMobile}
             />
           ))
         )}
