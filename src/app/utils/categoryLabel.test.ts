@@ -36,6 +36,19 @@ describe('M-5: categoryLabel — protein/proteins normalisation', () => {
   it('prettifies unknown tokens instead of returning raw snake_case', () => {
     expect(categoryLabel('some_unknown_category')).toBe('Some Unknown Category');
   });
+
+  // B-16: ALL_CAPS/underscore enum tokens (e.g. from backend enum columns) must humanize
+  it('humanizes DRY_GOODS (ALL_CAPS enum) to "Dry Goods"', () => {
+    expect(categoryLabel('DRY_GOODS')).toBe('Dry Goods');
+  });
+
+  it('humanizes FRESH_PRODUCE (unknown ALL_CAPS enum) to "Fresh Produce"', () => {
+    expect(categoryLabel('FRESH_PRODUCE')).toBe('Fresh Produce');
+  });
+
+  it('maps dry_goods (lowercase) to "Dry Goods" via explicit map', () => {
+    expect(categoryLabel('dry_goods')).toBe('Dry Goods');
+  });
 });
 
 describe('M-5: CATEGORY_DISPLAY_LABELS map includes protein → Proteins', () => {

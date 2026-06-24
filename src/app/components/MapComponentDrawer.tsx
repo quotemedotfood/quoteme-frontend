@@ -13,6 +13,7 @@ import { X, Loader2, ArrowRightLeft, Plus } from 'lucide-react';
 import { CatalogProductSearch } from './CatalogProductSearch';
 import type { CatalogSearchProduct } from '../services/api';
 import { toTitleCase, formatProductName } from '../utils/format';
+import { categoryLabel } from '../utils/categoryLabel';
 
 interface CandidateProduct {
   id: string;
@@ -191,7 +192,7 @@ export function MapComponentDrawer({
                     <span className="font-medium">Item #:</span> {bestMatch.product.item_number}
                   </span>
                   <span className="inline-block px-2 py-0.5 bg-gray-100 text-gray-700 rounded">
-                    {toTitleCase(bestMatch.product.category)}
+                    {categoryLabel(bestMatch.product.category)}
                   </span>
                   {bestMatch.score != null && (() => {
                     const s = Math.round(bestMatch.score * 100);
@@ -249,7 +250,7 @@ export function MapComponentDrawer({
                           <span className="font-medium">Item #:</span> {candidate.product.item_number}
                         </span>
                         <span className="inline-block px-2 py-0.5 bg-gray-100 text-gray-700 rounded">
-                          {toTitleCase(candidate.product.category)}
+                          {categoryLabel(candidate.product.category)}
                         </span>
                         {candidate.score != null && (() => {
                           const s = Math.round(candidate.score * 100);

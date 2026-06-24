@@ -35,6 +35,7 @@ import {
   type CCQuoteDetail,
   type CCLineGroup,
 } from '../../services/api';
+import { categoryLabel } from '../../utils/categoryLabel';
 
 // ── Money formatter ───────────────────────────────────────────────────────────
 
@@ -126,7 +127,7 @@ function LineItemDoc({ groups, total }: { groups: CCLineGroup[]; total: number |
                   textTransform: 'uppercase',
                 }}
               >
-                {g.cat}
+                {categoryLabel(g.cat)}
               </h3>
               <span style={{ ...sans, ...tabular, fontSize: 11, color: C.gray500 }}>
                 {money(sub)}

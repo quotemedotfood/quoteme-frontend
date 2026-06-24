@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Search, Loader2 } from 'lucide-react';
 import { searchCatalogProducts, CatalogSearchProduct } from '../services/api';
 import { toTitleCase, formatProductName } from '../utils/format';
+import { categoryLabel } from '../utils/categoryLabel';
 
 interface CatalogProductSearchProps {
   quoteId?: string;
@@ -106,7 +107,7 @@ export function CatalogProductSearch({
                     Item #{product.item_number} &middot; {toTitleCase(product.pack_size)}
                   </p>
                 </div>
-                <span className="text-xs text-gray-400 ml-2 shrink-0">{toTitleCase(product.category)}</span>
+                <span className="text-xs text-gray-400 ml-2 shrink-0">{categoryLabel(product.category)}</span>
               </div>
             </button>
           ))}

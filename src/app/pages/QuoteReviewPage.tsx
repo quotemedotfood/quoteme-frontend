@@ -8,6 +8,7 @@ import { getQuote, getGuestQuote, sendQuote, sendQuoteSms, downloadQuotePdf } fr
 import type { QuoteResponse, QuoteLineResponse } from '../services/api';
 import { isDemoMode, PROD_SIGNUP_URL } from '../utils/demoMode';
 import { useUser } from '../contexts/UserContext';
+import { categoryLabel } from '../utils/categoryLabel';
 
 function toTitleCase(str: string): string {
   if (!str) return '';
@@ -334,7 +335,7 @@ export function QuoteReviewPage() {
                       </>
                     )}
                     <div className="flex justify-between items-center mt-3 pt-2 border-t border-gray-100">
-                      <span className="text-xs text-gray-400">{toTitleCase(line.category || '')}</span>
+                      <span className="text-xs text-gray-400">{categoryLabel(line.category || '')}</span>
                       <span className="text-sm font-semibold text-[#2A2A2A]">
                         {isUnmatched ? '--' : `$${((line.unit_price_cents || 0) / 100).toFixed(2)}`}
                         <span className="text-xs text-gray-400 ml-1">×{line.quantity || 1}</span>

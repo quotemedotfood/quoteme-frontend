@@ -277,7 +277,7 @@ function DeskRow({ q, onClick, onEdit, onRepClick }: { q: CCQuoteRow; onClick: (
             lineHeight: 1.3,
           }}
         >
-          {q.id} · {q.city} · {q.items} items
+          {q.id} · {q.city} · {q.items} {q.items === 1 ? 'item' : 'items'}
           {q.requote > 0 ? ` · re-quoted ${q.requote}×` : ''}
         </div>
       </div>
@@ -381,7 +381,7 @@ function PhoneRow({ q, onClick, onEdit, onRepClick }: { q: CCQuoteRow; onClick: 
           ) : (
             'unassigned'
           )}{' '}
-          · {q.items} items
+          · {q.items} {q.items === 1 ? 'item' : 'items'}
         </div>
         <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <CCStatusTag status={q.status} size="xs" />
