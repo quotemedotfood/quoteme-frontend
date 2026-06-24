@@ -279,10 +279,10 @@ function LanderForm({ config, desktop, onDelivered, slug }: LanderFormProps) {
     accepted_payload.includes('menu') ? 'menu' : 'order_guide';
   const [payloadType, setPayloadType] = useState<PayloadType>(defaultPayload);
 
-  // Input mode: paste text or drop a PDF
-  const showText = accepted_content_types.includes('text');
+  // Input mode: always offer both paste-text and PDF upload regardless of
+  // accepted_content_types — the BE text path is always available.
   const showFile = accepted_content_types.includes('pdf');
-  const defaultMode: InputMode = showText ? 'text' : 'file';
+  const defaultMode: InputMode = 'text';
   const [inputMode, setInputMode] = useState<InputMode>(defaultMode);
 
   // Text area
@@ -597,8 +597,8 @@ function LanderForm({ config, desktop, onDelivered, slug }: LanderFormProps) {
         <p style={{ ...errorText, marginTop: -10, marginBottom: 16 }}>{fieldErrors.contact}</p>
       )}
 
-      {/* ── Input mode toggle ────────────────────────────────────────────── */}
-      {showText && showFile && (
+      {/* ── Input mode toggle — always shown (paste is always available) ── */}
+      {showFile ? (
         <div style={{ ...fieldWrap }}>
           <span style={labelStyle}>How are you sharing it?</span>
           <div style={{ display: 'flex', gap: 10 }}>
@@ -629,7 +629,7 @@ function LanderForm({ config, desktop, onDelivered, slug }: LanderFormProps) {
             })}
           </div>
         </div>
-      )}
+      ) : null}
 
       {/* ── Text paste box ──────────────────────────────────────────────── */}
       {inputMode === 'text' && (

@@ -51,6 +51,8 @@ function activeTabFromPath(pathname: string): ActiveTab {
   // in the IA: a chef picks a distributor first, then lands here.
   if (pathname.startsWith('/chef/pull')) return 'distributors';
   if (pathname.startsWith('/chef/settings')) return 'settings';
+  // C-3: /settings is the direct settings route; highlight the Settings tab.
+  if (pathname === '/settings' || pathname.startsWith('/settings/')) return 'settings';
   // c73: /dashboard maps explicitly to 'dashboard' tab
   if (pathname === '/dashboard' || pathname.startsWith('/dashboard')) return 'dashboard';
   return 'home';
@@ -96,7 +98,7 @@ export function ChefShellLayout() {
     if (target === 'tab-menus') return navigate('/chef/menus');
     if (target === 'tab-distributors') return navigate('/chef/distributor/new');
     if (target === 'tab-stack') return navigate('/chef/stack');
-    if (target === 'tab-settings') return navigate('/dashboard', { state: { activeTab: 'settings' } });
+    if (target === 'tab-settings') return navigate('/settings');
   };
 
   return isDesktop ? (

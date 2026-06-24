@@ -159,6 +159,7 @@ export function BrandShellLayout() {
     sub: user?.brand?.category ?? undefined,
     mono: brandMono,
     initials: brandMono,
+    logo_url: user?.brand?.logo_url ?? null,
   };
 
   const nav = buildBrandNav(navigate);

@@ -97,9 +97,11 @@ export function categoryLabel(raw: string): string {
   if (!raw) return '';
   const key = raw.trim().toLowerCase();
   if (CATEGORY_DISPLAY_LABELS[key]) return CATEGORY_DISPLAY_LABELS[key];
-  // Generic fallback: replace separators, Title Case
+  // Generic fallback: replace separators, normalise to lowercase, then Title Case each word.
+  // Lowercasing first ensures ALL_CAPS tokens like "DRY_GOODS" become "Dry Goods" not "DRY GOODS".
   return raw
     .trim()
+    .toLowerCase()
     .replace(/[_-]+/g, ' ')
     .replace(/\b\w/g, (c) => c.toUpperCase());
 }

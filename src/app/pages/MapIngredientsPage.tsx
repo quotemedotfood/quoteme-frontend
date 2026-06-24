@@ -8,6 +8,7 @@ import { useNavigate, useLocation } from 'react-router';
 import { useUser } from '../contexts/UserContext';
 import { isDemoMode } from '../utils/demoMode';
 import { toTitleCase, formatProductName } from '../utils/format';
+import { categoryLabel } from '../utils/categoryLabel';
 import { MapComponentDrawer } from '../components/MapComponentDrawer';
 import { QuoteReviewBar } from '../components/QuoteReviewBar';
 import {
@@ -94,12 +95,13 @@ const MATCH_STATUS_OPTIONS = ['Strong Match', 'Good Match', 'Review Suggested', 
 
 // ─── Filter Dropdown ─────────────────────────────────────────────────────────
 
-function FilterDropdown({ label, options, selected, onToggle, onClear }: {
+function FilterDropdown({ label, options, selected, onToggle, onClear, formatOption }: {
   label: string;
   options: string[];
   selected: Set<string>;
   onToggle: (value: string) => void;
   onClear: () => void;
+  formatOption?: (v: string) => string;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -156,7 +158,7 @@ function FilterDropdown({ label, options, selected, onToggle, onClear }: {
                 onChange={() => onToggle(option)}
                 className="rounded border-gray-300 text-[#A5CFDD] focus:ring-[#A5CFDD]"
               />
-              <span className="text-gray-700 truncate">{option}</span>
+              <span className="text-gray-700 truncate">{formatOption ? formatOption(option) : option}</span>
             </label>
           ))}
         </div>
@@ -816,6 +818,7 @@ export function MapIngredientsPage() {
                   selected={categoryFilter}
                   onToggle={(v) => toggleFilter(setCategoryFilter, v)}
                   onClear={() => setCategoryFilter(new Set())}
+                  formatOption={categoryLabel}
                 />
                 <FilterDropdown
                   label="Brand"
@@ -1012,7 +1015,7 @@ export function MapIngredientsPage() {
                                     {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                                   </div>
                                   <span className="text-sm font-medium text-[#2A2A2A]">
-                                    {toTitleCase(cat)} ({mappedCount}/{items.length})
+                                    {categoryLabel(cat)} ({mappedCount}/{items.length})
                                   </span>
                                 </div>
                                 <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />

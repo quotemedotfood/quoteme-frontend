@@ -51,6 +51,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '../ui/sheet';
 import { useAuth } from '../../contexts/AuthContext';
 import {
   updateCurrentUser,
+  getBilling,
   getChefRestaurant,
   updateChefRestaurant,
   uploadChefRestaurantLogo,
@@ -61,6 +62,7 @@ import {
   type ChefRestaurant,
   type ChefTeamMember,
 } from '../../services/api';
+import { shouldShowSubscribeCta, quotaDisplayText } from '../../utils/quotaGate';
 
 function openAddPaymentMailto(chefIdentifier: string) {
   const subject = encodeURIComponent('QuoteMe subscription request');
@@ -643,6 +645,14 @@ export function ChefSettingsTab({ state = 'with-data', nav = noopNav }: ChefSett
   const [addTeamOpen, setAddTeamOpen] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [billingData, setBillingData] = useState<any>(null);
+
+  // Fetch live billing quota — same source as SettingsPage so both surfaces agree.
+  useEffect(() => {
+    if (user && !empty) {
+      getBilling().then((res) => { if (res.data) setBillingData(res.data); });
+    }
+  }, [user, empty]);
 
   const chefFirst = user?.first_name ?? '';
   const chefLast = user?.last_name ?? '';
@@ -960,11 +970,13 @@ export function ChefSettingsTab({ state = 'with-data', nav = noopNav }: ChefSett
               </div>
               <div className="text-[11.5px] ink-faint num mt-1">
                 <QuoteCountPill>
-                  {empty ? '0 of 5 quotes used' : '3 of 5 quotes used · 2 left'}
+                  {empty
+                    ? '0 of 5 quotes used · 5 left'
+                    : quotaDisplayText(billingData) || '— of 5 quotes used'}
                 </QuoteCountPill>
               </div>
             </div>
-            {!empty && (
+            {!empty && shouldShowSubscribeCta(billingData) && (
               <button
                 className="qm-btn qm-btn-orange"
                 style={{ padding: '8px 14px', fontSize: 12.5 }}
@@ -1056,6 +1068,14 @@ export function ChefSettingsTabDesktop({
   const [addTeamOpen, setAddTeamOpen] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [billingData, setBillingData] = useState<any>(null);
+
+  // Fetch live billing quota — same source as SettingsPage so both surfaces agree.
+  useEffect(() => {
+    if (user && !empty) {
+      getBilling().then((res) => { if (res.data) setBillingData(res.data); });
+    }
+  }, [user, empty]);
 
   const chefFirst = user?.first_name ?? '';
   const chefLast = user?.last_name ?? '';
@@ -1433,11 +1453,13 @@ export function ChefSettingsTabDesktop({
                 </div>
                 <div className="text-[12px] ink-faint num mt-1">
                   <QuoteCountPill>
-                    {empty ? '0 of 5 quotes used' : '3 of 5 quotes used · 2 left'}
+                    {empty
+                      ? '0 of 5 quotes used · 5 left'
+                      : quotaDisplayText(billingData) || '— of 5 quotes used'}
                   </QuoteCountPill>
                 </div>
               </div>
-              {!empty && (
+              {!empty && shouldShowSubscribeCta(billingData) && (
                 <button
                   className="qm-btn qm-btn-orange"
                   style={{ padding: '10px 16px', fontSize: 13 }}

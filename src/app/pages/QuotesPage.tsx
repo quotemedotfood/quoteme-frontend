@@ -507,7 +507,7 @@ export function QuotesPage() {
                     >
                       <td className="px-6 py-4">
                         <span className="text-sm text-[#2A2A2A]">
-                          {quote.restaurant || 'No restaurant'}
+                          {quote.restaurant || '—'}
                         </span>
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-500 max-w-[200px] truncate">

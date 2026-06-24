@@ -190,7 +190,51 @@ export interface AdminBrand {
   id: string;
   name: string;
   status: string;
+  logo_url?: string | null;
+  website?: string | null;
   created_at: string;
+}
+
+export interface AdminBrandDetail {
+  id: string;
+  name: string;
+  status: string;
+  website: string | null;
+  logo_url: string | null;
+  category: string | null;
+  created_at: string;
+  stats: {
+    products: number;
+    packages: number;
+    distributors: number;
+  };
+  users: Array<{
+    id: string;
+    first_name: string;
+    last_name: string;
+    email: string;
+    status: string;
+    last_login_at: string | null;
+  }>;
+  catalogs: Array<{
+    id: string;
+    original_filename: string | null;
+    row_count: number | null;
+    uploaded_at: string;
+  }>;
+  packages: Array<{
+    id: string;
+    title: string;
+    status: string;
+    item_count: number;
+    sent_at: string | null;
+  }>;
+  distributors: Array<{
+    distributor_id: string;
+    name: string;
+    status: string;
+    connected_since: string;
+  }>;
 }
 
 // ============= ADMIN STATS =============
@@ -523,6 +567,10 @@ export async function createAdminBrand(data: {
     method: 'POST',
     body: JSON.stringify(data),
   });
+}
+
+export async function getAdminBrand(id: string): Promise<ApiResponse<AdminBrandDetail>> {
+  return fetchWithAuth(`/api/v1/admin/brands/${id}`);
 }
 
 // ============= DISTRIBUTOR SEARCH (public) =============

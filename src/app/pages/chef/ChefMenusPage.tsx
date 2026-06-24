@@ -418,12 +418,11 @@ function MenuRow({
           }}
         >
           {menu.item_count} {menu.item_count === 1 ? 'item' : 'items'}
-          {menu.last_quoted_at
-            ? ` · last quoted ${formatDate(menu.last_quoted_at)}`
-            : ' · never quoted'}
-          {menu.quote_count > 0
-            ? ` · ${menu.quote_count} ${menu.quote_count === 1 ? 'quote' : 'quotes'}`
-            : null}
+          {menu.quote_count === 0
+            ? ' · never quoted'
+            : menu.last_quoted_at
+              ? ` · last quoted ${formatDate(menu.last_quoted_at)}`
+              : ` · ${menu.quote_count} ${menu.quote_count === 1 ? 'quote' : 'quotes'}`}
         </div>
       </div>
 
