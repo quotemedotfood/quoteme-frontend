@@ -48,6 +48,7 @@ import type { RepIncomingQuote, InboundRow } from '../../services/api';
 import { repRowFlags, REP_FLAG_META } from './repRowFlags';
 import type { RepFlagKey } from './repRowFlags';
 import { useAuth } from '../../contexts/AuthContext';
+import { stripSeedPrefix } from '../../utils/format';
 
 const serif: React.CSSProperties = {
   fontFamily: "'Playfair Display', Georgia, 'Times New Roman', serif",
@@ -92,7 +93,7 @@ function adaptInboundRow(row: InboundRow): RepRow {
   return {
     // RepIncomingQuote required fields.
     id: row.id,
-    label: row.artifact?.name ?? row.source_label ?? 'Inbound',
+    label: stripSeedPrefix(row.artifact?.name ?? row.source_label ?? 'Inbound'),
     state: row.status ?? 'new',
     match_state: 'ready', // inbound rows have no match state; placeholder.
     restaurant: row.restaurant_name ?? row.contact_name ?? '—',
@@ -497,7 +498,7 @@ function TriageRow({
           )}
         </div>
         <div style={{ ...sans, fontSize: 12, color: C.gray700, lineHeight: 1.35, marginTop: 2, fontVariantNumeric: 'tabular-nums' }}>
-          {q.label || q.id}
+          {stripSeedPrefix(q.label) || q.id}
           {!isInbound && (
             <>
               {' '}· {q.chef_first} {q.chef_last} · {q.item_count} items

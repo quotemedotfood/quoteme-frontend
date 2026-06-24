@@ -53,6 +53,7 @@ import {
   type DistributorRep,
 } from '../../services/api';
 import { CatalogUploadDrawer } from '../../components/CatalogUploadDrawer';
+import { stripSeedPrefix } from '../../utils/format';
 
 // ── Stat card ─────────────────────────────────────────────────────────────────
 
@@ -269,7 +270,7 @@ function UnassignedRow({
 
   const sub =
     item.kind === 'quote'
-      ? `${item.q_label ?? item.id}${item.items != null ? ` · ${item.items} items` : ''}${item.city ? ` · ${item.city}` : ''}`
+      ? `${stripSeedPrefix(item.q_label) || item.id}${item.items != null ? ` · ${item.items} items` : ''}${item.city ? ` · ${item.city}` : ''}`
       : `${item.city ?? ''}${item.age ? ` · ${item.age}` : ''}`.replace(/^·\s*/, '');
 
   return (

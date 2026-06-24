@@ -9,6 +9,7 @@ import {
   type LocationDistributorRelationship,
   type LocationQuote,
 } from '../services/api';
+import { stripSeedPrefix } from '../utils/format';
 
 const statusStyles: Record<string, { bg: string; text: string; label: string }> = {
   inbound: { bg: 'bg-yellow-100', text: 'text-yellow-700', label: 'Inbound' },
@@ -208,7 +209,7 @@ export function VendorDetailPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <p className="font-medium text-sm text-[#2A2A2A] truncate">
-                          {q.working_label || 'Quote'}
+                          {stripSeedPrefix(q.working_label) || 'Quote'}
                         </p>
                         <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${qStatus}`}>
                           {q.status}

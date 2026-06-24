@@ -38,6 +38,7 @@ import {
   type CCUnassignedItem,
   type CCUnassignedRep,
 } from '../../services/api';
+import { stripSeedPrefix } from '../../utils/format';
 
 // ── Row-level state ───────────────────────────────────────────────────────────
 
@@ -135,7 +136,7 @@ function AssignRow({
     const repName = assignedRep?.name ?? 'your rep';
     const contextLabel =
       row.kind === 'quote' && row.q_label
-        ? row.q_label
+        ? stripSeedPrefix(row.q_label)
         : row.restaurant;
 
     return (
@@ -231,7 +232,7 @@ function AssignRow({
 
   const contextLabel =
     row.kind === 'quote' && row.q_label
-      ? row.q_label
+      ? stripSeedPrefix(row.q_label)
       : null;
 
   return (
