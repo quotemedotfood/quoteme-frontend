@@ -13,14 +13,15 @@
 // CCLayout renders the desktop shell only (lg+ breakpoint would need a media
 // query — for now the layout is desktop-first per rep-suite pattern).
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router';
 import { ManagerSidebar } from './ManagerSidebar';
 import { CCSearchBar } from './CCSearchBar';
 import { sans, C } from './cc-atoms';
 import type { CCActiveTab, CCSidebarMode, CCManagerInfo } from './ManagerSidebar';
 import { useAuth } from '../../../contexts/AuthContext';
-import { getCommandCenterUnassigned, getCommandCenterInbound } from '../../../services/api';
+import { Link2 } from 'lucide-react';
+import { getCommandCenterUnassigned, getCommandCenterInbound, getDistributorHome } from '../../../services/api';
 
 // ── Sidebar context ───────────────────────────────────────────────────────────
 
@@ -51,10 +52,25 @@ function activeTabFromPath(pathname: string): CCActiveTab {
 
 // ── CCLayout ──────────────────────────────────────────────────────────────────
 
+// P5: Build the cold-landing URL for copy-link. Uses quoteme.food as the
+// production host (no VITE_ env var exists for the app host).
+const COLD_LANDING_HOST = 'https://quoteme.food';
+
+function buildMenuDropUrl(slug: string | null | undefined): string | null {
+  if (!slug) return null;
+  return `${COLD_LANDING_HOST}/d/${encodeURIComponent(slug)}`;
+}
+
 export function CCLayout() {
   const [mode, setMode] = useState<CCSidebarMode>('open');
   const [unassignedCount, setUnassignedCount] = useState(0);
   const [inboundOpenCount, setInboundOpenCount] = useState(0);
+  const [teamCount, setTeamCount] = useState(0);
+  // P5: distributor slug from home payload (not yet in API — graceful hide when absent)
+  const [distributorSlug, setDistributorSlug] = useState<string | null>(null);
+  const [copyConfirm, setCopyConfirm] = useState(false);
+  const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -71,7 +87,24 @@ export function CCLayout() {
       if (cancelled) return;
       if (res.data) setInboundOpenCount(res.data.length);
     });
+    // P8: Rep count for Team badge. P5: slug if BE adds it.
+    getDistributorHome().then((res) => {
+      if (cancelled) return;
+      if (res.data) {
+        setTeamCount(res.data.rep_count ?? 0);
+        // P5: BE needs to add `slug` to DistributorHomeData — hide until present.
+        const maybeSlug = (res.data as any).slug as string | undefined;
+        setDistributorSlug(maybeSlug ?? null);
+      }
+    });
     return () => { cancelled = true; };
+  }, []);
+
+  // P5: cleanup copy timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
+    };
   }, []);
 
   const active = activeTabFromPath(location.pathname);
@@ -114,6 +147,7 @@ export function CCLayout() {
             manager={manager}
             unassignedCount={unassignedCount}
             inboundOpenCount={inboundOpenCount}
+            teamCount={teamCount}
           />
         )}
 
@@ -143,6 +177,55 @@ export function CCLayout() {
               <CCSearchBar />
             </div>
             <div style={{ flex: 1 }} />
+
+            {/* P5 — Menu Drop copy-link: only shown when distributor slug is available */}
+            {buildMenuDropUrl(distributorSlug) && (
+              <button
+                type="button"
+                onClick={() => {
+                  const url = buildMenuDropUrl(distributorSlug)!;
+                  navigator.clipboard.writeText(url).then(() => {
+                    setCopyConfirm(true);
+                    if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
+                    copyTimeoutRef.current = setTimeout(() => setCopyConfirm(false), 1500);
+                  }).catch(() => {
+                    // Fallback: execCommand for browsers without clipboard API
+                    const el = document.createElement('textarea');
+                    el.value = url;
+                    el.style.position = 'fixed';
+                    el.style.opacity = '0';
+                    document.body.appendChild(el);
+                    el.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(el);
+                    setCopyConfirm(true);
+                    if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
+                    copyTimeoutRef.current = setTimeout(() => setCopyConfirm(false), 1500);
+                  });
+                }}
+                aria-label="Copy Menu Drop link"
+                title={`Copy Menu Drop link: ${buildMenuDropUrl(distributorSlug)}`}
+                style={{
+                  ...sans,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  fontSize: 12,
+                  color: copyConfirm ? '#2A5F6F' : C.gray500,
+                  background: copyConfirm ? '#EAF4F7' : 'transparent',
+                  border: `1px solid ${copyConfirm ? '#A5CFDD' : C.softLine}`,
+                  borderRadius: 6,
+                  padding: '5px 10px',
+                  cursor: 'pointer',
+                  transition: 'color 150ms, background 150ms, border-color 150ms',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                <Link2 size={13} strokeWidth={1.8} />
+                {copyConfirm ? 'Copied!' : 'Menu Drop'}
+              </button>
+            )}
+
             <div
               style={{
                 ...sans,
@@ -153,8 +236,13 @@ export function CCLayout() {
             >
               {manager.today}
             </div>
-            {/* Manager avatar */}
-            <span
+
+            {/* P6 — Manager avatar: clickable button → /settings */}
+            <button
+              type="button"
+              onClick={() => navigate('/settings')}
+              aria-label={`${manager.name} — open settings`}
+              title={`${manager.name} · Settings`}
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -164,8 +252,19 @@ export function CCLayout() {
                 background: C.warmPaper,
                 width: 34,
                 height: 34,
+                cursor: 'pointer',
+                padding: 0,
+                flexShrink: 0,
+                transition: 'border-color 150ms, background 150ms',
               }}
-              title={manager.name}
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLButtonElement).style.borderColor = '#A5CFDD';
+                (e.currentTarget as HTMLButtonElement).style.background = '#F0F8FB';
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLButtonElement).style.borderColor = C.softLine;
+                (e.currentTarget as HTMLButtonElement).style.background = C.warmPaper;
+              }}
             >
               <span
                 style={{
@@ -181,7 +280,7 @@ export function CCLayout() {
                   .join('')
                   .slice(0, 2)}
               </span>
-            </span>
+            </button>
           </div>
 
           {/* Page content */}
