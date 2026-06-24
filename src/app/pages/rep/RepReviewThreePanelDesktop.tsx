@@ -20,6 +20,7 @@ import { QuoteCoverageLabelRep } from '../../components/rep/QuoteCoverageLabelRe
 import { LineCoverageDot } from '../../components/rep/CoverageDots';
 import { getRepQuote, repConfirmQuote } from '../../services/api';
 import type { QuoteLineResponse } from '../../services/api';
+import { stripSeedPrefix } from '../../utils/format';
 
 const serif: React.CSSProperties = {
   fontFamily: "'Playfair Display', Georgia, 'Times New Roman', serif",
@@ -71,6 +72,7 @@ export function RepReviewThreePanelDesktop({ quoteId }: { quoteId: string }) {
   const navigate = useNavigate();
   const [lines, setLines] = useState<QuoteLineResponse[]>([]);
   const [restaurant, setRestaurant] = useState('');
+  const [quoteLabel, setQuoteLabel] = useState('');
   const [loading, setLoading] = useState(true);
   const [selectedIdx, setSelectedIdx] = useState(0);
   const [commits, setCommits] = useState<Map<number, number>>(new Map());
@@ -91,6 +93,7 @@ export function RepReviewThreePanelDesktop({ quoteId }: { quoteId: string }) {
     getRepQuote(quoteId).then((res) => {
       if (res.data) {
         setRestaurant(res.data.restaurant || '');
+        setQuoteLabel(res.data.working_label || '');
         setLines(res.data.lines || []);
         const m = new Map<number, number>();
         res.data.lines.forEach((_, i) => m.set(i, 0));
@@ -159,7 +162,7 @@ export function RepReviewThreePanelDesktop({ quoteId }: { quoteId: string }) {
       {/* Masthead */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 24, flexWrap: 'wrap', marginBottom: 24 }}>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={eyebrow(10)}>REVIEWING QUOTE · {quoteId}</div>
+          <div style={eyebrow(10)}>REVIEWING QUOTE · {stripSeedPrefix(quoteLabel) || 'Q-' + quoteId.split('-')[0].toUpperCase()}</div>
           <h1 style={{ ...serif, fontSize: 30, fontWeight: 600, color: C.charcoal, marginTop: 4, lineHeight: 1.1 }}>
             {restaurant}
           </h1>

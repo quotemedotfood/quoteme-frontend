@@ -18,6 +18,7 @@ import { QuoteCoverageLabelRep } from '../../components/rep/QuoteCoverageLabelRe
 import { LineCoverageDot } from '../../components/rep/CoverageDots';
 import { getRepQuote, repConfirmQuote } from '../../services/api';
 import type { QuoteLineResponse } from '../../services/api';
+import { stripSeedPrefix } from '../../utils/format';
 
 const serif: React.CSSProperties = {
   fontFamily: "'Playfair Display', Georgia, 'Times New Roman', serif",
@@ -272,6 +273,7 @@ export function RepReviewMobileFallback({ quoteId }: { quoteId: string }) {
   const navigate = useNavigate();
   const [lines, setLines] = useState<QuoteLineResponse[]>([]);
   const [restaurant, setRestaurant] = useState('');
+  const [quoteLabel, setQuoteLabel] = useState('');
   const [loading, setLoading] = useState(true);
   const [openDrawerIdx, setOpenDrawerIdx] = useState<number | null>(null);
   const [commits, setCommits] = useState<Map<number, number>>(new Map());
@@ -283,6 +285,7 @@ export function RepReviewMobileFallback({ quoteId }: { quoteId: string }) {
     getRepQuote(quoteId).then((res) => {
       if (res.data) {
         setRestaurant(res.data.restaurant || '');
+        setQuoteLabel(res.data.working_label || '');
         setLines(res.data.lines || []);
         const m = new Map<number, number>();
         res.data.lines.forEach((_, i) => m.set(i, 0));
@@ -375,7 +378,7 @@ export function RepReviewMobileFallback({ quoteId }: { quoteId: string }) {
         >
           <ChevronLeft size={13} strokeWidth={1.8} /> Quote
         </button>
-        <span style={{ ...sans, fontSize: 11, color: C.gray500 }}>{quoteId}</span>
+        <span style={{ ...sans, fontSize: 11, color: C.gray500 }}>{stripSeedPrefix(quoteLabel) || 'Q-' + quoteId.split('-')[0].toUpperCase()}</span>
       </div>
 
       {/* Scrollable body */}
@@ -388,7 +391,7 @@ export function RepReviewMobileFallback({ quoteId }: { quoteId: string }) {
             borderBottom: `1px solid ${C.softLine}`,
           }}
         >
-          <div style={eyebrow(9.5)}>REVIEWING QUOTE · {quoteId}</div>
+          <div style={eyebrow(9.5)}>REVIEWING QUOTE · {stripSeedPrefix(quoteLabel) || 'Q-' + quoteId.split('-')[0].toUpperCase()}</div>
           <h1 style={{ ...serif, fontSize: 22, fontWeight: 600, color: C.charcoal, marginTop: 4, lineHeight: 1.15 }}>
             {restaurant || '—'}
           </h1>

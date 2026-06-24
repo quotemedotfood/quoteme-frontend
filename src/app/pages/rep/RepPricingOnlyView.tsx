@@ -15,6 +15,7 @@ import { useNavigate } from 'react-router';
 import { ChevronLeft } from 'lucide-react';
 import { getRepQuote, repPriceQuote, repConfirmQuote } from '../../services/api';
 import type { QuoteLineResponse } from '../../services/api';
+import { stripSeedPrefix } from '../../utils/format';
 
 const serif: React.CSSProperties = {
   fontFamily: "'Playfair Display', Georgia, 'Times New Roman', serif",
@@ -51,6 +52,7 @@ export function RepPricingOnlyView({ quoteId }: { quoteId: string }) {
   const [lines, setLines] = useState<PricingLine[]>([]);
   const [editing, setEditing] = useState<Set<string>>(new Set());
   const [restaurant, setRestaurant] = useState('');
+  const [quoteLabel, setQuoteLabel] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -58,6 +60,7 @@ export function RepPricingOnlyView({ quoteId }: { quoteId: string }) {
     getRepQuote(quoteId).then((res) => {
       if (res.data) {
         setRestaurant(res.data.restaurant || '');
+        setQuoteLabel(res.data.working_label || '');
         const mapped: PricingLine[] = res.data.lines.map((l: QuoteLineResponse) => ({
           id: l.id,
           name: l.component?.name || l.product?.product || '—',
@@ -133,7 +136,7 @@ export function RepPricingOnlyView({ quoteId }: { quoteId: string }) {
         >
           <ChevronLeft size={13} strokeWidth={1.8} /> Quote
         </button>
-        <span style={{ ...sans, fontSize: 11, color: C.gray500, fontVariantNumeric: 'tabular-nums' }}>{quoteId}</span>
+        <span style={{ ...sans, fontSize: 11, color: C.gray500, fontVariantNumeric: 'tabular-nums' }}>{stripSeedPrefix(quoteLabel) || 'Q-' + quoteId.split('-')[0].toUpperCase()}</span>
       </div>
 
       {/* Header strip */}
