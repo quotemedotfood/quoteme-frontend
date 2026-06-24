@@ -51,6 +51,14 @@ function formatCategory(cat: string) {
   return normalized.replace(/\b\w/g, c => c.toUpperCase());
 }
 
+/**
+ * Returns true when the CC catalog page should show the "Update Catalog"
+ * button (i.e. a catalog is already loaded). Exported for unit testing.
+ */
+export function shouldShowUpdateCatalogButton(catalogId: string | null): boolean {
+  return !!catalogId;
+}
+
 export function CatalogManagePage() {
   const { user } = useAuth();
   const distributorName = user?.distributor?.name || user?.distributor_name || 'Your';
@@ -311,12 +319,23 @@ export function CatalogManagePage() {
 
   return (
     <div className="p-6 md:p-10 max-w-5xl mx-auto">
-      <h1
-        className="text-2xl md:text-3xl font-bold text-[#2A2A2A] mb-1"
-        style={{ fontFamily: "'Playfair Display', serif" }}
-      >
-        {distributorName} Catalog
-      </h1>
+      <div className="flex items-start justify-between mb-1">
+        <h1
+          className="text-2xl md:text-3xl font-bold text-[#2A2A2A]"
+          style={{ fontFamily: "'Playfair Display', serif" }}
+        >
+          {distributorName} Catalog
+        </h1>
+        {shouldShowUpdateCatalogButton(catalogId) && (
+          <Button
+            onClick={() => setUploadOpen(true)}
+            className="bg-[#A5CFDD] hover:bg-[#7FAEC2] text-white shrink-0"
+          >
+            <Upload className="w-4 h-4 mr-2" />
+            Update Catalog
+          </Button>
+        )}
+      </div>
       <p className="text-sm text-[#4F4F4F] mb-6" style={{ fontFamily: "'DM Sans', sans-serif" }}>
         {totalProducts.toLocaleString()} products &middot; Uploaded {stats?.last_uploaded_at ? new Date(stats.last_uploaded_at).toLocaleDateString() : ''}
       </p>
@@ -643,6 +662,12 @@ export function CatalogManagePage() {
           </div>
         )}
       </div>
+
+      <CatalogUploadDrawer
+        open={uploadOpen}
+        onOpenChange={setUploadOpen}
+        onUploadComplete={() => { setUploadOpen(false); loadCatalog(); }}
+      />
     </div>
   );
 }
