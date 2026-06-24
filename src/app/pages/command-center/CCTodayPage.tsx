@@ -22,7 +22,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
-import { ArrowRight, FileText, ChevronRight, Package, Inbox, Users, Plus } from 'lucide-react';
+import { ArrowRight, FileText, ChevronRight, Package, Inbox, Users, Plus, Upload } from 'lucide-react';
 import {
   CCSectionHead,
   RepAvatar,
@@ -52,6 +52,8 @@ import {
   type InboundRow,
   type DistributorRep,
 } from '../../services/api';
+import { CatalogUploadDrawer } from '../../components/CatalogUploadDrawer';
+import { stripSeedPrefix } from '../../utils/format';
 
 // ── Stat card ─────────────────────────────────────────────────────────────────
 
@@ -268,7 +270,7 @@ function UnassignedRow({
 
   const sub =
     item.kind === 'quote'
-      ? `${item.q_label ?? item.id}${item.items != null ? ` · ${item.items} items` : ''}${item.city ? ` · ${item.city}` : ''}`
+      ? `${stripSeedPrefix(item.q_label) || item.id}${item.items != null ? ` · ${item.items} items` : ''}${item.city ? ` · ${item.city}` : ''}`
       : `${item.city ?? ''}${item.age ? ` · ${item.age}` : ''}`.replace(/^·\s*/, '');
 
   return (
@@ -415,6 +417,9 @@ export function CCTodayPage() {
   // Stat cards: home data (product count, rep count)
   const [productCount, setProductCount] = useState<number | null>(null);
   const [homeRepCount, setHomeRepCount] = useState<number | null>(null);
+  // P7: catalog presence gate
+  const [hasCatalog, setHasCatalog] = useState<boolean | null>(null);
+  const [uploadDrawerOpen, setUploadDrawerOpen] = useState(false);
 
   // Inbound table: rows + reps for routing
   const [inboundRows, setInboundRows] = useState<InboundRow[]>([]);
@@ -443,6 +448,8 @@ export function CCTodayPage() {
       if (res.data) {
         setProductCount(res.data.catalog_product_count);
         setHomeRepCount(res.data.rep_count);
+        // P7: catalog guidance — show block when no catalog OR 0-product catalog
+        setHasCatalog(res.data.has_catalog && res.data.catalog_product_count > 0);
       }
     });
 
@@ -617,6 +624,110 @@ export function CCTodayPage() {
           onClick={() => navigate('/distributor-admin/reps')}
         />
       </div>
+
+      {/* ── P7: CATALOG GUIDANCE — shown when catalog absent or 0 products ── */}
+      {hasCatalog === false && (
+        <div
+          data-testid="catalog-guidance"
+          style={{
+            marginTop: 20,
+            padding: '20px 22px',
+            border: `1px solid ${C.softLine}`,
+            borderRadius: 10,
+            background: '#FBFAF7',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 20,
+            flexWrap: 'wrap',
+          }}
+        >
+          <div>
+            <div
+              style={{
+                ...sans,
+                fontSize: 10,
+                letterSpacing: '.14em',
+                textTransform: 'uppercase' as const,
+                color: C.gray500,
+                fontWeight: 600,
+              }}
+            >
+              GET STARTED
+            </div>
+            <div
+              style={{
+                ...serif,
+                fontSize: 17,
+                fontWeight: 600,
+                color: C.charcoal,
+                marginTop: 4,
+                lineHeight: 1.2,
+              }}
+            >
+              Upload your catalog to start quoting
+            </div>
+            <div
+              style={{
+                ...sans,
+                fontSize: 12.5,
+                color: C.gray500,
+                marginTop: 6,
+                lineHeight: 1.5,
+              }}
+            >
+              Import your product list (CSV or Excel) so reps can build and send quotes.
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setUploadDrawerOpen(true)}
+            style={{
+              ...sans,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 7,
+              background: C.charcoal,
+              color: '#fff',
+              border: 'none',
+              borderRadius: 6,
+              padding: '10px 18px',
+              fontSize: 12.5,
+              fontWeight: 500,
+              cursor: 'pointer',
+              flexShrink: 0,
+              transition: 'background 150ms',
+              whiteSpace: 'nowrap',
+            }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.background = '#1a1a1a';
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.background = C.charcoal;
+            }}
+          >
+            <Upload size={13} />
+            Upload Catalog
+          </button>
+        </div>
+      )}
+
+      {/* Catalog upload drawer — opened by P7 guidance block */}
+      <CatalogUploadDrawer
+        open={uploadDrawerOpen}
+        onOpenChange={setUploadDrawerOpen}
+        onUploadComplete={() => {
+          // Refresh catalog state once upload finishes
+          setUploadDrawerOpen(false);
+          getDistributorHome().then((res) => {
+            if (res.data) {
+              setProductCount(res.data.catalog_product_count);
+              setHomeRepCount(res.data.rep_count);
+              setHasCatalog(res.data.has_catalog && res.data.catalog_product_count > 0);
+            }
+          });
+        }}
+      />
 
       {/* ── INBOUND QUOTES TABLE ─────────────────────────────────────────── */}
       <Read>

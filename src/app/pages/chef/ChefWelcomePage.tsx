@@ -4,6 +4,7 @@ import { consumeChefMagicLink } from '../../services/api';
 import type { ChefMagicLinkConsumeResponse } from '../../services/api';
 import { useUser } from '../../contexts/UserContext';
 import { useAuth } from '../../contexts/AuthContext';
+import { stripSeedPrefix } from '../../utils/format';
 
 // V2 W4 — Justin/Moose lock: the page IS the quote arrival. No greeting,
 // no "welcome", no account framing. Lead with rep + distributor + the
@@ -214,7 +215,7 @@ export function ChefWelcomePage() {
             <div className="mt-1 flex items-baseline justify-between gap-3">
               <div className="min-w-0">
                 <div style={{ ...serif, fontSize: 18, fontWeight: 500, color: C.charcoal }}>
-                  {q.label}
+                  {stripSeedPrefix(q.label)}
                 </div>
                 <div
                   style={{ ...sans, fontSize: 11.5, color: C.gray500, fontVariantNumeric: 'tabular-nums' }}

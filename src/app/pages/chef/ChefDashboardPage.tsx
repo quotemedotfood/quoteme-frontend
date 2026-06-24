@@ -24,6 +24,7 @@ import { PreviewPill } from '../../components/chef/PreviewPill';
 import { QuoteStatusPill, legacyStatusToState } from '../../components/chef/QuoteStatusPill';
 import { ChefDistributorsTab } from '../../components/chef';
 import { ChefSettingsTab } from '../../components/chef/ChefSettingsTab';
+import { stripSeedPrefix } from '../../utils/format';
 
 const C = {
   charcoal: '#2B2B2B',
@@ -573,7 +574,7 @@ function PreviousQuestions({
                 className="min-w-0"
                 style={{ ...sans, fontSize: 12, fontWeight: 500, color: C.gray700 }}
               >
-                {q.distributor?.name || 'Distributor'} · {q.label}
+                {q.distributor?.name || 'Distributor'} · {stripSeedPrefix(q.label)}
               </div>
               <div
                 className="shrink-0"
@@ -623,7 +624,7 @@ function QuoteHistory({
                   className="truncate"
                   style={{ ...sans, fontSize: 14, fontWeight: 500, color: C.charcoal }}
                 >
-                  {q.label}
+                  {stripSeedPrefix(q.label)}
                 </span>
                 {q.preview && <PreviewPill size="xs" />}
               </button>

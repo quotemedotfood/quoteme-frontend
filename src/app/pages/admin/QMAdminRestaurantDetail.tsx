@@ -18,6 +18,7 @@ import {
   TableHead,
   TableCell,
 } from '../../components/ui/table';
+import { stripSeedPrefix } from '../../utils/format';
 
 export function QMAdminRestaurantDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -332,7 +333,7 @@ export function QMAdminRestaurantDetailPage() {
               <TableBody>
                 {restaurant.recent_quotes.map((q) => (
                   <TableRow key={q.id} className="hover:bg-gray-50">
-                    <TableCell className="font-medium text-[#2A2A2A]">{q.working_label || 'Untitled'}</TableCell>
+                    <TableCell className="font-medium text-[#2A2A2A]">{stripSeedPrefix(q.working_label) || 'Untitled'}</TableCell>
                     <TableCell>
                       <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${statusBadge(q.status)}`}>
                         {q.status}

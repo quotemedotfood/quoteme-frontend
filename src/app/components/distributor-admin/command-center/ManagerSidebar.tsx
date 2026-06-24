@@ -32,8 +32,10 @@ import {
   X,
   ArrowLeft,
   Plus,
+  LogOut,
 } from 'lucide-react';
 import { SACRED_ORANGE, sans, serif, C } from './cc-atoms';
+import { useAuth } from '../../../contexts/AuthContext';
 
 export type CCActiveTab =
   | 'today'
@@ -202,6 +204,8 @@ interface ManagerSidebarProps {
   coldRepsCount?: number;
   inboundOpenCount?: number;
   quotesCount?: number;
+  /** P8: active team-member count for Team nav badge */
+  teamCount?: number;
 }
 
 export function ManagerSidebar({
@@ -214,10 +218,17 @@ export function ManagerSidebar({
   coldRepsCount = 0,
   inboundOpenCount = 0,
   quotesCount = 0,
+  teamCount = 0,
 }: ManagerSidebarProps) {
   const collapsed = mode === 'collapsed';
   const navigate = useNavigate();
+  const { logout } = useAuth();
   const width = collapsed ? 64 : 280;
+
+  const handleSignOut = () => {
+    logout();
+    navigate('/auth', { replace: true });
+  };
 
   const initials = manager.name
     .split(' ')
@@ -454,6 +465,7 @@ export function ManagerSidebar({
           label="Team"
           current={active === 'team'}
           collapsed={collapsed}
+          count={teamCount > 0 ? { n: teamCount, attention: false } : undefined}
           onClick={() => onNav('team')}
         />
         {/* Inside sales — muted sub-item under Team, no Design-Ahead label */}
@@ -576,6 +588,53 @@ export function ManagerSidebar({
           collapsed={collapsed}
           onClick={() => onNav('settings')}
         />
+        {/* URGENT-1b: Sign out — mirrors BrandShellLayout handleSignOut pattern */}
+        <div style={{ padding: '0 12px', marginBottom: 2 }}>
+          <button
+            type="button"
+            onClick={handleSignOut}
+            title={collapsed ? 'Sign out' : undefined}
+            aria-label="Sign out"
+            style={{
+              ...sans,
+              display: 'flex',
+              alignItems: 'center',
+              width: '100%',
+              padding: '9px 10px',
+              justifyContent: collapsed ? 'center' : 'flex-start',
+              background: 'transparent',
+              border: 'none',
+              borderLeft: '2px solid transparent',
+              borderRadius: 6,
+              cursor: 'pointer',
+              gap: 10,
+              color: C.gray500,
+            }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.background = '#F9FAFB';
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.background = 'transparent';
+            }}
+          >
+            <LogOut size={16} strokeWidth={1.6} color={C.gray500} />
+            {!collapsed && (
+              <span
+                style={{
+                  fontSize: 12.5,
+                  lineHeight: 1.3,
+                  color: C.gray500,
+                  fontWeight: 400,
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                }}
+              >
+                Sign out
+              </span>
+            )}
+          </button>
+        </div>
         <div style={{ padding: collapsed ? '4px 8px' : '4px 24px' }}>
           <button
             type="button"

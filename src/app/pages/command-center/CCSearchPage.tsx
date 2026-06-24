@@ -38,6 +38,7 @@ import {
   type CCSearchRep,
   type CCSearchQuote,
 } from '../../services/api';
+import { stripSeedPrefix } from '../../utils/format';
 
 // ── Suggestion chips ──────────────────────────────────────────────────────────
 // Generic examples — NOT hardcoded restaurant/rep names that may not exist.
@@ -229,7 +230,7 @@ function QuoteRow({ item, onClick }: { item: CCSearchQuote; onClick: () => void 
         >
           {item.restaurant}{' '}
           <span style={{ color: C.gray500 }}>
-            · {item.q_label}
+            · {stripSeedPrefix(item.q_label)}
           </span>
         </div>
         <div style={{ ...sans, ...tabular, fontSize: 11.5, color: C.gray500, lineHeight: 1.4, marginTop: 2 }}>

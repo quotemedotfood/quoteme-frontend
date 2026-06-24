@@ -1,3 +1,15 @@
+const SEED_PREFIX = '[SEED] ';
+
+/**
+ * Strips the literal "[SEED] " prefix from a quote label before display.
+ * Seed data in the DB is stored with this prefix; it must never appear in the UI.
+ * Only strips a leading prefix — a "[SEED]" that appears mid-string is left alone.
+ */
+export function stripSeedPrefix(label: string | null | undefined): string {
+  if (!label) return '';
+  return label.startsWith(SEED_PREFIX) ? label.slice(SEED_PREFIX.length) : label;
+}
+
 export function toTitleCase(str: string): string {
   if (!str) return '';
   // If the string contains non-ASCII characters (e.g. accented culinary terms like
