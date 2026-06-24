@@ -14,6 +14,13 @@
 // Prop `state` values mirror the design prototype: "preview" | "distributor" |
 // "confirmed". Callers holding the BE Quote.state ("distributor_quote") map it
 // via stateFromQuoteState() below.
+//
+// H-3 fix: the document eyebrow for the "confirmed" state uses
+// quoteStatusLabel('confirmed', 'header') → "Confirmed Quote" so the
+// detail-page document header label aligns with the shared helper used
+// by list views (which show "Ready" via the 'pill' context).
+
+import { quoteStatusLabel } from '../../utils/quoteStatusLabel';
 
 export type QuoteDocumentState = 'preview' | 'distributor' | 'confirmed';
 
@@ -120,7 +127,9 @@ export function QuoteStateDocument({
     confirmed: {
       bg: '#FFFFFF',
       headerRule: `3px solid ${INK}`,
-      eyebrow: `CONFIRMED QUOTE · LOCKED ${confirmedAt.toUpperCase()}`,
+      // H-3: use quoteStatusLabel('confirmed', 'header') → "Confirmed Quote"
+      // so the document eyebrow matches the shared label helper used across surfaces.
+      eyebrow: `${quoteStatusLabel('confirmed', 'header').toUpperCase()} · LOCKED ${confirmedAt.toUpperCase()}`,
       watermark: null,
       topRightSlot: 'seal',
       footerLine: `Confirmed by ${rep}${at} · ${confirmedAt}`,
