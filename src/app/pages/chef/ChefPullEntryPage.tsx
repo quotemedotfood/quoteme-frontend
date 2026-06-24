@@ -339,6 +339,14 @@ export function ChefPullEntryPage() {
 
   const affiliated = distributor?.affiliated ?? false;
 
+  // C-4: catalog readiness gate.
+  // A catalog is ready when catalog_item_count is a positive number.
+  // null / undefined / 0 all mean the distributor's catalog is not yet set up.
+  const catalogReady =
+    distributor != null &&
+    distributor.catalog_item_count != null &&
+    distributor.catalog_item_count > 0;
+
   return (
     <>
       {/* Anchor strip */}
@@ -580,11 +588,18 @@ export function ChefPullEntryPage() {
             {/* Error */}
             {error && <p className={errorText}>{error}</p>}
 
+            {/* C-4: catalog not ready — inline notice above button */}
+            {!catalogReady && distributor != null && (
+              <p className="text-sm text-[#9E9E9E] text-center leading-relaxed">
+                This distributor's catalog isn't set up yet — ask your rep to upload it.
+              </p>
+            )}
+
             {/* Submit */}
             <button
               className={primaryBtn}
               onClick={handleSubmit}
-              disabled={!hasContent || submitting || !distributorId}
+              disabled={!hasContent || submitting || !distributorId || !catalogReady}
             >
               {submitting ? 'Building…' : 'Build quote'}
             </button>
