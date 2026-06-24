@@ -202,6 +202,8 @@ interface ManagerSidebarProps {
   coldRepsCount?: number;
   inboundOpenCount?: number;
   quotesCount?: number;
+  /** P8: active team-member count for Team nav badge */
+  teamCount?: number;
 }
 
 export function ManagerSidebar({
@@ -214,6 +216,7 @@ export function ManagerSidebar({
   coldRepsCount = 0,
   inboundOpenCount = 0,
   quotesCount = 0,
+  teamCount = 0,
 }: ManagerSidebarProps) {
   const collapsed = mode === 'collapsed';
   const navigate = useNavigate();
@@ -454,6 +457,7 @@ export function ManagerSidebar({
           label="Team"
           current={active === 'team'}
           collapsed={collapsed}
+          count={teamCount > 0 ? { n: teamCount, attention: false } : undefined}
           onClick={() => onNav('team')}
         />
         {/* Inside sales — muted sub-item under Team, no Design-Ahead label */}
