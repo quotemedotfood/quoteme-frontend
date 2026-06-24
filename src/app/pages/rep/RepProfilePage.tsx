@@ -13,6 +13,7 @@
 import { useEffect, useState } from 'react';
 import { getRepProfile, updateRepProfile } from '../../services/api';
 import type { RepProfileData } from '../../services/api';
+import { useAuth } from '../../contexts/AuthContext';
 
 // ─── Design tokens (match RepCustomersPage / RepDesktopShell) ─────────────────
 
@@ -154,14 +155,19 @@ function SectionDivider({ label }: { label: string }) {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export function RepProfilePage() {
+  // B-10: pre-seed form fields from the already-loaded auth user so the form
+  // is never blank while getRepProfile() is in flight.
+  const { user: authUser } = useAuth();
+
   const [profile, setProfile] = useState<RepProfileData | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  // Editable form state
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
-  const [phone, setPhone] = useState('');
+  // Editable form state — pre-populated from authUser so fields are never blank
+  // on initial render while the rep/profile fetch is in flight.
+  const [firstName, setFirstName] = useState(authUser?.first_name ?? '');
+  const [lastName, setLastName] = useState(authUser?.last_name ?? '');
+  const [phone, setPhone] = useState(authUser?.phone ?? '');
 
   // Save state
   const [saving, setSaving] = useState(false);
@@ -173,6 +179,8 @@ export function RepProfilePage() {
       .then((res) => {
         if (res.data) {
           setProfile(res.data);
+          // Override with the authoritative rep/profile values (phone lives on
+          // rep_profile, not users table, so this is the canonical source).
           setFirstName(res.data.first_name ?? '');
           setLastName(res.data.last_name ?? '');
           setPhone(res.data.phone ?? '');
