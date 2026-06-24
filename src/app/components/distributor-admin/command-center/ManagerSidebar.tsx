@@ -31,6 +31,7 @@ import {
   PanelLeftOpen,
   X,
   ArrowLeft,
+  Plus,
 } from 'lucide-react';
 import { SACRED_ORANGE, sans, serif, C } from './cc-atoms';
 
@@ -362,6 +363,49 @@ export function ManagerSidebar({
           </div>
         </div>
       )}
+
+      {/* + New Quote — always visible at top of nav, matches CCTodayPage header button */}
+      <div
+        style={{
+          padding: collapsed ? '12px 8px' : '12px 16px',
+          borderTop: `1px solid ${C.softLine}`,
+        }}
+      >
+        <button
+          type="button"
+          onClick={() => navigate('/start-new-quote')}
+          aria-label="New Quote"
+          title={collapsed ? 'New Quote' : undefined}
+          style={{
+            ...sans,
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: collapsed ? 'center' : 'flex-start',
+            gap: 6,
+            width: '100%',
+            background: SACRED_ORANGE,
+            color: '#fff',
+            border: 'none',
+            borderRadius: 6,
+            padding: collapsed ? '9px 0' : '9px 15px',
+            fontSize: 12.5,
+            fontWeight: 500,
+            cursor: 'pointer',
+            flexShrink: 0,
+            transition: 'background 150ms',
+            whiteSpace: 'nowrap',
+          }}
+          onMouseEnter={(e) => {
+            (e.currentTarget as HTMLButtonElement).style.background = '#E0852C';
+          }}
+          onMouseLeave={(e) => {
+            (e.currentTarget as HTMLButtonElement).style.background = SACRED_ORANGE;
+          }}
+        >
+          <Plus size={13} color="#fff" strokeWidth={2.5} />
+          {!collapsed && <span>New Quote</span>}
+        </button>
+      </div>
 
       {/* Nav groups */}
       <div

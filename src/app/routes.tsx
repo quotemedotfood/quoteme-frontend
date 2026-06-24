@@ -95,6 +95,7 @@ import { SecureTechPreviewPage } from "./pages/chef/SecureTechPreviewPage";
 import { DistributorLanderPage } from "./pages/DistributorLanderPage";
 // ── Brand suite ──────────────────────────────────────────────────────────────
 import { BrandShellLayout } from "./components/brand/BrandShellLayout";
+import { CCQuoteFlowShell } from "./components/distributor-admin/command-center/CCQuoteFlowShell";
 import { BrandSignupPage } from "./pages/brand/BrandSignupPage";
 import { BrandDashboardPage } from "./pages/brand/BrandDashboardPage";
 import { BrandCatalogPage } from "./pages/brand/BrandCatalogPage";
@@ -381,11 +382,21 @@ export const router = createBrowserRouter([
             },
           ]),
           { path: "upgrade", Component: PaywallPage },
-          { path: "start-new-quote", Component: StartNewQuotePage },
-          { path: "quote-builder", Component: QuoteBuilderPage },
+          // ── Quote-build flow — CC shell for distributor_admin, bare Outlet for others ──
+          // CCQuoteFlowShell gates on role: distributor_admin gets CCLayout (sidebar +
+          // search bar); every other role (chef, rep, guest, buyer) gets Outlet only,
+          // preserving existing shell-less behaviour. All four quote-flow steps are
+          // wrapped so the manager never loses navigation mid-flow.
+          {
+            Component: CCQuoteFlowShell,
+            children: [
+              { path: "start-new-quote", Component: StartNewQuotePage },
+              { path: "map-ingredients", Component: MapIngredientsPage },
+              { path: "quote-builder",   Component: QuoteBuilderPage },
+              { path: "export-finalize", Component: ExportFinalizePage },
+            ],
+          },
           { path: "review", Component: QuoteReviewPage },
-          { path: "map-ingredients", Component: MapIngredientsPage },
-          { path: "export-finalize", Component: ExportFinalizePage },
           { path: "onboarding/confirm", Component: OnboardingConfirmPage },
           { path: "catalog/confirmation", Component: CatalogConfirmationPage },
           // ── Command Center (B2-CC) — nested layout + routes ──────────────
