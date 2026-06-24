@@ -625,16 +625,16 @@ function DesktopRow({
         ) : (
           <button
             type="button"
-            disabled
+            onClick={() => navigate('/distributor-admin/command-center/inbound')}
             style={{
               ...sans,
               fontSize: 11.5,
-              color: C.gray400,
+              color: C.charcoal,
               background: 'none',
               border: `1px solid ${C.softLine}`,
               borderRadius: 5,
               padding: '4px 10px',
-              cursor: 'default',
+              cursor: 'pointer',
             }}
           >
             View
@@ -736,13 +736,32 @@ function MobileCard({
         </div>
       )}
 
-      {/* P6 — quote-kind rows: View (PDF) + Edit actions */}
-      {row.kind === 'quote' && (
+      {/* P6 — quote-kind rows: View (PDF) + Edit actions; opportunity rows: View → inbound */}
+      {row.kind === 'quote' ? (
         <div style={{ marginTop: 10 }}>
           <QuoteRowActions
             quoteId={row.id}
             onEdit={() => navigate(`/rep/quotes/${row.id}`)}
           />
+        </div>
+      ) : (
+        <div style={{ marginTop: 10 }}>
+          <button
+            type="button"
+            onClick={() => navigate('/distributor-admin/command-center/inbound')}
+            style={{
+              ...sans,
+              fontSize: 11.5,
+              color: C.charcoal,
+              background: 'none',
+              border: `1px solid ${C.softLine}`,
+              borderRadius: 5,
+              padding: '4px 10px',
+              cursor: 'pointer',
+            }}
+          >
+            View
+          </button>
         </div>
       )}
     </div>
