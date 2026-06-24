@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { categoryLabel } from '../utils/categoryLabel';
 import { Button } from '../components/ui/button';
 import { Loader2, RefreshCw, Check, ChevronLeft, ChevronRight, Pencil, X, Search, Plus, Upload } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
@@ -45,11 +46,8 @@ const CATEGORY_COLORS: Record<string, string> = {
   charcuterie: 'bg-rose-100 text-rose-800',
 };
 
-function formatCategory(cat: string) {
-  const normalized = cat.replace(/_/g, ' ');
-  if (/[^\x00-\x7F]/.test(normalized)) return normalized;
-  return normalized.replace(/\b\w/g, c => c.toUpperCase());
-}
+// M-5: use shared categoryLabel so "protein" renders as "Proteins" everywhere.
+const formatCategory = categoryLabel;
 
 /**
  * Returns true when the CC catalog page should show the "Update Catalog"
