@@ -39,6 +39,7 @@ import { RepPricingOnlyView } from './RepPricingOnlyView';
 import { RepReviewThreePanelDesktop } from './RepReviewThreePanelDesktop';
 import { RepReviewMobileFallback } from './RepReviewMobileFallback';
 import { useIsMobile } from '../../components/ui/use-mobile';
+import { stripSeedPrefix } from '../../utils/format';
 
 const serif: React.CSSProperties = {
   fontFamily: "'Playfair Display', Georgia, 'Times New Roman', serif",
@@ -245,7 +246,7 @@ export function RepIncomingQuotePage() {
         {/* Masthead */}
         <div style={{ padding: '20px 20px 16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            <div style={eyebrow(10)}>INCOMING QUOTE · {quote?.working_label || id}</div>
+            <div style={eyebrow(10)}>INCOMING QUOTE · {stripSeedPrefix(quote?.working_label) || id}</div>
           </div>
           <h1 style={{ ...serif, fontSize: 24, fontWeight: 600, color: C.charcoal, marginTop: 4, lineHeight: 1.15 }}>
             {quote?.restaurant || '—'}
@@ -590,7 +591,7 @@ function RepDesktopQuoteView({
       {/* Masthead */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 24, flexWrap: 'wrap' }}>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={eyebrow(10)}>INCOMING QUOTE · {quote?.working_label || quoteId}</div>
+          <div style={eyebrow(10)}>INCOMING QUOTE · {stripSeedPrefix(quote?.working_label) || quoteId}</div>
           <h1 style={{ ...serif, fontSize: 32, fontWeight: 600, color: C.charcoal, marginTop: 4, lineHeight: 1.1 }}>
             {quote?.restaurant || '—'}
           </h1>

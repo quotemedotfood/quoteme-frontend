@@ -13,6 +13,7 @@ import {
   RestaurantIndexItem,
   LocationDistributorRelationship,
 } from '../services/api';
+import { stripSeedPrefix } from '../utils/format';
 
 const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   draft: { bg: 'bg-red-100', text: 'text-red-700' },
@@ -83,7 +84,7 @@ function BuyerDashboard() {
               >
                 <div className="min-w-0">
                   <div className="font-medium text-red-800 text-sm truncate">
-                    {q.working_label || q.restaurant || 'Untitled Draft'}
+                    {stripSeedPrefix(q.working_label) || q.restaurant || 'Untitled Draft'}
                   </div>
                   <div className="text-xs text-red-400 mt-0.5">
                     {formatDate(q.created_at)} · {q.line_count} items
@@ -230,7 +231,7 @@ function BuyerDashboard() {
                     >
                       <div className="min-w-0">
                         <div className="font-medium text-[#2A2A2A] text-sm truncate">
-                          {q.working_label || q.restaurant || 'Untitled Quote'}
+                          {stripSeedPrefix(q.working_label) || q.restaurant || 'Untitled Quote'}
                         </div>
                         <div className="text-xs text-gray-400 mt-0.5">
                           {formatDate(q.created_at)} · {q.line_count} items
@@ -348,7 +349,7 @@ function RepDashboard() {
                     >
                       <div className="min-w-0">
                         <div className="font-medium text-[#2A2A2A] text-sm truncate">
-                          {q.working_label || q.restaurant || 'Untitled Quote'}
+                          {stripSeedPrefix(q.working_label) || q.restaurant || 'Untitled Quote'}
                         </div>
                         <div className="text-xs text-gray-400 mt-0.5">
                           {formatDate(q.created_at)} · {q.line_count} items

@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { getChefQuotes, type ChefQuoteRow, type ChefQuotesIndexResponse } from '../../services/api';
 import { PreviewPill } from '../../components/chef/PreviewPill';
+import { stripSeedPrefix } from '../../utils/format';
 import { QuoteStatusPill, legacyStatusToState } from '../../components/chef/QuoteStatusPill';
 
 const C = {
@@ -87,7 +88,7 @@ function QuoteRow({ q }: { q: ChefQuoteRow }) {
             className="truncate"
             style={{ ...sans, fontSize: 14, fontWeight: 500, color: C.charcoal }}
           >
-            {q.label}
+            {stripSeedPrefix(q.label)}
           </span>
           {q.preview && <PreviewPill size="xs" />}
         </div>

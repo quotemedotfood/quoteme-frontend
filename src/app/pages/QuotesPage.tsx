@@ -5,6 +5,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { BottomSheet } from '../components/BottomSheet';
 import { getQuotes, requoteQuote, downloadQuotePdf, downloadQuoteCsv, downloadOrderGuide, deleteQuote, type QuoteListItem, type GetQuotesParams } from '../services/api';
+import { stripSeedPrefix } from '../utils/format';
 
 /** Statuses where the quote workflow is closed. Requote is hidden for these. */
 export const CLOSED_STATUSES = ['won', 'confirmed', 'accepted', 'declined'] as const;
@@ -332,7 +333,7 @@ export function QuotesPage() {
                 <div className="flex justify-between items-start mb-2">
                   <div>
                     <h3 className="text-sm font-medium text-[#2A2A2A]">
-                      {quote.restaurant || quote.working_label || 'Untitled Quote'}
+                      {quote.restaurant || stripSeedPrefix(quote.working_label) || 'Untitled Quote'}
                     </h3>
                     <p className="text-xs text-gray-500 mt-0.5">
                       {quote.line_count} item{quote.line_count !== 1 ? 's' : ''}
@@ -510,7 +511,7 @@ export function QuotesPage() {
                         </span>
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-500 max-w-[200px] truncate">
-                        {quote.working_label || '-'}
+                        {stripSeedPrefix(quote.working_label) || '-'}
                       </td>
                       <td className="px-6 py-4">
                         {getStatusBadge(quote.status)}

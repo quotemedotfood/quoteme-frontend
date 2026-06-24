@@ -34,6 +34,7 @@ import {
   type ChefStackResponse,
 } from '../../services/api';
 import { PinToStackButton } from '../../components/chef/PinToStackButton';
+import { stripSeedPrefix } from '../../utils/format';
 
 // ─── Color constants (matches ChefDashboardPage / ChefQuotesPage convention) ──
 const C = {
@@ -510,7 +511,7 @@ function QuoteRow({ q }: { q: ChefQuoteRow }) {
     >
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ ...sans, fontSize: 13.5, fontWeight: 500, color: C.charcoal, lineHeight: 1.3 }}>
-          {q.label}
+          {stripSeedPrefix(q.label)}
         </div>
         <div style={{ ...sans, fontSize: 11.5, color: C.gray500, lineHeight: 1.3, marginTop: 2 }}>
           {formatDate(q.created_at)}
