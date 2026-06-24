@@ -166,7 +166,7 @@ function AssignRow({
                 lineHeight: 1.3,
               }}
             >
-              {row.restaurant}
+              {row.restaurant || '—'}
             </div>
             <div
               style={{
@@ -227,7 +227,7 @@ function AssignRow({
   // ── Unassigned row ──
   const metaLine =
     row.kind === 'quote'
-      ? `${row.city}${row.items != null ? ` · ${row.items} items` : ''}`
+      ? `${row.city}${row.items != null ? ` · ${row.items} ${row.items === 1 ? 'item' : 'items'}` : ''}`
       : row.age ?? row.city;
 
   const contextLabel =
@@ -257,7 +257,7 @@ function AssignRow({
                   lineHeight: 1.3,
                 }}
               >
-                {row.restaurant}
+                {row.restaurant || '—'}
               </span>
               {contextLabel && (
                 <span
@@ -269,7 +269,7 @@ function AssignRow({
                   }}
                 >
                   {contextLabel}
-                  {row.items != null ? ` · ${row.items} items` : ''}
+                  {row.items != null ? ` · ${row.items} ${row.items === 1 ? 'item' : 'items'}` : ''}
                 </span>
               )}
             </div>

@@ -39,7 +39,22 @@ export function DistributorRepsPage() {
   async function loadReps() {
     setLoading(true);
     const res = await getDistributorAdminReps();
-    if (res.data) setReps(res.data);
+    if (res.data) {
+      // B-12: dedup by user_id — admin row wins when a user appears as both admin and rep.
+      // Admins have is_admin=true; iterating the raw list keeps the first seen entry per
+      // user_id.  The backend already excludes admin-user rep_profile rows, but this guard
+      // prevents any future double-entry from surfacing in the UI.
+      const seen = new Set<string>();
+      const deduped = res.data.filter((r) => {
+        // Invited reps have no user_id — always include them (they can't be dups of live users).
+        if (!r.user_id) return true;
+        if (seen.has(r.user_id)) return false;
+        seen.add(r.user_id);
+        return true;
+      });
+      // Admin rows come first in the BE response, so admin wins automatically.
+      setReps(deduped);
+    }
     setLoading(false);
   }
 
