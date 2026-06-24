@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams } from 'react-router';
 import { ChevronDown } from 'lucide-react';
 import {
@@ -37,17 +37,44 @@ function groupByCategory(items: OrderGuideItemResponse[]): Record<string, OrderG
   }, {});
 }
 
+// Exported for unit testing (C-1 save-result detection).
+// Returns true when an API response from updateOrderGuideItem indicates failure.
+// Used to determine whether to show the error indicator vs clear the saving state.
+export function isSaveFailure(res: { error?: string; data?: unknown }): boolean {
+  return !!res.error;
+}
+
+// Exported for unit testing (H-6 UTC date fix).
+// Parses a date string from the API ("YYYY-MM-DD" or "YYYY-MM-DDTHH:MM:SSZ") as a
+// LOCAL calendar date so US timezone offsets don't shift the displayed day backward.
+export function parseEffectiveDate(dateStr: string): string | null {
+  if (!dateStr) return null;
+  const datePart = dateStr.split('T')[0]; // "YYYY-MM-DD"
+  const segments = datePart.split('-').map(Number);
+  const [year, month, day] = segments;
+  if (!year || !month || !day) return null;
+  const localDate = new Date(year, month - 1, day);
+  return localDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+}
+
 // ─── SavingIndicator ────────────────────────────────────────────────────────────
 
-function SavingIndicator({ saving }: { saving: boolean }) {
-  return (
-    <span
-      className="text-[10px] text-[#9E9E9E] transition-opacity duration-300"
-      style={{ opacity: saving ? 1 : 0 }}
-    >
-      saving…
-    </span>
-  );
+function SavingIndicator({ saving, saveError }: { saving: boolean; saveError: boolean }) {
+  if (saving) {
+    return (
+      <span className="text-[10px] text-[#9E9E9E]">
+        saving…
+      </span>
+    );
+  }
+  if (saveError) {
+    return (
+      <span className="text-[10px] text-[#E53E3E]" title="Save failed — check connection">
+        ✕
+      </span>
+    );
+  }
+  return <span className="text-[10px]" />;
 }
 
 // ─── OrderGuideRow ──────────────────────────────────────────────────────────────
@@ -59,7 +86,12 @@ interface RowProps {
 
 function OrderGuideRow({ item, orderGuideId }: RowProps) {
   const [saving, setSaving] = useState(false);
-  const debounceRef = { qty: null as ReturnType<typeof setTimeout> | null, par: null as ReturnType<typeof setTimeout> | null };
+  const [saveError, setSaveError] = useState(false);
+  // useRef so timer IDs survive re-renders without being in useCallback deps
+  const debounceRef = useRef<{ qty: ReturnType<typeof setTimeout> | null; par: ReturnType<typeof setTimeout> | null }>({
+    qty: null,
+    par: null,
+  });
 
   const handleChange = useCallback(
     (field: 'quantity' | 'par', raw: string) => {
@@ -68,15 +100,24 @@ function OrderGuideRow({ item, orderGuideId }: RowProps) {
 
       // Clear existing timer for this field
       const key = field === 'quantity' ? 'qty' : 'par';
-      if (debounceRef[key]) clearTimeout(debounceRef[key]!);
+      if (debounceRef.current[key]) clearTimeout(debounceRef.current[key]!);
 
-      debounceRef[key] = setTimeout(async () => {
+      debounceRef.current[key] = setTimeout(async () => {
         setSaving(true);
-        await updateOrderGuideItem(orderGuideId, item.id, { [field]: value });
-        setSaving(false);
+        setSaveError(false);
+        try {
+          const res = await updateOrderGuideItem(orderGuideId, item.id, { [field]: value });
+          if (res.error) {
+            setSaveError(true);
+          }
+        } catch {
+          setSaveError(true);
+        } finally {
+          setSaving(false);
+        }
       }, 800);
     },
-    [orderGuideId, item.id] // eslint-disable-line react-hooks/exhaustive-deps
+    [orderGuideId, item.id]
   );
 
   const inputClass =
@@ -141,7 +182,7 @@ function OrderGuideRow({ item, orderGuideId }: RowProps) {
 
       {/* Saving indicator */}
       <div className="col-span-1 flex justify-center print:hidden">
-        <SavingIndicator saving={saving} />
+        <SavingIndicator saving={saving} saveError={saveError} />
       </div>
     </div>
   );
@@ -304,9 +345,7 @@ export function ChefOrderGuidePage() {
   const grouped = groupByCategory(guide.items);
   const categoryKeys = Object.keys(grouped).sort();
 
-  const effectiveDate = guide.effective_date
-    ? new Date(guide.effective_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
-    : null;
+  const effectiveDate = guide.effective_date ? parseEffectiveDate(guide.effective_date) : null;
 
   const minimumOrder = guide.minimum_order_cents ? formatCurrency(guide.minimum_order_cents) : null;
 
