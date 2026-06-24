@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router';
-import { getGuestQuote } from '../../services/api';
+import { getGuestQuote, getChefQuote } from '../../services/api';
 import { StuckRecoveryScreen, MENU_DRAFT_KEY } from '../../components/chef/StuckRecoveryScreen';
 import { isQuoteComplete } from '../../utils/quoteStatus';
 
@@ -165,19 +165,20 @@ export function ChefStatusPage({ onTimeout }: ChefStatusPageProps = {}) {
 
     async function checkStatus() {
       if (!id) return;
-      const res = await getGuestQuote(id);
+      const bearerToken = localStorage.getItem('quoteme_token');
+      const fetchFn = bearerToken ? getChefQuote : getGuestQuote;
+      const res = await fetchFn(id);
 
       if (res.data) {
         const wasFirstPoll = !firstPollDone;
 
-        // C-03: a guest revisiting an already-finished quote should land on the
-        // receipt immediately — no blank Step-1 flash and no FINAL_STEP_DISPLAY_MS
-        // animation delay (that delay is for the live first run, not a return visit).
+        // C-03: revisiting an already-finished quote should land on the receipt
+        // immediately — no blank Step-1 flash and no FINAL_STEP_DISPLAY_MS delay.
         if (wasFirstPoll && isQuoteComplete(res.data)) {
           if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
           if (stuckTimerRef.current) { clearTimeout(stuckTimerRef.current); stuckTimerRef.current = null; }
           localStorage.removeItem(MENU_DRAFT_KEY);
-          navigate(`/chef/quotes/${id}`);
+          navigate(`/chef/quotes/${id}`, { replace: true });
           return;
         }
 
@@ -197,7 +198,7 @@ export function ChefStatusPage({ onTimeout }: ChefStatusPageProps = {}) {
         // Track 22: drive step progression from real backend processing_stage.
         const stage = res.data.processing_stage;
 
-        if (stage) {
+        if (stage && !isQuoteComplete(res.data)) {
           // Stage-driven path — quote was created via the async Track 22 flow.
           if (stage === 'extracting_dishes') {
             setCurrentStep(0);

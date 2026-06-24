@@ -215,6 +215,10 @@ export function ExportFinalizePage() {
         a.download = `order-guide-${quoteId}.xlsx`;
         a.click();
         URL.revokeObjectURL(url);
+      } else if (result.error) {
+        // Surface a clear error for draft/missing order guides instead of failing silently
+        setPdfError(result.error);
+        console.error('Order guide download error:', result.error);
       }
     } finally {
       setDownloadingOrderGuide(false);

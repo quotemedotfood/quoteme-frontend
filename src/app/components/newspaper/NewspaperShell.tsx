@@ -60,6 +60,7 @@ const ICON_MAP: Record<string, string> = {
   'phone':          'Phone',
   'file-text':      'FileText',
   'camera':         'Camera',
+  'log-out':        'LogOut',
 };
 
 interface IconProps {
@@ -323,6 +324,7 @@ export interface RoleSidebarProps {
   settings?: { id?: string; icon?: string; label?: string; onClick?: () => void; sub?: SubItem[] } | null;
   mode?: 'open' | 'compact' | 'hidden';
   onModeChange?: (m: 'open' | 'compact' | 'hidden') => void;
+  onSignOut?: () => void;
 }
 
 export function RoleSidebar({
@@ -333,6 +335,7 @@ export function RoleSidebar({
   settings = null,
   mode = 'open',
   onModeChange = () => {},
+  onSignOut,
 }: RoleSidebarProps) {
   const collapsed = mode === 'compact';
   const width = collapsed ? 64 : 280;
@@ -479,6 +482,20 @@ export function RoleSidebar({
               {!collapsed && <span>Hide sidebar</span>}
             </button>
           </div>
+          {onSignOut && (
+            <div className={collapsed ? 'px-2 pb-2' : 'px-6 pb-3'}>
+              <button
+                type="button"
+                onClick={onSignOut}
+                className="w-full flex items-center gap-2 py-2 text-[11.5px] ink-faint hover:ink-soft"
+                style={{ justifyContent: collapsed ? 'center' : 'flex-start', minHeight: 'unset' }}
+                aria-label="Sign out"
+              >
+                <NpIcon name="log-out" size={14} color="var(--qm-gray-500)" />
+                {!collapsed && <span>Sign out</span>}
+              </button>
+            </div>
+          )}
         </div>
       )}
     </aside>
@@ -494,6 +511,7 @@ export interface NewspaperMobileShellProps {
   active?: string;
   settings?: { id?: string; icon?: string; label?: string; onClick?: () => void; sub?: SubItem[] } | null;
   trust?: React.ReactNode;
+  onSignOut?: () => void;
   children?: React.ReactNode;
 }
 
@@ -504,6 +522,7 @@ export function NewspaperMobileShell({
   active,
   settings = null,
   trust = null,
+  onSignOut,
   children,
 }: NewspaperMobileShellProps) {
   const [open, setOpen] = useState(false);
@@ -634,6 +653,19 @@ export function NewspaperMobileShell({
             />
           </div>
         )}
+        {onSignOut && (
+          <div className="px-6 pb-4" style={{ borderTop: settings ? undefined : '1px solid var(--qm-soft-line)' }}>
+            <button
+              type="button"
+              onClick={() => { close(); onSignOut(); }}
+              className="w-full flex items-center gap-2 py-3 text-[12px] ink-soft"
+              style={{ minHeight: 'unset' }}
+            >
+              <NpIcon name="log-out" size={15} color="var(--qm-gray-500)" />
+              <span>Sign out</span>
+            </button>
+          </div>
+        )}
       </nav>
     </div>
   );
@@ -649,6 +681,7 @@ interface DesktopShellProps {
   settings?: RoleSidebarProps['settings'];
   trust?: React.ReactNode;
   onNav?: (target: string) => void;
+  onSignOut?: () => void;
   children?: React.ReactNode;
   initialMode?: 'open' | 'compact' | 'hidden';
   maxWidth?: number;
@@ -661,6 +694,7 @@ function NewspaperShellDesktop({
   active,
   settings,
   trust,
+  onSignOut,
   children,
   initialMode = 'open',
   maxWidth = 880,
@@ -681,6 +715,7 @@ function NewspaperShellDesktop({
           settings={settings}
           mode={mode}
           onModeChange={setMode}
+          onSignOut={onSignOut}
         />
       )}
       <main className="np-shell-desktop-main">
@@ -708,6 +743,7 @@ export function NewspaperShell({
   settings,
   trust = null,
   onNav,
+  onSignOut,
   children,
   initialMode = 'open',
   maxWidth = 880,
@@ -725,6 +761,7 @@ export function NewspaperShell({
         active={active}
         settings={settings}
         trust={trust}
+        onSignOut={onSignOut}
       >
         {children}
       </NewspaperMobileShell>
@@ -740,6 +777,7 @@ export function NewspaperShell({
       settings={settings}
       trust={trust}
       onNav={onNav}
+      onSignOut={onSignOut}
       initialMode={initialMode}
       maxWidth={maxWidth}
     >
