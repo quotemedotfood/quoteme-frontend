@@ -9,6 +9,7 @@ import {
   type QuoteDocGroup,
 } from '../../components/chef/QuoteStateDocument';
 import { categoryLabel } from '../../utils/categoryLabel';
+import { isLockedQuoteState } from '../../utils/quoteStatusLabel';
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -199,16 +200,10 @@ export function ChefQuoteReceiptPage() {
   // ── Terminal-state lock ───────────────────────────────────────────────────────
   // Once a quote reaches a terminal state (won/lost on the BE status axis, or
   // accepted/declined/expired on the J1 state axis) the chef should not be
-  // able to trigger "Looks good" or "I have questions" — the action has already
-  // been recorded or the quote is no longer actionable.
-  const isLocked =
-    quote.status === 'won' ||
-    quote.status === 'lost' ||
-    quote.state === 'accepted' ||
-    quote.state === 'declined' ||
-    quote.state === 'expired' ||
-    quote.state === 'confirmed' ||
-    quote.quote_type === 'confirmed';
+  // able to trigger "Looks good", "I have questions", or "Save for later" —
+  // the action has already been recorded or the quote is no longer actionable.
+  // H-2/H-5: shared isLockedQuoteState() from quoteStatusLabel utils.
+  const isLocked = isLockedQuoteState(quote);
 
   // ── D6 QuoteStateDocument props ──────────────────────────────────────────────
   // The document body (header + priced matched lines + totals) is now the
@@ -275,8 +270,13 @@ export function ChefQuoteReceiptPage() {
                     <span className="text-[#2A2A2A] text-base font-medium leading-snug">
                       {toTitleCase(line.component?.name || line.category || 'Item')}
                     </span>
+                    {/* H-2: on a confirmed/accepted quote do NOT show "Pending
+                        distributor confirmation" — the rep has already acted.
+                        Show a neutral settled label instead. */}
                     <span className="inline-flex self-start bg-amber-50 text-amber-800 border border-amber-200 px-2 py-0.5 rounded text-xs">
-                      {(line as any).resolution_label || 'Awaiting rep review'}
+                      {isLocked
+                        ? 'Your rep will handle this'
+                        : ((line as any).resolution_label || 'Awaiting rep review')}
                     </span>
                   </div>
                   {line.category && line.component?.name && (
@@ -374,20 +374,33 @@ export function ChefQuoteReceiptPage() {
             </>
           )}
 
-          {/* Save for later — quote is already persisted server-side, so this
-              is an explicit confirmation rather than a save action. No
-              silent reload (was navigate(-1)). */}
-          {savedForLater ? (
-            <p className="text-sm text-[#4F4F4F] px-6 py-2.5 text-center">
-              Saved. You can return to this quote anytime.
-            </p>
-          ) : (
-            <button
-              onClick={() => setSavedForLater(true)}
-              className="w-full text-[#9E9E9E] hover:text-[#4F4F4F] px-6 py-2.5 text-sm font-medium transition-colors"
+          {/* H-5: Save for later is only meaningful when the chef hasn't yet
+              acted. Hide it on accepted/confirmed/won quotes — show post-
+              acceptance CTAs (PDF download) instead if available. */}
+          {!isLocked && (
+            savedForLater ? (
+              <p className="text-sm text-[#4F4F4F] px-6 py-2.5 text-center">
+                Saved. You can return to this quote anytime.
+              </p>
+            ) : (
+              <button
+                onClick={() => setSavedForLater(true)}
+                className="w-full text-[#9E9E9E] hover:text-[#4F4F4F] px-6 py-2.5 text-sm font-medium transition-colors"
+              >
+                Save for later
+              </button>
+            )
+          )}
+          {/* Post-acceptance CTA: PDF download when available on an accepted quote */}
+          {isLocked && (quote.status === 'won' || quote.state === 'accepted') && quote.pdf_url && (
+            <a
+              href={quote.pdf_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full border border-[#E0E0E0] hover:border-[#BDBDBD] text-[#4F4F4F] rounded-lg px-6 py-3.5 text-base font-medium transition-colors text-center"
             >
-              Save for later
-            </button>
+              Download PDF
+            </a>
           )}
 
         </div>

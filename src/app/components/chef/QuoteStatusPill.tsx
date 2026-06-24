@@ -14,11 +14,15 @@
 //   declined          → "Closed"
 //   expired           → "Expired"
 //
+// Labels are delegated to quoteStatusLabel() ('pill' context) so list views and
+// detail views share a single source of truth (H-3 fix).
+//
 // Legacy status fallback: callers should pass `quote.state ?? legacyStatusToState(quote.status)`.
 // `getQuoteStatusPillPropsLegacy` maps the old `status` string to a `state` value so
 // this component stays single-purpose / state-driven.
 
 import React from 'react';
+import { quoteStatusLabel } from '../../utils/quoteStatusLabel';
 
 const sans: React.CSSProperties = { fontFamily: 'var(--qm-sans, "DM Sans", sans-serif)' };
 
@@ -26,30 +30,31 @@ export interface QuoteStatusPillProps {
   state: string;
 }
 
-/** Map J1 state → display props. Labels are Justin-locked — do not change. */
+/** Map J1 state → display props. Labels come from quoteStatusLabel() ('pill' context). */
 export function getQuoteStatusPillProps(state: string): { label: string; bg: string; color: string } {
+  const label = quoteStatusLabel(state, 'pill');
   switch (state) {
     case 'preview':
       // Waiting / pending-rep — warm orange
-      return { label: 'Awaiting rep', bg: '#FEF3C7', color: '#92400E' };
+      return { label, bg: '#FEF3C7', color: '#92400E' };
     case 'distributor_quote':
       // Rep has it, pricing in progress — warm orange
-      return { label: 'Rep pricing', bg: '#FEF3C7', color: '#92400E' };
+      return { label, bg: '#FEF3C7', color: '#92400E' };
     case 'confirmed':
       // Quote is ready for the chef — accent blue
-      return { label: 'Ready', bg: 'color-mix(in srgb, var(--accent) 20%, transparent)', color: '#2A5F6F' };
+      return { label, bg: 'color-mix(in srgb, var(--accent) 20%, transparent)', color: '#2A5F6F' };
     case 'accepted':
       // Chef accepted — green
-      return { label: 'Accepted', bg: '#DCFCE7', color: '#166534' };
+      return { label, bg: '#DCFCE7', color: '#166534' };
     case 'declined':
       // Chef declined — neutral
-      return { label: 'Closed', bg: '#F3F4F6', color: '#6B7280' };
+      return { label, bg: '#F3F4F6', color: '#6B7280' };
     case 'expired':
       // Quote expired — neutral
-      return { label: 'Expired', bg: '#F3F4F6', color: '#6B7280' };
+      return { label, bg: '#F3F4F6', color: '#6B7280' };
     default:
       // Unknown state: render raw value with neutral styling — never crash.
-      return { label: state, bg: '#F3F4F6', color: '#4F4F4F' };
+      return { label, bg: '#F3F4F6', color: '#4F4F4F' };
   }
 }
 
