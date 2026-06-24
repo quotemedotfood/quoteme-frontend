@@ -8,6 +8,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { updateCurrentUser, getBilling, createCheckoutSession, createPortalSession, sendPasswordReset, getLocations, addLocationToGroup, getLocationGroupBilling, createLocationGroupPortalSession, updateDistributorAdminSettings, getDistributorAdminSettings, getDistributorAdminBilling, type LocationItem, type DistributorAdminBilling } from '../services/api';
 import { AuthDrawer } from '../components/AuthDrawer';
 import { isBuyerRole } from '../utils/roles';
+import { shouldShowSubscribeCta, quotaDisplayText } from '../utils/quotaGate';
 import { ManagerSidebar } from '../components/distributor-admin/command-center/ManagerSidebar';
 import type { CCSidebarMode, CCManagerInfo } from '../components/distributor-admin/command-center/ManagerSidebar';
 
@@ -1128,11 +1129,12 @@ export function SettingsPage() {
             )
           ) : (
             <>
-              {/* Usage Banner - Only show for non-paid users */}
-              {!billingData?.has_paid_subscription && !profile.hasPaidSubscription && (
+              {/* Usage Banner - Only show when quota is exhausted (used >= limit).
+                  B-28: do NOT show when free quotes remain — that contradicts the count. */}
+              {shouldShowSubscribeCta(billingData) && (
                 <div className="bg-[#FFF9F3] border border-[#F2993D] rounded-lg p-4 mb-6">
                   <p className="text-xs text-[#4F4F4F]">
-                    You've used {billingData?.quotes_used ?? profile.quotesUsed} of {billingData?.quotes_limit ?? profile.quotesLimit} free quotes. Subscribe to continue building quotes.
+                    You've used {billingData?.quotes_used ?? 0} of {billingData?.quotes_limit ?? 5} free quotes. Subscribe to continue building quotes.
                   </p>
                 </div>
               )}
@@ -1145,6 +1147,12 @@ export function SettingsPage() {
                     <p className="text-lg text-[#2A2A2A]">
                       {(billingData?.has_paid_subscription ?? profile.hasPaidSubscription) ? (billingData?.plan_name || 'Premium Plan') : 'Plan'}
                     </p>
+                    {/* Quota usage — always shown for free-tier users so the count is visible */}
+                    {billingData && !billingData.has_paid_subscription && (
+                      <p className="text-xs text-[#4F4F4F] mt-0.5">
+                        {quotaDisplayText(billingData)}
+                      </p>
+                    )}
                   </div>
                   <div className="text-right">
                     <p className="text-2xl text-[#2A2A2A]">
@@ -1172,14 +1180,7 @@ export function SettingsPage() {
                   </div>
                 )}
                 <div className="flex gap-2">
-                  {!(billingData?.has_paid_subscription ?? profile.hasPaidSubscription) ? (
-                    <Button
-                      onClick={handleUpgradePlan}
-                      className="bg-[#7FAEC2] hover:bg-[#6A9AB0] text-white text-sm"
-                    >
-                      Subscribe
-                    </Button>
-                  ) : (
+                  {(billingData?.has_paid_subscription ?? profile.hasPaidSubscription) ? (
                     <Button
                       onClick={handleManagePlan}
                       disabled={billingActionLoading}
@@ -1187,7 +1188,15 @@ export function SettingsPage() {
                     >
                       {billingActionLoading ? 'Loading...' : 'Manage Billing'}
                     </Button>
-                  )}
+                  ) : shouldShowSubscribeCta(billingData) ? (
+                    /* B-28: Subscribe CTA only when quota is exhausted (used >= limit) */
+                    <Button
+                      onClick={handleUpgradePlan}
+                      className="bg-[#7FAEC2] hover:bg-[#6A9AB0] text-white text-sm"
+                    >
+                      Subscribe
+                    </Button>
+                  ) : null}
                 </div>
               </div>
 
