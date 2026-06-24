@@ -86,6 +86,19 @@ export function NpIcon({ name, size = 18, color, className, style }: IconProps) 
   );
 }
 
+// ── Mark display decision — exported for unit tests ──────────────────────────
+
+/**
+ * Returns whether the identity Mark should render a logo image vs initials.
+ * - `true`  → render <img src={logo_url}> (with onError fallback)
+ * - `false` → render initials span
+ *
+ * imgFailed mirrors the useState toggle set by onError.
+ */
+export function shouldShowLogoMark(logo_url: string | null | undefined, imgFailed: boolean): boolean {
+  return !!logo_url && !imgFailed;
+}
+
 // ── QuoteMe wordmark ─────────────────────────────────────────────────────────
 
 interface WordmarkProps {
@@ -318,7 +331,7 @@ function SidebarRestoreButton({ onShow }: { onShow: () => void }) {
 
 export interface RoleSidebarProps {
   edition?: string;
-  identity?: { eyebrow?: string; title?: string; sub?: string; mono?: string };
+  identity?: { eyebrow?: string; title?: string; sub?: string; mono?: string; logo_url?: string | null };
   nav?: NavGroup[];
   active?: string;
   settings?: { id?: string; icon?: string; label?: string; onClick?: () => void; sub?: SubItem[] } | null;
@@ -340,10 +353,29 @@ export function RoleSidebar({
   const collapsed = mode === 'compact';
   const width = collapsed ? 64 : 280;
   const isCurrent = (id: string | undefined) => !!id && id === active;
-  const { eyebrow = 'ACCOUNT', title, sub, mono } = identity;
+  const { eyebrow = 'ACCOUNT', title, sub, mono, logo_url } = identity;
   const markText = mono ?? (title ? title.split(' ').map((s) => s[0]).slice(0, 2).join('') : 'QM');
 
   function Mark({ size }: { size: number }) {
+    const [imgFailed, setImgFailed] = useState(false);
+    const showLogo = !!logo_url && !imgFailed;
+    if (showLogo) {
+      return (
+        <img
+          src={logo_url!}
+          alt={title ?? 'Brand logo'}
+          onError={() => setImgFailed(true)}
+          style={{
+            width: size,
+            height: size,
+            borderRadius: Math.round(size * 0.22),
+            objectFit: 'cover',
+            flexShrink: 0,
+            display: 'block',
+          }}
+        />
+      );
+    }
     return (
       <span
         className="inline-flex items-center justify-center shrink-0 serif"
@@ -506,7 +538,7 @@ export function RoleSidebar({
 
 export interface NewspaperMobileShellProps {
   edition?: string;
-  identity?: { eyebrow?: string; title?: string; sub?: string; meta?: string; initials?: string };
+  identity?: { eyebrow?: string; title?: string; sub?: string; meta?: string; initials?: string; logo_url?: string | null };
   nav?: NavGroup[];
   active?: string;
   settings?: { id?: string; icon?: string; label?: string; onClick?: () => void; sub?: SubItem[] } | null;
@@ -527,7 +559,9 @@ export function NewspaperMobileShell({
 }: NewspaperMobileShellProps) {
   const [open, setOpen] = useState(false);
   const close = () => setOpen(false);
-  const { eyebrow = 'CURRENTLY VIEWING', title, sub, meta, initials } = identity;
+  const { eyebrow = 'CURRENTLY VIEWING', title, sub, meta, initials, logo_url } = identity;
+  const [mobileImgFailed, setMobileImgFailed] = useState(false);
+  const showMobileLogo = !!logo_url && !mobileImgFailed;
 
   return (
     <div className="np-mobile-shell">
@@ -544,13 +578,22 @@ export function NewspaperMobileShell({
         <div className="flex flex-col min-w-0 flex-1" style={{ lineHeight: 1 }}>
           <QuoteMeWordmark variant="horizontal" height={32} edition={edition} />
         </div>
-        {initials && (
+        {(initials || logo_url) && (
           <button
             className="w-8 h-8 rounded-full flex items-center justify-center border hairline shrink-0"
-            style={{ background: 'var(--qm-warm-paper)', minHeight: 'unset', minWidth: 'unset' }}
+            style={{ background: 'var(--qm-warm-paper)', minHeight: 'unset', minWidth: 'unset', overflow: 'hidden', padding: 0 }}
             aria-label="Account"
           >
-            <span className="serif text-[11px] font-semibold ink">{initials}</span>
+            {showMobileLogo ? (
+              <img
+                src={logo_url!}
+                alt={title ?? 'Brand logo'}
+                onError={() => setMobileImgFailed(true)}
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              />
+            ) : (
+              <span className="serif text-[11px] font-semibold ink">{initials}</span>
+            )}
           </button>
         )}
       </div>
