@@ -22,7 +22,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
-import { ArrowRight, FileText, ChevronRight, Package, Inbox, Users } from 'lucide-react';
+import { ArrowRight, FileText, ChevronRight, Package, Inbox, Users, Plus } from 'lucide-react';
 import {
   CCSectionHead,
   RepAvatar,
@@ -555,6 +555,38 @@ export function CCTodayPage() {
       <CCSectionHead
         eyebrow={`THE BOARD · ${todayLabel()}`}
         title="What needs you this morning."
+        right={
+          <button
+            type="button"
+            onClick={() => navigate('/start-new-quote')}
+            style={{
+              ...sans,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              background: SACRED_ORANGE,
+              color: '#fff',
+              border: 'none',
+              borderRadius: 6,
+              padding: '9px 15px',
+              fontSize: 12.5,
+              fontWeight: 500,
+              cursor: 'pointer',
+              flexShrink: 0,
+              transition: 'background 150ms',
+              whiteSpace: 'nowrap',
+            }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.background = '#E0852C';
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.background = SACRED_ORANGE;
+            }}
+          >
+            <Plus size={13} color="#fff" />
+            New Quote
+          </button>
+        }
       />
 
       {/* ── STAT CARDS ── Products / Inbound Quotes / Reps ─────────────── */}
