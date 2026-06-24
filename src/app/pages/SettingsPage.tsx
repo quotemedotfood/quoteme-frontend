@@ -104,20 +104,25 @@ export function SettingsPage() {
     return () => window.removeEventListener('beforeunload', handler);
   }, [profile.isGuest, hasUnsavedChanges]);
 
-  // Update local state when profile changes (e.g. initial load)
+  // Update local state when profile changes (e.g. initial load).
+  // B-14: For reps, profile.distributorName may be empty because AuthSyncProvider
+  // syncs it lazily. Fall back directly to user.distributor.name / user.distributor_name
+  // so the Company Name field is never blank when the distributor is known.
   useEffect(() => {
     setFullName(profile.fullName);
     setEmail(profile.email);
     setPhoneNumber(profile.phoneNumber);
-    setCompanyName(profile.distributorName);
+    const resolvedCompanyName =
+      user?.distributor?.name || user?.distributor_name || profile.distributorName;
+    setCompanyName(resolvedCompanyName);
     setCompanyLogo(profile.distributorLogo);
     originalValues.current = {
       fullName: profile.fullName,
       email: profile.email,
       phoneNumber: profile.phoneNumber,
-      companyName: profile.distributorName,
+      companyName: resolvedCompanyName,
     };
-  }, [profile]);
+  }, [profile, user]);
 
   // Track logo load failure so we can fall back to the initials placeholder
   const [logoLoadError, setLogoLoadError] = useState(false);
@@ -1015,7 +1020,8 @@ export function SettingsPage() {
         </div>
         )}
 
-        {/* Billing Section */}
+        {/* Billing Section — hidden for reps; they never see billing */}
+        {user?.role !== 'rep' && (
         <div
           ref={billingRef}
           className="bg-white rounded-lg shadow-sm border border-gray-200 p-6"
@@ -1263,6 +1269,7 @@ export function SettingsPage() {
             </>
           )}
         </div>
+        )}
       </div>
 
       {/* Auth Drawer */}
