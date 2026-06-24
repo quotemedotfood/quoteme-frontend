@@ -143,6 +143,16 @@ export const router = createBrowserRouter([
         path: "auth",
         element: <AuthRoute />,
       },
+      // URGENT-3a: /login and /sign-in are common entry points typed by hand or
+      // copied from memory. Redirect both to the canonical auth surface /auth.
+      {
+        path: "login",
+        element: <Navigate to="/auth" replace />,
+      },
+      {
+        path: "sign-in",
+        element: <Navigate to="/auth" replace />,
+      },
       {
         // Brand signup — public, no JWT required.
         // Lives outside RootLayout so brand visitors arriving directly
@@ -435,6 +445,10 @@ export const router = createBrowserRouter([
             ],
           },
           { path: "distributor-admin", element: <Navigate to="/distributor-admin/command-center" replace /> },
+          // URGENT-1a: /distributor-admin/settings is a common guess typed by
+          // distributor_admin users. The real settings route is /settings (in the
+          // RootLayout block above). Redirect so the URL works as expected.
+          { path: "distributor-admin/settings", element: <Navigate to="/settings" replace /> },
           { path: "liquor", Component: StartNewQuotePage },
           { path: "liquor/*", Component: StartNewQuotePage },
         ],
