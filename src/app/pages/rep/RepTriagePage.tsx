@@ -40,11 +40,12 @@ import {
   SquarePen,
   DollarSign,
   ChevronRight,
+  Package,
 } from 'lucide-react';
 import { RepMatchStateBadge } from '../../components/rep/RepMatchStateBadge';
 import { CatalogConfirmBanner } from '../../components/rep/CatalogConfirmBanner';
-import { getRepIncomingQuotes, getRepInbound } from '../../services/api';
-import type { RepIncomingQuote, InboundRow } from '../../services/api';
+import { getRepIncomingQuotes, getRepInbound, convertRepInboundOpportunity } from '../../services/api';
+import type { RepIncomingQuote, InboundRow, InboundBrandItem } from '../../services/api';
 import { repRowFlags, REP_FLAG_META } from './repRowFlags';
 import type { RepFlagKey } from './repRowFlags';
 import { useAuth } from '../../contexts/AuthContext';
@@ -81,6 +82,11 @@ type RepRow = RepIncomingQuote & {
   _flags?: RepFlagKey[];
   _sourceLabel?: string | null;
   _statusLabel?: string | null;
+  /** Populated for brand_package opportunity rows. */
+  _brandName?: string | null;
+  _brandItems?: InboundBrandItem[] | null;
+  /** The original inbound opportunity id (for convert call). */
+  _opportunityId?: string | null;
 };
 
 // ─── Adapter: InboundRow → RepRow ────────────────────────────────────────────
@@ -111,6 +117,11 @@ function adaptInboundRow(row: InboundRow): RepRow {
     }),
     _sourceLabel: row.source_label,
     _statusLabel: row.status,
+    // Brand package extras — only present when payload_type == "brand_package"
+    _brandName: row.brand_name ?? null,
+    _brandItems: row.brand_items ?? null,
+    // Keep the raw opportunity id so the convert call can target it directly.
+    _opportunityId: row.kind === 'opportunity' ? row.id : null,
   };
 }
 
@@ -368,7 +379,16 @@ function TriageBody({
 
               {/* Rows */}
               {g.rows.map((q) => (
-                <TriageRow key={q.id} q={q} isDone={g.state === 'done'} nav={nav} />
+                <TriageRow
+                  key={q.id}
+                  q={q}
+                  isDone={g.state === 'done'}
+                  nav={nav}
+                  onConvertSuccess={(_quoteId) => {
+                    // Remove the converted opportunity from the inbound list so it
+                    // doesn't appear as a stale row; navigation handles the rest.
+                  }}
+                />
               ))}
             </section>
           ))}
@@ -448,11 +468,16 @@ function TriageRow({
   q,
   isDone,
   nav,
+  onConvertSuccess,
 }: {
   q: RepRow;
   isDone: boolean;
   nav: (dest: string, opts?: { quoteId?: string }) => void;
+  onConvertSuccess?: (quoteId: string) => void;
 }) {
+  const [converting, setConverting] = useState(false);
+  const [convertError, setConvertError] = useState<string | null>(null);
+
   // Bug 2 FE: inbound QUOTE rows must be actionable so reps can open/price them.
   // Inbound opportunity rows (no linked artifact/quote) stay non-clickable.
   // Heuristic: an inbound row is a quote if it has a real artifact label (anything
@@ -463,9 +488,25 @@ function TriageRow({
     (q.label && q.label !== 'Inbound') ||
     q._sourceLabel === 'quote'
   );
+  const isBrandPackageOpp = isInbound && !isInboundQuote && !!(q._brandItems);
   const isClickable = !isDone && (!isInbound || isInboundQuote);
 
   const flags = q._flags ?? [];
+
+  const handleConvert = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!q._opportunityId || converting) return;
+    setConverting(true);
+    setConvertError(null);
+    const res = await convertRepInboundOpportunity(q._opportunityId);
+    setConverting(false);
+    if (res.error || !res.data) {
+      setConvertError(res.error ?? 'Conversion failed');
+      return;
+    }
+    onConvertSuccess?.(res.data.quote_id);
+    nav('rep-incoming', { quoteId: res.data.quote_id });
+  };
 
   return (
     <div
@@ -507,6 +548,9 @@ function TriageRow({
           {isInbound && q._sourceLabel && (
             <span style={{ color: C.gray500 }}> · {q._sourceLabel}</span>
           )}
+          {isInbound && q._brandName && (
+            <span style={{ color: C.gray500 }}> · {q._brandName}</span>
+          )}
           {!isDone && !isInbound && (q.waiting_hours ?? 0) > 0 && (
             <span style={{ color: C.gray500 }}> · waiting {q.waiting_hours}h</span>
           )}
@@ -515,10 +559,40 @@ function TriageRow({
           )}
         </div>
 
+        {/* Brand package items — shown for brand_package opportunity rows only */}
+        {isBrandPackageOpp && q._brandItems && q._brandItems.length > 0 && (
+          <div style={{
+            marginTop: 8,
+            paddingLeft: 10,
+            borderLeft: `2px solid var(--primary, #E05C1A)`,
+            display: 'flex', flexDirection: 'column', gap: 2,
+          }}>
+            {q._brandItems.map((item, i) => (
+              <div key={i} style={{ ...sans, fontSize: 11, color: C.gray700, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Package size={10} color="var(--primary, #E05C1A)" strokeWidth={2} style={{ flexShrink: 0 }} />
+                <span style={{ fontWeight: 500 }}>{item.product_name}</span>
+                {item.pack_size && (
+                  <span style={{ color: C.gray500 }}>{item.pack_size}</span>
+                )}
+                {item.sku && (
+                  <span style={{ color: C.gray500, fontVariantNumeric: 'tabular-nums' }}>#{item.sku}</span>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* Flags — shown below meta line for clean wrapping on narrow layouts */}
         {flags.length > 0 && (
           <div style={{ marginTop: 5 }}>
             <FlagPills flags={flags} />
+          </div>
+        )}
+
+        {/* Convert error */}
+        {convertError && (
+          <div style={{ ...sans, fontSize: 11, color: '#B91C1C', marginTop: 4 }}>
+            {convertError}
           </div>
         )}
       </div>
@@ -553,6 +627,28 @@ function TriageRow({
           }}
         >
           Open <ChevronRight size={12} color={C.gray500} strokeWidth={1.8} />
+        </button>
+      ) : isBrandPackageOpp ? (
+        /* "Build quote" button — Sacred Orange primary action for brand_package opps */
+        <button
+          type="button"
+          onClick={handleConvert}
+          disabled={converting}
+          style={{
+            ...sans,
+            display: 'inline-flex', alignItems: 'center', gap: 5,
+            fontSize: 12, fontWeight: 600,
+            padding: '6px 13px',
+            borderRadius: 6,
+            background: converting ? 'var(--primary-light, rgba(224,92,26,.12))' : 'var(--primary, #E05C1A)',
+            color: converting ? 'var(--primary, #E05C1A)' : '#fff',
+            border: `1.5px solid var(--primary, #E05C1A)`,
+            cursor: converting ? 'default' : 'pointer',
+            flexShrink: 0,
+            transition: 'background 0.15s',
+          }}
+        >
+          {converting ? 'Building…' : 'Build quote'}
         </button>
       ) : null}
     </div>

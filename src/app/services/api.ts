@@ -2270,6 +2270,14 @@ export async function getCommandCenterSearch(
 // Each row may be kind='opportunity' (inbound_opportunity) or kind='quote'.
 
 /** Unified inbound row returned by GET /api/v1/distributor_admin/command_center/inbound */
+/** A single item in a brand package, surfaced on brand_package opportunity rows. */
+export interface InboundBrandItem {
+  product_name: string | null;
+  pack_size: string | null;
+  sku: string | null;
+  brand: string | null;
+}
+
 export interface InboundRow {
   kind: 'opportunity' | 'quote';
   id: string;
@@ -2292,6 +2300,10 @@ export interface InboundRow {
   received_at?: string | null;
   /** The downstream artifact this row is associated with (quote, opportunity, etc.). */
   artifact: { type: string; id: string; name: string | null } | null;
+  /** Brand name — only present on brand_package opportunity rows. */
+  brand_name?: string | null;
+  /** Brand package items — only present on brand_package opportunity rows. */
+  brand_items?: InboundBrandItem[] | null;
 }
 
 /** GET /api/v1/distributor_admin/command_center/inbound
@@ -2955,6 +2967,23 @@ export async function getRepInbound(): Promise<ApiResponse<InboundRow[]>> {
 }
 
 /**
+ * convertRepInboundOpportunity — POST /api/v1/rep/inbound_opportunities/:id/convert
+ *
+ * Converts a brand_package InboundOpportunity (assigned to the calling rep) into a
+ * draft Quote on the rep's distributor's catalog.
+ *
+ * Returns { quote_id, line_count, matched_lines, status: "converted" } on success.
+ */
+export async function convertRepInboundOpportunity(
+  opportunityId: string
+): Promise<ApiResponse<{ quote_id: string; line_count: number; matched_lines: number; status: string }>> {
+  return fetchWithAuth(
+    `/api/v1/rep/inbound_opportunities/${encodeURIComponent(opportunityId)}/convert`,
+    { method: 'POST' }
+  );
+}
+
+/**
  * getRepQuote — GET /api/v1/rep/quotes/:id (Bearer auth)
  *
  * Returns the full quote document for the rep to review/price.
@@ -3472,7 +3501,8 @@ export interface BrandSampleProduct {
   id: string;
   item_number?: string | null;
   brand?: string | null;
-  product: string;
+  /** API returns product_name — was incorrectly typed as `product` (fix #3) */
+  product_name: string;
   pack_size?: string | null;
   category?: string | null;
 }

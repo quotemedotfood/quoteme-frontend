@@ -149,7 +149,7 @@ export function BrandCatalogPage() {
               samples.map((p, i) => (
                 <div key={p.id ?? i} className="doc-divider py-3 flex items-center justify-between gap-3">
                   <div className="min-w-0">
-                    <div className="text-[13.5px] ink leading-snug">{p.product}</div>
+                    <div className="text-[13.5px] ink leading-snug">{p.product_name}</div>
                     <div className="text-[11.5px] ink-faint num leading-snug">
                       {[p.pack_size, p.brand].filter(Boolean).join(' · ')}
                     </div>
