@@ -98,8 +98,10 @@ export function PullDistributorAnchor({
                 {distributor.name}
               </span>
 
-              {/* Affiliation pill */}
-              {distributor.affiliated ? (
+              {/* Affiliation pill — H-4: only show "Rep on file" when rep name+email
+                  are actually populated. When affiliated but fields are blank, fall
+                  through to the "No rep yet" pill so the chef knows to fill them in. */}
+              {distributor.affiliated && distributor.rep?.name?.trim() && distributor.rep?.email?.trim() ? (
                 <span className="inline-flex items-center gap-1 text-[10px] font-medium text-[#2A5F6F] bg-[#EEF6F8] rounded-full px-2 py-0.5 shrink-0">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#2A5F6F] shrink-0" />
                   Rep on file
