@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router';
 import { Search, Plus, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { Input } from '../../components/ui/input';
 import { Button } from '../../components/ui/button';
@@ -16,6 +17,7 @@ type SortField = 'name' | 'status' | 'created_at';
 type SortDir = 'asc' | 'desc';
 
 export function QMAdminBrands() {
+  const navigate = useNavigate();
   const [brands, setBrands] = useState<AdminBrand[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -157,7 +159,11 @@ export function QMAdminBrands() {
               </TableHeader>
               <TableBody>
                 {filtered.map((b) => (
-                  <TableRow key={b.id} className="hover:bg-gray-50">
+                  <TableRow
+                    key={b.id}
+                    className="hover:bg-gray-50 cursor-pointer"
+                    onClick={() => navigate(`/qm-admin/brands/${b.id}`)}
+                  >
                     <TableCell className="font-medium text-[#2A2A2A]">{b.name}</TableCell>
                     <TableCell>
                       <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${b.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
