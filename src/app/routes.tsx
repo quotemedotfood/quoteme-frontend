@@ -154,6 +154,12 @@ export const router = createBrowserRouter([
         path: "sign-in",
         element: <Navigate to="/auth" replace />,
       },
+      // B-18: /distributors is a common bare URL visitors type — redirect to the
+      // canonical distributor entry surface.
+      {
+        path: "distributors",
+        element: <Navigate to="/chef/distributor/new" replace />,
+      },
       {
         // Brand signup — public, no JWT required.
         // Lives outside RootLayout so brand visitors arriving directly
