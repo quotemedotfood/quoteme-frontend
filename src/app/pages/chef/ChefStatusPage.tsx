@@ -105,6 +105,17 @@ function StepRow({ step, state, isLast }: StepRowProps) {
   );
 }
 
+// ─── B01: Session-expired detection ──────────────────────────────────────────
+// Exported so it can be unit-tested independently of the component.
+// Returns true when an API response indicates the guest session has expired
+// (HTTP 401) or carries the canonical "Session not found or expired" error
+// string — both mean polling should stop and the expired UI should render.
+export function isSessionExpiredResponse(res: { status?: number; error?: string }): boolean {
+  if (res.status === 401) return true;
+  if (res.error === 'Session not found or expired') return true;
+  return false;
+}
+
 // ─── Props (Agent A integration surface) ─────────────────────────────────────
 // Agent A's c133 timeout work can pass `onTimeout` via router state or as a
 // prop if ChefStatusPage is ever rendered as a child component. When the
@@ -124,11 +135,13 @@ export function ChefStatusPage({ onTimeout }: ChefStatusPageProps = {}) {
   // currentStep tracks which step is currently active (0-based).
   // c144 — isStuck flips when the 60s stuck-timer fires; switches to StuckRecoveryScreen.
   // repEmail/repName surface to StuckRecoveryScreen path (a) when on file.
+  // B01 — isSessionExpired flips when a 401 is received; stops polling + shows expired UI.
   const [currentStep, setCurrentStep] = useState(0);
   const [distributorName, setDistributorName] = useState<string | null>(null);
   const [repEmail, setRepEmail] = useState<string | undefined>(undefined);
   const [repName, setRepName] = useState<string | undefined>(undefined);
   const [isStuck, setIsStuck] = useState(false);
+  const [isSessionExpired, setIsSessionExpired] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const stuckTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -168,6 +181,15 @@ export function ChefStatusPage({ onTimeout }: ChefStatusPageProps = {}) {
       const bearerToken = localStorage.getItem('quoteme_token');
       const fetchFn = bearerToken ? getChefQuote : getGuestQuote;
       const res = await fetchFn(id);
+
+      // B01: detect expired session (401 / "Session not found or expired").
+      // Stop polling immediately and show the expired UI — never spin forever.
+      if (isSessionExpiredResponse(res)) {
+        if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
+        if (stuckTimerRef.current) { clearTimeout(stuckTimerRef.current); stuckTimerRef.current = null; }
+        setIsSessionExpired(true);
+        return;
+      }
 
       if (res.data) {
         const wasFirstPoll = !firstPollDone;
@@ -262,6 +284,44 @@ export function ChefStatusPage({ onTimeout }: ChefStatusPageProps = {}) {
     if (index < currentStep) return 'done';
     if (index === currentStep) return 'active';
     return 'pending';
+  }
+
+  // B01: session expired — stop all activity and show a clear message.
+  if (isSessionExpired) {
+    return (
+      <div className="min-h-screen bg-white flex flex-col items-center justify-center p-6">
+        <div className="w-full max-w-sm text-center">
+          <div className="mb-6">
+            <svg
+              width="48"
+              height="48"
+              viewBox="0 0 48 48"
+              fill="none"
+              className="mx-auto mb-4"
+              aria-hidden="true"
+            >
+              <circle cx="24" cy="24" r="22" stroke="#E0E0E0" strokeWidth="2" />
+              <path
+                d="M24 14v12l6 4"
+                stroke="#BDBDBD"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+            <h1
+              className="text-xl font-bold text-[#2B2B2B] mb-3"
+              style={headlineStyle}
+            >
+              Your session has expired
+            </h1>
+            <p className="text-[#4F4F4F] text-sm leading-relaxed">
+              Use the quote link from your email to pick up where you left off.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   // Transition to recovery screen once the timeout fires.
