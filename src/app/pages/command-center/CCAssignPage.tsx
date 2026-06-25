@@ -225,10 +225,13 @@ function AssignRow({
   }
 
   // ── Unassigned row ──
+  // B-107: row.city can be null from the BE even though the type says string.
+  // Template literals coerce null → "null"; guard with ?? to show "—" instead.
+  const safeCity = (row.city as string | null) ?? '—';
   const metaLine =
     row.kind === 'quote'
-      ? `${row.city}${row.items != null ? ` · ${row.items} ${row.items === 1 ? 'item' : 'items'}` : ''}`
-      : row.age ?? row.city;
+      ? `${safeCity}${row.items != null ? ` · ${row.items} ${row.items === 1 ? 'item' : 'items'}` : ''}`
+      : row.age ?? safeCity;
 
   const contextLabel =
     row.kind === 'quote' && row.q_label
