@@ -1,18 +1,15 @@
 // BrandCapturePage — /brand/capture
 //
-// Reskinned per handoff/desi-brand-suite-060626/src/screens-brand.jsx
-// (BrandCaptureBody). Desi's paste/upload/photo tabs + match results UI.
+// Two-step capture flow (B-174 fix):
+//   1. POST /api/v1/brand/menus  { raw_text }  → { menu_id }
+//   2. POST /api/v1/brand/matches { menu_id }  → { components, matched_count, total_count }
 //
-// V1 backend: paste a menu_id → POST /brand/matches. The "paste" tab
-// supports a menu_id input (functional). Upload/photo tabs show the Desi
-// affordance visually but are marked as "coming soon" since the capture
-// backend is not wired yet — faithful to the README "demo stub" note.
-//
-// All existing getBrandMatches / createBrandPackage wiring preserved.
+// Previously the page sent raw text directly as menu_id → 404.
+// Upload/photo tabs remain "coming soon" stubs (no backend wiring yet).
 
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
-import { getBrandMatches, createBrandPackage } from '../../services/api';
+import { createBrandMenu, getBrandMatches, createBrandPackage } from '../../services/api';
 import type { BrandMatchComponent, BrandMatchProduct } from '../../services/api';
 import { NpIcon } from '../../components/newspaper/NewspaperShell';
 
@@ -22,8 +19,9 @@ export function BrandCapturePage() {
   const navigate = useNavigate();
 
   const [tab, setTab]             = useState<'paste' | 'upload' | 'photo'>('paste');
-  const [menuId, setMenuId]       = useState('');
+  const [rawText, setRawText]     = useState('');
   const [loading, setLoading]     = useState(false);
+  const [loadingStep, setLoadingStep] = useState<'extracting' | 'matching' | null>(null);
   const [error, setError]         = useState<string | null>(null);
   const [components, setComponents] = useState<BrandMatchComponent[]>([]);
   const [matched, setMatched]     = useState(0);
@@ -40,13 +38,34 @@ export function BrandCapturePage() {
 
   const handleMatch = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!menuId.trim()) return;
+    if (!rawText.trim()) return;
     setError(null);
     setComponents([]);
     setSelected({});
     setLoading(true);
-    const res = await getBrandMatches(menuId.trim());
+
+    // Step 1: extract raw text → create Menu record → get menu_id
+    setLoadingStep('extracting');
+    const captureRes = await createBrandMenu(rawText.trim());
+    if (captureRes.error) {
+      setLoading(false);
+      setLoadingStep(null);
+      setError(captureRes.error);
+      return;
+    }
+    const menuId = captureRes.data?.menu_id;
+    if (!menuId) {
+      setLoading(false);
+      setLoadingStep(null);
+      setError('Menu extraction returned no ID. Please try again.');
+      return;
+    }
+
+    // Step 2: match the extracted menu against the brand's catalog
+    setLoadingStep('matching');
+    const res = await getBrandMatches(menuId);
     setLoading(false);
+    setLoadingStep(null);
     if (res.error) { setError(res.error); return; }
     setComponents(res.data?.components ?? []);
     setMatched(res.data?.matched_count ?? 0);
@@ -219,20 +238,20 @@ export function BrandCapturePage() {
             <textarea
               className="qm-textarea mt-3"
               style={{ minHeight: 120, fontSize: 14 }}
-              placeholder="Paste the menu here — dishes, a spec sheet, an email… or enter a menu ID to match against your catalog."
-              value={menuId}
-              onChange={(e) => setMenuId(e.target.value)}
+              placeholder="Paste the menu here — dishes, a spec sheet, an email…"
+              value={rawText}
+              onChange={(e) => setRawText(e.target.value)}
               disabled={loading}
             />
             {error && <div className="mt-2 text-[12.5px]" style={{ color: '#B91C1C' }}>{error}</div>}
             <button
               type="submit"
-              disabled={loading || !menuId.trim()}
+              disabled={loading || !rawText.trim()}
               className="qm-btn qm-btn-orange qm-btn-full mt-4"
-              style={{ padding: '13px 18px', fontSize: 15, opacity: (loading || !menuId.trim()) ? 0.5 : 1, cursor: (loading || !menuId.trim()) ? 'not-allowed' : 'pointer' }}
+              style={{ padding: '13px 18px', fontSize: 15, opacity: (loading || !rawText.trim()) ? 0.5 : 1, cursor: (loading || !rawText.trim()) ? 'not-allowed' : 'pointer' }}
             >
               <NpIcon name="search" size={16} color="#fff" />
-              {loading ? 'Matching…' : 'Match against my catalog'}
+              {loadingStep === 'extracting' ? 'Reading menu…' : loadingStep === 'matching' ? 'Matching…' : 'Match against my catalog'}
             </button>
           </form>
         ) : (

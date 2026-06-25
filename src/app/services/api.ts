@@ -3595,6 +3595,20 @@ export async function getBrandMatches(menuId: string): Promise<ApiResponse<Brand
   });
 }
 
+// B-174: brand menu capture — extract raw text → get menu_id for /brand/matches
+export interface BrandMenuCreateResponse {
+  menu_id: string;
+  component_count: number;
+  status: string;
+}
+
+export async function createBrandMenu(rawText: string): Promise<ApiResponse<BrandMenuCreateResponse>> {
+  return fetchWithAuth('/api/v1/brand/menus', {
+    method: 'POST',
+    body: JSON.stringify({ raw_text: rawText }),
+  });
+}
+
 // ── Brand Packages ─────────────────────────────────────────────────────────
 
 export interface BrandPackageSummary {
