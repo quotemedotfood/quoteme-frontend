@@ -92,6 +92,7 @@ export function ChefPullEntryPage() {
   const [repEmailError, setRepEmailError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const repSectionRef = useRef<HTMLDivElement>(null);
 
   // Load saved menus.
   // Default stays 'paste' unless menu_id was forwarded via router state
@@ -257,13 +258,12 @@ export function ChefPullEntryPage() {
       <div className="py-16 flex flex-col items-center justify-center">
         <div className="w-full max-w-lg">
           <p className="text-[#4F4F4F] text-sm">
-            No distributor selected.{' '}
             <button
               type="button"
               className="underline text-[#2B2B2B]"
               onClick={() => navigate('/chef/catalog')}
             >
-              Choose one
+              Select a distributor
             </button>{' '}
             to continue.
           </p>
@@ -353,6 +353,12 @@ export function ChefPullEntryPage() {
       <PullDistributorAnchor
         distributor={distributor}
         onChangeDistributor={() => navigate('/chef/catalog')}
+        onChangeRep={
+          // Only show "Change rep" when there is an affiliated rep on file
+          distributor?.affiliated && distributor?.rep?.name && distributor?.rep?.email
+            ? () => repSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+            : undefined
+        }
       />
 
       <div className="py-10 px-4 flex flex-col items-center">
@@ -538,7 +544,7 @@ export function ChefPullEntryPage() {
             </div>
 
             {/* c151-E: Rep capture — required. */}
-            <div className="border border-[#E8C9A0] rounded-lg p-4 bg-[#FFF9F3] flex flex-col gap-3">
+            <div ref={repSectionRef} className="border border-[#E8C9A0] rounded-lg p-4 bg-[#FFF9F3] flex flex-col gap-3">
               <div>
                 <h3 className="text-sm font-semibold text-[#2B2B2B]">
                   Who at {distributor?.name ?? 'this distributor'} should get this?
@@ -588,10 +594,15 @@ export function ChefPullEntryPage() {
             {/* Error */}
             {error && <p className={errorText}>{error}</p>}
 
-            {/* C-4: catalog not ready — inline notice above button */}
+            {/* Disabled reasons — shown ABOVE the button so the chef sees why before clicking */}
             {!catalogReady && distributor != null && (
               <p className="text-sm text-[#9E9E9E] text-center leading-relaxed">
                 This distributor's catalog isn't set up yet — ask your rep to upload it.
+              </p>
+            )}
+            {catalogReady && !hasContent && (
+              <p className="text-sm text-[#9E9E9E] text-center leading-relaxed">
+                Add a menu above to build a quote.
               </p>
             )}
 

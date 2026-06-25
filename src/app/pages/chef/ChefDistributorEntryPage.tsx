@@ -475,11 +475,11 @@ function RequestPanel({ restaurantName }: RequestPanelProps) {
   const { user } = useUser();
 
   const defaultNote =
-    `Hi — building out our spring menu at ${restaurantName || 'our restaurant'} and would love to see your latest price list. Happy to send over what we're looking at.`;
+    `Hi — building out our menu at ${restaurantName || 'our restaurant'} and would love to see your latest price list. Happy to send over what we're looking at.`;
 
   const [distName, setDistName] = useState('');
   const [repName, setRepName] = useState('');
-  const [repEmail, setRepEmail] = useState('');
+  const [repContact, setRepContact] = useState('');
   const [note, setNote] = useState(defaultNote);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -489,14 +489,26 @@ function RequestPanel({ restaurantName }: RequestPanelProps) {
     : '';
   const chefEmail = user?.email ?? '';
 
+  /** Detect whether a contact string looks like an email or a phone number. */
+  function parseRepContact(raw: string): { email?: string; phone?: string } {
+    const trimmed = raw.trim();
+    if (!trimmed) return {};
+    // Simple heuristic: contains @ → treat as email; otherwise treat as phone
+    if (trimmed.includes('@')) {
+      return { email: trimmed };
+    }
+    return { phone: trimmed };
+  }
+
   async function handleSubmit() {
     if (!distName.trim()) return;
     setError(null);
     setSubmitting(true);
     try {
+      const contactParsed = parseRepContact(repContact);
       const rep_contact =
-        repName.trim() || repEmail.trim()
-          ? { name: repName.trim() || undefined, email: repEmail.trim() || undefined }
+        repName.trim() || repContact.trim()
+          ? { name: repName.trim() || undefined, ...contactParsed }
           : undefined;
 
       const res = await createChefDistributor({
@@ -561,22 +573,22 @@ function RequestPanel({ restaurantName }: RequestPanelProps) {
       </div>
 
       <div className="mt-3">
-        <label className={`${eyebrowClass} block mb-1`} htmlFor="rq_email" style={{ fontSize: 9 }}>
-          REP EMAIL (OPTIONAL)
+        <label className={`${eyebrowClass} block mb-1`} htmlFor="rq_contact" style={{ fontSize: 9 }}>
+          REP EMAIL OR PHONE (OPTIONAL)
         </label>
         <input
-          id="rq_email"
-          type="email"
-          inputMode="email"
-          value={repEmail}
-          onChange={(e) => setRepEmail(e.target.value)}
-          placeholder="name@distributor.com"
+          id="rq_contact"
+          type="text"
+          inputMode="text"
+          value={repContact}
+          onChange={(e) => setRepContact(e.target.value)}
+          placeholder="name@distributor.com or 555-867-5309"
           disabled={submitting}
-          autoComplete="email"
+          autoComplete="off"
           className={inputClass}
         />
         <p className="text-[10.5px] text-[#9E9E9E] italic leading-snug mt-1" style={serifStyle}>
-          Don't have an email? Phone or full company name works — we'll figure out where to send it.
+          Either works — we'll route it to the right place.
         </p>
       </div>
 

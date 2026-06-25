@@ -410,6 +410,7 @@ function MenuRow({
   const [renaming, setRenaming] = useState(false);
   const kebabRef = useRef<HTMLButtonElement>(null);
   const isDraft = menu.quote_count === 0;
+  const menuDisplayName = displayMenuName(menu.name);
 
   return (
     <div
@@ -457,7 +458,7 @@ function MenuRow({
                 whiteSpace: 'nowrap',
               }}
             >
-              {menu.name}
+              {menuDisplayName}
             </span>
             {isDraft && <DraftPill />}
             <SourceBadge sourceType={menu.source_type} />
@@ -550,6 +551,11 @@ function MenuRow({
   );
 }
 
+/** Display name for a menu, masking the legacy "Guest Quote" default. */
+function displayMenuName(name: string): string {
+  return name === 'Guest Quote' ? 'Untitled Menu' : name;
+}
+
 // Single order guide row
 function OrderGuideRow({ og }: { og: ChefOrderGuideRow }) {
   const [downloading, setDownloading] = useState<'pdf' | 'excel' | null>(null);
@@ -616,11 +622,13 @@ function OrderGuideRow({ og }: { og: ChefOrderGuideRow }) {
             {og.distributor_name ?? 'Unknown distributor'}
           </span>
           <span style={statusPillStyle(og.status)}>{statusLabel(og.status)}</span>
+          {/* Date in title row so identical distributor+status rows are distinguishable */}
+          <span style={{ ...sans, fontSize: 12, fontWeight: 400, color: C.gray500, whiteSpace: 'nowrap' }}>
+            {formatDate(og.created_at)}
+          </span>
         </div>
         <div style={{ ...sans, fontSize: 11.5, color: C.gray500, marginTop: 3 }}>
           {og.items_count} {og.items_count === 1 ? 'item' : 'items'}
-          {' · '}
-          {formatDate(og.created_at)}
         </div>
       </div>
 
