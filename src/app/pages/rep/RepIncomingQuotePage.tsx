@@ -21,7 +21,7 @@
 // + RepPricingOnlyView + RepReviewThreePanelDesktop.
 
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useParams, useSearchParams } from 'react-router';
+import { useNavigate, useLocation, useParams, useSearchParams } from 'react-router';
 import { categoryLabel } from '../../utils/categoryLabel';
 import { ChevronLeft, SquarePen, DollarSign, Search, X, Flag, Bookmark, MessageCircle, Pencil } from 'lucide-react';
 
@@ -103,9 +103,11 @@ function groupByCategory(lines: QuoteLineResponse[]): { cat: string; items: Quot
 export function RepIncomingQuotePage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const mode = searchParams.get('mode');
   const { user } = useAuth();
+  const backTo: string = (location.state as { from?: string } | null)?.from ?? '/rep/quotes/inbound';
   // P7: CatalogConfirmBanner is admin-only — never shown to pure reps.
   const isDistributorAdmin = user?.role === 'distributor_admin';
 
@@ -221,10 +223,10 @@ export function RepIncomingQuotePage() {
       >
         <button
           type="button"
-          onClick={() => navigate('/rep/quotes/inbound')}
+          onClick={() => navigate(backTo)}
           style={{ ...sans, display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, color: C.gray700, background: 'none', border: 'none', cursor: 'pointer' }}
         >
-          <ChevronLeft size={13} strokeWidth={1.8} /> Inbound
+          <ChevronLeft size={13} strokeWidth={1.8} /> {backTo.includes('command-center') ? 'Command Center' : 'Inbound'}
         </button>
         {sentAt && <span style={{ ...sans, fontSize: 11, color: C.gray500 }}>{sentAt}</span>}
       </div>
@@ -569,10 +571,10 @@ function RepDesktopQuoteView({
       {/* Breadcrumb */}
       <button
         type="button"
-        onClick={() => nav('rep-triage')}
+        onClick={() => navigate(backTo)}
         style={{ ...sans, display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12.5, color: C.gray700, background: 'none', border: 'none', cursor: 'pointer', marginBottom: 8 }}
       >
-        <ChevronLeft size={14} strokeWidth={1.8} /> Triage
+        <ChevronLeft size={14} strokeWidth={1.8} /> {backTo.includes('command-center') ? 'Command Center' : 'Triage'}
       </button>
 
       {/* Catalog banner — P7: admin-only, never shown to pure reps */}
