@@ -66,6 +66,10 @@ export interface QuoteDocGroup {
 
 export interface QuoteStateDocumentProps {
   state?: QuoteDocumentState;
+  /** Raw BE quote.state — used to derive the correct seal label for the
+   * 'confirmed' document state, which covers both 'confirmed' (rep-priced,
+   * chef not yet accepted) and 'accepted' (chef accepted). */
+  quoteState?: string | null;
   restaurant: string;
   forName?: string; // chef full name (omitted on surfaces that don't carry it)
   quoteDate: string;
@@ -91,6 +95,7 @@ interface Chrome {
 
 export function QuoteStateDocument({
   state = 'preview',
+  quoteState,
   restaurant,
   forName,
   quoteDate,
@@ -212,7 +217,14 @@ export function QuoteStateDocument({
           )}
           {chrome.topRightSlot === 'seal' && (
             <div className="shrink-0">
-              <ConfirmedSeal date={confirmedAt} />
+              <ConfirmedSeal
+                date={confirmedAt}
+                label={
+                  quoteState === 'accepted'
+                    ? quoteStatusLabel('accepted', 'pill').toUpperCase()
+                    : 'CONFIRMED'
+                }
+              />
             </div>
           )}
         </div>
@@ -355,12 +367,13 @@ function QuoteStateGroup({
   );
 }
 
-export function ConfirmedSeal({ date = '', label }: { date?: string; label?: string }) {
+export function ConfirmedSeal({ date = '', label = 'CONFIRMED' }: { date?: string; label?: string }) {
   const dateShort = date.replace(/, \d{4}$/, '').toUpperCase();
-  // H-3: derive seal label from quoteStatusLabel so the source of truth stays
-  // in the helper. Default to 'accepted' pill label ("Accepted"). CSS
-  // text-transform: uppercase keeps the stamp aesthetic; the source is the helper.
-  const sealLabel = (label ?? quoteStatusLabel('accepted', 'pill')).toUpperCase();
+  // H-3 fix: label is passed in by the call site, derived from the actual
+  // quote.state. Default is "CONFIRMED" (safe fallback for the doc-confirmed
+  // state when no quoteState prop is provided). "ACCEPTED" is only set when
+  // quoteState === 'accepted'. Do NOT default to 'accepted' pill label here.
+  const sealLabel = label.toUpperCase();
   return (
     <div
       className="relative flex items-center justify-center"

@@ -239,6 +239,7 @@ export function ChefQuoteReceiptPage() {
         <div className="mb-8 overflow-hidden rounded-lg" style={{ border: '1px solid #E8E8E8' }}>
           <QuoteStateDocument
             state={docState}
+            quoteState={quote.state}
             restaurant={quote.restaurant}
             quoteDate={formatDate(quote.created_at)}
             rep={repName || 'your rep'}

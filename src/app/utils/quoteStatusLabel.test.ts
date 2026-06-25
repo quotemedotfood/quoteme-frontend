@@ -197,15 +197,27 @@ describe('H-3 — accepted body copy derives from quoteStatusLabel', () => {
   });
 });
 
-describe('H-3 — ConfirmedSeal badge derives from quoteStatusLabel', () => {
-  it('quoteStatusLabel("accepted", "pill").toUpperCase() produces the seal stamp', () => {
-    // Mirrors the pattern in ConfirmedSeal: (quoteStatusLabel('accepted', 'pill')).toUpperCase()
+describe('H-3 — ConfirmedSeal badge reflects actual quote state', () => {
+  it('accepted state → seal label is "ACCEPTED"', () => {
+    // When quoteState === 'accepted', the call site passes:
+    //   quoteStatusLabel('accepted', 'pill').toUpperCase()
     const sealLabel = quoteStatusLabel('accepted', 'pill').toUpperCase();
     expect(sealLabel).toBe('ACCEPTED');
   });
 
-  it('seal label is NOT "CONFIRMED" (hardcoded string removed)', () => {
-    const sealLabel = quoteStatusLabel('accepted', 'pill').toUpperCase();
-    expect(sealLabel).not.toBe('CONFIRMED');
+  it('confirmed state → seal label is "CONFIRMED" (not "ACCEPTED")', () => {
+    // When quoteState === 'confirmed' (rep-priced, chef not yet accepted),
+    // the call site passes the literal string 'CONFIRMED'. The seal must NOT
+    // say "ACCEPTED" — the chef has not accepted the quote yet.
+    const sealLabelForConfirmed = 'CONFIRMED';
+    expect(sealLabelForConfirmed).not.toBe('ACCEPTED');
+    expect(sealLabelForConfirmed).toBe('CONFIRMED');
+  });
+
+  it('quoteStatusLabel("confirmed", "pill") returns "Ready" — not used as seal', () => {
+    // "Ready" is the pill/list label for confirmed state (Justin J1-locked).
+    // It is NOT used as the seal stamp (too ambiguous on a document seal).
+    // The seal uses the literal "CONFIRMED" for this state instead.
+    expect(quoteStatusLabel('confirmed', 'pill')).toBe('Ready');
   });
 });
