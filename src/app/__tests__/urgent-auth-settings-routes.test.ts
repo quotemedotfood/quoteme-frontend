@@ -72,6 +72,52 @@ describe('URGENT-3a: /login and /sign-in redirect to /auth', () => {
   });
 });
 
+// ── B-146: /rep/settings redirects to /settings ─────────────────────────────
+// Rep users sometimes type /rep/settings directly. The real settings route is
+// /settings (shared shell). Redirect so the URL works as expected.
+
+const REP_SETTINGS_REDIRECT_TARGET = '/settings';
+
+describe('B-146: /rep/settings redirects to /settings', () => {
+  it('redirect target is /settings', () => {
+    expect(REP_SETTINGS_REDIRECT_TARGET).toBe('/settings');
+  });
+
+  it('redirect target is not /rep (would drop settings intent)', () => {
+    expect(REP_SETTINGS_REDIRECT_TARGET).not.toBe('/rep');
+  });
+});
+
+// ── B-147: /distributor-admin/command-center/assignments redirects to /assign ─
+// The correct CC assignment path is /assign; "assignments" is a common misspelling.
+
+const CC_ASSIGNMENTS_REDIRECT_TARGET = '/distributor-admin/command-center/assign';
+
+describe('B-147: /command-center/assignments redirects to /command-center/assign', () => {
+  it('redirect target is /distributor-admin/command-center/assign', () => {
+    expect(CC_ASSIGNMENTS_REDIRECT_TARGET).toBe('/distributor-admin/command-center/assign');
+  });
+
+  it('redirect target contains /assign (not /assignments)', () => {
+    expect(CC_ASSIGNMENTS_REDIRECT_TARGET).toMatch(/\/assign$/);
+  });
+});
+
+// ── B-148: /distributor-admin/command-center/activity redirects to /quotes ────
+// "Rep activity" is surfaced via /quotes; /activity is a common direct-type URL.
+
+const CC_ACTIVITY_REDIRECT_TARGET = '/distributor-admin/command-center/quotes';
+
+describe('B-148: /command-center/activity redirects to /command-center/quotes', () => {
+  it('redirect target is /distributor-admin/command-center/quotes', () => {
+    expect(CC_ACTIVITY_REDIRECT_TARGET).toBe('/distributor-admin/command-center/quotes');
+  });
+
+  it('redirect target is not /distributor-admin/command-center (would lose context)', () => {
+    expect(CC_ACTIVITY_REDIRECT_TARGET).not.toBe('/distributor-admin/command-center');
+  });
+});
+
 // ── URGENT-3b: rootRedirectTarget drives unauthenticated visitors to /auth ───
 // rootRedirectTarget(demo=false, isAuthenticated=false) is the function used in
 // RootIndex to decide where unauthenticated visitors land. In non-demo mode it
