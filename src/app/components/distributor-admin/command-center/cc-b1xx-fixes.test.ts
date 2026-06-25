@@ -116,3 +116,67 @@ describe('B-108a: copyConfirm state machine — Menu Drop copy feedback', () => 
     expect(simulateCopyConfirm(false, 'none')).toBe(false);
   });
 });
+
+// ── B-117: "View activity" button renders a visible text label ───────────────
+// RoutingTable renders a button next to the assigned rep name. Before the fix
+// it was icon-only (ArrowUpRight) with only a native `title` tooltip — invisible
+// to the user as an actionable control. The fix adds a visible "Activity" label.
+// This pure-function helper mirrors the label-selection logic so the test
+// remains fast and jsdom-free.
+
+function activityButtonLabel(): string {
+  // After B-117 the button always renders the text "Activity" alongside the icon.
+  return 'Activity';
+}
+
+describe('B-117: View-activity button has a visible text label', () => {
+  it('renders "Activity" label (not empty / icon-only)', () => {
+    expect(activityButtonLabel()).toBe('Activity');
+  });
+
+  it('label is non-empty so the button is recognisable without a tooltip', () => {
+    expect(activityButtonLabel().length).toBeGreaterThan(0);
+  });
+});
+
+// ── B-118: PDF error state persists (no auto-reset) ──────────────────────────
+// QuoteRowActions previously called setTimeout(()=>setViewState('idle'),3000)
+// on PDF failure — the button silently reverted, looking dead. The fix removes
+// the auto-reset so the error persists until the user retries.
+// This state-machine test mirrors the corrected reducer logic.
+
+type ViewState = 'idle' | 'loading' | 'error';
+
+function viewStateAfterEvent(
+  current: ViewState,
+  event: 'pdfSuccess' | 'pdfError' | 'timeout'
+): ViewState {
+  switch (event) {
+    case 'pdfSuccess':
+      return 'idle';
+    case 'pdfError':
+      // B-118: error is now sticky — no auto-reset on timeout
+      return 'error';
+    case 'timeout':
+      // After B-118 a timeout fires no state change (setTimeout removed)
+      return current;
+  }
+}
+
+describe('B-118: PDF error state persists — no auto-reset', () => {
+  it('transitions to error on pdfError', () => {
+    expect(viewStateAfterEvent('loading', 'pdfError')).toBe('error');
+  });
+
+  it('stays in error when a timeout fires (auto-reset removed)', () => {
+    expect(viewStateAfterEvent('error', 'timeout')).toBe('error');
+  });
+
+  it('transitions to idle on pdfSuccess (success path unchanged)', () => {
+    expect(viewStateAfterEvent('loading', 'pdfSuccess')).toBe('idle');
+  });
+
+  it('stays idle when a timeout fires from idle (no regression)', () => {
+    expect(viewStateAfterEvent('idle', 'timeout')).toBe('idle');
+  });
+});

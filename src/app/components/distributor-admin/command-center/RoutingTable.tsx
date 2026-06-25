@@ -329,7 +329,7 @@ function ForwardCell({ row, reps, canForward, onForward, errorByRowId }: Forward
         >
           {rep.name}
         </span>
-        {/* P1 — icon button with native tooltip instead of "View activity ↗" text */}
+        {/* B-117 fix: visible "Activity" label added alongside icon so button reads as actionable */}
         <button
           type="button"
           title="View activity"
@@ -341,6 +341,7 @@ function ForwardCell({ row, reps, canForward, onForward, errorByRowId }: Forward
           style={{
             display: 'inline-flex',
             alignItems: 'center',
+            gap: 2,
             background: 'none',
             border: 'none',
             padding: 2,
@@ -348,8 +349,11 @@ function ForwardCell({ row, reps, canForward, onForward, errorByRowId }: Forward
             color: CC_ACK_NAVY,
             flexShrink: 0,
             opacity: 0.7,
+            ...sans,
+            fontSize: 11.5,
           }}
         >
+          <span>Activity</span>
           <ArrowUpRight size={13} strokeWidth={2} />
         </button>
       </div>
