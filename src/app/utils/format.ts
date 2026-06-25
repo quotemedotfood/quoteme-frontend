@@ -71,7 +71,7 @@ export function formatColdLandingArtifact(
   if (!artifactName) return '';
   if (source !== 'standing_page') return artifactName;
 
-  // Strip legacy "Uploaded " prefix (case-insensitive on first char only)
+  // Strip legacy "Uploaded " prefix (case-insensitive)
   const legacyStripped = artifactName.replace(/^Uploaded\s+/i, '');
 
   // Title-case the result so "Order guide" → "Order Guide"
