@@ -143,12 +143,12 @@ function PickPanel({ onSelect }: PickPanelProps) {
         >
           Set your location's state to see distributors that serve your area.{' '}
           <a
-            href="/dashboard"
+            href="/settings"
             className="underline underline-offset-2 text-[#2A2A2A] hover:opacity-70"
             onClick={(e) => {
               // Navigate via history so state activeTab wires correctly.
               e.preventDefault();
-              window.history.pushState({ activeTab: 'settings' }, '', '/dashboard');
+              window.history.pushState({ activeTab: 'settings' }, '', '/settings');
               window.dispatchEvent(new PopStateEvent('popstate', { state: { activeTab: 'settings' } }));
             }}
           >
