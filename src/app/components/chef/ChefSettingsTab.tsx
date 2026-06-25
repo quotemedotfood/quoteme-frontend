@@ -59,6 +59,7 @@ import {
   getChefTeamMembers,
   createChefTeamMember,
   deleteChefTeamMember,
+  createRestaurant,
   type ChefRestaurant,
   type ChefTeamMember,
 } from '../../services/api';
@@ -428,6 +429,144 @@ function EditRestaurantDrawer({
   );
 }
 
+// ─── AddLocationDrawer ────────────────────────────────────────────────────────
+// B-126: Wire the "Add another location" button to a real create flow.
+// Calls POST /api/v1/restaurants (createRestaurant) to create a new chef location.
+// On success, calls onSaved() so the parent can refresh location data.
+
+interface AddLocationDrawerProps {
+  open: boolean;
+  onClose: () => void;
+  onSaved: () => void;
+}
+
+function AddLocationDrawer({ open, onClose, onSaved }: AddLocationDrawerProps) {
+  const [name, setName] = useState('');
+  const [addressLine1, setAddressLine1] = useState('');
+  const [city, setCity] = useState('');
+  const [state, setState] = useState('');
+  const [zip, setZip] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Reset fields when drawer opens
+  useEffect(() => {
+    if (open) {
+      setName('');
+      setAddressLine1('');
+      setCity('');
+      setState('');
+      setZip('');
+      setError(null);
+    }
+  }, [open]);
+
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    if (!name.trim()) {
+      setError('Location name is required.');
+      return;
+    }
+    setSaving(true);
+    const res = await createRestaurant({
+      name: name.trim(),
+      address_line_1: addressLine1.trim() || undefined,
+      city: city.trim() || undefined,
+      state: state.trim() || undefined,
+      zip: zip.trim() || undefined,
+    });
+    setSaving(false);
+    if (res.error) {
+      const errData = res.error_data as any;
+      const msgs: string[] = errData?.errors ?? [];
+      setError(msgs.length > 0 ? msgs.join(' ') : (res.error as string));
+      return;
+    }
+    onSaved();
+    onClose();
+  }
+
+  const inputCls =
+    'border border-[var(--border)] rounded-md px-3 py-2 text-[13.5px] ink bg-transparent focus:outline-none focus:ring-1 focus:ring-[var(--primary)]';
+
+  return (
+    <Sheet open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
+      <SheetContent className="w-full sm:max-w-md overflow-y-auto">
+        <SheetHeader>
+          <SheetTitle className="serif">Add a location</SheetTitle>
+        </SheetHeader>
+        <div className="px-4 pb-6">
+          <form onSubmit={handleSave} className="flex flex-col gap-4 mt-2">
+            <div className="flex flex-col gap-1">
+              <label className="qm-eyebrow" style={{ fontSize: 10 }}>NAME *</label>
+              <input
+                className={inputCls}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="e.g., The Maple Room"
+                required
+                disabled={saving}
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="qm-eyebrow" style={{ fontSize: 10 }}>ADDRESS</label>
+              <input
+                className={inputCls}
+                value={addressLine1}
+                onChange={(e) => setAddressLine1(e.target.value)}
+                placeholder="Street address"
+                disabled={saving}
+              />
+            </div>
+            <div className="grid grid-cols-[1fr_80px_80px] gap-3">
+              <div className="flex flex-col gap-1">
+                <label className="qm-eyebrow" style={{ fontSize: 10 }}>CITY</label>
+                <input
+                  className={inputCls}
+                  value={city}
+                  onChange={(e) => setCity(e.target.value)}
+                  disabled={saving}
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="qm-eyebrow" style={{ fontSize: 10 }}>STATE</label>
+                <input
+                  className={inputCls}
+                  value={state}
+                  onChange={(e) => setState(e.target.value)}
+                  maxLength={2}
+                  disabled={saving}
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="qm-eyebrow" style={{ fontSize: 10 }}>ZIP</label>
+                <input
+                  className={inputCls}
+                  value={zip}
+                  onChange={(e) => setZip(e.target.value)}
+                  disabled={saving}
+                />
+              </div>
+            </div>
+            {error && (
+              <p className="text-[12px] text-red-600 leading-snug">{error}</p>
+            )}
+            <button
+              type="submit"
+              className="qm-btn qm-btn-orange mt-1"
+              style={{ padding: '10px 20px', fontSize: 13 }}
+              disabled={saving}
+            >
+              {saving ? 'Adding…' : 'Add location'}
+            </button>
+          </form>
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
 // ─── useTeamData ─────────────────────────────────────────────────────────────
 // Fetches team members from GET /api/v1/chef/team_members.
 // restaurantId: Q-Settings-1 context selector. Undefined → no param sent → BE
@@ -641,6 +780,7 @@ export function ChefSettingsTab({ state = 'with-data', nav = noopNav }: ChefSett
   const { members: teamMembers, refresh: refreshTeam } = useTeamData(restaurantId);
   const [editYouOpen, setEditYouOpen] = useState(false);
   const [editRestaurantOpen, setEditRestaurantOpen] = useState(false);
+  const [addLocationOpen, setAddLocationOpen] = useState(false);
   const [logoUploading, setLogoUploading] = useState(false);
   const [logoError, setLogoError] = useState<string | null>(null);
   const [addTeamOpen, setAddTeamOpen] = useState(false);
@@ -933,12 +1073,15 @@ export function ChefSettingsTab({ state = 'with-data', nav = noopNav }: ChefSett
               </div>
             ))
           )}
-          <button
-            className="qm-btn qm-btn-outline mt-3 flex items-center gap-1.5"
-            style={{ padding: '8px 14px', fontSize: 12.5 }}
-          >
-            <Plus size={14} /> Add another location
-          </button>
+          {!empty && (
+            <button
+              className="qm-btn qm-btn-outline mt-3 flex items-center gap-1.5"
+              style={{ padding: '8px 14px', fontSize: 12.5 }}
+              onClick={() => setAddLocationOpen(true)}
+            >
+              <Plus size={14} /> Add another location
+            </button>
+          )}
           <div className="text-[10.5px] ink-faint mt-2 leading-snug">
             Quotes, rep contacts, and order guides stay separate per location.
           </div>
@@ -1044,6 +1187,13 @@ export function ChefSettingsTab({ state = 'with-data', nav = noopNav }: ChefSett
           refreshRestaurant(updated.id);
         }}
       />
+
+      {/* Add Location drawer — B-126 */}
+      <AddLocationDrawer
+        open={addLocationOpen}
+        onClose={() => setAddLocationOpen(false)}
+        onSaved={() => refreshRestaurant(restaurantId)}
+      />
     </div>
   );
 }
@@ -1068,6 +1218,7 @@ export function ChefSettingsTabDesktop({
   const { members: teamMembers, refresh: refreshTeam } = useTeamData(restaurantId);
   const [editYouOpen, setEditYouOpen] = useState(false);
   const [editRestaurantOpen, setEditRestaurantOpen] = useState(false);
+  const [addLocationOpen, setAddLocationOpen] = useState(false);
   const [logoUploading, setLogoUploading] = useState(false);
   const [logoError, setLogoError] = useState<string | null>(null);
   const [addTeamOpen, setAddTeamOpen] = useState(false);
@@ -1414,12 +1565,15 @@ export function ChefSettingsTabDesktop({
                 </div>
               ))
             )}
-            <button
-              className="qm-btn qm-btn-outline mt-3 flex items-center gap-1.5"
-              style={{ padding: '10px 16px', fontSize: 13 }}
-            >
-              <Plus size={15} /> Add another location
-            </button>
+            {!empty && (
+              <button
+                className="qm-btn qm-btn-outline mt-3 flex items-center gap-1.5"
+                style={{ padding: '10px 16px', fontSize: 13 }}
+                onClick={() => setAddLocationOpen(true)}
+              >
+                <Plus size={15} /> Add another location
+              </button>
+            )}
             <div className="text-[11.5px] ink-faint mt-2 leading-snug">
               Quotes, rep contacts, and order guides stay separate per location.
             </div>
@@ -1532,6 +1686,13 @@ export function ChefSettingsTabDesktop({
         onSaved={(updated) => {
           refreshRestaurant(updated.id);
         }}
+      />
+
+      {/* Add Location drawer — B-126 */}
+      <AddLocationDrawer
+        open={addLocationOpen}
+        onClose={() => setAddLocationOpen(false)}
+        onSaved={() => refreshRestaurant(restaurantId)}
       />
     </ChefTabDesktopShell>
   );
