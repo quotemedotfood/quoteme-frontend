@@ -18,6 +18,9 @@ export interface QuotaBilling {
   has_paid_subscription: boolean;
   quotes_used?: number;
   quotes_limit?: number;
+  plan_name?: string | null;
+  price_dollars?: number | null;
+  interval?: string | null;
 }
 
 /**
@@ -34,6 +37,25 @@ export function shouldShowSubscribeCta(billing: QuotaBilling | null | undefined)
   const used = billing.quotes_used ?? 0;
   const limit = billing.quotes_limit ?? 5;
   return used >= limit;
+}
+
+/**
+ * Returns the plan label for billing section headers.
+ *   Paid  → "Pro · $20/month"
+ *   Free  → "Free"
+ *   null  → null (caller should show a loading placeholder)
+ *
+ * B-141 — replaces hardcoded "Free" in ChefSettingsTab mobile + desktop billing sections.
+ */
+export function billingPlanLabel(billing: QuotaBilling | null | undefined): string | null {
+  if (billing == null) return null;
+  if (billing.has_paid_subscription) {
+    const name = billing.plan_name || 'Premium';
+    const interval = billing.interval || 'month';
+    const price = billing.price_dollars != null ? `$${billing.price_dollars}` : null;
+    return price ? `${name} · ${price}/${interval}` : name;
+  }
+  return 'Free';
 }
 
 /**
