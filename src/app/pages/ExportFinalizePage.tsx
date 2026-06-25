@@ -69,6 +69,16 @@ export function getPdfButtonLabel(downloadingPdf: boolean): string {
   return downloadingPdf ? 'Generating PDF...' : 'PDF Quote';
 }
 
+/** B-115: Returns the tooltip/title for the "Convert to Order Guide" button when disabled. */
+export function getOrderGuideDisabledReason(isFinalized: boolean, quoteId: string | undefined): string | null {
+  if (!isFinalized) return 'Sign up to unlock order guide export.';
+  if (!quoteId) return 'No quote loaded.';
+  return null;
+}
+
+/** B-114: Returns the tooltip/title for the sticky "Send Quote" button when disabled. */
+export const SEND_QUOTE_DISABLED_REASON = 'Enter a recipient email above to send.';
+
 // Mock data for premium onboarding features
 const onboardingDocuments = [
   { id: 'doc1', name: 'New Customer Application (PDF)', type: 'document' },
@@ -235,6 +245,7 @@ export function ExportFinalizePage() {
   async function handleOrderGuideDownload() {
     if (!quoteId) return;
     setDownloadingOrderGuide(true);
+    setOrderGuideError(null);
     try {
       const result = await downloadOrderGuide(quoteId);
       if (result.blob) {
@@ -245,8 +256,9 @@ export function ExportFinalizePage() {
         a.click();
         URL.revokeObjectURL(url);
       } else if (result.error) {
-        // Surface a clear error for draft/missing order guides instead of failing silently
-        setPdfError(result.error);
+        // B-115: Set dedicated orderGuideError so it renders inline near the button,
+        // not inside the closed PDF preview modal.
+        setOrderGuideError(result.error);
         console.error('Order guide download error:', result.error);
       }
     } finally {
@@ -256,6 +268,9 @@ export function ExportFinalizePage() {
 
   // PDF error state
   const [pdfError, setPdfError] = useState<string | null>(null);
+
+  // B-115: Order guide error state — rendered inline near the button (not inside the PDF modal)
+  const [orderGuideError, setOrderGuideError] = useState<string | null>(null);
 
   // Open PDF preview modal — always fetch fresh to avoid caching issues
   const handleOpenPdfPreview = useCallback(async () => {
@@ -949,6 +964,7 @@ export function ExportFinalizePage() {
                 <Button
                   className="w-full justify-start bg-[#F2993D] hover:bg-[#E8953A] text-white h-12"
                   disabled={!isFinalized || downloadingOrderGuide || !quoteId}
+                  title={getOrderGuideDisabledReason(isFinalized, quoteId) ?? undefined}
                   onClick={handleOrderGuideDownload}
                 >
                   {downloadingOrderGuide ? (
@@ -958,6 +974,12 @@ export function ExportFinalizePage() {
                   )}
                   Convert to Order Guide
                 </Button>
+                {/* B-115: Inline error — visible on the main page, not buried in the PDF modal */}
+                {orderGuideError && (
+                  <p className="text-xs text-red-500 mt-1" data-testid="order-guide-error">
+                    {orderGuideError}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -1066,9 +1088,16 @@ export function ExportFinalizePage() {
       {/* Authenticated mode: Sticky floating Send Quote button */}
       {!isDemoMode() && (
         <div className="fixed bottom-0 left-0 right-0 md:left-64 bg-white border-t border-gray-200 p-4 z-40">
+          {/* B-114: Show helper text when button is disabled because no recipient email was entered */}
+          {isOpenQuoteSendDisabled(effectiveOpenQuote, manualEmail, contactEmail) && (
+            <p className="text-xs text-center text-gray-500 mb-1" data-testid="send-quote-disabled-hint">
+              {SEND_QUOTE_DISABLED_REASON}
+            </p>
+          )}
           <button
             onClick={() => setShowEmailDrawer(true)}
             disabled={isOpenQuoteSendDisabled(effectiveOpenQuote, manualEmail, contactEmail)}
+            title={isOpenQuoteSendDisabled(effectiveOpenQuote, manualEmail, contactEmail) ? SEND_QUOTE_DISABLED_REASON : undefined}
             className="w-full md:w-auto md:min-w-[200px] md:mx-auto md:block bg-[#F2993D] hover:bg-[#E8953A] text-white font-medium py-2.5 px-5 rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Send Quote

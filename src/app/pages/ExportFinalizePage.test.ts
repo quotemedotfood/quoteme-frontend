@@ -10,6 +10,8 @@ import {
   DISMISS_ENABLED,
   openEditDrawerSafe,
   getPdfButtonLabel,
+  getOrderGuideDisabledReason,
+  SEND_QUOTE_DISABLED_REASON,
 } from './ExportFinalizePage';
 
 describe('B-104 — from-address display string', () => {
@@ -89,5 +91,36 @@ describe('B-108c — PDF Quote button label feedback', () => {
 
   it('shows "PDF Quote" in idle state', () => {
     expect(getPdfButtonLabel(false)).toBe('PDF Quote');
+  });
+});
+
+
+describe('B-114 — Sticky Send Quote button: disabled reason is visible', () => {
+  it('SEND_QUOTE_DISABLED_REASON is a non-empty string', () => {
+    expect(typeof SEND_QUOTE_DISABLED_REASON).toBe('string');
+    expect(SEND_QUOTE_DISABLED_REASON.trim().length).toBeGreaterThan(0);
+  });
+
+  it('mentions email in the disabled reason', () => {
+    expect(SEND_QUOTE_DISABLED_REASON.toLowerCase()).toMatch(/email/);
+  });
+});
+
+
+describe('B-115 — Order Guide: inline error state + disabled tooltip', () => {
+  it('returns null (no tooltip) when finalized and quoteId is present', () => {
+    expect(getOrderGuideDisabledReason(true, 'abc-123')).toBeNull();
+  });
+
+  it('returns a sign-up message when not finalized', () => {
+    const reason = getOrderGuideDisabledReason(false, 'abc-123');
+    expect(reason).not.toBeNull();
+    expect(reason!.length).toBeGreaterThan(0);
+  });
+
+  it('returns a message when quoteId is undefined', () => {
+    const reason = getOrderGuideDisabledReason(true, undefined);
+    expect(reason).not.toBeNull();
+    expect(reason!.length).toBeGreaterThan(0);
   });
 });
