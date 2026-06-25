@@ -88,19 +88,18 @@ export const REVIEW_REQUIRED_REASON = 'Review the extracted menu before sending.
  * Backend (quotes_controller#send_quote) blocks send unless:
  *   rep_reviewed_at.present? OR state IN (distributor_quote, confirmed)
  *
- * The serializer does NOT expose rep_reviewed_at (timestamp); it exposes the
- * `rep_reviewed` boolean and `state`. We mirror the gate with the available
- * fields: a quote is "reviewed" when rep_reviewed is true OR its state has
- * cleared rep mediation (distributor_quote/confirmed). When neither holds, the
- * menu hasn't cleared review and export/send must be blocked.
+ * The serializer now exposes rep_reviewed_at (ISO 8601 timestamp or null).
+ * A quote passes the gate when rep_reviewed_at is present (truthy) OR its
+ * state has cleared rep mediation (distributor_quote/confirmed). When neither
+ * holds, the menu hasn't cleared review and export/send must be blocked.
  *
  * Returns true when export/send should be BLOCKED (i.e. NOT reviewed).
  */
 export function isExportBlockedUnreviewed(
-  repReviewed: boolean | undefined,
+  repReviewedAt: string | null | undefined,
   state: string | null | undefined
 ): boolean {
-  if (repReviewed === true) return false;
+  if (repReviewedAt) return false;
   if (state === 'distributor_quote' || state === 'confirmed') return false;
   return true;
 }
@@ -372,7 +371,7 @@ export function ExportFinalizePage() {
   // Block Send Quote + Convert to Order Guide until the quote has cleared review.
   // Only applies once quote data has loaded (don't pre-block while loading).
   const exportBlockedUnreviewed =
-    !!quoteData && isExportBlockedUnreviewed(quoteData.rep_reviewed, quoteData.state);
+    !!quoteData && isExportBlockedUnreviewed(quoteData.rep_reviewed_at, quoteData.state);
 
   // Customer & Contact State (fallback to quote data when available)
   const customerName = effectiveOpenQuote ? 'Open Quote' : (quoteData?.restaurant || 'Loading...');

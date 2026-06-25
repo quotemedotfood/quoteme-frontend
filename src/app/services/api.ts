@@ -226,6 +226,7 @@ export interface QuoteResponse {
   restaurant: string;
   rep: string;
   rep_reviewed: boolean;
+  rep_reviewed_at?: string | null;
   sent_at: string | null;
   pdf_url: string | null;
   total_cents: number;
@@ -1372,6 +1373,7 @@ export interface QuoteListItem {
   total_cents: number;
   line_count: number;
   rep_reviewed: boolean;
+  rep_reviewed_at?: string | null;
   created_at: string;
   sent_at: string | null;
 }
