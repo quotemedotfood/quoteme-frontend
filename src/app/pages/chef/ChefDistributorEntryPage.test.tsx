@@ -72,7 +72,7 @@ describe('ChefDistributorEntryPage — handlePickSelect rep enrichment (B-133)',
     expect(result.rep).toBeNull();
   });
 
-  it('still navigates (rep: null, no crash) when detail fetch throws', async () => {
+  it('returns distributor with rep: null when fetch throws', async () => {
     const mockFetch = async (_id: string): Promise<DetailResponse> => {
       throw new Error('Network error');
     };

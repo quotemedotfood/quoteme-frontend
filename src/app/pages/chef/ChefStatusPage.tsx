@@ -364,7 +364,7 @@ export function ChefStatusPage({ onTimeout }: ChefStatusPageProps = {}) {
           <div className="flex flex-col gap-3">
             {/* Sign in link */}
             <a
-              href="/auth"
+              href={SIGN_IN_HREF}
               className="block w-full py-2.5 px-4 rounded-lg border border-[#E5A84B] text-[#E5A84B] text-sm font-medium text-center hover:bg-[#FFF8EE] transition-colors"
             >
               Sign in
