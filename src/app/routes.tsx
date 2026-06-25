@@ -80,7 +80,6 @@ import { ChefShellLayout } from "./components/chef/ChefShellLayout";
 import { ChefMenusPage } from "./pages/chef/ChefMenusPage";
 import { ChefMenuDetailPage } from "./pages/chef/ChefMenuDetailPage";
 import { ChefMenuStackPage } from "./pages/chef/ChefMenuStackPage";
-import { ChefStackPage } from "./pages/chef/ChefStackPage";
 import { ChefDistributorsPage } from "./pages/chef/ChefDistributorsPage";
 import { CreateRestaurantPage } from "./pages/CreateRestaurantPage";
 import { isDemoMode } from "./utils/demoMode";

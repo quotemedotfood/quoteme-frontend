@@ -135,11 +135,11 @@ export function ChefDistributorsPage() {
         <Loader2
           size={28}
           strokeWidth={1.6}
-          style={{ color: C.gray400, animation: 'spin 1s linear infinite', display: 'inline-block' }}
+          className="animate-spin"
+          style={{ color: C.gray400, display: 'inline-block' }}
           aria-label="Loading"
         />
         <p style={{ ...sans, fontSize: 13, color: C.gray500, marginTop: 12 }}>Loading your distributors…</p>
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
     );
   }
@@ -242,7 +242,6 @@ export function ChefDistributorsPage() {
           {/* Section header with collapse toggle */}
           <button
             type="button"
-            role="button"
             aria-expanded={detailExpanded}
             onClick={() => setDetailExpanded((v) => !v)}
             style={{
@@ -526,7 +525,7 @@ function PinRow({
           <Loader2
             size={16}
             strokeWidth={1.8}
-            style={{ animation: 'spin 1s linear infinite' }}
+            className="animate-spin"
             aria-hidden="true"
           />
         ) : (

@@ -44,9 +44,10 @@ function activeTabFromPath(pathname: string): ActiveTab {
   if (pathname.startsWith('/chef/quotes')) return 'home'; // Quotes destination
   if (pathname.startsWith('/chef/menus')) return 'menus'; // Menus and Order Guides tab
   if (pathname.startsWith('/chef/catalog')) return 'distributors';
-  if (pathname.startsWith('/chef/distributor')) return 'distributors';
-  // B-124: /chef/distributors is now canonical for the consolidated view
+  // B-124: /chef/distributors is now canonical for the consolidated view.
+  // Must be checked BEFORE the '/chef/distributor' catch-all below.
   if (pathname === '/chef/distributors' || pathname.startsWith('/chef/distributors/')) return 'distributors';
+  if (pathname.startsWith('/chef/distributor')) return 'distributors';
   // /chef/stack — My Stack manage view lives under Distributors in the IA
   if (pathname === '/chef/stack' || pathname.startsWith('/chef/stack/')) return 'distributors';
   // /chef/pull/entry — the pull-quote entry surface lives under Distributors
