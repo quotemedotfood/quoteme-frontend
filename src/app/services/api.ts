@@ -3722,9 +3722,9 @@ export interface BrandTeamMember {
 }
 
 export async function getBrandTeam(): Promise<BrandTeamMember[]> {
-  const res = await fetchWithAuth('/api/v1/brand/team');
-  if (!res.ok) throw new Error('Failed to load team');
-  return res.json();
+  const res = await fetchWithAuth<BrandTeamMember[]>('/api/v1/brand/team');
+  if (res.error) throw new Error('Failed to load team');
+  return res.data as BrandTeamMember[];
 }
 
 export async function inviteBrandTeamMember(data: {
@@ -3732,22 +3732,21 @@ export async function inviteBrandTeamMember(data: {
   first_name: string;
   last_name: string;
 }): Promise<BrandTeamMember> {
-  const res = await fetchWithAuth('/api/v1/brand/team/invite', {
+  const res = await fetchWithAuth<BrandTeamMember>('/api/v1/brand/team/invite', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(body.error || 'Failed to invite team member');
+  if (res.error) {
+    throw new Error(res.error || 'Failed to invite team member');
   }
-  return res.json();
+  return res.data as BrandTeamMember;
 }
 
 export async function disableBrandTeamMember(id: string): Promise<BrandTeamMember> {
-  const res = await fetchWithAuth(`/api/v1/brand/team/${id}/disable`, {
+  const res = await fetchWithAuth<BrandTeamMember>(`/api/v1/brand/team/${id}/disable`, {
     method: 'PATCH',
   });
-  if (!res.ok) throw new Error('Failed to disable team member');
-  return res.json();
+  if (res.error) throw new Error('Failed to disable team member');
+  return res.data as BrandTeamMember;
 }
