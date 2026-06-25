@@ -34,7 +34,7 @@ import {
   CC_ACK_NAVY,
 } from './cc-atoms';
 import type { InboundRow } from '../../../services/api';
-import { stripSeedPrefix } from '../../../utils/format';
+import { stripSeedPrefix, formatColdLandingArtifact } from '../../../utils/format';
 import { RepTypeahead } from './RepTypeahead';
 import { QuoteRowActions } from './QuoteRowActions';
 
@@ -603,7 +603,7 @@ function DesktopRow({
           whiteSpace: 'nowrap',
         }}
       >
-        {stripSeedPrefix(row.artifact?.name) || '—'}
+        {formatColdLandingArtifact(row.source, stripSeedPrefix(row.artifact?.name)) || '—'}
       </div>
 
       {/* Forward To */}
@@ -714,7 +714,7 @@ function MobileCard({
       >
         <span style={tabular}>{formatRowDate(row.received_at, row.age_days)}</span>
         {row.artifact?.name && (
-          <span>{stripSeedPrefix(row.artifact.name)}</span>
+          <span>{formatColdLandingArtifact(row.source, stripSeedPrefix(row.artifact.name))}</span>
         )}
         {/* Needs-owner badge on mobile for unassigned actionable rows */}
         {canForward && !row.assigned_rep && <NeedsOwnerBadge />}
