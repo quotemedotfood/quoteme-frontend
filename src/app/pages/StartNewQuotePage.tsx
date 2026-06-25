@@ -1472,7 +1472,7 @@ export function StartNewQuotePage() {
           </div>
 
           {/* Upload section */}
-          <div className={catalogs.some(c => c.status === 'active') && !catalogUploadExpanded ? 'hidden' : ''}>
+          <div className={!catalogUploadExpanded ? 'hidden' : ''}>
             <h3 className="text-sm font-medium text-gray-700 mb-2">
               {catalogs.length > 0 ? 'Upload New Catalog' : 'Upload Your Catalog'}
             </h3>
