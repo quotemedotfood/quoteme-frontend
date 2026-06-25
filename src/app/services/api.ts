@@ -3776,3 +3776,57 @@ export async function disableBrandTeamMember(id: string): Promise<BrandTeamMembe
   if (res.error) throw new Error('Failed to disable team member');
   return res.data as BrandTeamMember;
 }
+
+// ── Brand Logo Upload (B-181) ───────────────────────────────────────────────
+
+/** POST /api/v1/brand/branding/logo — brand user uploads own logo. */
+export async function uploadBrandLogo(file: File): Promise<ApiResponse<{ logo_url: string }>> {
+  const authToken = getAuthToken();
+  const headers: Record<string, string> = {};
+  if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
+
+  const formData = new FormData();
+  formData.append('logo', file);
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/v1/brand/branding/logo`, {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      return { error: errorData.error || `HTTP ${response.status}` };
+    }
+    return { data: await response.json() };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : 'Network error' };
+  }
+}
+
+// ── Distributor Admin Logo Upload (B-181) ───────────────────────────────────
+
+/** POST /api/v1/distributor_admin/settings/logo — dist-admin uploads own logo. */
+export async function uploadDistributorAdminLogo(file: File): Promise<ApiResponse<{ logo_url: string }>> {
+  const authToken = getAuthToken();
+  const headers: Record<string, string> = {};
+  if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
+
+  const formData = new FormData();
+  formData.append('logo', file);
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/v1/distributor_admin/settings/logo`, {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      return { error: errorData.error || `HTTP ${response.status}` };
+    }
+    return { data: await response.json() };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : 'Network error' };
+  }
+}

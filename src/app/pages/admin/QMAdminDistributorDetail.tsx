@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router';
-import { ArrowLeft, Package, Users, UtensilsCrossed, UserCheck, UserPlus, X } from 'lucide-react';
+import { ArrowLeft, Package, Users, UtensilsCrossed, UserCheck, UserPlus, X, Upload } from 'lucide-react';
 import {
   getAdminDistributor,
   updateAdminDistributor,
@@ -9,7 +9,11 @@ import {
   getAdminUsers,
   AdminDistributorDetail,
   AdminUser,
+  uploadAdminDistributorLogo,
 } from '../../services/adminApi';
+
+const LOGO_ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+const LOGO_MAX_BYTES = 5 * 1024 * 1024; // 5 MB
 import { distinctUserCount } from '../../utils/userCount';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
@@ -177,12 +181,42 @@ export function QMAdminDistributorDetailPage() {
     if (!id) return;
     async function load() {
       const res = await getAdminDistributor(id!);
-      if (res.data) setDist(res.data);
-      else setError(res.error || 'Not found');
+      if (res.data) {
+        setDist(res.data);
+        setLogoUrl(res.data.logo_url ?? null);
+      } else {
+        setError(res.error || 'Not found');
+      }
       setLoading(false);
     }
     load();
   }, [id]);
+
+  async function handleLogoFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !id) return;
+    e.target.value = '';
+
+    if (!LOGO_ALLOWED_TYPES.includes(file.type)) {
+      setLogoError('Only JPEG, PNG, or WebP images are accepted.');
+      return;
+    }
+    if (file.size > LOGO_MAX_BYTES) {
+      setLogoError('Image must be 5 MB or smaller.');
+      return;
+    }
+
+    setLogoError(null);
+    setLogoUploading(true);
+    const res = await uploadAdminDistributorLogo(id, file);
+    setLogoUploading(false);
+
+    if (res.error) {
+      setLogoError(res.error);
+      return;
+    }
+    setLogoUrl(res.data!.logo_url);
+  }
 
   // Load distributor_admin users when assign tab is open
   useEffect(() => {
@@ -261,7 +295,38 @@ export function QMAdminDistributorDetailPage() {
       </Link>
 
       <div className="flex items-center gap-4 mb-8">
-        {dist.logo_url && <img src={dist.logo_url} alt="" className="w-12 h-12 rounded-lg object-cover" />}
+        {/* Logo preview + upload control */}
+        <div className="flex flex-col items-center gap-1 flex-shrink-0">
+          {logoUrl ? (
+            <img src={logoUrl} alt="" className="w-12 h-12 rounded-lg object-contain border border-gray-200" />
+          ) : (
+            <div className="w-12 h-12 rounded-lg bg-[#7FAEC2]/20 flex items-center justify-center text-[#7FAEC2] text-lg font-bold">
+              {dist.name.charAt(0).toUpperCase()}
+            </div>
+          )}
+          <input
+            ref={logoInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            className="hidden"
+            onChange={handleLogoFileChange}
+            disabled={logoUploading}
+          />
+          <button
+            type="button"
+            title={logoUrl ? 'Replace logo' : 'Upload logo'}
+            className="flex items-center gap-1 text-xs text-[#7FAEC2] hover:text-[#6A9AB0] disabled:opacity-50"
+            style={{ background: 'transparent', border: 'none', cursor: logoUploading ? 'not-allowed' : 'pointer', padding: 0 }}
+            onClick={() => logoInputRef.current?.click()}
+            disabled={logoUploading}
+          >
+            <Upload size={11} />
+            {logoUploading ? 'Uploading…' : logoUrl ? 'Replace' : 'Upload'}
+          </button>
+          {logoError && (
+            <p className="text-xs text-red-500 max-w-[80px] text-center leading-tight">{logoError}</p>
+          )}
+        </div>
         <div>
           <h1 className="text-2xl font-bold text-[#2A2A2A]" style={{ fontFamily: "'Playfair Display', serif" }}>
             {dist.name}
