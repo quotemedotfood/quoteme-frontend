@@ -130,7 +130,7 @@ function PickPanel({ onSelect }: PickPanelProps) {
 
   return (
     <div className="mt-5">
-      <div className={eyebrowClass} style={{ fontSize: 10 }}>AVAILABLE DISTRIBUTORS</div>
+      <div className={eyebrowClass} style={{ fontSize: 10, textTransform: 'none' }}>Available distributors</div>
       <p className="text-[11.5px] text-[#4F4F4F] leading-relaxed mt-1.5" style={{ maxWidth: 560 }}>
         Distributors with a verified catalog. Select one to build a quote.
       </p>
@@ -293,7 +293,7 @@ function UploadPanel({ onDone }: UploadPanelProps) {
 
   return (
     <div className="mt-5">
-      <div className={eyebrowClass} style={{ fontSize: 10 }}>UPLOAD</div>
+      <div className={eyebrowClass} style={{ fontSize: 10, textTransform: 'none' }}>Upload</div>
       <p className="text-[11.5px] text-[#4F4F4F] leading-relaxed mt-1.5" style={{ maxWidth: 560 }}>
         We'll parse it and match the items against your menu. Photos of an order guide work too —
         most reps' price lists are just a printed PDF anyway.
@@ -383,7 +383,7 @@ function UploadPanel({ onDone }: UploadPanelProps) {
 
       {/* Optional rep contact */}
       <div className="mt-5" style={{ borderTop: '1px solid #E8E8E8', paddingTop: 16 }}>
-        <div className={`${eyebrowClass} mb-1`} style={{ fontSize: 9 }}>REP CONTACT (OPTIONAL)</div>
+        <div className={`${eyebrowClass} mb-1`} style={{ fontSize: 9, textTransform: 'none' }}>Rep contact (optional)</div>
         <p className="text-[11px] text-[#9E9E9E] leading-relaxed mb-3">
           We don't need the rep's contact info to ingest a catalog. You can add a rep later when one
           comes on board with the distributor.
@@ -522,7 +522,7 @@ function RequestPanel({ restaurantName }: RequestPanelProps) {
 
   return (
     <div className="mt-5">
-      <div className={eyebrowClass} style={{ fontSize: 10 }}>REQUEST A CATALOG</div>
+      <div className={eyebrowClass} style={{ fontSize: 10, textTransform: 'none' }}>Request a catalog</div>
       <p className="text-[11.5px] text-[#4F4F4F] leading-relaxed mt-1.5" style={{ maxWidth: 560 }}>
         We'll send a short note from your address asking for the rep's current price list. When they
         reply with the catalog, we'll add it to your distributors automatically.

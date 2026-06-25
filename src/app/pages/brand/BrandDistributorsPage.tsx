@@ -52,6 +52,7 @@ export function BrandDistributorsPage() {
   const [addError, setAddError]             = useState<string | null>(null);
 
   const [mintName, setMintName]             = useState('');
+  const [mintContactName, setMintContactName] = useState('');
   const [mintEmail, setMintEmail]           = useState('');
   const [minting, setMinting]               = useState(false);
   const [mintError, setMintError]           = useState<string | null>(null);
@@ -95,6 +96,7 @@ export function BrandDistributorsPage() {
     setMintedUrl(res.data?.url ?? null);
     setMintDist(mintName.trim());
     setMintName('');
+    setMintContactName('');
     setMintEmail('');
     const linksRes = await getBrandSecuredUploadLinks();
     setLinks(linksRes.data ?? []);
@@ -258,7 +260,19 @@ export function BrandDistributorsPage() {
                 />
               </div>
               <div>
-                <label className="qm-eyebrow block" style={{ fontSize: 9 }}>CATALOG CONTACT · EMAIL (OPTIONAL)</label>
+                <label className="qm-eyebrow block" style={{ fontSize: 9 }}>CATALOG CONTACT NAME</label>
+                <input
+                  className="qm-input mt-1.5"
+                  style={{ fontSize: 14, padding: '9px 12px', minHeight: 'unset' }}
+                  type="text"
+                  placeholder="e.g. Jamie Torres"
+                  value={mintContactName}
+                  onChange={(e) => setMintContactName(e.target.value)}
+                  disabled={minting}
+                />
+              </div>
+              <div>
+                <label className="qm-eyebrow block" style={{ fontSize: 9 }}>EMAIL (OPTIONAL)</label>
                 <input
                   className="qm-input mt-1.5"
                   style={{ fontSize: 14, padding: '9px 12px', minHeight: 'unset' }}

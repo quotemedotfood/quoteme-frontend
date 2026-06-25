@@ -92,7 +92,7 @@ export function BrandSettingsPage() {
           <Section title="COMPANY">
             <Row label="Brand name"  value={brandName} />
             <Row label="Email"       value={user?.email ?? ''} />
-            <Row label="Category"    value={brandCategory ?? ''} />
+            <Row label="Category"    value={brandCategory ?? 'Not set'} />
           </Section>
 
           {/* Account update form */}
