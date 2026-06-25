@@ -223,7 +223,9 @@ export interface QuoteResponse {
   /** rep-flow quote type: standard | preview | confirmed | guest_quote | buyer_quote. 'confirmed' locks chef actions. */
   quote_type?: string | null;
   working_label: string;
-  restaurant: string;
+  restaurant: string | null;
+  /** Primary contact's full name — fallback when quote has no associated Restaurant record (cold_landing/outbound quotes). Mirrors queue's contact_name fallback in inbound_feed_serializable. */
+  contact_name?: string | null;
   rep: string;
   rep_reviewed: boolean;
   sent_at: string | null;
