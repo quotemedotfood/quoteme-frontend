@@ -2169,7 +2169,8 @@ export interface CCUnassignedItem {
   /** For 'quote': quote identifier e.g. "Q-1234". For 'relationship': restaurant id. */
   id: string;
   restaurant: string;
-  city: string;
+  /** B-107: BE may return null when the restaurant has no city on file. */
+  city: string | null;
   /** Present when kind='quote': formatted quote label, e.g. "Q-1034". */
   q_label?: string;
   /** Present when kind='quote': item count. */
