@@ -14,7 +14,7 @@
 // query — for now the layout is desktop-first per rep-suite pattern).
 
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
-import { Outlet, useLocation, useNavigate } from 'react-router';
+import { Navigate, Outlet, useLocation, useNavigate } from 'react-router';
 import { ManagerSidebar } from './ManagerSidebar';
 import { CCSearchBar } from './CCSearchBar';
 import { sans, C } from './cc-atoms';
@@ -22,6 +22,7 @@ import type { CCActiveTab, CCSidebarMode, CCManagerInfo } from './ManagerSidebar
 import { useAuth } from '../../../contexts/AuthContext';
 import { Link2 } from 'lucide-react';
 import { getCommandCenterUnassigned, getCommandCenterInbound, getDistributorHome } from '../../../services/api';
+import { canAccessCCInbound, REP_INBOUND_REDIRECT } from '../../../utils/ccInboundAccess';
 
 // ── Sidebar context ───────────────────────────────────────────────────────────
 
@@ -99,6 +100,15 @@ export function CCLayout() {
     });
     return () => { cancelled = true; };
   }, []);
+
+  // B-42: Guard — reps and other non-distributor_admin roles must not access the
+  // Command Center shell at all. Redirect reps to their own inbound queue; all other
+  // non-admin authenticated users fall back to /. This early return sits AFTER all
+  // hooks so React's rules-of-hooks are satisfied.
+  if (user && !canAccessCCInbound(user.role)) {
+    const redirectTarget = user.role === 'rep' ? REP_INBOUND_REDIRECT : '/';
+    return <Navigate to={redirectTarget} replace />;
+  }
 
   // P5: cleanup copy timeout on unmount
   useEffect(() => {

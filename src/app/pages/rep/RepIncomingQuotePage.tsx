@@ -26,7 +26,9 @@ import { categoryLabel } from '../../utils/categoryLabel';
 import { ChevronLeft, SquarePen, DollarSign, Search, X, Flag, Bookmark, MessageCircle, Pencil } from 'lucide-react';
 
 import { RepMatchStateBadge } from '../../components/rep/RepMatchStateBadge';
+import type { RepMatchState } from '../../components/rep/RepMatchStateBadge';
 import { QuoteCoverageLabelRep } from '../../components/rep/QuoteCoverageLabelRep';
+import { deriveRepMatchState } from '../../utils/repCoverageState';
 import { LineCoverageDot } from '../../components/rep/CoverageDots';
 import { ItemsToConfirm } from '../../components/rep/ItemsToConfirm';
 import { RepCtaStrip } from '../../components/rep/RepCtaStrip';
@@ -83,14 +85,9 @@ type SortBy = 'category' | 'component' | 'match';
 
 type FlowState = 'first-arrival' | 'auto-fired';
 
-// Detect match state from lines
-function deriveMatchState(lines: QuoteLineResponse[]): 'ready' | 'review' | 'coverage' {
-  const misses = lines.filter((l) => l.availability_status === 'not_in_catalog' || !l.product).length;
-  const flagged = lines.filter((l) => l.alignment_selected === 0 && l.product).length;
-  if (misses > 0) return 'coverage';
-  if (flagged > 0) return 'review';
-  return 'ready';
-}
+// B-45: deriveMatchState is replaced by deriveRepMatchState from repCoverageState util.
+// It enforces a minimum-component threshold before any positive coverage signal can fire.
+// Importing directly — no local copy to avoid drift.
 
 // Group lines by category
 function groupByCategory(lines: QuoteLineResponse[]): { cat: string; items: QuoteLineResponse[] }[] {
@@ -131,7 +128,7 @@ export function RepIncomingQuotePage() {
   }, [id]);
 
   const lines = useMemo(() => quote?.lines ?? [], [quote]);
-  const matchState = useMemo(() => deriveMatchState(lines), [lines]);
+  const matchState = useMemo(() => deriveRepMatchState(lines), [lines]);
   const groups = useMemo(() => groupByCategory(lines), [lines]);
 
   const pricedLines = lines.filter((l) => l.unit_price_cents != null && l.unit_price_cents > 0);
@@ -546,7 +543,7 @@ function RepDesktopQuoteView({
   quoteId: string;
   lines: QuoteLineResponse[];
   groups: { cat: string; items: QuoteLineResponse[] }[];
-  matchState: 'ready' | 'review' | 'coverage';
+  matchState: RepMatchState;
   missingLines: QuoteLineResponse[];
   partial: boolean;
   flowState: FlowState;
@@ -778,7 +775,7 @@ function LineItemsSection({
   groups: { cat: string; items: QuoteLineResponse[] }[];
   allLines: QuoteLineResponse[];
   sortBy: SortBy;
-  matchState: 'ready' | 'review' | 'coverage';
+  matchState: RepMatchState;
   nav: (dest: string, opts?: { quoteId?: string }) => void;
   quoteId: string;
 }) {

@@ -7,13 +7,16 @@
 // Source: designs/handoff/5272026/src/screens-rep.jsx · QuoteCoverageLabelRep
 
 import React from 'react';
-import { RepMatchState } from './RepMatchStateBadge';
+import type { RepMatchState } from './RepMatchStateBadge';
 
 export interface QuoteCoverageLabelRepProps {
   state: RepMatchState;
 }
 
-const COVERAGE_MAP: Record<RepMatchState, { label: string; color: string; blurb: string }> = {
+// B-45: 'empty' is intentionally excluded from the positive coverage signals.
+// When state === 'empty' (fewer than MIN_COMPONENTS_FOR_COVERAGE lines) the
+// component returns null so no misleading coverage text is shown.
+const COVERAGE_MAP: Record<Exclude<RepMatchState, 'empty'>, { label: string; color: string; blurb: string }> = {
   ready: {
     label: 'STRONG COVERAGE',
     color: '#2B2B2B',
@@ -32,7 +35,12 @@ const COVERAGE_MAP: Record<RepMatchState, { label: string; color: string; blurb:
 };
 
 export function QuoteCoverageLabelRep({ state }: QuoteCoverageLabelRepProps) {
-  const entry = COVERAGE_MAP[state] ?? COVERAGE_MAP.ready;
+  // B-45: suppress ALL coverage signals (positive or negative) when extraction
+  // returned too few items. Never show "STRONG COVERAGE · every line aligned"
+  // on a 0-component or near-empty result.
+  if (state === 'empty') return null;
+
+  const entry = COVERAGE_MAP[state as Exclude<RepMatchState, 'empty'>];
 
   return (
     <div

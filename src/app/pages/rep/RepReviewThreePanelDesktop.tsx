@@ -17,6 +17,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { ChevronLeft, Search, X, MessageCircle, Plus, SquarePen, Check } from 'lucide-react';
 import { QuoteCoverageLabelRep } from '../../components/rep/QuoteCoverageLabelRep';
+import type { RepMatchState } from '../../components/rep/RepMatchStateBadge';
+import { deriveRepMatchState } from '../../utils/repCoverageState';
 import { LineCoverageDot } from '../../components/rep/CoverageDots';
 import { getRepQuote, repConfirmQuote } from '../../services/api';
 import type { QuoteLineResponse } from '../../services/api';
@@ -130,13 +132,8 @@ export function RepReviewThreePanelDesktop({ quoteId }: { quoteId: string }) {
     setSaving(false);
   };
 
-  const matchState: 'ready' | 'review' | 'coverage' = useMemo(() => {
-    const misses = lines.filter((l) => l.availability_status === 'not_in_catalog' || !l.product).length;
-    if (misses > 0) return 'coverage';
-    const flagged = lines.filter((l) => l.alignment_selected === 0 && l.product).length;
-    if (flagged > 0) return 'review';
-    return 'ready';
-  }, [lines]);
+  // B-45: use shared deriveRepMatchState — enforces MIN_COMPONENTS_FOR_COVERAGE threshold.
+  const matchState: RepMatchState = useMemo(() => deriveRepMatchState(lines), [lines]);
 
   if (loading) {
     return (
