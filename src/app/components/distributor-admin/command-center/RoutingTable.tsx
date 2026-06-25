@@ -38,6 +38,24 @@ import { stripSeedPrefix, formatColdLandingArtifact } from '../../../utils/forma
 import { RepTypeahead } from './RepTypeahead';
 import { QuoteRowActions } from './QuoteRowActions';
 
+// ── B-116 interim: opportunity-row "View" target ────────────────────────────────
+// An opportunity row may reference a downstream artifact (polymorphic on the BE:
+// artifact_type/artifact_id). When that artifact is a Quote, "View" should open
+// the quote detail — the SAME target the quote-row Edit uses (/rep/quotes/:id).
+// When there is no Quote artifact (e.g. a menu-only standing_page lead), there is
+// no detail to show yet, so "View" is disabled with a "No detail yet" tooltip.
+//
+// INTERIM ONLY: this does not build an opportunity-detail drawer (scoped separately).
+// Returns the nav path when a quote artifact is present, else null (→ disable View).
+export function resolveOpportunityViewTarget(
+  artifact: { type: string; id: string; name?: string | null } | null | undefined
+): string | null {
+  if (!artifact) return null;
+  if (artifact.type !== 'Quote') return null;
+  if (!artifact.id) return null;
+  return `/rep/quotes/${artifact.id}`;
+}
+
 // ── Date helper ────────────────────────────────────────────────────────────────
 
 function formatRowDate(received_at: string | null | undefined, age_days: number): string {
@@ -627,22 +645,34 @@ function DesktopRow({
             onEdit={() => navigate(`/rep/quotes/${row.id}`)}
           />
         ) : (
-          <button
-            type="button"
-            onClick={() => navigate('/distributor-admin/command-center/inbound')}
-            style={{
-              ...sans,
-              fontSize: 11.5,
-              color: C.charcoal,
-              background: 'none',
-              border: `1px solid ${C.softLine}`,
-              borderRadius: 5,
-              padding: '4px 10px',
-              cursor: 'pointer',
-            }}
-          >
-            View
-          </button>
+          (() => {
+            // B-116 interim: View → quote detail when the opportunity references a
+            // Quote artifact; otherwise disable with a "No detail yet" tooltip
+            // (previously navigated to the inbound page it's already on — a no-op).
+            const viewTarget = resolveOpportunityViewTarget(row.artifact);
+            return (
+              <button
+                type="button"
+                disabled={!viewTarget}
+                title={viewTarget ? 'View quote detail' : 'No detail yet'}
+                aria-label={viewTarget ? 'View quote detail' : 'No detail yet'}
+                onClick={() => viewTarget && navigate(viewTarget)}
+                style={{
+                  ...sans,
+                  fontSize: 11.5,
+                  color: C.charcoal,
+                  background: 'none',
+                  border: `1px solid ${C.softLine}`,
+                  borderRadius: 5,
+                  padding: '4px 10px',
+                  cursor: viewTarget ? 'pointer' : 'default',
+                  opacity: viewTarget ? 1 : 0.5,
+                }}
+              >
+                {viewTarget ? 'View' : 'No detail yet'}
+              </button>
+            );
+          })()
         )}
       </div>
     </div>
@@ -740,7 +770,9 @@ function MobileCard({
         </div>
       )}
 
-      {/* P6 — quote-kind rows: View (PDF) + Edit actions; opportunity rows: View → inbound */}
+      {/* P6 — quote-kind rows: View (PDF) + Edit actions.
+          B-116 interim — opportunity rows: View → quote detail when a Quote
+          artifact is referenced; else disabled "No detail yet". */}
       {row.kind === 'quote' ? (
         <div style={{ marginTop: 10 }}>
           <QuoteRowActions
@@ -749,24 +781,33 @@ function MobileCard({
           />
         </div>
       ) : (
-        <div style={{ marginTop: 10 }}>
-          <button
-            type="button"
-            onClick={() => navigate('/distributor-admin/command-center/inbound')}
-            style={{
-              ...sans,
-              fontSize: 11.5,
-              color: C.charcoal,
-              background: 'none',
-              border: `1px solid ${C.softLine}`,
-              borderRadius: 5,
-              padding: '4px 10px',
-              cursor: 'pointer',
-            }}
-          >
-            View
-          </button>
-        </div>
+        (() => {
+          const viewTarget = resolveOpportunityViewTarget(row.artifact);
+          return (
+            <div style={{ marginTop: 10 }}>
+              <button
+                type="button"
+                disabled={!viewTarget}
+                title={viewTarget ? 'View quote detail' : 'No detail yet'}
+                aria-label={viewTarget ? 'View quote detail' : 'No detail yet'}
+                onClick={() => viewTarget && navigate(viewTarget)}
+                style={{
+                  ...sans,
+                  fontSize: 11.5,
+                  color: C.charcoal,
+                  background: 'none',
+                  border: `1px solid ${C.softLine}`,
+                  borderRadius: 5,
+                  padding: '4px 10px',
+                  cursor: viewTarget ? 'pointer' : 'default',
+                  opacity: viewTarget ? 1 : 0.5,
+                }}
+              >
+                {viewTarget ? 'View' : 'No detail yet'}
+              </button>
+            </div>
+          );
+        })()
       )}
     </div>
   );

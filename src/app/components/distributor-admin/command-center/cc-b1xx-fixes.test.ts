@@ -5,6 +5,7 @@
 // All tests are pure-function / value-level — no jsdom required.
 
 import { describe, it, expect } from 'vitest';
+import { resolveOpportunityViewTarget } from './RoutingTable';
 
 // ── B-106: type===subtype dedup helper ────────────────────────────────────────
 // TriageRow shows label + _sourceLabel. When the two are the same value,
@@ -178,5 +179,38 @@ describe('B-118: PDF error state persists — no auto-reset', () => {
 
   it('stays idle when a timeout fires from idle (no regression)', () => {
     expect(viewStateAfterEvent('idle', 'timeout')).toBe('idle');
+  });
+});
+
+// ── B-116 interim: opportunity-row "View" target ─────────────────────────────
+// Today the opportunity-row "View" navigated to the inbound page it already sits
+// on (a no-op that looks dead). resolveOpportunityViewTarget decides the real
+// target from the row's polymorphic artifact:
+//   artifact.type === 'Quote' + id → '/rep/quotes/:id' (reuse quote-row Edit nav)
+//   anything else / no artifact     → null (caller DISABLES View, "No detail yet")
+
+describe('B-116: resolveOpportunityViewTarget — interim View routing', () => {
+  it('routes to the quote detail when the artifact is a Quote', () => {
+    expect(
+      resolveOpportunityViewTarget({ type: 'Quote', id: 'q-123', name: 'Spring order' })
+    ).toBe('/rep/quotes/q-123');
+  });
+
+  it('reuses the same /rep/quotes/:id pattern the quote-row Edit uses', () => {
+    expect(resolveOpportunityViewTarget({ type: 'Quote', id: 'abc' })).toBe('/rep/quotes/abc');
+  });
+
+  it('returns null when there is no artifact (menu-only standing_page lead)', () => {
+    expect(resolveOpportunityViewTarget(null)).toBeNull();
+    expect(resolveOpportunityViewTarget(undefined)).toBeNull();
+  });
+
+  it('returns null for a non-Quote artifact (e.g. BrandPackage, Menu)', () => {
+    expect(resolveOpportunityViewTarget({ type: 'BrandPackage', id: 'bp-1' })).toBeNull();
+    expect(resolveOpportunityViewTarget({ type: 'Menu', id: 'm-1' })).toBeNull();
+  });
+
+  it('returns null when artifact is a Quote but has no id (defensive)', () => {
+    expect(resolveOpportunityViewTarget({ type: 'Quote', id: '' })).toBeNull();
   });
 });
