@@ -10,6 +10,7 @@ import {
 } from '../../components/chef/QuoteStateDocument';
 import { categoryLabel } from '../../utils/categoryLabel';
 import { isLockedQuoteState, quoteStatusLabel } from '../../utils/quoteStatusLabel';
+import { formatQuoteDate } from '../../utils/format';
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -25,18 +26,6 @@ function toTitleCase(str: string): string {
       return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
     })
     .replace(/^./, (c) => c.toUpperCase());
-}
-
-function formatDate(dateStr: string): string {
-  try {
-    return new Date(dateStr).toLocaleDateString('en-US', {
-      month: 'long',
-      day: 'numeric',
-      year: 'numeric',
-    });
-  } catch {
-    return dateStr;
-  }
 }
 
 // Group matched lines by category, preserving insertion order
@@ -225,7 +214,7 @@ export function ChefQuoteReceiptPage() {
     })),
   }));
   const pricedCount = matchedLines.filter((l) => l.unit_price_cents != null).length;
-  const confirmedDate = formatDate(quote.sent_at || quote.created_at);
+  const confirmedDate = formatQuoteDate(quote.sent_at || quote.created_at);
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
@@ -241,7 +230,7 @@ export function ChefQuoteReceiptPage() {
             state={docState}
             quoteState={quote.state}
             restaurant={quote.restaurant}
-            quoteDate={formatDate(quote.created_at)}
+            quoteDate={formatQuoteDate(quote.created_at)}
             rep={repName || 'your rep'}
             repPhone={repContact?.phone || undefined}
             distributorShort={quote.distributor?.name ?? undefined}
