@@ -1002,7 +1002,8 @@ export function StartNewQuotePage() {
                 </Button>
               </div>
               <button
-                className="text-xs text-[#A5CFDD] hover:text-[#7FAEC2] mt-1.5"
+                className={`text-xs text-[#A5CFDD] hover:text-[#7FAEC2] mt-1.5${!selectedRestaurant ? ' opacity-50 cursor-not-allowed' : ''}`}
+                title={!selectedRestaurant ? "Select a customer first to link their profile URL" : undefined}
                 onClick={() => {
                   if (selectedRestaurant?.website) setMenuUrl(selectedRestaurant.website);
                 }}
