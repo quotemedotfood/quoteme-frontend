@@ -53,7 +53,10 @@ export function resolveOpportunityViewTarget(
   if (!artifact) return null;
   if (artifact.type !== 'Quote') return null;
   if (!artifact.id) return null;
-  return `/rep/quotes/${artifact.id}`;
+  // B-130: RoutingTable is CC-admin-only; route Quote artifacts to the
+  // command-center quote view, not the rep-only /rep/quotes/:id route (which
+  // 403s/crashes for a CC admin). Mirrors the quote-row Edit nav.
+  return `/distributor-admin/command-center/quotes/${artifact.id}`;
 }
 
 // ── Date helper ────────────────────────────────────────────────────────────────
@@ -642,7 +645,11 @@ function DesktopRow({
         {row.kind === 'quote' ? (
           <QuoteRowActions
             quoteId={row.id}
-            onEdit={() => navigate(`/rep/quotes/${row.id}`, { state: { from: location.pathname } })}
+            // B-130: route to the CC-admin quote view, not the rep-only route.
+            // /rep/quotes/:id renders RepIncomingQuotePage (rep-scoped fetch) which
+            // 403s/crashes for a CC admin and has no CC back-nav. CCQuoteDetailPage
+            // loads via the command-center endpoint and carries the back link.
+            onEdit={() => navigate(`/distributor-admin/command-center/quotes/${row.id}`, { state: { from: location.pathname } })}
           />
         ) : (
           (() => {
@@ -818,7 +825,11 @@ function MobileCard({
         <div style={{ marginTop: 10 }}>
           <QuoteRowActions
             quoteId={row.id}
-            onEdit={() => navigate(`/rep/quotes/${row.id}`, { state: { from: location.pathname } })}
+            // B-130: route to the CC-admin quote view, not the rep-only route.
+            // /rep/quotes/:id renders RepIncomingQuotePage (rep-scoped fetch) which
+            // 403s/crashes for a CC admin and has no CC back-nav. CCQuoteDetailPage
+            // loads via the command-center endpoint and carries the back link.
+            onEdit={() => navigate(`/distributor-admin/command-center/quotes/${row.id}`, { state: { from: location.pathname } })}
           />
         </div>
       ) : (

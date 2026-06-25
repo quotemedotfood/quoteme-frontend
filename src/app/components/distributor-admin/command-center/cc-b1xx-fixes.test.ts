@@ -186,18 +186,21 @@ describe('B-118: PDF error state persists — no auto-reset', () => {
 // Today the opportunity-row "View" navigated to the inbound page it already sits
 // on (a no-op that looks dead). resolveOpportunityViewTarget decides the real
 // target from the row's polymorphic artifact:
-//   artifact.type === 'Quote' + id → '/rep/quotes/:id' (reuse quote-row Edit nav)
+//   artifact.type === 'Quote' + id → '/distributor-admin/command-center/quotes/:id'
+//                                     (B-130: CC-admin route, reuse quote-row Edit nav)
 //   anything else / no artifact     → null (caller DISABLES View, "No detail yet")
 
-describe('B-116: resolveOpportunityViewTarget — interim View routing', () => {
-  it('routes to the quote detail when the artifact is a Quote', () => {
+describe('B-116/B-130: resolveOpportunityViewTarget — interim View routing', () => {
+  it('routes to the CC quote detail when the artifact is a Quote', () => {
     expect(
       resolveOpportunityViewTarget({ type: 'Quote', id: 'q-123', name: 'Spring order' })
-    ).toBe('/rep/quotes/q-123');
+    ).toBe('/distributor-admin/command-center/quotes/q-123');
   });
 
-  it('reuses the same /rep/quotes/:id pattern the quote-row Edit uses', () => {
-    expect(resolveOpportunityViewTarget({ type: 'Quote', id: 'abc' })).toBe('/rep/quotes/abc');
+  it('reuses the same CC quote route the quote-row Edit uses (B-130)', () => {
+    expect(resolveOpportunityViewTarget({ type: 'Quote', id: 'abc' })).toBe(
+      '/distributor-admin/command-center/quotes/abc'
+    );
   });
 
   it('returns null when there is no artifact (menu-only standing_page lead)', () => {
