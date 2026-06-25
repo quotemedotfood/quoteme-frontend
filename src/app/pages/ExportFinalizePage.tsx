@@ -40,6 +40,8 @@ function toTitleCase(str: string): string {
   }).replace(/^./, (c) => c.toUpperCase());
 }
 
+export const FROM_DISPLAY_ADDRESS = 'quotes@quoteme.food';
+
 // Mock data for premium onboarding features
 const onboardingDocuments = [
   { id: 'doc1', name: 'New Customer Application (PDF)', type: 'document' },
@@ -936,7 +938,7 @@ export function ExportFinalizePage() {
                 {!isFinalized && isGuest && <div className="text-xs bg-gray-100 px-2 py-1 rounded text-gray-500">Sign up first</div>}
               </div>
               <p className="text-gray-500 text-sm mb-6">
-                Emails will be sent via Quotes@Quote-me.com with your email CC'd
+                Emails will be sent via {FROM_DISPLAY_ADDRESS} with your email CC'd
               </p>
 
               {sendError && (
