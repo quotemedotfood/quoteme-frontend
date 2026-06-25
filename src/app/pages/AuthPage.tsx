@@ -451,7 +451,13 @@ export function AuthPage() {
 
         {/* Brand - active (Task-2 signup: creates brand_group + brand + membership) */}
         <button
-          onClick={() => navigate('/brand/signup')}
+          onClick={() => {
+            if (isAuthenticated && user?.role === 'brand') {
+              navigate('/brand');
+            } else {
+              navigate('/brand/signup');
+            }
+          }}
           className="group flex items-center gap-4 rounded-lg border-2 bg-white px-5 py-4 text-left transition-all hover:shadow-md"
           style={{ borderColor: '#7FAEC2' }}
         >
@@ -470,6 +476,16 @@ export function AuthPage() {
             </p>
           </div>
         </button>
+        <p className="text-sm text-center" style={{ color: '#4F4F4F', marginTop: '-4px' }}>
+          Brand account?{' '}
+          <button
+            onClick={() => switchView('signin')}
+            className="font-semibold underline-offset-2 hover:underline"
+            style={{ color: '#7FAEC2' }}
+          >
+            Sign in
+          </button>
+        </p>
       </div>
 
       <p className="text-sm" style={{ color: '#4F4F4F' }}>
