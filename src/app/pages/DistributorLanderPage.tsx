@@ -98,6 +98,15 @@ function isValidPhone(s: string): boolean {
   return /[\d]{7,}/.test(s.replace(/\D/g, ''));
 }
 
+// ─── Opportunity reference formatter ─────────────────────────────────────────
+// Converts a UUID to a short, user-visible reference code.
+// "550e8400-e29b-41d4-a716-446655440000" → "QM-55440000"
+export function formatOpportunityRef(id: string | null | undefined): string | null {
+  if (!id) return null;
+  const clean = id.replace(/-/g, '');
+  return `QM-${clean.slice(-8).toUpperCase()}`;
+}
+
 // ─── Not-found frame ──────────────────────────────────────────────────────────
 function NotFoundFrame() {
   return (
@@ -176,8 +185,9 @@ interface DeliveredFrameProps {
   primaryHex: string;
   secondaryHex: string;
   desktop: boolean;
+  opportunityId: string | null;
 }
-function DeliveredFrame({ distributorName, primaryHex, secondaryHex, desktop }: DeliveredFrameProps) {
+function DeliveredFrame({ distributorName, primaryHex, secondaryHex, desktop, opportunityId }: DeliveredFrameProps) {
   return (
     <div
       style={{
@@ -224,7 +234,15 @@ function DeliveredFrame({ distributorName, primaryHex, secondaryHex, desktop }: 
           maxWidth: 460,
         }}
       >
-        They'll follow up through QuoteMe. You can close this page.
+        They'll follow up through QuoteMe.
+        {opportunityId && (
+          <>
+            {' '}Your reference:{' '}
+            <span style={{ fontVariantNumeric: 'tabular-nums', letterSpacing: '.04em' }}>
+              {formatOpportunityRef(opportunityId)}
+            </span>
+          </>
+        )}
       </p>
       <div
         style={{
@@ -255,7 +273,7 @@ function DeliveredFrame({ distributorName, primaryHex, secondaryHex, desktop }: 
 interface LanderFormProps {
   config:      LanderConfig;
   desktop:     boolean;
-  onDelivered: () => void;
+  onDelivered: (opportunityId: string | null) => void;
   slug:        string;
 }
 
@@ -390,7 +408,8 @@ function LanderForm({ config, desktop, onDelivered, slug }: LanderFormProps) {
       }
 
       if (response.status === 201) {
-        onDelivered();
+        const successBody = await response.json().catch(() => ({}));
+        onDelivered((successBody as { opportunity_id?: string }).opportunity_id ?? null);
         return;
       }
 
@@ -975,8 +994,9 @@ export function DistributorLanderPage() {
   const { slug: slugParam } = useParams<{ slug: string }>();
   const slug = resolveSlug(slugParam);
 
-  const [pageState, setPageState] = useState<PageState>('loading');
-  const [config,    setConfig]    = useState<LanderConfig | null>(null);
+  const [pageState,     setPageState]     = useState<PageState>('loading');
+  const [config,        setConfig]        = useState<LanderConfig | null>(null);
+  const [opportunityId, setOpportunityId] = useState<string | null>(null);
   const [isDesktop, setIsDesktop] = useState(() =>
     typeof window !== 'undefined' ? window.innerWidth >= 768 : false,
   );
@@ -1074,6 +1094,7 @@ export function DistributorLanderPage() {
             primaryHex={primaryHex}
             secondaryHex={secondaryHex}
             desktop={isDesktop}
+            opportunityId={opportunityId}
           />
           <LanderFooter desktop={isDesktop} />
         </div>
@@ -1103,7 +1124,7 @@ export function DistributorLanderPage() {
           config={config}
           desktop={isDesktop}
           slug={slug!}
-          onDelivered={() => setPageState('sent')}
+          onDelivered={(id) => { setOpportunityId(id); setPageState('sent'); }}
         />
         <LanderFooter desktop={isDesktop} />
       </div>
