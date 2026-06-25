@@ -22,6 +22,7 @@
 // BE 404s on either endpoint render graceful empty states.
 
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router';
 import {
   getChefMenus,
@@ -217,18 +218,57 @@ function SourceBadge({ sourceType }: { sourceType: string | null | undefined }) 
   );
 }
 
-// Kebab menu anchored to a ref element
+// ─── Portal positioning helper (exported for testing) ─────────────────────────
+
+/** Menu dropdown dimensions (approximate, used for flip calculation). */
+const KEBAB_MENU_HEIGHT = 90; // px — two rows × ~45px each
+const KEBAB_MENU_WIDTH = 140; // px — matches minWidth below
+
+/**
+ * Compute fixed `{ top, left }` coordinates for the kebab dropdown portal,
+ * positioning it below the trigger button (or flipping above if near the
+ * viewport bottom).
+ *
+ * @param rect  - DOMRect of the trigger button
+ * @param vpH   - viewport height (window.innerHeight)
+ * @param vpW   - viewport width (window.innerWidth)
+ */
+export function computeKebabPosition(
+  rect: { top: number; bottom: number; left: number; right: number; width: number; height: number },
+  vpH: number,
+  vpW: number,
+): { top: number; left: number } {
+  const GAP = 4;
+  // Default: place below the button
+  let top = rect.bottom + GAP;
+  // Flip above if it would overflow the bottom of the viewport
+  if (top + KEBAB_MENU_HEIGHT > vpH) {
+    top = rect.top - KEBAB_MENU_HEIGHT - GAP;
+  }
+  // Left-align with the button; clamp so it doesn't overflow the right edge
+  let left = rect.left;
+  if (left + KEBAB_MENU_WIDTH > vpW) {
+    left = vpW - KEBAB_MENU_WIDTH - 8;
+  }
+  return { top, left };
+}
+
+// Kebab menu — rendered via createPortal to document.body so it is never
+// clipped by an overflow:auto ancestor (e.g. a mobile scroll container).
 function KebabMenu({
+  position,
   onRename,
   onDelete,
   onClose,
 }: {
+  position: { top: number; left: number };
   onRename: () => void;
   onDelete: () => void;
   onClose: () => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
 
+  // Close on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) onClose();
@@ -237,20 +277,29 @@ function KebabMenu({
     return () => document.removeEventListener('mousedown', handler);
   }, [onClose]);
 
-  return (
+  // Close on Escape key
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [onClose]);
+
+  const menu = (
     <div
       ref={ref}
       style={{
-        position: 'absolute',
-        right: 0,
-        top: '100%',
-        marginTop: 4,
+        position: 'fixed',
+        top: position.top,
+        left: position.left,
+        marginTop: 0,
         background: '#fff',
         border: `1px solid ${C.softLine}`,
         borderRadius: 8,
         boxShadow: '0 4px 12px rgba(0,0,0,0.10)',
-        zIndex: 50,
-        minWidth: 140,
+        zIndex: 9999,
+        minWidth: KEBAB_MENU_WIDTH,
         overflow: 'hidden',
       }}
     >
@@ -286,6 +335,8 @@ function KebabMenu({
       ))}
     </div>
   );
+
+  return createPortal(menu, document.body);
 }
 
 // Inline rename input
@@ -355,7 +406,9 @@ function MenuRow({
   onDelete: () => void;
 }) {
   const [kebabOpen, setKebabOpen] = useState(false);
+  const [kebabPosition, setKebabPosition] = useState<{ top: number; left: number } | null>(null);
   const [renaming, setRenaming] = useState(false);
+  const kebabRef = useRef<HTMLButtonElement>(null);
   const isDraft = menu.quote_count === 0;
 
   return (
@@ -450,11 +503,25 @@ function MenuRow({
       </button>
 
       {/* Kebab */}
-      <div style={{ position: 'relative', flexShrink: 0 }}>
+      <div style={{ flexShrink: 0 }}>
         <button
+          ref={kebabRef}
           type="button"
           aria-label="Menu options"
-          onClick={() => setKebabOpen((v) => !v)}
+          onClick={() => {
+            if (kebabOpen) {
+              setKebabOpen(false);
+              setKebabPosition(null);
+            } else {
+              const rect = kebabRef.current?.getBoundingClientRect();
+              if (rect) {
+                setKebabPosition(
+                  computeKebabPosition(rect, window.innerHeight, window.innerWidth)
+                );
+              }
+              setKebabOpen(true);
+            }
+          }}
           style={{
             background: 'transparent',
             border: 'none',
@@ -470,11 +537,12 @@ function MenuRow({
         >
           ···
         </button>
-        {kebabOpen && (
+        {kebabOpen && kebabPosition && (
           <KebabMenu
+            position={kebabPosition}
             onRename={() => setRenaming(true)}
             onDelete={onDelete}
-            onClose={() => setKebabOpen(false)}
+            onClose={() => { setKebabOpen(false); setKebabPosition(null); }}
           />
         )}
       </div>
