@@ -16,8 +16,10 @@
 // genuine problem state with var(--primary) per Moose lock.
 
 import React from 'react';
-
-export type RepMatchState = 'ready' | 'review' | 'coverage';
+// B-45: RepMatchState is the canonical type — imported from repCoverageState util
+// which added 'empty' (fewer than MIN_COMPONENTS_FOR_COVERAGE lines extracted).
+// Re-exported here so existing importers continue to resolve from this file.
+export type { RepMatchState } from '../../utils/repCoverageState';
 
 export interface RepMatchStateBadgeProps {
   state: RepMatchState;
@@ -43,6 +45,13 @@ const STATE_MAP: Record<
     label: 'Coverage gaps',
     dotColor: 'var(--primary)',
     ring: 'rgba(217,119,87,.35)',
+  },
+  // B-45: 'empty' — zero or below-threshold extraction. Badge is suppressed at the
+  // call site; this entry is a safety net for any direct RepMatchStateBadge renders.
+  empty: {
+    label: 'No items extracted',
+    dotColor: '#9E9E9E',
+    ring: '#E8E8E8',
   },
 };
 
