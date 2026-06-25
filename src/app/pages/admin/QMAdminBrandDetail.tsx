@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router';
-import { ArrowLeft, Globe, Package, Users, Boxes, UserCheck, Mail } from 'lucide-react';
+import { ArrowLeft, Globe, Package, Users, Boxes, UserCheck, Mail, Upload } from 'lucide-react';
 import {
   getAdminBrand,
   resendInvite,
   AdminBrandDetail,
+  uploadAdminBrandLogo,
 } from '../../services/adminApi';
 import { Button } from '../../components/ui/button';
 import {
@@ -56,6 +57,9 @@ const DIST_STATUS_MAP: Record<string, string> = {
   declined: 'bg-red-100 text-red-700',
 };
 
+const LOGO_ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+const LOGO_MAX_BYTES = 5 * 1024 * 1024; // 5 MB
+
 // ─── QMAdminBrandDetail ──────────────────────────────────────────────────────
 
 export function QMAdminBrandDetail() {
@@ -67,12 +71,22 @@ export function QMAdminBrandDetail() {
   const [resendingId, setResendingId] = useState<string | null>(null);
   const [resendMsg, setResendMsg] = useState<Record<string, string>>({});
 
+  // Logo upload state
+  const [logoUrl, setLogoUrl]             = useState<string | null>(null);
+  const [logoUploading, setLogoUploading] = useState(false);
+  const [logoError, setLogoError]         = useState<string | null>(null);
+  const logoInputRef                      = useRef<HTMLInputElement>(null);
+
   useEffect(() => {
     if (!id) return;
     async function load() {
       const res = await getAdminBrand(id!);
-      if (res.data) setBrand(res.data);
-      else setError(res.error || 'Not found');
+      if (res.data) {
+        setBrand(res.data);
+        setLogoUrl(res.data.logo_url ?? null);
+      } else {
+        setError(res.error || 'Not found');
+      }
       setLoading(false);
     }
     load();
@@ -88,6 +102,32 @@ export function QMAdminBrandDetail() {
     } else {
       setResendMsg((prev) => ({ ...prev, [userId]: res.error || 'Failed' }));
     }
+  }
+
+  async function handleLogoFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !id) return;
+    e.target.value = '';
+
+    if (!LOGO_ALLOWED_TYPES.includes(file.type)) {
+      setLogoError('Only JPEG, PNG, or WebP images are accepted.');
+      return;
+    }
+    if (file.size > LOGO_MAX_BYTES) {
+      setLogoError('Image must be 5 MB or smaller.');
+      return;
+    }
+
+    setLogoError(null);
+    setLogoUploading(true);
+    const res = await uploadAdminBrandLogo(id, file);
+    setLogoUploading(false);
+
+    if (res.error) {
+      setLogoError(res.error);
+      return;
+    }
+    setLogoUrl(res.data!.logo_url);
   }
 
   if (loading) {
@@ -112,17 +152,44 @@ export function QMAdminBrandDetail() {
 
       {/* Header */}
       <div className="flex items-start gap-4 mb-8">
-        {brand.logo_url ? (
-          <img
-            src={brand.logo_url}
-            alt={brand.name}
-            className="w-16 h-16 object-contain rounded-lg border border-gray-200 flex-shrink-0"
+        {/* Logo preview + upload */}
+        <div className="flex-shrink-0 flex flex-col items-center gap-1">
+          {logoUrl ? (
+            <img
+              src={logoUrl}
+              alt={brand.name}
+              className="w-16 h-16 object-contain rounded-lg border border-gray-200"
+            />
+          ) : (
+            <div className="w-16 h-16 rounded-lg bg-[#7FAEC2] text-white flex items-center justify-center text-xl font-bold">
+              {initials}
+            </div>
+          )}
+          {/* Hidden file input */}
+          <input
+            ref={logoInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            className="hidden"
+            onChange={handleLogoFileChange}
+            disabled={logoUploading}
           />
-        ) : (
-          <div className="w-16 h-16 rounded-lg bg-[#7FAEC2] text-white flex items-center justify-center text-xl font-bold flex-shrink-0">
-            {initials}
-          </div>
-        )}
+          <button
+            type="button"
+            title={logoUrl ? 'Replace logo' : 'Upload logo'}
+            className="flex items-center gap-1 text-xs text-[#7FAEC2] hover:text-[#6A9AB0] disabled:opacity-50"
+            style={{ background: 'transparent', border: 'none', cursor: logoUploading ? 'not-allowed' : 'pointer', padding: 0 }}
+            onClick={() => logoInputRef.current?.click()}
+            disabled={logoUploading}
+          >
+            <Upload size={11} />
+            {logoUploading ? 'Uploading…' : logoUrl ? 'Replace' : 'Upload'}
+          </button>
+          {logoError && (
+            <p className="text-xs text-red-500 max-w-[80px] text-center leading-tight">{logoError}</p>
+          )}
+        </div>
+
         <div>
           <h1
             className="text-2xl font-bold text-[#2A2A2A]"

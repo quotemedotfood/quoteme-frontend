@@ -2056,3 +2056,61 @@ export async function recordTailClusterDecision(
     body: JSON.stringify(params),
   });
 }
+
+// ── QM-Admin Logo Uploads (B-181) ───────────────────────────────────────────
+
+/** POST /api/v1/admin/brands/:id/logo — QM admin uploads logo for a brand. */
+export async function uploadAdminBrandLogo(
+  brandId: string,
+  file: File,
+): Promise<ApiResponse<{ logo_url: string }>> {
+  const token = getAuthToken();
+  const headers: Record<string, string> = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const formData = new FormData();
+  formData.append('logo', file);
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/v1/admin/brands/${brandId}/logo`, {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+    if (!response.ok) {
+      const errBody = await response.json().catch(() => ({}));
+      return { error: errBody.error || `HTTP ${response.status}` };
+    }
+    return { data: await response.json() };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : 'Network error' };
+  }
+}
+
+/** POST /api/v1/admin/distributors/:id/logo — QM admin uploads logo for a distributor. */
+export async function uploadAdminDistributorLogo(
+  distributorId: string,
+  file: File,
+): Promise<ApiResponse<{ logo_url: string }>> {
+  const token = getAuthToken();
+  const headers: Record<string, string> = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const formData = new FormData();
+  formData.append('logo', file);
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/v1/admin/distributors/${distributorId}/logo`, {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+    if (!response.ok) {
+      const errBody = await response.json().catch(() => ({}));
+      return { error: errBody.error || `HTTP ${response.status}` };
+    }
+    return { data: await response.json() };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : 'Network error' };
+  }
+}
