@@ -2460,6 +2460,12 @@ export async function getChefDistributors(): Promise<ApiResponse<ChefDistributor
   return fetchWithGuest(`/api/v1/chef/distributors`);
 }
 
+// Returns all distributors available in the network (not filtered to the chef's
+// existing relationships). Used by PickPanel on ChefDistributorEntryPage.
+export async function getChefDistributorsAvailable(): Promise<ApiResponse<ChefDistributorsResponse>> {
+  return fetchWithGuest(`/api/v1/chef/distributors/available`);
+}
+
 // V2 W4 inc 4 — chef-scoped reverse-chron quote list. Per-row carries the
 // dashboard's display fields + latest_question for the "previous questions"
 // strip, in one round-trip.
