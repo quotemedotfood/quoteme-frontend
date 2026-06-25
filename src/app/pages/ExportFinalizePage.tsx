@@ -64,6 +64,11 @@ export function openEditDrawerSafe(
   setShowEditDrawer(true);
 }
 
+/** B-108c: Returns the PDF Quote button label based on download state. */
+export function getPdfButtonLabel(downloadingPdf: boolean): string {
+  return downloadingPdf ? 'Generating PDF...' : 'PDF Quote';
+}
+
 // Mock data for premium onboarding features
 const onboardingDocuments = [
   { id: 'doc1', name: 'New Customer Application (PDF)', type: 'document' },
@@ -937,7 +942,7 @@ export function ExportFinalizePage() {
                   ) : (
                     <FileText className="w-4 h-4 mr-3" />
                   )}
-                  PDF Quote
+                  {getPdfButtonLabel(downloadingPdf)}
                 </Button>
                 <Button
                   className="w-full justify-start bg-[#F2993D] hover:bg-[#E8953A] text-white h-12"

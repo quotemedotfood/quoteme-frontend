@@ -80,3 +80,15 @@ describe('B-102 — Edit button opens edit drawer, not PDF preview', () => {
     expect(openEditDrawerSafe.length).toBe(3);
   });
 });
+
+import { getPdfButtonLabel } from './ExportFinalizePage';
+
+describe('B-108c — PDF Quote button label feedback', () => {
+  it('shows "Generating PDF..." while downloading', () => {
+    expect(getPdfButtonLabel(true)).toBe('Generating PDF...');
+  });
+
+  it('shows "PDF Quote" in idle state', () => {
+    expect(getPdfButtonLabel(false)).toBe('PDF Quote');
+  });
+});
