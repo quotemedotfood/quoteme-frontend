@@ -358,7 +358,6 @@ export function ManagerSidebar({
             justifyContent: 'center',
             borderTop: `2px solid ${C.charcoal}`,
           }}
-          title={`${manager.name} · ${manager.company}`}
         >
           <div
             style={{
@@ -367,6 +366,8 @@ export function ManagerSidebar({
               border: `1px solid ${C.softLine}`,
               background: C.warmPaper,
             }}
+            title={`${manager.name} · ${manager.company}`}
+            aria-label={manager.name}
           >
             <span style={{ ...serif, fontSize: 12, fontWeight: 600, color: C.charcoal }}>
               {initials}
