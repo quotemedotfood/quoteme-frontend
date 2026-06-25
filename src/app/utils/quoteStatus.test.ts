@@ -2,7 +2,26 @@
 // blank Step 1 (currentStep=0) before the delayed navigate. The fix navigates to the
 // receipt immediately on the first poll when the quote is already complete.
 import { describe, it, expect } from 'vitest';
-import { isQuoteComplete } from './quoteStatus';
+import { isQuoteComplete, isPricedQuote } from './quoteStatus';
+
+// B-140: isPricedQuote guard — prevents "$0.00" on pending/draft quotes.
+describe('isPricedQuote', () => {
+  it('returns false for a pending quote with 0 total_cents', () => {
+    expect(isPricedQuote({ total_cents: 0, status: 'pending' })).toBe(false);
+  });
+
+  it('returns false for a draft quote with null total_cents', () => {
+    expect(isPricedQuote({ total_cents: null, status: 'draft' })).toBe(false);
+  });
+
+  it('returns true for a confirmed quote with 2500 total_cents', () => {
+    expect(isPricedQuote({ total_cents: 2500, status: 'confirmed' })).toBe(true);
+  });
+
+  it('returns true for a pending quote with 2500 total_cents (edge: has total, still pending)', () => {
+    expect(isPricedQuote({ total_cents: 2500, status: 'pending' })).toBe(true);
+  });
+});
 
 describe('isQuoteComplete', () => {
   it('is complete when processing_stage is "complete"', () => {

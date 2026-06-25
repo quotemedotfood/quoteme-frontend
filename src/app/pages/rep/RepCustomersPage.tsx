@@ -15,6 +15,7 @@
 // No extra chrome needed — RepLayout provides sidebar + padding wrapper.
 
 import { useEffect, useState } from 'react';
+import { Building2 } from 'lucide-react';
 import { getRepCustomers } from '../../services/api';
 import type { RepCustomer } from '../../services/api';
 
@@ -73,7 +74,9 @@ function EmptyState() {
         lineHeight: 1.7,
       }}
     >
-      <div style={{ fontSize: 32, marginBottom: 12, opacity: 0.35 }}>&#9825;</div>
+      <div style={{ marginBottom: 12 }}>
+        <Building2 className="w-8 h-8 opacity-35" style={{ color: '#A5CFDD' }} />
+      </div>
       <div style={{ fontWeight: 500, color: C.gray700, fontSize: 15 }}>
         No customers yet
       </div>

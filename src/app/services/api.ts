@@ -223,9 +223,12 @@ export interface QuoteResponse {
   /** rep-flow quote type: standard | preview | confirmed | guest_quote | buyer_quote. 'confirmed' locks chef actions. */
   quote_type?: string | null;
   working_label: string;
-  restaurant: string;
+  restaurant: string | null;
+  /** Primary contact's full name — fallback when quote has no associated Restaurant record (cold_landing/outbound quotes). Mirrors queue's contact_name fallback in inbound_feed_serializable. */
+  contact_name?: string | null;
   rep: string;
   rep_reviewed: boolean;
+  rep_reviewed_at?: string | null;
   sent_at: string | null;
   pdf_url: string | null;
   total_cents: number;
@@ -1372,6 +1375,7 @@ export interface QuoteListItem {
   total_cents: number;
   line_count: number;
   rep_reviewed: boolean;
+  rep_reviewed_at?: string | null;
   created_at: string;
   sent_at: string | null;
 }
@@ -2307,6 +2311,8 @@ export interface InboundRow {
   brand_name?: string | null;
   /** Brand package items — only present on brand_package opportunity rows. */
   brand_items?: InboundBrandItem[] | null;
+  /** B-139: quote line count — only present on kind='quote' rows. Hidden when 0. */
+  items?: number | null;
 }
 
 /** GET /api/v1/distributor_admin/command_center/inbound

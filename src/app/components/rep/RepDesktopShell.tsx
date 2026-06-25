@@ -401,6 +401,7 @@ export function RepNewspaperSidebar({
               border: `1px solid ${C.softLine}`,
               background: C.warmPaper,
             }}
+            aria-label={repName}
           >
             <span style={{ ...serif, fontSize: 12, fontWeight: 600, color: C.charcoal }}>
               {initials}

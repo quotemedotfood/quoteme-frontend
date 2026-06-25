@@ -176,6 +176,9 @@ export const router = createBrowserRouter([
         Component: BrandShellLayout,
         children: [
           { index: true,           Component: BrandDashboardPage },
+          // B-128: /brand/dashboard was the handoff's URL label for the brand
+          // home but was never registered as a route — redirects to canonical.
+          { path: "dashboard",     element: <Navigate to="/brand" replace /> },
           { path: "catalog",       Component: BrandCatalogPage },
           { path: "capture",       Component: BrandCapturePage },
           { path: "packages",      Component: BrandPackagesPage },
@@ -376,6 +379,11 @@ export const router = createBrowserRouter([
               path: "rep/triage",
               element: <Navigate to="/rep/quotes/inbound" replace />,
             },
+            // B-146: /rep/settings is a common direct-type URL; real settings route is /settings
+            {
+              path: "rep/settings",
+              element: <Navigate to="/settings" replace />,
+            },
             {
               path: "rep",
               Component: RepLayout,
@@ -434,6 +442,10 @@ export const router = createBrowserRouter([
               { path: "search",          Component: CCSearchPage },
               { path: "team",            element: <CCSoonPage title="Team view lands shortly." /> },
               { path: "inbound",         Component: CCInboundPage },
+              // B-147: /command-center/assignments is a common guess; real path is /assign
+              { path: "assignments", element: <Navigate to="/distributor-admin/command-center/assign" replace /> },
+              // B-148: /command-center/activity is a common guess; real path is /quotes
+              { path: "activity", element: <Navigate to="/distributor-admin/command-center/quotes" replace /> },
             ],
           },
           // ── Distributor-admin satellite pages inside the CC shell ─────────

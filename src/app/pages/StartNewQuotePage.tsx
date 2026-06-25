@@ -1002,7 +1002,8 @@ export function StartNewQuotePage() {
                 </Button>
               </div>
               <button
-                className="text-xs text-[#A5CFDD] hover:text-[#7FAEC2] mt-1.5"
+                className={`text-xs text-[#A5CFDD] hover:text-[#7FAEC2] mt-1.5${!selectedRestaurant ? ' opacity-50 cursor-not-allowed' : ''}`}
+                title={!selectedRestaurant ? "Select a customer first to link their profile URL" : undefined}
                 onClick={() => {
                   if (selectedRestaurant?.website) setMenuUrl(selectedRestaurant.website);
                 }}
@@ -1471,7 +1472,7 @@ export function StartNewQuotePage() {
           </div>
 
           {/* Upload section */}
-          <div className={catalogs.some(c => c.status === 'active') && !catalogUploadExpanded ? 'hidden' : ''}>
+          <div className={!catalogUploadExpanded ? 'hidden' : ''}>
             <h3 className="text-sm font-medium text-gray-700 mb-2">
               {catalogs.length > 0 ? 'Upload New Catalog' : 'Upload Your Catalog'}
             </h3>

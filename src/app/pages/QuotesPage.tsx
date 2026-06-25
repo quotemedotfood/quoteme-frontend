@@ -8,6 +8,7 @@ import { getQuotes, requoteQuote, downloadQuotePdf, downloadQuoteCsv, downloadOr
 import { stripSeedPrefix } from '../utils/format';
 import { legacyStatusToState } from '../components/chef/QuoteStatusPill';
 import { quoteStatusLabel } from '../utils/quoteStatusLabel';
+import { isPricedQuote } from '../utils/quoteStatus';
 
 /** Statuses where the quote workflow is closed. Requote is hidden for these. */
 export const CLOSED_STATUSES = ['won', 'confirmed', 'accepted', 'declined'] as const;
@@ -366,7 +367,7 @@ export function QuotesPage() {
                   <div className="text-right">
                     <p className="text-gray-500 text-xs mb-0.5">Total</p>
                     <p className="text-[#2A2A2A] font-medium">
-                      {formatCurrency(quote.total_cents)}
+                      {isPricedQuote(quote) ? formatCurrency(quote.total_cents) : 'Not priced'}
                     </p>
                   </div>
                 </div>
@@ -539,7 +540,7 @@ export function QuotesPage() {
                         {quote.line_count}
                       </td>
                       <td className="px-6 py-4 text-sm text-[#2A2A2A]">
-                        {formatCurrency(quote.total_cents)}
+                        {isPricedQuote(quote) ? formatCurrency(quote.total_cents) : 'Not priced'}
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>

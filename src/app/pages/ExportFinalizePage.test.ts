@@ -128,34 +128,34 @@ describe('B-115 — Order Guide: inline error state + disabled tooltip', () => {
 });
 
 
-describe('B-168 — Extraction review gate mirrors backend send_quote gate', () => {
-  it('BLOCKS when not reviewed and state is preview', () => {
-    expect(isExportBlockedUnreviewed(false, 'preview')).toBe(true);
+describe('B-168 — Extraction review gate mirrors backend send_quote gate exactly', () => {
+  it('BLOCKS when rep_reviewed_at is null and state is preview', () => {
+    expect(isExportBlockedUnreviewed(null, 'preview')).toBe(true);
   });
 
-  it('BLOCKS when rep_reviewed is false and state is null', () => {
-    expect(isExportBlockedUnreviewed(false, null)).toBe(true);
+  it('BLOCKS when rep_reviewed_at is null and state is null', () => {
+    expect(isExportBlockedUnreviewed(null, null)).toBe(true);
   });
 
-  it('BLOCKS when rep_reviewed is undefined and state is undefined', () => {
+  it('BLOCKS when rep_reviewed_at is undefined and state is undefined', () => {
     expect(isExportBlockedUnreviewed(undefined, undefined)).toBe(true);
   });
 
-  it('ALLOWS when rep_reviewed is true (rep performed review)', () => {
-    expect(isExportBlockedUnreviewed(true, 'preview')).toBe(false);
+  it('ALLOWS when rep_reviewed_at is present (ISO 8601 string) even if state=preview', () => {
+    expect(isExportBlockedUnreviewed('2026-03-12T10:30:00Z', 'preview')).toBe(false);
   });
 
-  it('ALLOWS when state is distributor_quote (cleared rep mediation)', () => {
-    expect(isExportBlockedUnreviewed(false, 'distributor_quote')).toBe(false);
+  it('ALLOWS when state is distributor_quote regardless of rep_reviewed_at', () => {
+    expect(isExportBlockedUnreviewed(null, 'distributor_quote')).toBe(false);
   });
 
-  it('ALLOWS when state is confirmed', () => {
-    expect(isExportBlockedUnreviewed(false, 'confirmed')).toBe(false);
+  it('ALLOWS when state is confirmed regardless of rep_reviewed_at', () => {
+    expect(isExportBlockedUnreviewed(null, 'confirmed')).toBe(false);
   });
 
   it('BLOCKS for other non-cleared states like accepted/declined', () => {
-    expect(isExportBlockedUnreviewed(false, 'accepted')).toBe(true);
-    expect(isExportBlockedUnreviewed(false, 'declined')).toBe(true);
+    expect(isExportBlockedUnreviewed(null, 'accepted')).toBe(true);
+    expect(isExportBlockedUnreviewed(null, 'declined')).toBe(true);
   });
 
   it('REVIEW_REQUIRED_REASON is a non-empty string mentioning review', () => {

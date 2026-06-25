@@ -31,9 +31,11 @@ export interface PullDistributorInfo {
 
 export interface PullDistributorAnchorProps {
   distributor: PullDistributorInfo | null;
-  /** Called when the chef taps "Change" */
+  /** Called when the chef taps "Change distributor" */
   onChangeDistributor?: () => void;
-  /** Override link label; defaults to "Change" */
+  /** Called when the chef taps "Change rep" — only shown when a rep is on file */
+  onChangeRep?: () => void;
+  /** Override link label; defaults to "Change distributor" */
   changeLinkLabel?: string;
 }
 
@@ -50,7 +52,8 @@ function formatRefreshed(isoStr: string | null | undefined): string {
 export function PullDistributorAnchor({
   distributor,
   onChangeDistributor,
-  changeLinkLabel = 'Change',
+  onChangeRep,
+  changeLinkLabel = 'Change distributor',
 }: PullDistributorAnchorProps) {
   // Skeleton while data loads
   if (!distributor) {
@@ -123,16 +126,27 @@ export function PullDistributorAnchor({
           </div>
         </div>
 
-        {/* Right: Change link */}
-        {onChangeDistributor && (
-          <button
-            type="button"
-            onClick={onChangeDistributor}
-            className="text-xs text-[#9E9E9E] hover:text-[#4F4F4F] transition-colors shrink-0 underline underline-offset-2"
-          >
-            {changeLinkLabel}
-          </button>
-        )}
+        {/* Right: Change distributor / Change rep links */}
+        <div className="flex flex-col items-end gap-1 shrink-0">
+          {onChangeDistributor && (
+            <button
+              type="button"
+              onClick={onChangeDistributor}
+              className="text-xs text-[#9E9E9E] hover:text-[#4F4F4F] transition-colors underline underline-offset-2 whitespace-nowrap"
+            >
+              {changeLinkLabel}
+            </button>
+          )}
+          {onChangeRep && (
+            <button
+              type="button"
+              onClick={onChangeRep}
+              className="text-xs text-[#9E9E9E] hover:text-[#4F4F4F] transition-colors underline underline-offset-2 whitespace-nowrap"
+            >
+              Change rep
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

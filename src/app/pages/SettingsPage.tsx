@@ -8,7 +8,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { updateCurrentUser, getBilling, createCheckoutSession, createPortalSession, sendPasswordReset, getLocations, addLocationToGroup, getLocationGroupBilling, createLocationGroupPortalSession, updateDistributorAdminSettings, getDistributorAdminSettings, getDistributorAdminBilling, type LocationItem, type DistributorAdminBilling } from '../services/api';
 import { AuthDrawer } from '../components/AuthDrawer';
 import { isBuyerRole } from '../utils/roles';
-import { shouldShowSubscribeCta, quotaDisplayText } from '../utils/quotaGate';
+import { shouldShowSubscribeCta, quotaDisplayText, billingPlanLabel } from '../utils/quotaGate';
 import { ManagerSidebar } from '../components/distributor-admin/command-center/ManagerSidebar';
 import type { CCSidebarMode, CCManagerInfo } from '../components/distributor-admin/command-center/ManagerSidebar';
 
@@ -1151,7 +1151,7 @@ export function SettingsPage() {
                   <div>
                     <h3 className="text-sm text-[#4F4F4F]">Current Plan</h3>
                     <p className="text-lg text-[#2A2A2A]">
-                      {(billingData?.has_paid_subscription ?? profile.hasPaidSubscription) ? (billingData?.plan_name || 'Premium Plan') : 'Plan'}
+                      {billingPlanLabel(billingData) ?? (profile.hasPaidSubscription ? 'Premium Plan' : 'Free')}
                     </p>
                     {/* Quota usage — always shown for free-tier users so the count is visible */}
                     {billingData && !billingData.has_paid_subscription && (

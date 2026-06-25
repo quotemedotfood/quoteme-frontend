@@ -33,6 +33,7 @@ import {
 } from 'lucide-react';
 import {
   getChefDistributorsAvailable,
+  getChefDistributorDetail,
   createChefDistributor,
   type ChefDistributorSummary,
   type PullQuoteDistributor,
@@ -129,7 +130,7 @@ function PickPanel({ onSelect }: PickPanelProps) {
 
   return (
     <div className="mt-5">
-      <div className={eyebrowClass} style={{ fontSize: 10 }}>AVAILABLE DISTRIBUTORS</div>
+      <div className={eyebrowClass} style={{ fontSize: 10, textTransform: 'none' }}>Available distributors</div>
       <p className="text-[11.5px] text-[#4F4F4F] leading-relaxed mt-1.5" style={{ maxWidth: 560 }}>
         Distributors with a verified catalog. Select one to build a quote.
       </p>
@@ -143,12 +144,12 @@ function PickPanel({ onSelect }: PickPanelProps) {
         >
           Set your location's state to see distributors that serve your area.{' '}
           <a
-            href="/dashboard"
+            href="/settings"
             className="underline underline-offset-2 text-[#2A2A2A] hover:opacity-70"
             onClick={(e) => {
               // Navigate via history so state activeTab wires correctly.
               e.preventDefault();
-              window.history.pushState({ activeTab: 'settings' }, '', '/dashboard');
+              window.history.pushState({ activeTab: 'settings' }, '', '/settings');
               window.dispatchEvent(new PopStateEvent('popstate', { state: { activeTab: 'settings' } }));
             }}
           >
@@ -292,7 +293,7 @@ function UploadPanel({ onDone }: UploadPanelProps) {
 
   return (
     <div className="mt-5">
-      <div className={eyebrowClass} style={{ fontSize: 10 }}>UPLOAD</div>
+      <div className={eyebrowClass} style={{ fontSize: 10, textTransform: 'none' }}>Upload</div>
       <p className="text-[11.5px] text-[#4F4F4F] leading-relaxed mt-1.5" style={{ maxWidth: 560 }}>
         We'll parse it and match the items against your menu. Photos of an order guide work too —
         most reps' price lists are just a printed PDF anyway.
@@ -382,7 +383,7 @@ function UploadPanel({ onDone }: UploadPanelProps) {
 
       {/* Optional rep contact */}
       <div className="mt-5" style={{ borderTop: '1px solid #E8E8E8', paddingTop: 16 }}>
-        <div className={`${eyebrowClass} mb-1`} style={{ fontSize: 9 }}>REP CONTACT (OPTIONAL)</div>
+        <div className={`${eyebrowClass} mb-1`} style={{ fontSize: 9, textTransform: 'none' }}>Rep contact (optional)</div>
         <p className="text-[11px] text-[#9E9E9E] leading-relaxed mb-3">
           We don't need the rep's contact info to ingest a catalog. You can add a rep later when one
           comes on board with the distributor.
@@ -474,11 +475,11 @@ function RequestPanel({ restaurantName }: RequestPanelProps) {
   const { user } = useUser();
 
   const defaultNote =
-    `Hi — building out our spring menu at ${restaurantName || 'our restaurant'} and would love to see your latest price list. Happy to send over what we're looking at.`;
+    `Hi — building out our menu at ${restaurantName || 'our restaurant'} and would love to see your latest price list. Happy to send over what we're looking at.`;
 
   const [distName, setDistName] = useState('');
   const [repName, setRepName] = useState('');
-  const [repEmail, setRepEmail] = useState('');
+  const [repContact, setRepContact] = useState('');
   const [note, setNote] = useState(defaultNote);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -488,14 +489,26 @@ function RequestPanel({ restaurantName }: RequestPanelProps) {
     : '';
   const chefEmail = user?.email ?? '';
 
+  /** Detect whether a contact string looks like an email or a phone number. */
+  function parseRepContact(raw: string): { email?: string; phone?: string } {
+    const trimmed = raw.trim();
+    if (!trimmed) return {};
+    // Simple heuristic: contains @ → treat as email; otherwise treat as phone
+    if (trimmed.includes('@')) {
+      return { email: trimmed };
+    }
+    return { phone: trimmed };
+  }
+
   async function handleSubmit() {
     if (!distName.trim()) return;
     setError(null);
     setSubmitting(true);
     try {
+      const contactParsed = parseRepContact(repContact);
       const rep_contact =
-        repName.trim() || repEmail.trim()
-          ? { name: repName.trim() || undefined, email: repEmail.trim() || undefined }
+        repName.trim() || repContact.trim()
+          ? { name: repName.trim() || undefined, ...contactParsed }
           : undefined;
 
       const res = await createChefDistributor({
@@ -521,7 +534,7 @@ function RequestPanel({ restaurantName }: RequestPanelProps) {
 
   return (
     <div className="mt-5">
-      <div className={eyebrowClass} style={{ fontSize: 10 }}>REQUEST A CATALOG</div>
+      <div className={eyebrowClass} style={{ fontSize: 10, textTransform: 'none' }}>Request a catalog</div>
       <p className="text-[11.5px] text-[#4F4F4F] leading-relaxed mt-1.5" style={{ maxWidth: 560 }}>
         We'll send a short note from your address asking for the rep's current price list. When they
         reply with the catalog, we'll add it to your distributors automatically.
@@ -560,22 +573,22 @@ function RequestPanel({ restaurantName }: RequestPanelProps) {
       </div>
 
       <div className="mt-3">
-        <label className={`${eyebrowClass} block mb-1`} htmlFor="rq_email" style={{ fontSize: 9 }}>
-          REP EMAIL (OPTIONAL)
+        <label className={`${eyebrowClass} block mb-1`} htmlFor="rq_contact" style={{ fontSize: 9 }}>
+          REP EMAIL OR PHONE (OPTIONAL)
         </label>
         <input
-          id="rq_email"
-          type="email"
-          inputMode="email"
-          value={repEmail}
-          onChange={(e) => setRepEmail(e.target.value)}
-          placeholder="name@distributor.com"
+          id="rq_contact"
+          type="text"
+          inputMode="text"
+          value={repContact}
+          onChange={(e) => setRepContact(e.target.value)}
+          placeholder="name@distributor.com or 555-867-5309"
           disabled={submitting}
-          autoComplete="email"
+          autoComplete="off"
           className={inputClass}
         />
         <p className="text-[10.5px] text-[#9E9E9E] italic leading-snug mt-1" style={serifStyle}>
-          Don't have an email? Phone or full company name works — we'll figure out where to send it.
+          Either works — we'll route it to the right place.
         </p>
       </div>
 
@@ -647,11 +660,23 @@ export function ChefDistributorEntryPage() {
 
   const restaurantName = ''; // Will come from user context in a future iteration
 
-  function handlePickSelect(distributor: PullQuoteDistributor) {
+  async function handlePickSelect(distributor: PullQuoteDistributor) {
+    let repData: PullQuoteDistributor['rep'] = null;
+    try {
+      const detail = await getChefDistributorDetail(distributor.id);
+      if (detail.data?.rep) {
+        repData = {
+          name: detail.data.rep.name,
+          email: detail.data.rep.email,
+        };
+      }
+    } catch {
+      // rep data is optional — proceed without it
+    }
     navigate('/chef/pull/entry', {
       state: {
         distributor_id: distributor.id,
-        distributor,
+        distributor: { ...distributor, rep: repData },
       },
     });
   }
