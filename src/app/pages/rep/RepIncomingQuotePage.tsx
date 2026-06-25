@@ -248,7 +248,7 @@ export function RepIncomingQuotePage() {
             <div style={eyebrow(10)}>INCOMING QUOTE · {stripSeedPrefix(quote?.working_label) || id}</div>
           </div>
           <h1 style={{ ...serif, fontSize: 24, fontWeight: 600, color: C.charcoal, marginTop: 4, lineHeight: 1.15 }}>
-            {quote?.restaurant || '—'}
+            {quote?.restaurant || quote?.contact_name || '—'}
           </h1>
           {quote?.restaurant_contact && (
             <ContactChip contact={quote.restaurant_contact} />
@@ -592,7 +592,7 @@ function RepDesktopQuoteView({
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={eyebrow(10)}>INCOMING QUOTE · {stripSeedPrefix(quote?.working_label) || quoteId}</div>
           <h1 style={{ ...serif, fontSize: 32, fontWeight: 600, color: C.charcoal, marginTop: 4, lineHeight: 1.1 }}>
-            {quote?.restaurant || '—'}
+            {quote?.restaurant || quote?.contact_name || '—'}
           </h1>
           {restaurantContact && <ContactChip contact={restaurantContact} />}
           <div style={{ ...sans, fontSize: 13, color: C.gray700, marginTop: 4, lineHeight: 1.5 }}>

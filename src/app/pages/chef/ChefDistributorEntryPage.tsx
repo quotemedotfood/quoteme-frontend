@@ -33,6 +33,7 @@ import {
 } from 'lucide-react';
 import {
   getChefDistributorsAvailable,
+  getChefDistributorDetail,
   createChefDistributor,
   type ChefDistributorSummary,
   type PullQuoteDistributor,
@@ -143,12 +144,12 @@ function PickPanel({ onSelect }: PickPanelProps) {
         >
           Set your location's state to see distributors that serve your area.{' '}
           <a
-            href="/dashboard"
+            href="/settings"
             className="underline underline-offset-2 text-[#2A2A2A] hover:opacity-70"
             onClick={(e) => {
               // Navigate via history so state activeTab wires correctly.
               e.preventDefault();
-              window.history.pushState({ activeTab: 'settings' }, '', '/dashboard');
+              window.history.pushState({ activeTab: 'settings' }, '', '/settings');
               window.dispatchEvent(new PopStateEvent('popstate', { state: { activeTab: 'settings' } }));
             }}
           >
@@ -647,11 +648,23 @@ export function ChefDistributorEntryPage() {
 
   const restaurantName = ''; // Will come from user context in a future iteration
 
-  function handlePickSelect(distributor: PullQuoteDistributor) {
+  async function handlePickSelect(distributor: PullQuoteDistributor) {
+    let repData: PullQuoteDistributor['rep'] = null;
+    try {
+      const detail = await getChefDistributorDetail(distributor.id);
+      if (detail.data?.rep) {
+        repData = {
+          name: detail.data.rep.name,
+          email: detail.data.rep.email,
+        };
+      }
+    } catch {
+      // rep data is optional — proceed without it
+    }
     navigate('/chef/pull/entry', {
       state: {
         distributor_id: distributor.id,
-        distributor,
+        distributor: { ...distributor, rep: repData },
       },
     });
   }
