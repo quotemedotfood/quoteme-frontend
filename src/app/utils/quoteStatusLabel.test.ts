@@ -8,6 +8,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { quoteStatusLabel, isLockedQuoteState, isAcceptedQuoteState } from './quoteStatusLabel';
+import { legacyStatusToState } from '../components/chef/QuoteStatusPill';
 
 // ─── quoteStatusLabel — pill context (J1 lock) ────────────────────────────────
 
@@ -118,6 +119,32 @@ describe('isLockedQuoteState', () => {
 
   it('empty object is NOT locked', () => {
     expect(isLockedQuoteState({})).toBe(false);
+  });
+});
+
+// ─── legacyStatusToState + quoteStatusLabel end-to-end ───────────────────────
+//
+// Verifies the full display pipeline used by QuotesPage badge rendering:
+//   legacyStatusToState('won') → 'accepted' → quoteStatusLabel → 'Accepted'
+//   legacyStatusToState('lost') → 'declined' → quoteStatusLabel → 'Closed'
+
+describe('legacyStatusToState — legacy storage values map to J1 states', () => {
+  it('won → accepted', () => {
+    expect(legacyStatusToState('won')).toBe('accepted');
+  });
+
+  it('lost → declined', () => {
+    expect(legacyStatusToState('lost')).toBe('declined');
+  });
+});
+
+describe('full pipeline: legacyStatusToState + quoteStatusLabel', () => {
+  it('won → accepted → "Accepted"', () => {
+    expect(quoteStatusLabel(legacyStatusToState('won'))).toBe('Accepted');
+  });
+
+  it('lost → declined → "Closed"', () => {
+    expect(quoteStatusLabel(legacyStatusToState('lost'))).toBe('Closed');
   });
 });
 

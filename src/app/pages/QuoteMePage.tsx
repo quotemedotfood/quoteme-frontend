@@ -14,6 +14,7 @@ import {
   LocationDistributorRelationship,
 } from '../services/api';
 import { stripSeedPrefix } from '../utils/format';
+import { getStatusDisplayLabel } from './QuotesPage';
 
 const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   draft: { bg: 'bg-red-100', text: 'text-red-700' },
@@ -239,7 +240,7 @@ function BuyerDashboard() {
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0 ml-3">
                         <span className={`px-2 py-0.5 rounded text-[10px] font-medium ${status.bg} ${status.text}`}>
-                          {q.status}
+                          {getStatusDisplayLabel(q.status)}
                         </span>
                         <ArrowRight size={14} className="text-gray-300" />
                       </div>
@@ -357,7 +358,7 @@ function RepDashboard() {
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0 ml-3">
                         <span className={`px-2 py-0.5 rounded text-[10px] font-medium ${status.bg} ${status.text}`}>
-                          {q.status}
+                          {getStatusDisplayLabel(q.status)}
                         </span>
                         <ArrowRight size={14} className="text-gray-300" />
                       </div>

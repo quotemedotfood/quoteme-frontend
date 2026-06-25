@@ -6,11 +6,23 @@ import { useNavigate } from 'react-router';
 import { BottomSheet } from '../components/BottomSheet';
 import { getQuotes, requoteQuote, downloadQuotePdf, downloadQuoteCsv, downloadOrderGuide, deleteQuote, type QuoteListItem, type GetQuotesParams } from '../services/api';
 import { stripSeedPrefix } from '../utils/format';
+import { legacyStatusToState } from '../components/chef/QuoteStatusPill';
+import { quoteStatusLabel } from '../utils/quoteStatusLabel';
 
 /** Statuses where the quote workflow is closed. Requote is hidden for these. */
 export const CLOSED_STATUSES = ['won', 'confirmed', 'accepted', 'declined'] as const;
 export const isClosedQuote = (status: string): boolean =>
   (CLOSED_STATUSES as readonly string[]).includes(status);
+
+/**
+ * Pure display mapping for quote status badges.
+ * Routes through legacyStatusToState → quoteStatusLabel so legacy stored
+ * values ('won'/'lost') render as J1-locked labels ('Accepted'/'Closed').
+ * Exported for direct unit testing.
+ */
+export function getStatusDisplayLabel(status: string): string {
+  return quoteStatusLabel(legacyStatusToState(status), 'pill');
+}
 
 export function QuotesPage() {
   const navigate = useNavigate();
@@ -160,15 +172,19 @@ export function QuotesPage() {
   };
 
   const getStatusBadge = (status: string) => {
+    // Map legacy stored values ('won'/'lost') to J1 states for display and styling.
+    const state = legacyStatusToState(status);
+    const label = getStatusDisplayLabel(status);
     const styles: Record<string, string> = {
-      draft: 'bg-yellow-100 text-yellow-800',
-      sent: 'bg-green-100 text-green-800',
+      preview: 'bg-yellow-100 text-yellow-800',
+      distributor_quote: 'bg-green-100 text-green-800',
+      confirmed: 'bg-[#A5CFDD]/20 text-[#2A5F6F]',
       accepted: 'bg-[#A5CFDD]/20 text-[#2A5F6F]',
       declined: 'bg-red-100 text-red-800',
     };
     return (
-      <span className={`inline-block px-2 py-0.5 text-xs rounded-full ${styles[status] || 'bg-gray-100 text-gray-800'}`}>
-        {status.charAt(0).toUpperCase() + status.slice(1)}
+      <span className={`inline-block px-2 py-0.5 text-xs rounded-full ${styles[state] || 'bg-gray-100 text-gray-800'}`}>
+        {label}
       </span>
     );
   };
