@@ -177,55 +177,63 @@ export function QMAdminRestaurantDetailPage() {
       </div>
 
       {/* ── Admin user section ─────────────────────────────────── */}
-      {(restaurant.restaurant_admin_id || restaurant.restaurant_admin_name) && (
-        <section className="mb-8">
-          <h2 className="text-lg font-semibold text-[#2A2A2A] mb-3" style={{ fontFamily: "'Playfair Display', serif" }}>
-            Admin user
-          </h2>
-          <div className="bg-white border border-gray-200 rounded-xl px-5 py-4 flex flex-wrap items-center gap-4">
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-[#2A2A2A]">
-                {restaurant.restaurant_admin_name ?? '—'}
-              </p>
-              {restaurant.restaurant_admin_id && (
-                <p className="text-xs text-gray-400 mt-0.5">ID: {restaurant.restaurant_admin_id}</p>
-              )}
-            </div>
-            {/* Buttons — only shown when a user is linked */}
-            {restaurant.restaurant_admin_id && (
-              <div className="flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  disabled={resetStatus === 'loading'}
-                  onClick={handlePasswordReset}
-                  className="px-3 py-1.5 rounded text-xs font-medium bg-gray-100 hover:bg-gray-200 text-[#2A2A2A] disabled:opacity-50 transition-colors"
-                >
-                  {resetStatus === 'loading' ? 'Sending…' : 'Send password reset'}
-                </button>
-                <button
-                  type="button"
-                  disabled={welcomeStatus === 'loading'}
-                  onClick={handleResendWelcome}
-                  className="px-3 py-1.5 rounded text-xs font-medium bg-gray-100 hover:bg-gray-200 text-[#2A2A2A] disabled:opacity-50 transition-colors"
-                >
-                  {welcomeStatus === 'loading' ? 'Sending…' : 'Resend welcome'}
-                </button>
-              </div>
+      {/* B-177: Always render this section so Reset Password / Resend Welcome
+          are visible even when no admin user has been linked yet. Previously
+          the whole block was gated on restaurant_admin_id presence, hiding
+          the actions on restaurants where no user is linked. */}
+      <section className="mb-8">
+        <h2 className="text-lg font-semibold text-[#2A2A2A] mb-3" style={{ fontFamily: "'Playfair Display', serif" }}>
+          Admin user
+        </h2>
+        <div className="bg-white border border-gray-200 rounded-xl px-5 py-4 flex flex-wrap items-center gap-4">
+          <div className="flex-1 min-w-0">
+            {restaurant.restaurant_admin_id || restaurant.restaurant_admin_name ? (
+              <>
+                <p className="text-sm font-medium text-[#2A2A2A]">
+                  {restaurant.restaurant_admin_name ?? '—'}
+                </p>
+                {restaurant.restaurant_admin_id && (
+                  <p className="text-xs text-gray-400 mt-0.5">ID: {restaurant.restaurant_admin_id}</p>
+                )}
+              </>
+            ) : (
+              <p className="text-sm text-gray-400">No admin user linked</p>
             )}
           </div>
-          {/* Inline feedback */}
-          {resetMsg && (
-            <p className={`mt-2 text-xs ${resetStatus === 'error' ? 'text-red-500' : 'text-green-600'}`}>
-              {resetMsg}
-            </p>
+          {/* Buttons — only shown when a user is linked */}
+          {restaurant.restaurant_admin_id && (
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                disabled={resetStatus === 'loading'}
+                onClick={handlePasswordReset}
+                className="px-3 py-1.5 rounded text-xs font-medium bg-gray-100 hover:bg-gray-200 text-[#2A2A2A] disabled:opacity-50 transition-colors"
+              >
+                {resetStatus === 'loading' ? 'Sending…' : 'Send password reset'}
+              </button>
+              <button
+                type="button"
+                disabled={welcomeStatus === 'loading'}
+                onClick={handleResendWelcome}
+                className="px-3 py-1.5 rounded text-xs font-medium bg-gray-100 hover:bg-gray-200 text-[#2A2A2A] disabled:opacity-50 transition-colors"
+              >
+                {welcomeStatus === 'loading' ? 'Sending…' : 'Resend welcome'}
+              </button>
+            </div>
           )}
-          {welcomeMsg && (
-            <p className={`mt-2 text-xs ${welcomeStatus === 'error' ? 'text-red-500' : 'text-green-600'}`}>
-              {welcomeMsg}
-            </p>
-          )}
-        </section>
-      )}
+        </div>
+        {/* Inline feedback */}
+        {resetMsg && (
+          <p className={`mt-2 text-xs ${resetStatus === 'error' ? 'text-red-500' : 'text-green-600'}`}>
+            {resetMsg}
+          </p>
+        )}
+        {welcomeMsg && (
+          <p className={`mt-2 text-xs ${welcomeStatus === 'error' ? 'text-red-500' : 'text-green-600'}`}>
+            {welcomeMsg}
+          </p>
+        )}
+      </section>
 
       {/* ── Add to restaurant group ─────────────────────────────── */}
       <section className="mb-8">

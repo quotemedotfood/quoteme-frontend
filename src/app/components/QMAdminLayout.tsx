@@ -51,7 +51,26 @@ export function QMAdminLayout() {
     navigate('/auth', { replace: true });
   }
 
-  if (isLoading) return null;
+  // B-178: Render a spinner while auth hydrates instead of returning null.
+  // On a hard direct-URL navigation, the auth guard evaluates before the /me
+  // round-trip resolves. Returning null causes a blank screen and, when the
+  // request fails transiently, the subsequent render with user=null flashes a
+  // redirect to /auth. The spinner holds the layout stable during hydration,
+  // matching the RootLayout pattern from B-129.
+  if (isLoading) {
+    return (
+      <div
+        className="flex min-h-screen items-center justify-center"
+        style={{ background: '#F9FAFB' }}
+      >
+        <div
+          className="w-10 h-10 rounded-full border-4 border-[#E8E8E8] border-t-[#7FAEC2]"
+          style={{ animation: 'spin 1s linear infinite' }}
+        />
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+    );
+  }
   if (!user || user.role !== 'quoteme_admin') return <Navigate to="/auth" replace />;
 
   // P0: during an impersonated session, suppress the QM-admin outer rail entirely
