@@ -243,6 +243,7 @@ export function ChefDistributorsPage() {
           <button
             type="button"
             aria-expanded={detailExpanded}
+            aria-controls="distributor-detail-section"
             onClick={() => setDetailExpanded((v) => !v)}
             style={{
               width: '100%',
@@ -277,7 +278,11 @@ export function ChefDistributorsPage() {
 
           {/* Collapsible content */}
           {detailExpanded && (
-            <div data-testid="distributor-detail-content">
+            <div id="distributor-detail-section" data-testid="distributor-detail-content">
+              {/* ChefDistributorsTab.nav is only used for: (1) the locked paid-tier "See paid"
+                  link (tab-settings) and (2) UseDistributorForQuoteModal.onContinue which is
+                  unreachable until areaDistributors is surfaced by the BE. Primary row nav
+                  uses the tab's internal useNavigate(). No-op is safe for all live code paths. */}
               <ChefDistributorsTab nav={() => {}} />
             </div>
           )}
@@ -349,7 +354,7 @@ function EmptyState({ onAddDistributor }: { onAddDistributor: () => void }) {
         onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = C.orange; }}
       >
         <Plus size={15} strokeWidth={2} color="#fff" />
-        Browse distributors
+        Add distributor
       </button>
     </div>
   );
@@ -427,6 +432,18 @@ function PinList({
 
 // ─── Single pin row ───────────────────────────────────────────────────────────
 
+function formatDate(iso: string) {
+  try {
+    return new Date(iso).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  } catch {
+    return '';
+  }
+}
+
 function PinRow({
   pin,
   isFirst,
@@ -438,18 +455,6 @@ function PinRow({
   isDeleting: boolean;
   onUnpin: (pin: ChefStackPin) => void;
 }) {
-  function formatDate(iso: string) {
-    try {
-      return new Date(iso).toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-      });
-    } catch {
-      return '';
-    }
-  }
-
   return (
     <div
       style={{
