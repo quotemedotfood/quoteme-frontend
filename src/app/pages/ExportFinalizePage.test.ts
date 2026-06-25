@@ -12,6 +12,8 @@ import {
   getPdfButtonLabel,
   getOrderGuideDisabledReason,
   SEND_QUOTE_DISABLED_REASON,
+  isExportBlockedUnreviewed,
+  REVIEW_REQUIRED_REASON,
 } from './ExportFinalizePage';
 
 describe('B-104 — from-address display string', () => {
@@ -122,5 +124,43 @@ describe('B-115 — Order Guide: inline error state + disabled tooltip', () => {
     const reason = getOrderGuideDisabledReason(true, undefined);
     expect(reason).not.toBeNull();
     expect(reason!.length).toBeGreaterThan(0);
+  });
+});
+
+
+describe('B-168 — Extraction review gate mirrors backend send_quote gate', () => {
+  it('BLOCKS when not reviewed and state is preview', () => {
+    expect(isExportBlockedUnreviewed(false, 'preview')).toBe(true);
+  });
+
+  it('BLOCKS when rep_reviewed is false and state is null', () => {
+    expect(isExportBlockedUnreviewed(false, null)).toBe(true);
+  });
+
+  it('BLOCKS when rep_reviewed is undefined and state is undefined', () => {
+    expect(isExportBlockedUnreviewed(undefined, undefined)).toBe(true);
+  });
+
+  it('ALLOWS when rep_reviewed is true (rep performed review)', () => {
+    expect(isExportBlockedUnreviewed(true, 'preview')).toBe(false);
+  });
+
+  it('ALLOWS when state is distributor_quote (cleared rep mediation)', () => {
+    expect(isExportBlockedUnreviewed(false, 'distributor_quote')).toBe(false);
+  });
+
+  it('ALLOWS when state is confirmed', () => {
+    expect(isExportBlockedUnreviewed(false, 'confirmed')).toBe(false);
+  });
+
+  it('BLOCKS for other non-cleared states like accepted/declined', () => {
+    expect(isExportBlockedUnreviewed(false, 'accepted')).toBe(true);
+    expect(isExportBlockedUnreviewed(false, 'declined')).toBe(true);
+  });
+
+  it('REVIEW_REQUIRED_REASON is a non-empty string mentioning review', () => {
+    expect(typeof REVIEW_REQUIRED_REASON).toBe('string');
+    expect(REVIEW_REQUIRED_REASON.trim().length).toBeGreaterThan(0);
+    expect(REVIEW_REQUIRED_REASON.toLowerCase()).toMatch(/review/);
   });
 });
