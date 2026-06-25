@@ -9,6 +9,7 @@ import {
   type OrderGuideResponse,
   type OrderGuideItemResponse,
 } from '../../services/api';
+import { categoryLabel } from '../../utils/categoryLabel';
 
 // ─── Shared styles ──────────────────────────────────────────────────────────────
 
@@ -209,7 +210,7 @@ function CategorySection({ category, items, orderGuideId, collapsed, onToggle }:
         className="w-full flex items-center justify-between gap-2 mb-3 border-b border-[#E0E0E0] pb-2"
       >
         <h2 className="text-[11px] font-semibold tracking-widest uppercase text-[#9E9E9E]">
-          {toTitleCase(category)}
+          {categoryLabel(category)}
         </h2>
         <ChevronDown
           size={13}

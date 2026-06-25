@@ -92,6 +92,18 @@ let nextIngId = 1000;
 let nextDishId = 5000;
 
 // B-01: an authenticated rep in customer mode must pick a customer before matching.
+// B-109c: "Clear Results" must be disabled when there is nothing to clear.
+// Pure-function helper so unit tests can verify the gate without mounting the page.
+export function hasExtractedResults(params: {
+  parsedDishCount: number;
+  pasteText: string;
+  menuPreviewText: string;
+  hasUploadedFile: boolean;
+}): boolean {
+  const { parsedDishCount, pasteText, menuPreviewText, hasUploadedFile } = params;
+  return parsedDishCount > 0 || pasteText.length > 0 || menuPreviewText.length > 0 || hasUploadedFile;
+}
+
 // Returns the inline error to show (and block on), or null when matching may proceed.
 // Open Quote needs no customer by design; the guest/demo flow and buyer role
 // (location-scoped) are out of scope for this guard.
@@ -1253,6 +1265,7 @@ export function StartNewQuotePage() {
               variant="outline"
               className="border-gray-300 text-gray-600 hover:bg-gray-50"
               onClick={handleClearResults}
+              disabled={!hasExtractedResults({ parsedDishCount: parsedDishes.length, pasteText, menuPreviewText, hasUploadedFile: !!uploadedFile })}
             >
               Clear Results
             </Button>
