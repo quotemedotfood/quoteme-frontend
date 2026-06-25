@@ -134,6 +134,15 @@ export function CCInboundPage() {
     [reps]
   );
 
+  // B-137: the prominent counter must mirror the eyebrow. When leads are still
+  // unrouted the eyebrow reads "WAITING TO BE ROUTED", so the number beside it
+  // is the WAITING (unrouted) count — not the total — which previously made it
+  // read "10 waiting" when only 2 were unrouted (8 already assigned). Once
+  // everything is routed the eyebrow flips to "INBOUND QUEUE" and the total reads
+  // correctly.
+  const waitingCount = rows.filter((r) => !r.assigned_rep).length;
+  const headlineCount = waitingCount > 0 ? waitingCount : rows.length;
+
   return (
     <div>
       <CCSectionHead
@@ -220,7 +229,7 @@ export function CCInboundPage() {
             )}
           </div>
           <span style={{ ...sans, ...tabular, fontSize: 11, color: C.gray400, paddingTop: 2 }}>
-            {loading ? '—' : rows.length}
+            {loading ? '—' : headlineCount}
           </span>
         </div>
 
