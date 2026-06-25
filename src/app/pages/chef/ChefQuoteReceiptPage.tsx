@@ -409,6 +409,15 @@ export function ChefQuoteReceiptPage() {
               Download PDF
             </a>
           )}
+          {/* B-110(b): Download order guide link when quote is accepted and order guide exists */}
+          {isLocked && (quote.status === 'won' || quote.state === 'accepted') && quote.order_guide_id && (
+            <a
+              href={`/chef/order-guide/${quote.order_guide_id}`}
+              className="w-full border border-[#E0E0E0] hover:border-[#BDBDBD] text-[#4F4F4F] rounded-lg px-6 py-3.5 text-base font-medium transition-colors text-center"
+            >
+              Download order guide
+            </a>
+          )}
 
         </div>
       </div>

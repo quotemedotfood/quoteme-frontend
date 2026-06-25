@@ -240,6 +240,7 @@ export interface QuoteResponse {
   input_mode?: string | null;
   detected_concept?: string | null;
   concept_review_required?: boolean | null;
+  order_guide_id?: string;
 }
 
 export interface QuoteLineResponse {
