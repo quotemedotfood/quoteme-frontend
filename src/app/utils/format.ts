@@ -50,3 +50,32 @@ export function formatProductName(product?: string | null, brand?: string | null
   // Show brand + product
   return toTitleCase(`${b} ${p}`);
 }
+
+/**
+ * Normalises the artifact name for cold-landing (standing_page) rows in the
+ * CC inbound routing table Items column.
+ *
+ * After the B-43 BE fix, artifact names are "Menu PDF", "Menu Text",
+ * "Order Guide PDF", "Order Guide Text" — returned unchanged.
+ *
+ * For legacy rows stored before the fix ("Uploaded Menu", "Uploaded Order guide"):
+ * strips the "Uploaded " prefix and title-cases the remainder so the display
+ * is consistent with new rows ("Menu", "Order Guide").
+ *
+ * Non-cold-landing rows (source !== "standing_page") pass through unchanged.
+ */
+export function formatColdLandingArtifact(
+  source: string | null | undefined,
+  artifactName: string | null | undefined
+): string {
+  if (!artifactName) return '';
+  if (source !== 'standing_page') return artifactName;
+
+  // Strip legacy "Uploaded " prefix (case-insensitive)
+  const legacyStripped = artifactName.replace(/^Uploaded\s+/i, '');
+
+  // Title-case the result so "Order guide" → "Order Guide"
+  return legacyStripped.replace(/\b\w+/g, (w) =>
+    w.charAt(0).toUpperCase() + w.slice(1)
+  );
+}
