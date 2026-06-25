@@ -54,6 +54,16 @@ export function isOpenQuoteSendDisabled(
 /** Sentinel: true once Success Drawer + Email Drawer have visible dismiss controls (B-101). */
 export const DISMISS_ENABLED = true;
 
+/** B-102: Pure function for opening the edit drawer — testable outside the component. */
+export function openEditDrawerSafe(
+  setShowEditDrawer: (v: boolean) => void,
+  setTempContactIds: (ids: string[]) => void,
+  selectedContactIds: string[]
+): void {
+  setTempContactIds(selectedContactIds);
+  setShowEditDrawer(true);
+}
+
 // Mock data for premium onboarding features
 const onboardingDocuments = [
   { id: 'doc1', name: 'New Customer Application (PDF)', type: 'document' },
@@ -395,9 +405,9 @@ export function ExportFinalizePage() {
     }
   };
 
-  const openEditDrawer = () => {
-    setTempContactIds(selectedContactIds);
-    setShowEditDrawer(true);
+  const openEditDrawer = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    openEditDrawerSafe(setShowEditDrawer, setTempContactIds, selectedContactIds);
   };
 
   const handleSaveEdit = () => {
@@ -478,8 +488,9 @@ export function ExportFinalizePage() {
                 {!effectiveOpenQuote && <Button
                   variant="outline"
                   size="sm"
+                  data-testid="edit-quote-details"
                   className="text-[#A5CFDD] border-[#A5CFDD]/30 hover:bg-[#A5CFDD]/10"
-                  onClick={openEditDrawer}
+                  onClick={(e) => openEditDrawer(e)}
                 >
                   <Edit className="w-3.5 h-3.5 mr-1.5" />
                   Edit

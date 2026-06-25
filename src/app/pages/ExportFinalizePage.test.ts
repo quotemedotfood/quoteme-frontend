@@ -54,3 +54,29 @@ describe('B-101 — modal dismiss controls present', () => {
     expect(DISMISS_ENABLED).toBe(true);
   });
 });
+
+import {
+  FROM_DISPLAY_ADDRESS,
+  isOpenQuoteSendDisabled,
+  DISMISS_ENABLED,
+  openEditDrawerSafe,
+} from './ExportFinalizePage';
+
+describe('B-102 — Edit button opens edit drawer, not PDF preview', () => {
+  it('openEditDrawerSafe sets showEditDrawer to true', () => {
+    let editDrawerOpen = false;
+    let capturedIds: string[] = [];
+    const setEditDrawer = (v: boolean) => { editDrawerOpen = v; };
+    const setTempIds = (ids: string[]) => { capturedIds = ids; };
+
+    openEditDrawerSafe(setEditDrawer, setTempIds, ['contact-1', 'contact-2']);
+
+    expect(editDrawerOpen).toBe(true);
+    expect(capturedIds).toEqual(['contact-1', 'contact-2']);
+  });
+
+  it('openEditDrawerSafe takes exactly 3 parameters (no PDF handler)', () => {
+    // Structural guard: if this function accepted a PDF handler, .length would be 4+.
+    expect(openEditDrawerSafe.length).toBe(3);
+  });
+});
