@@ -62,7 +62,7 @@ import {
   type ChefRestaurant,
   type ChefTeamMember,
 } from '../../services/api';
-import { shouldShowSubscribeCta, quotaDisplayText } from '../../utils/quotaGate';
+import { shouldShowSubscribeCta, quotaDisplayText, billingPlanLabel } from '../../utils/quotaGate';
 
 function openAddPaymentMailto(chefIdentifier: string) {
   const subject = encodeURIComponent('QuoteMe subscription request');
@@ -75,6 +75,7 @@ function openAddPaymentMailto(chefIdentifier: string) {
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 type NavFn = (target: string) => void;
+
 
 // LOCATIONS — static pending multi-location chef BE.
 const LOCATIONS = [
@@ -955,7 +956,11 @@ export function ChefSettingsTab({ state = 'with-data', nav = noopNav }: ChefSett
           <div className="py-3 flex items-start gap-3">
             <div className="flex-1 min-w-0">
               <div className="flex items-baseline gap-2">
-                <div className="serif text-[15px] font-medium ink">{empty ? 'Free' : 'Free'}</div>
+                <div className="serif text-[15px] font-medium ink">
+                  {empty
+                    ? 'Free'
+                    : billingPlanLabel(billingData) ?? '—'}
+                </div>
                 <span
                   className="qm-pill"
                   style={{
@@ -1438,7 +1443,11 @@ export function ChefSettingsTabDesktop({
             <div className="py-4 flex items-start gap-4">
               <div className="flex-1 min-w-0">
                 <div className="flex items-baseline gap-2">
-                  <div className="serif text-[18px] font-medium ink">Free</div>
+                  <div className="serif text-[18px] font-medium ink">
+                    {empty
+                      ? 'Free'
+                      : billingPlanLabel(billingData) ?? '—'}
+                  </div>
                   <span
                     className="qm-pill"
                     style={{
