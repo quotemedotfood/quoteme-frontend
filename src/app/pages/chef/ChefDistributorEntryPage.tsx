@@ -33,6 +33,7 @@ import {
 } from 'lucide-react';
 import {
   getChefDistributorsAvailable,
+  getChefDistributorDetail,
   createChefDistributor,
   type ChefDistributorSummary,
   type PullQuoteDistributor,
@@ -647,11 +648,23 @@ export function ChefDistributorEntryPage() {
 
   const restaurantName = ''; // Will come from user context in a future iteration
 
-  function handlePickSelect(distributor: PullQuoteDistributor) {
+  async function handlePickSelect(distributor: PullQuoteDistributor) {
+    let repData: PullQuoteDistributor['rep'] = null;
+    try {
+      const detail = await getChefDistributorDetail(distributor.id);
+      if (detail.data?.rep) {
+        repData = {
+          name: detail.data.rep.name,
+          email: detail.data.rep.email,
+        };
+      }
+    } catch {
+      // rep data is optional — proceed without it
+    }
     navigate('/chef/pull/entry', {
       state: {
         distributor_id: distributor.id,
-        distributor,
+        distributor: { ...distributor, rep: repData },
       },
     });
   }
