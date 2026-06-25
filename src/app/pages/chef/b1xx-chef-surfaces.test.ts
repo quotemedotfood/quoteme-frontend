@@ -105,3 +105,49 @@ describe('B-110(a) per-item pill suppression on accepted/locked quotes', () => {
     expect(perItemPillLabel(false, '')).toBe('Awaiting rep review');
   });
 });
+
+// ─── B-110(b): "Download order guide" link on accepted quote ─────────────────
+//
+// Logic: when isLocked is true AND status==='won' or state==='accepted' AND
+// order_guide_id is present, the link should render pointing to
+// /chef/order-guide/<id>. When any condition is false, it should not render.
+
+function shouldShowOrderGuideLink(params: {
+  isLocked: boolean;
+  status: string;
+  state: string | null | undefined;
+  order_guide_id: string | null | undefined;
+}): boolean {
+  const { isLocked, status, state, order_guide_id } = params;
+  return isLocked && (status === 'won' || state === 'accepted') && !!order_guide_id;
+}
+
+function orderGuideLinkHref(order_guide_id: string): string {
+  return `/chef/order-guide/${order_guide_id}`;
+}
+
+describe('B-110(b) order guide link visibility', () => {
+  it('shows when locked + won + order_guide_id present', () => {
+    expect(shouldShowOrderGuideLink({ isLocked: true, status: 'won', state: null, order_guide_id: 'og-abc' })).toBe(true);
+  });
+
+  it('shows when locked + accepted state + order_guide_id present', () => {
+    expect(shouldShowOrderGuideLink({ isLocked: true, status: 'sent', state: 'accepted', order_guide_id: 'og-abc' })).toBe(true);
+  });
+
+  it('does NOT show when not locked', () => {
+    expect(shouldShowOrderGuideLink({ isLocked: false, status: 'won', state: null, order_guide_id: 'og-abc' })).toBe(false);
+  });
+
+  it('does NOT show when locked + accepted but no order_guide_id', () => {
+    expect(shouldShowOrderGuideLink({ isLocked: true, status: 'won', state: null, order_guide_id: null })).toBe(false);
+  });
+
+  it('does NOT show when locked but neither won nor accepted', () => {
+    expect(shouldShowOrderGuideLink({ isLocked: true, status: 'sent', state: 'distributor_quote', order_guide_id: 'og-abc' })).toBe(false);
+  });
+
+  it('link href uses the order_guide_id', () => {
+    expect(orderGuideLinkHref('og-xyz')).toBe('/chef/order-guide/og-xyz');
+  });
+});
