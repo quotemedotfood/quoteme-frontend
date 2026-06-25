@@ -42,6 +42,15 @@ function toTitleCase(str: string): string {
 
 export const FROM_DISPLAY_ADDRESS = 'quotes@quoteme.food';
 
+export function isOpenQuoteSendDisabled(
+  effectiveOpenQuote: boolean,
+  manualEmail: string,
+  contactEmail: string | null
+): boolean {
+  if (!effectiveOpenQuote) return false;
+  return !manualEmail?.trim() && !contactEmail?.trim();
+}
+
 // Mock data for premium onboarding features
 const onboardingDocuments = [
   { id: 'doc1', name: 'New Customer Application (PDF)', type: 'document' },
@@ -1038,7 +1047,8 @@ export function ExportFinalizePage() {
         <div className="fixed bottom-0 left-0 right-0 md:left-64 bg-white border-t border-gray-200 p-4 z-40">
           <button
             onClick={() => setShowEmailDrawer(true)}
-            className="w-full md:w-auto md:min-w-[200px] md:mx-auto md:block bg-[#F2993D] hover:bg-[#E8953A] text-white font-medium py-2.5 px-5 rounded-lg text-sm"
+            disabled={isOpenQuoteSendDisabled(effectiveOpenQuote, manualEmail, contactEmail)}
+            className="w-full md:w-auto md:min-w-[200px] md:mx-auto md:block bg-[#F2993D] hover:bg-[#E8953A] text-white font-medium py-2.5 px-5 rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Send Quote
           </button>
