@@ -24,7 +24,7 @@
 // NO gradients. No orange on this surface (read-only routing table).
 
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate, useLocation } from 'react-router';
 import { ChevronUp, ChevronDown, ArrowUpRight } from 'lucide-react';
 import {
   sans,
@@ -215,16 +215,10 @@ function sortRows(rows: InboundRow[], col: SortCol, dir: SortDir): InboundRow[] 
       // Newer = smaller age → ascending means "oldest first" (earliest date)
       cmp = ta - tb;
     } else if (col === 'items') {
-      const na = a.artifact?.name?.toLowerCase() ?? '';
-      const nb = b.artifact?.name?.toLowerCase() ?? '';
-      // Try numeric first (for item count strings), else alphabetic
-      const numA = parseFloat(na);
-      const numB = parseFloat(nb);
-      if (!isNaN(numA) && !isNaN(numB)) {
-        cmp = numA - numB;
-      } else {
-        cmp = na.localeCompare(nb);
-      }
+      // B-139: sort by numeric item count (quote rows); opportunities have no count so rank last
+      const numA = typeof a.items === 'number' ? a.items : -1;
+      const numB = typeof b.items === 'number' ? b.items : -1;
+      cmp = numA - numB;
     } else if (col === 'forwardTo') {
       const fa = (a.assigned_rep?.name ?? '').toLowerCase();
       const fb = (b.assigned_rep?.name ?? '').toLowerCase();
@@ -539,6 +533,7 @@ function DesktopRow({
   errorByRowId?: Record<string, string>;
 }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const locationPrimary = row.restaurant_name || row.contact_name || '—';
   const locationSub = row.contact_name && row.restaurant_name ? row.contact_name : null;
 
@@ -612,7 +607,8 @@ function DesktopRow({
         {formatRowDate(row.received_at, row.age_days)}
       </div>
 
-      {/* Items */}
+      {/* B-139 — Items: quote rows show numeric line count; opportunity rows
+          show artifact label (e.g. "Quote") or a formatted source label. */}
       <div
         style={{
           ...sans,
@@ -625,7 +621,9 @@ function DesktopRow({
           whiteSpace: 'nowrap',
         }}
       >
-        {formatColdLandingArtifact(row.source, stripSeedPrefix(row.artifact?.name)) || '—'}
+        {row.kind === 'quote' && typeof row.items === 'number' && row.items > 0
+          ? `${row.items} items`
+          : formatColdLandingArtifact(row.source, stripSeedPrefix(row.artifact?.name)) || '—'}
       </div>
 
       {/* Forward To */}
@@ -637,40 +635,82 @@ function DesktopRow({
         errorByRowId={errorByRowId}
       />
 
-      {/* P6 — Actions: quote rows get View (PDF) + Edit buttons; others placeholder */}
+      {/* B-138 — Actions: quote rows get View (PDF) + Edit; opportunity rows get
+          View (when a Quote artifact exists) + Start Quote (when rep assigned)
+          or Assign first (when no rep yet — disabled with tooltip). */}
       <div style={{ paddingTop: 3 }}>
         {row.kind === 'quote' ? (
           <QuoteRowActions
             quoteId={row.id}
-            onEdit={() => navigate(`/rep/quotes/${row.id}`)}
+            onEdit={() => navigate(`/rep/quotes/${row.id}`, { state: { from: location.pathname } })}
           />
         ) : (
           (() => {
-            // B-116 interim: View → quote detail when the opportunity references a
-            // Quote artifact; otherwise disable with a "No detail yet" tooltip
-            // (previously navigated to the inbound page it's already on — a no-op).
             const viewTarget = resolveOpportunityViewTarget(row.artifact);
+            const hasRep = !!row.assigned_rep;
             return (
-              <button
-                type="button"
-                disabled={!viewTarget}
-                title={viewTarget ? 'View quote detail' : 'No detail yet'}
-                aria-label={viewTarget ? 'View quote detail' : 'No detail yet'}
-                onClick={() => viewTarget && navigate(viewTarget)}
-                style={{
-                  ...sans,
-                  fontSize: 11.5,
-                  color: C.charcoal,
-                  background: 'none',
-                  border: `1px solid ${C.softLine}`,
-                  borderRadius: 5,
-                  padding: '4px 10px',
-                  cursor: viewTarget ? 'pointer' : 'default',
-                  opacity: viewTarget ? 1 : 0.5,
-                }}
-              >
-                {viewTarget ? 'View' : 'No detail yet'}
-              </button>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                {viewTarget && (
+                  <button
+                    type="button"
+                    onClick={() => navigate(viewTarget)}
+                    style={{
+                      ...sans,
+                      fontSize: 11.5,
+                      color: C.charcoal,
+                      background: 'none',
+                      border: `1px solid ${C.softLine}`,
+                      borderRadius: 5,
+                      padding: '4px 10px',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    View
+                  </button>
+                )}
+                {hasRep ? (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      navigate(`/rep/quotes/new?opportunity_id=${encodeURIComponent(row.id)}`)
+                    }
+                    style={{
+                      ...sans,
+                      fontSize: 11.5,
+                      color: CC_ACK_NAVY,
+                      background: 'none',
+                      border: `1px solid ${CC_ACK_NAVY}`,
+                      borderRadius: 5,
+                      padding: '4px 10px',
+                      cursor: 'pointer',
+                      fontWeight: 500,
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    Start Quote
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    disabled
+                    title="Assign a rep first"
+                    style={{
+                      ...sans,
+                      fontSize: 11.5,
+                      color: C.gray500,
+                      background: 'none',
+                      border: `1px solid ${C.softLine}`,
+                      borderRadius: 5,
+                      padding: '4px 10px',
+                      cursor: 'default',
+                      opacity: 0.6,
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    Assign first
+                  </button>
+                )}
+              </div>
             );
           })()
         )}
@@ -695,6 +735,7 @@ function MobileCard({
   errorByRowId?: Record<string, string>;
 }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const locationPrimary = row.restaurant_name || row.contact_name || '—';
 
   return (
@@ -770,41 +811,83 @@ function MobileCard({
         </div>
       )}
 
-      {/* P6 — quote-kind rows: View (PDF) + Edit actions.
-          B-116 interim — opportunity rows: View → quote detail when a Quote
-          artifact is referenced; else disabled "No detail yet". */}
+      {/* B-138 — quote-kind rows: View (PDF) + Edit. Opportunity rows: View (when
+          a Quote artifact exists) + Start Quote (when rep assigned) or Assign first
+          (when no rep yet — disabled with tooltip). */}
       {row.kind === 'quote' ? (
         <div style={{ marginTop: 10 }}>
           <QuoteRowActions
             quoteId={row.id}
-            onEdit={() => navigate(`/rep/quotes/${row.id}`)}
+            onEdit={() => navigate(`/rep/quotes/${row.id}`, { state: { from: location.pathname } })}
           />
         </div>
       ) : (
         (() => {
           const viewTarget = resolveOpportunityViewTarget(row.artifact);
+          const hasRep = !!row.assigned_rep;
           return (
-            <div style={{ marginTop: 10 }}>
-              <button
-                type="button"
-                disabled={!viewTarget}
-                title={viewTarget ? 'View quote detail' : 'No detail yet'}
-                aria-label={viewTarget ? 'View quote detail' : 'No detail yet'}
-                onClick={() => viewTarget && navigate(viewTarget)}
-                style={{
-                  ...sans,
-                  fontSize: 11.5,
-                  color: C.charcoal,
-                  background: 'none',
-                  border: `1px solid ${C.softLine}`,
-                  borderRadius: 5,
-                  padding: '4px 10px',
-                  cursor: viewTarget ? 'pointer' : 'default',
-                  opacity: viewTarget ? 1 : 0.5,
-                }}
-              >
-                {viewTarget ? 'View' : 'No detail yet'}
-              </button>
+            <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {viewTarget && (
+                <button
+                  type="button"
+                  onClick={() => navigate(viewTarget)}
+                  style={{
+                    ...sans,
+                    fontSize: 11.5,
+                    color: C.charcoal,
+                    background: 'none',
+                    border: `1px solid ${C.softLine}`,
+                    borderRadius: 5,
+                    padding: '4px 10px',
+                    cursor: 'pointer',
+                    alignSelf: 'flex-start',
+                  }}
+                >
+                  View
+                </button>
+              )}
+              {hasRep ? (
+                <button
+                  type="button"
+                  onClick={() =>
+                    navigate(`/rep/quotes/new?opportunity_id=${encodeURIComponent(row.id)}`)
+                  }
+                  style={{
+                    ...sans,
+                    fontSize: 11.5,
+                    color: CC_ACK_NAVY,
+                    background: 'none',
+                    border: `1px solid ${CC_ACK_NAVY}`,
+                    borderRadius: 5,
+                    padding: '4px 10px',
+                    cursor: 'pointer',
+                    fontWeight: 500,
+                    alignSelf: 'flex-start',
+                  }}
+                >
+                  Start Quote
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  disabled
+                  title="Assign a rep first"
+                  style={{
+                    ...sans,
+                    fontSize: 11.5,
+                    color: C.gray500,
+                    background: 'none',
+                    border: `1px solid ${C.softLine}`,
+                    borderRadius: 5,
+                    padding: '4px 10px',
+                    cursor: 'default',
+                    opacity: 0.6,
+                    alignSelf: 'flex-start',
+                  }}
+                >
+                  Assign first
+                </button>
+              )}
             </div>
           );
         })()

@@ -15,7 +15,7 @@
 //   → CCQuoteRow[] (id, rep, restaurant, city, status, sent, items, total|null, requote, wait)
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router';
+import { useNavigate, useLocation, useSearchParams } from 'react-router';
 import { User } from 'lucide-react';
 import {
   CCStatusTag,
@@ -412,6 +412,7 @@ const noScrollbar: React.CSSProperties = {
 
 export function CCQuotesPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const [rows, setRows] = useState<CCQuoteRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -689,11 +690,11 @@ export function CCQuotesPage() {
             <React.Fragment key={q.id}>
               {/* Desktop row — hidden on small screens */}
               <div className="hidden lg:block">
-                <DeskRow q={q} onClick={() => goToDetail(q.id)} onEdit={() => navigate(`/rep/quotes/${q.id}`)} onRepClick={goToRep} />
+                <DeskRow q={q} onClick={() => goToDetail(q.id)} onEdit={() => navigate(`/rep/quotes/${q.id}`, { state: { from: location.pathname } })} onRepClick={goToRep} />
               </div>
               {/* Mobile row — hidden on large screens */}
               <div className="lg:hidden">
-                <PhoneRow q={q} onClick={() => goToDetail(q.id)} onEdit={() => navigate(`/rep/quotes/${q.id}`)} onRepClick={goToRep} />
+                <PhoneRow q={q} onClick={() => goToDetail(q.id)} onEdit={() => navigate(`/rep/quotes/${q.id}`, { state: { from: location.pathname } })} onRepClick={goToRep} />
               </div>
             </React.Fragment>
           ))
