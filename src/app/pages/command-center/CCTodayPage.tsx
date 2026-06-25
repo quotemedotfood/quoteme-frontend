@@ -270,7 +270,7 @@ function UnassignedRow({
 
   const sub =
     item.kind === 'quote'
-      ? `${stripSeedPrefix(item.q_label) || item.id}${item.items != null ? ` · ${item.items} items` : ''}${item.city ? ` · ${item.city}` : ''}`
+      ? `${stripSeedPrefix(item.q_label) || item.id}${item.items != null && item.items > 0 ? ` · ${item.items} items` : ''}${item.city ? ` · ${item.city}` : ''}`
       : `${item.city ?? ''}${item.age ? ` · ${item.age}` : ''}`.replace(/^·\s*/, '');
 
   return (

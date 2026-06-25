@@ -2307,6 +2307,8 @@ export interface InboundRow {
   brand_name?: string | null;
   /** Brand package items — only present on brand_package opportunity rows. */
   brand_items?: InboundBrandItem[] | null;
+  /** B-139: quote line count — only present on kind='quote' rows. Hidden when 0. */
+  items?: number | null;
 }
 
 /** GET /api/v1/distributor_admin/command_center/inbound
