@@ -181,6 +181,7 @@ export function RepAvatar({ initials, name, size = 28 }: RepAvatarProps) {
         flexShrink: 0,
       }}
       title={name}
+      aria-label={name || undefined}
     >
       <span
         style={{

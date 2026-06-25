@@ -64,6 +64,24 @@ export function formatProductName(product?: string | null, brand?: string | null
  *
  * Non-cold-landing rows (source !== "standing_page") pass through unchanged.
  */
+/**
+ * Canonical date formatter for quote headers and document chrome.
+ * Returns short-month format: "Jun 24, 2026".
+ * Used across ChefQuoteReceiptPage and QuoteStateDocument to ensure
+ * consistent date presentation in all quote-document surfaces.
+ */
+export function formatQuoteDate(dateStr: string): string {
+  try {
+    return new Date(dateStr).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  } catch {
+    return dateStr;
+  }
+}
+
 export function formatColdLandingArtifact(
   source: string | null | undefined,
   artifactName: string | null | undefined
