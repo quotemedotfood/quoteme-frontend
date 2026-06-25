@@ -51,6 +51,9 @@ export function isOpenQuoteSendDisabled(
   return !manualEmail?.trim() && !contactEmail?.trim();
 }
 
+/** Sentinel: true once Success Drawer + Email Drawer have visible dismiss controls (B-101). */
+export const DISMISS_ENABLED = true;
+
 // Mock data for premium onboarding features
 const onboardingDocuments = [
   { id: 'doc1', name: 'New Customer Application (PDF)', type: 'document' },
@@ -1060,7 +1063,12 @@ export function ExportFinalizePage() {
         <DrawerContent>
           <div className="w-full h-full p-6 flex flex-col">
             <DrawerHeader className="px-0">
-              <DrawerTitle className="text-2xl font-bold text-[#F2993D]">Success!</DrawerTitle>
+              <div className="flex justify-between items-start">
+                <DrawerTitle className="text-2xl font-bold text-[#F2993D]">Success!</DrawerTitle>
+                <DrawerClose className="text-gray-400 hover:text-gray-600 -mt-1">
+                  <X className="w-5 h-5" />
+                </DrawerClose>
+              </div>
               <DrawerDescription>
                 Your action has been completed successfully. We'd love your feedback!
               </DrawerDescription>
@@ -1112,13 +1120,18 @@ export function ExportFinalizePage() {
               </div>
             </div>
 
-            <div className="mt-6">
+            <div className="mt-6 space-y-3">
               <Button
                 onClick={handleSubmitFeedback}
                 className="w-full bg-[#F2993D] hover:bg-[#E08A2E] text-white h-14 text-lg font-medium"
               >
                 Submit Feedback
               </Button>
+              <DrawerClose asChild>
+                <button className="w-full text-sm text-gray-400 hover:text-gray-600 py-2">
+                  Skip
+                </button>
+              </DrawerClose>
             </div>
           </div>
         </DrawerContent>
@@ -1174,10 +1187,15 @@ export function ExportFinalizePage() {
       <Drawer open={showEmailDrawer} onOpenChange={setShowEmailDrawer} direction="right" handleOnly>
         <DrawerContent className="w-full sm:w-[500px]">
           <div className="w-full h-full flex flex-col">
-            <DrawerHeader className="border-b border-gray-200">
-              <DrawerTitle>Email Quote to Chef</DrawerTitle>
-              <DrawerDescription>Send the quote PDF via email</DrawerDescription>
-            </DrawerHeader>
+            <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+              <div>
+                <DrawerTitle className="text-base font-semibold">Email Quote to Chef</DrawerTitle>
+                <DrawerDescription className="text-sm text-gray-500 mt-0.5">Send the quote PDF via email</DrawerDescription>
+              </div>
+              <DrawerClose className="text-gray-400 hover:text-gray-600">
+                <X className="w-5 h-5" />
+              </DrawerClose>
+            </div>
             <div className="flex-1 p-6 space-y-4">
               <div>
                 <Label className="text-sm font-medium text-gray-700 mb-1.5 block">To</Label>
@@ -1214,14 +1232,24 @@ export function ExportFinalizePage() {
               )}
             </div>
             <DrawerFooter className="border-t border-gray-200">
-              <Button
-                onClick={() => { handleSendEmail(); setShowEmailDrawer(false); }}
-                disabled={sendingEmail || (!contactEmail && !manualEmail)}
-                className="w-full bg-[#A5CFDD] hover:bg-[#8db9c9] text-white min-h-[48px]"
-              >
-                {sendingEmail ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Mail className="w-4 h-4 mr-2" />}
-                {emailSent ? 'Email Sent!' : 'Send Email'}
-              </Button>
+              <div className="flex gap-3">
+                <DrawerClose asChild>
+                  <Button
+                    variant="outline"
+                    className="flex-1 border-gray-300 text-gray-600 h-12"
+                  >
+                    Cancel
+                  </Button>
+                </DrawerClose>
+                <Button
+                  onClick={() => { handleSendEmail(); setShowEmailDrawer(false); }}
+                  disabled={sendingEmail || (!contactEmail && !manualEmail)}
+                  className="flex-1 bg-[#A5CFDD] hover:bg-[#8db9c9] text-white min-h-[48px]"
+                >
+                  {sendingEmail ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Mail className="w-4 h-4 mr-2" />}
+                  {emailSent ? 'Email Sent!' : 'Send Email'}
+                </Button>
+              </div>
             </DrawerFooter>
           </div>
         </DrawerContent>

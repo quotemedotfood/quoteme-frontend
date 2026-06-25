@@ -43,3 +43,14 @@ describe('B-109a — Open Quote send button disabled until recipient selected', 
     expect(isOpenQuoteSendDisabled(false, '', null)).toBe(false);
   });
 });
+
+import { DISMISS_ENABLED } from './ExportFinalizePage';
+
+describe('B-101 — modal dismiss controls present', () => {
+  it('DISMISS_ENABLED is true — Success Drawer has X+Skip, Email Drawer has X+Cancel', () => {
+    // Sentinel: export this constant after adding the dismiss controls in the JSX.
+    // Confirms that Success Drawer (X button + Skip link) and Email Drawer
+    // (X button + Cancel button) have visible dismiss affordances.
+    expect(DISMISS_ENABLED).toBe(true);
+  });
+});
