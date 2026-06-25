@@ -40,6 +40,35 @@ function toTitleCase(str: string): string {
   }).replace(/^./, (c) => c.toUpperCase());
 }
 
+export const FROM_DISPLAY_ADDRESS = 'quotes@quoteme.food';
+
+export function isOpenQuoteSendDisabled(
+  effectiveOpenQuote: boolean,
+  manualEmail: string,
+  contactEmail: string | null
+): boolean {
+  if (!effectiveOpenQuote) return false;
+  return !manualEmail?.trim() && !contactEmail?.trim();
+}
+
+/** Sentinel: true once Success Drawer + Email Drawer have visible dismiss controls (B-101). */
+export const DISMISS_ENABLED = true;
+
+/** B-102: Pure function for opening the edit drawer — testable outside the component. */
+export function openEditDrawerSafe(
+  setShowEditDrawer: (v: boolean) => void,
+  setTempContactIds: (ids: string[]) => void,
+  selectedContactIds: string[]
+): void {
+  setTempContactIds(selectedContactIds);
+  setShowEditDrawer(true);
+}
+
+/** B-108c: Returns the PDF Quote button label based on download state. */
+export function getPdfButtonLabel(downloadingPdf: boolean): string {
+  return downloadingPdf ? 'Generating PDF...' : 'PDF Quote';
+}
+
 // Mock data for premium onboarding features
 const onboardingDocuments = [
   { id: 'doc1', name: 'New Customer Application (PDF)', type: 'document' },
@@ -318,8 +347,8 @@ export function ExportFinalizePage() {
   const [tempContactIds, setTempContactIds] = useState<string[]>(selectedContactIds);
 
   // Send email
-  async function handleSendEmail() {
-    if (!quoteId) return;
+  async function handleSendEmail(): Promise<boolean> {
+    if (!quoteId) return false;
     setSendingEmail(true);
     setSendError(null);
     try {
@@ -327,11 +356,13 @@ export function ExportFinalizePage() {
       const res = await sendQuote(quoteId, emailToSend || undefined, sendNote || undefined);
       if (res.error) {
         setSendError(res.error);
+        return false;
       } else {
         setEmailSent(true);
         setHasInteracted(true);
         setShowSuccessDrawer(true);
         incrementQuoteCount();
+        return true;
       }
     } finally {
       setSendingEmail(false);
@@ -381,9 +412,9 @@ export function ExportFinalizePage() {
     }
   };
 
-  const openEditDrawer = () => {
-    setTempContactIds(selectedContactIds);
-    setShowEditDrawer(true);
+  const openEditDrawer = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    openEditDrawerSafe(setShowEditDrawer, setTempContactIds, selectedContactIds);
   };
 
   const handleSaveEdit = () => {
@@ -464,8 +495,9 @@ export function ExportFinalizePage() {
                 {!effectiveOpenQuote && <Button
                   variant="outline"
                   size="sm"
+                  data-testid="edit-quote-details"
                   className="text-[#A5CFDD] border-[#A5CFDD]/30 hover:bg-[#A5CFDD]/10"
-                  onClick={openEditDrawer}
+                  onClick={(e) => openEditDrawer(e)}
                 >
                   <Edit className="w-3.5 h-3.5 mr-1.5" />
                   Edit
@@ -912,7 +944,7 @@ export function ExportFinalizePage() {
                   ) : (
                     <FileText className="w-4 h-4 mr-3" />
                   )}
-                  PDF Quote
+                  {getPdfButtonLabel(downloadingPdf)}
                 </Button>
                 <Button
                   className="w-full justify-start bg-[#F2993D] hover:bg-[#E8953A] text-white h-12"
@@ -936,7 +968,7 @@ export function ExportFinalizePage() {
                 {!isFinalized && isGuest && <div className="text-xs bg-gray-100 px-2 py-1 rounded text-gray-500">Sign up first</div>}
               </div>
               <p className="text-gray-500 text-sm mb-6">
-                Emails will be sent via Quotes@Quote-me.com with your email CC'd
+                Emails will be sent via {FROM_DISPLAY_ADDRESS} with your email CC'd
               </p>
 
               {sendError && (
@@ -1036,7 +1068,8 @@ export function ExportFinalizePage() {
         <div className="fixed bottom-0 left-0 right-0 md:left-64 bg-white border-t border-gray-200 p-4 z-40">
           <button
             onClick={() => setShowEmailDrawer(true)}
-            className="w-full md:w-auto md:min-w-[200px] md:mx-auto md:block bg-[#F2993D] hover:bg-[#E8953A] text-white font-medium py-2.5 px-5 rounded-lg text-sm"
+            disabled={isOpenQuoteSendDisabled(effectiveOpenQuote, manualEmail, contactEmail)}
+            className="w-full md:w-auto md:min-w-[200px] md:mx-auto md:block bg-[#F2993D] hover:bg-[#E8953A] text-white font-medium py-2.5 px-5 rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Send Quote
           </button>
@@ -1048,7 +1081,12 @@ export function ExportFinalizePage() {
         <DrawerContent>
           <div className="w-full h-full p-6 flex flex-col">
             <DrawerHeader className="px-0">
-              <DrawerTitle className="text-2xl font-bold text-[#F2993D]">Success!</DrawerTitle>
+              <div className="flex justify-between items-start">
+                <DrawerTitle className="text-2xl font-bold text-[#F2993D]">Success!</DrawerTitle>
+                <DrawerClose className="text-gray-400 hover:text-gray-600 -mt-1">
+                  <X className="w-5 h-5" />
+                </DrawerClose>
+              </div>
               <DrawerDescription>
                 Your action has been completed successfully. We'd love your feedback!
               </DrawerDescription>
@@ -1100,13 +1138,18 @@ export function ExportFinalizePage() {
               </div>
             </div>
 
-            <div className="mt-6">
+            <div className="mt-6 space-y-3">
               <Button
                 onClick={handleSubmitFeedback}
                 className="w-full bg-[#F2993D] hover:bg-[#E08A2E] text-white h-14 text-lg font-medium"
               >
                 Submit Feedback
               </Button>
+              <DrawerClose asChild>
+                <button className="w-full text-sm text-gray-400 hover:text-gray-600 py-2">
+                  Skip
+                </button>
+              </DrawerClose>
             </div>
           </div>
         </DrawerContent>
@@ -1162,10 +1205,15 @@ export function ExportFinalizePage() {
       <Drawer open={showEmailDrawer} onOpenChange={setShowEmailDrawer} direction="right" handleOnly>
         <DrawerContent className="w-full sm:w-[500px]">
           <div className="w-full h-full flex flex-col">
-            <DrawerHeader className="border-b border-gray-200">
-              <DrawerTitle>Email Quote to Chef</DrawerTitle>
-              <DrawerDescription>Send the quote PDF via email</DrawerDescription>
-            </DrawerHeader>
+            <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+              <div>
+                <DrawerTitle className="text-base font-semibold">Email Quote to Chef</DrawerTitle>
+                <DrawerDescription className="text-sm text-gray-500 mt-0.5">Send the quote PDF via email</DrawerDescription>
+              </div>
+              <DrawerClose className="text-gray-400 hover:text-gray-600">
+                <X className="w-5 h-5" />
+              </DrawerClose>
+            </div>
             <div className="flex-1 p-6 space-y-4">
               <div>
                 <Label className="text-sm font-medium text-gray-700 mb-1.5 block">To</Label>
@@ -1202,14 +1250,27 @@ export function ExportFinalizePage() {
               )}
             </div>
             <DrawerFooter className="border-t border-gray-200">
-              <Button
-                onClick={() => { handleSendEmail(); setShowEmailDrawer(false); }}
-                disabled={sendingEmail || (!contactEmail && !manualEmail)}
-                className="w-full bg-[#A5CFDD] hover:bg-[#8db9c9] text-white min-h-[48px]"
-              >
-                {sendingEmail ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Mail className="w-4 h-4 mr-2" />}
-                {emailSent ? 'Email Sent!' : 'Send Email'}
-              </Button>
+              <div className="flex gap-3">
+                <DrawerClose asChild>
+                  <Button
+                    variant="outline"
+                    className="flex-1 border-gray-300 text-gray-600 h-12"
+                  >
+                    Cancel
+                  </Button>
+                </DrawerClose>
+                <Button
+                  onClick={async () => {
+                  const ok = await handleSendEmail();
+                  if (ok) setShowEmailDrawer(false);
+                }}
+                  disabled={sendingEmail || (!contactEmail && !manualEmail)}
+                  className="flex-1 bg-[#A5CFDD] hover:bg-[#8db9c9] text-white min-h-[48px]"
+                >
+                  {sendingEmail ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Mail className="w-4 h-4 mr-2" />}
+                  {emailSent ? 'Email Sent!' : 'Send Email'}
+                </Button>
+              </div>
             </DrawerFooter>
           </div>
         </DrawerContent>
