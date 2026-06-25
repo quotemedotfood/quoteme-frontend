@@ -9,7 +9,7 @@ import {
   type QuoteDocGroup,
 } from '../../components/chef/QuoteStateDocument';
 import { categoryLabel } from '../../utils/categoryLabel';
-import { isLockedQuoteState } from '../../utils/quoteStatusLabel';
+import { isLockedQuoteState, quoteStatusLabel } from '../../utils/quoteStatusLabel';
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -321,7 +321,7 @@ export function ChefQuoteReceiptPage() {
           {isLocked ? (
             <p className="text-sm text-[#4F4F4F] px-1 py-2">
               {quote.state === 'accepted' || quote.status === 'won'
-                ? 'This quote is accepted.'
+                ? `This quote is ${quoteStatusLabel('accepted', 'pill').toLowerCase()}.`
                 : quote.state === 'declined'
                   ? 'This quote has been declined.'
                   : 'This quote is no longer active.'}

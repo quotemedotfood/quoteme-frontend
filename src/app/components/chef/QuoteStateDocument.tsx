@@ -355,8 +355,12 @@ function QuoteStateGroup({
   );
 }
 
-export function ConfirmedSeal({ date = '' }: { date?: string }) {
+export function ConfirmedSeal({ date = '', label }: { date?: string; label?: string }) {
   const dateShort = date.replace(/, \d{4}$/, '').toUpperCase();
+  // H-3: derive seal label from quoteStatusLabel so the source of truth stays
+  // in the helper. Default to 'accepted' pill label ("Accepted"). CSS
+  // text-transform: uppercase keeps the stamp aesthetic; the source is the helper.
+  const sealLabel = (label ?? quoteStatusLabel('accepted', 'pill')).toUpperCase();
   return (
     <div
       className="relative flex items-center justify-center"
@@ -372,7 +376,7 @@ export function ConfirmedSeal({ date = '' }: { date?: string }) {
       <div className="absolute inset-1 rounded-full" style={{ border: `0.75px solid ${INK}` }} />
       <div className="text-center px-1 leading-tight">
         <div className="font-semibold" style={{ ...SERIF, fontSize: 13, letterSpacing: '.12em', color: INK }}>
-          CONFIRMED
+          {sealLabel}
         </div>
         <div className="text-[9px] mt-0.5" style={{ ...TABULAR, color: INK_SOFT }}>
           {dateShort}
