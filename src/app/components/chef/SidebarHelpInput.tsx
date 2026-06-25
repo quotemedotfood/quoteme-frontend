@@ -35,6 +35,7 @@ export function SidebarHelpInput({ collapsed }: SidebarHelpInputProps) {
   const [question, setQuestion] = useState('');
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [pendingQuestion, setPendingQuestion] = useState('');
+  const [sent, setSent] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   function openDrawer(text: string) {
@@ -42,6 +43,8 @@ export function SidebarHelpInput({ collapsed }: SidebarHelpInputProps) {
     setPendingQuestion(text.trim());
     setQuestion('');
     setDrawerOpen(true);
+    setSent(true);
+    setTimeout(() => setSent(false), 2000);
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
@@ -187,6 +190,11 @@ export function SidebarHelpInput({ collapsed }: SidebarHelpInputProps) {
         >
           Press Enter — we'll route to QuoteMe support.
         </p>
+        {sent && (
+          <p style={{ ...sans, fontSize: 10.5, color: '#2A5F6F', margin: '4px 0 0', lineHeight: 1.4, fontWeight: 500 }}>
+            Sent!
+          </p>
+        )}
       </div>
 
       {drawerOpen && (

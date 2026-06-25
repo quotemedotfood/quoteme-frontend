@@ -2,18 +2,21 @@ import { useState, useEffect } from 'react';
 import { getFlaggedProducts, reviewCategories, approveAllCategories } from '../services/api';
 import type { FlaggedProduct } from '../services/api';
 import { Loader2, Check } from 'lucide-react';
+import { categoryLabel } from '../utils/categoryLabel';
+
+// Title-cases arbitrary product/brand names (not category enums — those go through categoryLabel).
+function titleCase(s: string) {
+  if (!s) return '';
+  const normalized = s.replace(/_/g, ' ').toLowerCase();
+  if (/[^\x00-\x7F]/.test(normalized)) return normalized;
+  return normalized.replace(/\b\w/g, c => c.toUpperCase());
+}
 
 const CATEGORY_OPTIONS = [
   'cheese', 'protein', 'seafood', 'meat', 'poultry', 'produce', 'dairy',
   'dry_goods', 'oils_condiments', 'spice', 'beverage_bar', 'bakery',
   'prepared', 'tomatoes', 'sauce', 'frozen', 'other'
 ];
-
-function titleCase(s: string) {
-  const normalized = s.replace(/_/g, ' ');
-  if (/[^\x00-\x7F]/.test(normalized)) return normalized;
-  return normalized.replace(/\b\w/g, c => c.toUpperCase());
-}
 
 interface Props {
   catalogId: string;
@@ -119,13 +122,13 @@ export function CategoryReviewPanel({ catalogId, onDone }: Props) {
                 }`}
               >
                 {CATEGORY_OPTIONS.map(cat => (
-                  <option key={cat} value={cat}>{titleCase(cat)}</option>
+                  <option key={cat} value={cat}>{categoryLabel(cat)}</option>
                 ))}
               </select>
             </div>
             <div className="mt-1 flex items-center gap-2">
               <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">
-                Suggested category: {titleCase(product.category)}
+                Suggested category: {categoryLabel(product.category)}
               </span>
             </div>
           </div>

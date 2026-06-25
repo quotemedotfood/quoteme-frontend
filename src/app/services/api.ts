@@ -240,6 +240,7 @@ export interface QuoteResponse {
   input_mode?: string | null;
   detected_concept?: string | null;
   concept_review_required?: boolean | null;
+  order_guide_id?: string;
 }
 
 export interface QuoteLineResponse {
@@ -2169,7 +2170,8 @@ export interface CCUnassignedItem {
   /** For 'quote': quote identifier e.g. "Q-1234". For 'relationship': restaurant id. */
   id: string;
   restaurant: string;
-  city: string;
+  /** B-107: BE may return null when the restaurant has no city on file. */
+  city: string | null;
   /** Present when kind='quote': formatted quote label, e.g. "Q-1034". */
   q_label?: string;
   /** Present when kind='quote': item count. */
@@ -2456,6 +2458,12 @@ export interface ChefDistributorsResponse {
 
 export async function getChefDistributors(): Promise<ApiResponse<ChefDistributorsResponse>> {
   return fetchWithGuest(`/api/v1/chef/distributors`);
+}
+
+// Returns all distributors available in the network (not filtered to the chef's
+// existing relationships). Used by PickPanel on ChefDistributorEntryPage.
+export async function getChefDistributorsAvailable(): Promise<ApiResponse<ChefDistributorsResponse>> {
+  return fetchWithGuest(`/api/v1/chef/distributors/available`);
 }
 
 // V2 W4 inc 4 — chef-scoped reverse-chron quote list. Per-row carries the
@@ -3720,9 +3728,9 @@ export interface BrandTeamMember {
 }
 
 export async function getBrandTeam(): Promise<BrandTeamMember[]> {
-  const res = await fetchWithAuth('/api/v1/brand/team');
-  if (!res.ok) throw new Error('Failed to load team');
-  return res.json();
+  const res = await fetchWithAuth<BrandTeamMember[]>('/api/v1/brand/team');
+  if (res.error) throw new Error('Failed to load team');
+  return res.data as BrandTeamMember[];
 }
 
 export async function inviteBrandTeamMember(data: {
@@ -3730,22 +3738,21 @@ export async function inviteBrandTeamMember(data: {
   first_name: string;
   last_name: string;
 }): Promise<BrandTeamMember> {
-  const res = await fetchWithAuth('/api/v1/brand/team/invite', {
+  const res = await fetchWithAuth<BrandTeamMember>('/api/v1/brand/team/invite', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(body.error || 'Failed to invite team member');
+  if (res.error) {
+    throw new Error(res.error || 'Failed to invite team member');
   }
-  return res.json();
+  return res.data as BrandTeamMember;
 }
 
 export async function disableBrandTeamMember(id: string): Promise<BrandTeamMember> {
-  const res = await fetchWithAuth(`/api/v1/brand/team/${id}/disable`, {
+  const res = await fetchWithAuth<BrandTeamMember>(`/api/v1/brand/team/${id}/disable`, {
     method: 'PATCH',
   });
-  if (!res.ok) throw new Error('Failed to disable team member');
-  return res.json();
+  if (res.error) throw new Error('Failed to disable team member');
+  return res.data as BrandTeamMember;
 }

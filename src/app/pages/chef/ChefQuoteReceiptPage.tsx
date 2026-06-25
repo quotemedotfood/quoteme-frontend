@@ -263,6 +263,13 @@ export function ChefQuoteReceiptPage() {
             >
               Items your rep will handle
             </p>
+            {/* B-110(a): on locked/accepted quotes, show a single "Your rep will handle this"
+                note at the section level rather than repeating the pill on every line item. */}
+            {isLocked && (
+              <p className="text-xs text-[#92400E] bg-amber-50 border border-amber-200 rounded px-3 py-2 mb-3">
+                Your rep will handle these items directly.
+              </p>
+            )}
             <div className="flex flex-col gap-3">
               {unmatchedLines.map((line) => (
                 <div key={line.id} className="flex items-start justify-between gap-4">
@@ -270,14 +277,14 @@ export function ChefQuoteReceiptPage() {
                     <span className="text-[#2A2A2A] text-base font-medium leading-snug">
                       {toTitleCase(line.component?.name || line.category || 'Item')}
                     </span>
-                    {/* H-2: on a confirmed/accepted quote do NOT show "Pending
-                        distributor confirmation" — the rep has already acted.
-                        Show a neutral settled label instead. */}
-                    <span className="inline-flex self-start bg-amber-50 text-amber-800 border border-amber-200 px-2 py-0.5 rounded text-xs">
-                      {isLocked
-                        ? 'Your rep will handle this'
-                        : ((line as any).resolution_label || 'Awaiting rep review')}
-                    </span>
+                    {/* H-2: on a confirmed/accepted quote do NOT show the per-item pill —
+                        the single section note above covers it. On pending quotes show
+                        the resolution label (or fallback) as a per-item pill. */}
+                    {!isLocked && (
+                      <span className="inline-flex self-start bg-amber-50 text-amber-800 border border-amber-200 px-2 py-0.5 rounded text-xs">
+                        {(line as any).resolution_label || 'Awaiting rep review'}
+                      </span>
+                    )}
                   </div>
                   {line.category && line.component?.name && (
                     <span className="text-sm text-[#9E9E9E] whitespace-nowrap shrink-0 mt-0.5">
@@ -400,6 +407,15 @@ export function ChefQuoteReceiptPage() {
               className="w-full border border-[#E0E0E0] hover:border-[#BDBDBD] text-[#4F4F4F] rounded-lg px-6 py-3.5 text-base font-medium transition-colors text-center"
             >
               Download PDF
+            </a>
+          )}
+          {/* B-110(b): Download order guide link when quote is accepted and order guide exists */}
+          {isLocked && (quote.status === 'won' || quote.state === 'accepted') && quote.order_guide_id && (
+            <a
+              href={`/chef/order-guide/${quote.order_guide_id}`}
+              className="w-full border border-[#E0E0E0] hover:border-[#BDBDBD] text-[#4F4F4F] rounded-lg px-6 py-3.5 text-base font-medium transition-colors text-center"
+            >
+              Download order guide
             </a>
           )}
 

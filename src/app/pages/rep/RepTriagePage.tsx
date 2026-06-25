@@ -545,7 +545,10 @@ function TriageRow({
               {' '}· {q.chef_first} {q.chef_last} · {q.item_count} items
             </>
           )}
-          {isInbound && q._sourceLabel && (
+          {isInbound && q._sourceLabel &&
+            // B-106: suppress sourceLabel when it's the same string as the label
+            // (happens on cold_landing rows where label = source_label = "Cold landing").
+            stripSeedPrefix(q.label).trim().toLowerCase() !== q._sourceLabel.trim().toLowerCase() && (
             <span style={{ color: C.gray500 }}> · {q._sourceLabel}</span>
           )}
           {isInbound && q._brandName && (

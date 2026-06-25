@@ -40,6 +40,71 @@ function toTitleCase(str: string): string {
   }).replace(/^./, (c) => c.toUpperCase());
 }
 
+export const FROM_DISPLAY_ADDRESS = 'quotes@quoteme.food';
+
+export function isOpenQuoteSendDisabled(
+  effectiveOpenQuote: boolean,
+  manualEmail: string,
+  contactEmail: string | null
+): boolean {
+  if (!effectiveOpenQuote) return false;
+  return !manualEmail?.trim() && !contactEmail?.trim();
+}
+
+/** Sentinel: true once Success Drawer + Email Drawer have visible dismiss controls (B-101). */
+export const DISMISS_ENABLED = true;
+
+/** B-102: Pure function for opening the edit drawer — testable outside the component. */
+export function openEditDrawerSafe(
+  setShowEditDrawer: (v: boolean) => void,
+  setTempContactIds: (ids: string[]) => void,
+  selectedContactIds: string[]
+): void {
+  setTempContactIds(selectedContactIds);
+  setShowEditDrawer(true);
+}
+
+/** B-108c: Returns the PDF Quote button label based on download state. */
+export function getPdfButtonLabel(downloadingPdf: boolean): string {
+  return downloadingPdf ? 'Generating PDF...' : 'PDF Quote';
+}
+
+/** B-115: Returns the tooltip/title for the "Convert to Order Guide" button when disabled. */
+export function getOrderGuideDisabledReason(isFinalized: boolean, quoteId: string | undefined): string | null {
+  if (!isFinalized) return 'Sign up to unlock order guide export.';
+  if (!quoteId) return 'No quote loaded.';
+  return null;
+}
+
+/** B-114: Returns the tooltip/title for the sticky "Send Quote" button when disabled. */
+export const SEND_QUOTE_DISABLED_REASON = 'Enter a recipient email above to send.';
+
+/** B-168: Inline/tooltip reason shown when export+send are gated on extraction review. */
+export const REVIEW_REQUIRED_REASON = 'Review the extracted menu before sending.';
+
+/**
+ * B-168: Mirrors the backend send_quote rep-review gate on the FE.
+ *
+ * Backend (quotes_controller#send_quote) blocks send unless:
+ *   rep_reviewed_at.present? OR state IN (distributor_quote, confirmed)
+ *
+ * The serializer does NOT expose rep_reviewed_at (timestamp); it exposes the
+ * `rep_reviewed` boolean and `state`. We mirror the gate with the available
+ * fields: a quote is "reviewed" when rep_reviewed is true OR its state has
+ * cleared rep mediation (distributor_quote/confirmed). When neither holds, the
+ * menu hasn't cleared review and export/send must be blocked.
+ *
+ * Returns true when export/send should be BLOCKED (i.e. NOT reviewed).
+ */
+export function isExportBlockedUnreviewed(
+  repReviewed: boolean | undefined,
+  state: string | null | undefined
+): boolean {
+  if (repReviewed === true) return false;
+  if (state === 'distributor_quote' || state === 'confirmed') return false;
+  return true;
+}
+
 // Mock data for premium onboarding features
 const onboardingDocuments = [
   { id: 'doc1', name: 'New Customer Application (PDF)', type: 'document' },
@@ -206,6 +271,7 @@ export function ExportFinalizePage() {
   async function handleOrderGuideDownload() {
     if (!quoteId) return;
     setDownloadingOrderGuide(true);
+    setOrderGuideError(null);
     try {
       const result = await downloadOrderGuide(quoteId);
       if (result.blob) {
@@ -216,8 +282,9 @@ export function ExportFinalizePage() {
         a.click();
         URL.revokeObjectURL(url);
       } else if (result.error) {
-        // Surface a clear error for draft/missing order guides instead of failing silently
-        setPdfError(result.error);
+        // B-115: Set dedicated orderGuideError so it renders inline near the button,
+        // not inside the closed PDF preview modal.
+        setOrderGuideError(result.error);
         console.error('Order guide download error:', result.error);
       }
     } finally {
@@ -227,6 +294,9 @@ export function ExportFinalizePage() {
 
   // PDF error state
   const [pdfError, setPdfError] = useState<string | null>(null);
+
+  // B-115: Order guide error state — rendered inline near the button (not inside the PDF modal)
+  const [orderGuideError, setOrderGuideError] = useState<string | null>(null);
 
   // Open PDF preview modal — always fetch fresh to avoid caching issues
   const handleOpenPdfPreview = useCallback(async () => {
@@ -298,6 +368,12 @@ export function ExportFinalizePage() {
   // Determine if this is effectively an open quote (either explicitly or no restaurant/contacts)
   const effectiveOpenQuote = isOpenQuote || (!quoteData?.restaurant && !quoteData?.contacts?.length);
 
+  // B-168: Extraction Review gate — mirror the backend send_quote rep-review gate.
+  // Block Send Quote + Convert to Order Guide until the quote has cleared review.
+  // Only applies once quote data has loaded (don't pre-block while loading).
+  const exportBlockedUnreviewed =
+    !!quoteData && isExportBlockedUnreviewed(quoteData.rep_reviewed, quoteData.state);
+
   // Customer & Contact State (fallback to quote data when available)
   const customerName = effectiveOpenQuote ? 'Open Quote' : (quoteData?.restaurant || 'Loading...');
   const contactEmail = effectiveOpenQuote ? (manualEmail || null) : (primaryContact?.email || null);
@@ -318,8 +394,8 @@ export function ExportFinalizePage() {
   const [tempContactIds, setTempContactIds] = useState<string[]>(selectedContactIds);
 
   // Send email
-  async function handleSendEmail() {
-    if (!quoteId) return;
+  async function handleSendEmail(): Promise<boolean> {
+    if (!quoteId) return false;
     setSendingEmail(true);
     setSendError(null);
     try {
@@ -327,11 +403,13 @@ export function ExportFinalizePage() {
       const res = await sendQuote(quoteId, emailToSend || undefined, sendNote || undefined);
       if (res.error) {
         setSendError(res.error);
+        return false;
       } else {
         setEmailSent(true);
         setHasInteracted(true);
         setShowSuccessDrawer(true);
         incrementQuoteCount();
+        return true;
       }
     } finally {
       setSendingEmail(false);
@@ -381,9 +459,9 @@ export function ExportFinalizePage() {
     }
   };
 
-  const openEditDrawer = () => {
-    setTempContactIds(selectedContactIds);
-    setShowEditDrawer(true);
+  const openEditDrawer = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    openEditDrawerSafe(setShowEditDrawer, setTempContactIds, selectedContactIds);
   };
 
   const handleSaveEdit = () => {
@@ -410,6 +488,7 @@ export function ExportFinalizePage() {
             <button
               onClick={() => navigate('/quote-builder', { state: { quoteId, isOpenQuote } })}
               className="text-gray-400 hover:text-gray-600"
+              aria-label="Back"
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
@@ -445,7 +524,19 @@ export function ExportFinalizePage() {
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-600 border-b border-gray-200 pb-3 mb-6" style={{ fontFamily: "'DM Sans', sans-serif" }}>
             <span>Catalog: {(quoteData as any).catalog_source || 'own'}</span>
             <span className="text-gray-300">|</span>
-            <span>Menu: {(quoteData as any).menu_reviewed ? 'reviewed' : 'unreviewed'}</span>
+            {/* B-159: "unreviewed" links to the review flow; "reviewed" is plain text (non-interactive). */}
+            {(quoteData as any).menu_reviewed ? (
+              <span>Menu: reviewed</span>
+            ) : (
+              <button
+                type="button"
+                onClick={() => navigate('/map-ingredients', { state: { quoteId, isOpenQuote } })}
+                className="text-[#4A90D9] hover:text-[#3a7bc8] underline underline-offset-2 cursor-pointer"
+                data-testid="menu-review-link"
+              >
+                Menu: unreviewed — review now
+              </button>
+            )}
             <span className="text-gray-300">|</span>
             <span>Status: {(quoteData as any).quote_status_label || quoteData.status}</span>
           </div>
@@ -464,8 +555,9 @@ export function ExportFinalizePage() {
                 {!effectiveOpenQuote && <Button
                   variant="outline"
                   size="sm"
+                  data-testid="edit-quote-details"
                   className="text-[#A5CFDD] border-[#A5CFDD]/30 hover:bg-[#A5CFDD]/10"
-                  onClick={openEditDrawer}
+                  onClick={(e) => openEditDrawer(e)}
                 >
                   <Edit className="w-3.5 h-3.5 mr-1.5" />
                   Edit
@@ -536,12 +628,15 @@ export function ExportFinalizePage() {
             </div>
 
             {/* Premium: Append Onboarding Documents and Links */}
-            <div className="bg-[#A5CFDD]/10 rounded-lg p-6 shadow-sm border border-[#A5CFDD] relative overflow-hidden">
-              <div className="absolute top-0 right-0 bg-[#F2993D] text-white text-xs font-bold px-3 py-1 rounded-bl-lg">
-                PREMIUM
+            {/* B-160: PREMIUM is an inline badge beside the heading (not an absolute corner
+                overlay that collided with the product-count slot). */}
+            <div className="bg-[#A5CFDD]/10 rounded-lg p-6 shadow-sm border border-[#A5CFDD]">
+              <div className="flex items-center gap-2 mb-1">
+                <h2 className="text-lg text-[#2A2A2A] font-medium">Supporting Documents & Links</h2>
+                <span className="bg-[#F2993D] text-white text-xs font-bold px-2 py-0.5 rounded">
+                  PREMIUM
+                </span>
               </div>
-              
-              <h2 className="text-lg text-[#2A2A2A] mb-1 font-medium">Supporting Documents & Links</h2>
               <p className="text-gray-500 text-sm mb-4">
                 Attach supporting documents to your quote.
               </p>
@@ -912,11 +1007,12 @@ export function ExportFinalizePage() {
                   ) : (
                     <FileText className="w-4 h-4 mr-3" />
                   )}
-                  PDF Quote
+                  {getPdfButtonLabel(downloadingPdf)}
                 </Button>
                 <Button
                   className="w-full justify-start bg-[#F2993D] hover:bg-[#E8953A] text-white h-12"
-                  disabled={!isFinalized || downloadingOrderGuide || !quoteId}
+                  disabled={!isFinalized || downloadingOrderGuide || !quoteId || exportBlockedUnreviewed}
+                  title={exportBlockedUnreviewed ? REVIEW_REQUIRED_REASON : (getOrderGuideDisabledReason(isFinalized, quoteId) ?? undefined)}
                   onClick={handleOrderGuideDownload}
                 >
                   {downloadingOrderGuide ? (
@@ -926,6 +1022,18 @@ export function ExportFinalizePage() {
                   )}
                   Convert to Order Guide
                 </Button>
+                {/* B-168: Inline reason when blocked on extraction review */}
+                {exportBlockedUnreviewed && (
+                  <p className="text-xs text-amber-600 mt-1" data-testid="order-guide-review-required">
+                    {REVIEW_REQUIRED_REASON}
+                  </p>
+                )}
+                {/* B-115: Inline error — visible on the main page, not buried in the PDF modal */}
+                {orderGuideError && (
+                  <p className="text-xs text-red-500 mt-1" data-testid="order-guide-error">
+                    {orderGuideError}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -936,7 +1044,7 @@ export function ExportFinalizePage() {
                 {!isFinalized && isGuest && <div className="text-xs bg-gray-100 px-2 py-1 rounded text-gray-500">Sign up first</div>}
               </div>
               <p className="text-gray-500 text-sm mb-6">
-                Emails will be sent via Quotes@Quote-me.com with your email CC'd
+                Emails will be sent via {FROM_DISPLAY_ADDRESS} with your email CC'd
               </p>
 
               {sendError && (
@@ -1034,9 +1142,28 @@ export function ExportFinalizePage() {
       {/* Authenticated mode: Sticky floating Send Quote button */}
       {!isDemoMode() && (
         <div className="fixed bottom-0 left-0 right-0 md:left-64 bg-white border-t border-gray-200 p-4 z-40">
+          {/* B-168: Review gate takes precedence — block + explain before the email hint */}
+          {exportBlockedUnreviewed ? (
+            <p className="text-xs text-center text-amber-600 mb-1" data-testid="send-quote-review-required">
+              {REVIEW_REQUIRED_REASON}
+            </p>
+          ) : (
+            /* B-114: Show helper text when button is disabled because no recipient email was entered */
+            isOpenQuoteSendDisabled(effectiveOpenQuote, manualEmail, contactEmail) && (
+              <p className="text-xs text-center text-gray-500 mb-1" data-testid="send-quote-disabled-hint">
+                {SEND_QUOTE_DISABLED_REASON}
+              </p>
+            )
+          )}
           <button
             onClick={() => setShowEmailDrawer(true)}
-            className="w-full md:w-auto md:min-w-[200px] md:mx-auto md:block bg-[#F2993D] hover:bg-[#E8953A] text-white font-medium py-2.5 px-5 rounded-lg text-sm"
+            disabled={exportBlockedUnreviewed || isOpenQuoteSendDisabled(effectiveOpenQuote, manualEmail, contactEmail)}
+            title={
+              exportBlockedUnreviewed
+                ? REVIEW_REQUIRED_REASON
+                : (isOpenQuoteSendDisabled(effectiveOpenQuote, manualEmail, contactEmail) ? SEND_QUOTE_DISABLED_REASON : undefined)
+            }
+            className="w-full md:w-auto md:min-w-[200px] md:mx-auto md:block bg-[#F2993D] hover:bg-[#E8953A] text-white font-medium py-2.5 px-5 rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Send Quote
           </button>
@@ -1048,7 +1175,12 @@ export function ExportFinalizePage() {
         <DrawerContent>
           <div className="w-full h-full p-6 flex flex-col">
             <DrawerHeader className="px-0">
-              <DrawerTitle className="text-2xl font-bold text-[#F2993D]">Success!</DrawerTitle>
+              <div className="flex justify-between items-start">
+                <DrawerTitle className="text-2xl font-bold text-[#F2993D]">Success!</DrawerTitle>
+                <DrawerClose className="text-gray-400 hover:text-gray-600 -mt-1">
+                  <X className="w-5 h-5" />
+                </DrawerClose>
+              </div>
               <DrawerDescription>
                 Your action has been completed successfully. We'd love your feedback!
               </DrawerDescription>
@@ -1100,13 +1232,18 @@ export function ExportFinalizePage() {
               </div>
             </div>
 
-            <div className="mt-6">
+            <div className="mt-6 space-y-3">
               <Button
                 onClick={handleSubmitFeedback}
                 className="w-full bg-[#F2993D] hover:bg-[#E08A2E] text-white h-14 text-lg font-medium"
               >
                 Submit Feedback
               </Button>
+              <DrawerClose asChild>
+                <button className="w-full text-sm text-gray-400 hover:text-gray-600 py-2">
+                  Skip
+                </button>
+              </DrawerClose>
             </div>
           </div>
         </DrawerContent>
@@ -1162,10 +1299,15 @@ export function ExportFinalizePage() {
       <Drawer open={showEmailDrawer} onOpenChange={setShowEmailDrawer} direction="right" handleOnly>
         <DrawerContent className="w-full sm:w-[500px]">
           <div className="w-full h-full flex flex-col">
-            <DrawerHeader className="border-b border-gray-200">
-              <DrawerTitle>Email Quote to Chef</DrawerTitle>
-              <DrawerDescription>Send the quote PDF via email</DrawerDescription>
-            </DrawerHeader>
+            <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+              <div>
+                <DrawerTitle className="text-base font-semibold">Email Quote to Chef</DrawerTitle>
+                <DrawerDescription className="text-sm text-gray-500 mt-0.5">Send the quote PDF via email</DrawerDescription>
+              </div>
+              <DrawerClose className="text-gray-400 hover:text-gray-600">
+                <X className="w-5 h-5" />
+              </DrawerClose>
+            </div>
             <div className="flex-1 p-6 space-y-4">
               <div>
                 <Label className="text-sm font-medium text-gray-700 mb-1.5 block">To</Label>
@@ -1202,14 +1344,27 @@ export function ExportFinalizePage() {
               )}
             </div>
             <DrawerFooter className="border-t border-gray-200">
-              <Button
-                onClick={() => { handleSendEmail(); setShowEmailDrawer(false); }}
-                disabled={sendingEmail || (!contactEmail && !manualEmail)}
-                className="w-full bg-[#A5CFDD] hover:bg-[#8db9c9] text-white min-h-[48px]"
-              >
-                {sendingEmail ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Mail className="w-4 h-4 mr-2" />}
-                {emailSent ? 'Email Sent!' : 'Send Email'}
-              </Button>
+              <div className="flex gap-3">
+                <DrawerClose asChild>
+                  <Button
+                    variant="outline"
+                    className="flex-1 border-gray-300 text-gray-600 h-12"
+                  >
+                    Cancel
+                  </Button>
+                </DrawerClose>
+                <Button
+                  onClick={async () => {
+                  const ok = await handleSendEmail();
+                  if (ok) setShowEmailDrawer(false);
+                }}
+                  disabled={sendingEmail || (!contactEmail && !manualEmail)}
+                  className="flex-1 bg-[#A5CFDD] hover:bg-[#8db9c9] text-white min-h-[48px]"
+                >
+                  {sendingEmail ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Mail className="w-4 h-4 mr-2" />}
+                  {emailSent ? 'Email Sent!' : 'Send Email'}
+                </Button>
+              </div>
             </DrawerFooter>
           </div>
         </DrawerContent>

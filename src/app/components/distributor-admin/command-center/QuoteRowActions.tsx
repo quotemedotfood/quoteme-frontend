@@ -45,8 +45,9 @@ export function QuoteRowActions({ quoteId, onEdit }: QuoteRowActionsProps) {
     setViewState('loading');
     const result = await downloadQuotePdf(quoteId);
     if (result.error || !result.blob) {
+      // B-118 fix: error persists (no auto-reset) so user sees "Couldn't generate PDF"
+      // instead of the button silently reverting to idle after 3 s, looking dead.
       setViewState('error');
-      setTimeout(() => setViewState('idle'), 3000);
       return;
     }
     const blobUrl = URL.createObjectURL(result.blob);
@@ -59,7 +60,7 @@ export function QuoteRowActions({ quoteId, onEdit }: QuoteRowActionsProps) {
     <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
       <button
         type="button"
-        title={viewState === 'error' ? 'Failed to load PDF' : 'View quote PDF'}
+        title={viewState === 'error' ? "Couldn't generate PDF — click to retry" : 'View quote PDF'}
         onClick={handleView}
         disabled={viewState === 'loading'}
         style={{
@@ -67,10 +68,11 @@ export function QuoteRowActions({ quoteId, onEdit }: QuoteRowActionsProps) {
           opacity: viewState === 'loading' ? 0.65 : 1,
           cursor: viewState === 'loading' ? 'wait' : 'pointer',
           color: viewState === 'error' ? '#B91C1C' : CC_ACK_NAVY,
+          borderColor: viewState === 'error' ? '#FECACA' : '#E5E7EB',
         }}
       >
         <Eye size={12} strokeWidth={1.8} />
-        {viewState === 'loading' ? 'Loading…' : viewState === 'error' ? 'Error' : 'View'}
+        {viewState === 'loading' ? 'Loading…' : viewState === 'error' ? 'PDF unavailable' : 'View'}
       </button>
       <button
         type="button"

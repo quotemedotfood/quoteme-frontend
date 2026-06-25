@@ -32,7 +32,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import {
-  getChefDistributors,
+  getChefDistributorsAvailable,
   createChefDistributor,
   type ChefDistributorSummary,
   type PullQuoteDistributor,
@@ -117,7 +117,7 @@ function PickPanel({ onSelect }: PickPanelProps) {
   // Lazy-load on first render of this tab
   if (!loaded && !loading) {
     setLoading(true);
-    getChefDistributors().then((res) => {
+    getChefDistributorsAvailable().then((res) => {
       setDistributors(res.data?.distributors ?? []);
       // Defensive: fall back to false/null if BE hasn't shipped the fields yet.
       setChefState(res.data?.chef_state ?? null);
