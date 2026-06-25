@@ -347,8 +347,8 @@ export function ExportFinalizePage() {
   const [tempContactIds, setTempContactIds] = useState<string[]>(selectedContactIds);
 
   // Send email
-  async function handleSendEmail() {
-    if (!quoteId) return;
+  async function handleSendEmail(): Promise<boolean> {
+    if (!quoteId) return false;
     setSendingEmail(true);
     setSendError(null);
     try {
@@ -356,11 +356,13 @@ export function ExportFinalizePage() {
       const res = await sendQuote(quoteId, emailToSend || undefined, sendNote || undefined);
       if (res.error) {
         setSendError(res.error);
+        return false;
       } else {
         setEmailSent(true);
         setHasInteracted(true);
         setShowSuccessDrawer(true);
         incrementQuoteCount();
+        return true;
       }
     } finally {
       setSendingEmail(false);
@@ -1258,7 +1260,10 @@ export function ExportFinalizePage() {
                   </Button>
                 </DrawerClose>
                 <Button
-                  onClick={() => { handleSendEmail(); setShowEmailDrawer(false); }}
+                  onClick={async () => {
+                  const ok = await handleSendEmail();
+                  if (ok) setShowEmailDrawer(false);
+                }}
                   disabled={sendingEmail || (!contactEmail && !manualEmail)}
                   className="flex-1 bg-[#A5CFDD] hover:bg-[#8db9c9] text-white min-h-[48px]"
                 >

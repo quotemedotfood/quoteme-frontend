@@ -4,7 +4,13 @@
 // Pattern matches /src/app/pages/QuotesPage.test.ts
 
 import { describe, it, expect } from 'vitest';
-import { FROM_DISPLAY_ADDRESS, isOpenQuoteSendDisabled } from './ExportFinalizePage';
+import {
+  FROM_DISPLAY_ADDRESS,
+  isOpenQuoteSendDisabled,
+  DISMISS_ENABLED,
+  openEditDrawerSafe,
+  getPdfButtonLabel,
+} from './ExportFinalizePage';
 
 describe('B-104 — from-address display string', () => {
   it('shows quotes@quoteme.food (correct domain)', () => {
@@ -44,23 +50,17 @@ describe('B-109a — Open Quote send button disabled until recipient selected', 
   });
 });
 
-import { DISMISS_ENABLED } from './ExportFinalizePage';
 
 describe('B-101 — modal dismiss controls present', () => {
   it('DISMISS_ENABLED is true — Success Drawer has X+Skip, Email Drawer has X+Cancel', () => {
-    // Sentinel: export this constant after adding the dismiss controls in the JSX.
-    // Confirms that Success Drawer (X button + Skip link) and Email Drawer
-    // (X button + Cancel button) have visible dismiss affordances.
+    // Sentinel: export this constant ONLY after adding the dismiss controls in the JSX.
+    // This is a code-convention guard, not a DOM assertion — it relies on the developer
+    // convention that DISMISS_ENABLED is set to true only when the X/Cancel/Skip
+    // controls exist in the JSX. See ExportFinalizePage.tsx for the actual DrawerClose nodes.
     expect(DISMISS_ENABLED).toBe(true);
   });
 });
 
-import {
-  FROM_DISPLAY_ADDRESS,
-  isOpenQuoteSendDisabled,
-  DISMISS_ENABLED,
-  openEditDrawerSafe,
-} from './ExportFinalizePage';
 
 describe('B-102 — Edit button opens edit drawer, not PDF preview', () => {
   it('openEditDrawerSafe sets showEditDrawer to true', () => {
@@ -81,7 +81,6 @@ describe('B-102 — Edit button opens edit drawer, not PDF preview', () => {
   });
 });
 
-import { getPdfButtonLabel } from './ExportFinalizePage';
 
 describe('B-108c — PDF Quote button label feedback', () => {
   it('shows "Generating PDF..." while downloading', () => {
