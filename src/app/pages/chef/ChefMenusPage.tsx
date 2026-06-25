@@ -28,6 +28,8 @@ import {
   getChefOrderGuides,
   renameChefMenu,
   deleteChefMenu,
+  downloadChefOrderGuidePdf,
+  downloadChefOrderGuideExcel,
   type ChefMenuRow,
   type ChefOrderGuideRow,
 } from '../../services/api';
@@ -482,7 +484,35 @@ function MenuRow({
 
 // Single order guide row
 function OrderGuideRow({ og }: { og: ChefOrderGuideRow }) {
-  const API_BASE = import.meta.env.VITE_API_BASE_URL || 'https://web-production-9f6e9.up.railway.app';
+  const [downloading, setDownloading] = useState<'pdf' | 'excel' | null>(null);
+
+  async function handleDownloadPdf() {
+    setDownloading('pdf');
+    const res = await downloadChefOrderGuidePdf(og.id);
+    if (res.blob) {
+      const url = URL.createObjectURL(res.blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `order-guide-${og.id}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+    setDownloading(null);
+  }
+
+  async function handleDownloadExcel() {
+    setDownloading('excel');
+    const res = await downloadChefOrderGuideExcel(og.id);
+    if (res.blob) {
+      const url = URL.createObjectURL(res.blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `order-guide-${og.id}.xlsx`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+    setDownloading(null);
+  }
 
   return (
     <div
@@ -528,10 +558,9 @@ function OrderGuideRow({ og }: { og: ChefOrderGuideRow }) {
 
       {/* Download links */}
       <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-        <a
-          href={`${API_BASE}/api/v1/chef/order_guides/${og.id}/pdf`}
-          target="_blank"
-          rel="noopener noreferrer"
+        <button
+          onClick={handleDownloadPdf}
+          disabled={downloading !== null}
           style={{
             ...sans,
             fontSize: 12,
@@ -540,17 +569,16 @@ function OrderGuideRow({ og }: { og: ChefOrderGuideRow }) {
             border: `1px solid ${C.softLine}`,
             borderRadius: 6,
             padding: '6px 11px',
-            textDecoration: 'none',
             whiteSpace: 'nowrap',
             background: '#fff',
+            cursor: downloading !== null ? 'default' : 'pointer',
           }}
         >
-          PDF
-        </a>
-        <a
-          href={`${API_BASE}/api/v1/chef/order_guides/${og.id}/excel`}
-          target="_blank"
-          rel="noopener noreferrer"
+          {downloading === 'pdf' ? 'PDF…' : 'PDF'}
+        </button>
+        <button
+          onClick={handleDownloadExcel}
+          disabled={downloading !== null}
           style={{
             ...sans,
             fontSize: 12,
@@ -559,13 +587,13 @@ function OrderGuideRow({ og }: { og: ChefOrderGuideRow }) {
             border: `1px solid ${C.softLine}`,
             borderRadius: 6,
             padding: '6px 11px',
-            textDecoration: 'none',
             whiteSpace: 'nowrap',
             background: '#fff',
+            cursor: downloading !== null ? 'default' : 'pointer',
           }}
         >
-          Excel
-        </a>
+          {downloading === 'excel' ? 'Excel…' : 'Excel'}
+        </button>
       </div>
     </div>
   );
