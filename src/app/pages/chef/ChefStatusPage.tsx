@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router';
-import { getGuestQuote, getChefQuote } from '../../services/api';
+import { getGuestQuote, getChefQuote, notifyGuestQuoteByEmail } from '../../services/api';
 import { StuckRecoveryScreen, MENU_DRAFT_KEY } from '../../components/chef/StuckRecoveryScreen';
 import { isQuoteComplete } from '../../utils/quoteStatus';
 
@@ -116,6 +116,23 @@ export function isSessionExpiredResponse(res: { status?: number; error?: string 
   return false;
 }
 
+// ─── B-127: Expired-state action helpers ─────────────────────────────────────
+// Pure helpers exported for unit testing — no DOM or React needed.
+
+/** Returns true when the "Resend status email" button should be enabled. */
+export function isResendEnabled(email: string, resendState: 'idle' | 'loading' | 'success' | 'error'): boolean {
+  return email.trim().length > 0 && resendState !== 'loading';
+}
+
+/** Returns the label to display on the resend button given current state. */
+export function resendButtonLabel(resendState: 'idle' | 'loading' | 'success' | 'error'): string {
+  if (resendState === 'loading') return 'Sending…';
+  return 'Resend status email';
+}
+
+/** Returns the /auth href that the Sign in link should point to. */
+export const SIGN_IN_HREF = '/auth' as const;
+
 // ─── Props (Agent A integration surface) ─────────────────────────────────────
 // Agent A's c133 timeout work can pass `onTimeout` via router state or as a
 // prop if ChefStatusPage is ever rendered as a child component. When the
@@ -142,6 +159,9 @@ export function ChefStatusPage({ onTimeout }: ChefStatusPageProps = {}) {
   const [repName, setRepName] = useState<string | undefined>(undefined);
   const [isStuck, setIsStuck] = useState(false);
   const [isSessionExpired, setIsSessionExpired] = useState(false);
+  // B-127: expired state — resend email flow
+  const [recipientEmail, setRecipientEmail] = useState<string>('');
+  const [resendState, setResendState] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const stuckTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -215,6 +235,9 @@ export function ChefStatusPage({ onTimeout }: ChefStatusPageProps = {}) {
           if (distributor?.name) setDistributorName(distributor.name);
           if (distributor?.rep?.email) setRepEmail(distributor.rep.email);
           if (distributor?.rep?.name) setRepName(distributor.rep.name);
+          // B-127: capture recipient_email for the expired-state resend flow.
+          const quoteData = res.data as { recipient_email?: string | null };
+          if (quoteData.recipient_email) setRecipientEmail(quoteData.recipient_email);
         }
 
         // Track 22: drive step progression from real backend processing_stage.
@@ -278,6 +301,22 @@ export function ChefStatusPage({ onTimeout }: ChefStatusPageProps = {}) {
     };
   }, [id, navigate]);
 
+  // B-127: resend status email handler for expired state.
+  async function handleResendEmail() {
+    if (!id || !recipientEmail.trim() || resendState === 'loading') return;
+    setResendState('loading');
+    try {
+      const res = await notifyGuestQuoteByEmail(id, recipientEmail.trim());
+      if (res.error) {
+        setResendState('error');
+      } else {
+        setResendState('success');
+      }
+    } catch {
+      setResendState('error');
+    }
+  }
+
   const steps = buildSteps(distributorName);
 
   function stepState(index: number): StepState {
@@ -288,6 +327,7 @@ export function ChefStatusPage({ onTimeout }: ChefStatusPageProps = {}) {
 
   // B01: session expired — stop all activity and show a clear message.
   if (isSessionExpired) {
+    const hasEmail = recipientEmail.trim().length > 0;
     return (
       <div className="min-h-screen bg-white flex flex-col items-center justify-center p-6">
         <div className="w-full max-w-sm text-center">
@@ -318,6 +358,55 @@ export function ChefStatusPage({ onTimeout }: ChefStatusPageProps = {}) {
             <p className="text-[#4F4F4F] text-sm leading-relaxed">
               Use the quote link from your email to pick up where you left off.
             </p>
+          </div>
+
+          {/* B-127: action buttons */}
+          <div className="flex flex-col gap-3">
+            {/* Sign in link */}
+            <a
+              href="/auth"
+              className="block w-full py-2.5 px-4 rounded-lg border border-[#E5A84B] text-[#E5A84B] text-sm font-medium text-center hover:bg-[#FFF8EE] transition-colors"
+            >
+              Sign in
+            </a>
+
+            {/* Resend status email */}
+            {!hasEmail && resendState !== 'success' && (
+              <input
+                type="email"
+                placeholder="Your email address"
+                value={recipientEmail}
+                onChange={(e) => { setRecipientEmail(e.target.value); setResendState('idle'); }}
+                className="w-full py-2.5 px-4 rounded-lg border border-[#E0E0E0] text-sm text-[#2B2B2B] placeholder-[#BDBDBD] focus:outline-none focus:border-[#E5A84B]"
+              />
+            )}
+
+            {resendState === 'success' ? (
+              <p className="text-sm text-[#4CAF50] font-medium py-2">
+                Check your inbox
+              </p>
+            ) : resendState === 'error' ? (
+              <div className="flex flex-col gap-2">
+                <p className="text-sm text-[#E53935]">
+                  Something went wrong — try again
+                </p>
+                <button
+                  onClick={handleResendEmail}
+                  disabled={!recipientEmail.trim()}
+                  className="w-full py-2.5 px-4 rounded-lg bg-[#2B2B2B] text-white text-sm font-medium hover:bg-[#3D3D3D] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Resend status email
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={handleResendEmail}
+                disabled={!recipientEmail.trim() || resendState === 'loading'}
+                className="w-full py-2.5 px-4 rounded-lg bg-[#2B2B2B] text-white text-sm font-medium hover:bg-[#3D3D3D] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {resendState === 'loading' ? 'Sending…' : 'Resend status email'}
+              </button>
+            )}
           </div>
         </div>
       </div>
