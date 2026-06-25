@@ -44,6 +44,9 @@ function activeTabFromPath(pathname: string): ActiveTab {
   if (pathname.startsWith('/chef/quotes')) return 'home'; // Quotes destination
   if (pathname.startsWith('/chef/menus')) return 'menus'; // Menus and Order Guides tab
   if (pathname.startsWith('/chef/catalog')) return 'distributors';
+  // B-124: /chef/distributors is now canonical for the consolidated view.
+  // Must be checked BEFORE the '/chef/distributor' catch-all below.
+  if (pathname === '/chef/distributors' || pathname.startsWith('/chef/distributors/')) return 'distributors';
   if (pathname.startsWith('/chef/distributor')) return 'distributors';
   // /chef/stack — My Stack manage view lives under Distributors in the IA
   if (pathname === '/chef/stack' || pathname.startsWith('/chef/stack/')) return 'distributors';
@@ -96,8 +99,8 @@ export function ChefShellLayout() {
     // Quotes has a dedicated route — navigate there directly (c135)
     if (target === 'tab-home') return navigate('/chef/quotes');
     if (target === 'tab-menus') return navigate('/chef/menus');
-    if (target === 'tab-distributors') return navigate('/chef/distributor/new');
-    if (target === 'tab-stack') return navigate('/chef/stack');
+    if (target === 'tab-distributors') return navigate('/chef/distributors');
+    if (target === 'tab-stack') return navigate('/chef/distributors');
     if (target === 'tab-settings') return navigate('/settings');
   };
 
