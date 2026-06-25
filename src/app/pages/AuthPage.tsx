@@ -25,6 +25,11 @@ import {
 import { useGooglePlaces } from '../hooks/useGooglePlaces';
 import { PasswordRequirements, passwordMeetsRequirements } from '../components/PasswordRequirements';
 
+// B-144: neutral placeholder — not distributor-biased
+export const LOGIN_EMAIL_PLACEHOLDER = 'you@example.com';
+// B-143: brand card subtitle — no trailing period (matches other role cards)
+export const BRAND_CARD_SUBTITLE = 'Get your products into distributor catalogs';
+
 const BLOCKED_DOMAINS = [
   'gmail.com',
   'yahoo.com',
@@ -472,7 +477,7 @@ export function AuthPage() {
               I'm a Brand
             </p>
             <p className="text-sm" style={{ color: '#4F4F4F' }}>
-              Get your products into distributor catalogs.
+              {BRAND_CARD_SUBTITLE}
             </p>
           </div>
         </button>
@@ -1004,7 +1009,7 @@ export function AuthPage() {
                   return next;
                 });
               }}
-              placeholder="jane@yourdistributor.com"
+              placeholder={LOGIN_EMAIL_PLACEHOLDER}
             />
             {renderFieldError('email')}
           </div>
