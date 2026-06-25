@@ -230,12 +230,14 @@ function AssignRow({
   const safeCity = (row.city as string | null) ?? '—';
   const metaLine =
     row.kind === 'quote'
-      ? `${safeCity}${row.items != null ? ` · ${row.items} ${row.items === 1 ? 'item' : 'items'}` : ''}`
+      ? safeCity
       : row.age ?? safeCity;
 
   const contextLabel =
     row.kind === 'quote' && row.q_label
       ? stripSeedPrefix(row.q_label)
+      : row.kind === 'relationship' && row.age
+      ? row.age
       : null;
 
   return (
@@ -272,7 +274,7 @@ function AssignRow({
                   }}
                 >
                   {contextLabel}
-                  {row.items != null ? ` · ${row.items} ${row.items === 1 ? 'item' : 'items'}` : ''}
+                  {row.kind === 'quote' && row.items != null ? ` · ${row.items} ${row.items === 1 ? 'item' : 'items'}` : ''}
                 </span>
               )}
             </div>
