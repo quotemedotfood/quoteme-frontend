@@ -32,7 +32,6 @@ import {
   Loader2,
 } from 'lucide-react';
 import {
-  getChefDistributors,
   getChefDistributorsAvailable,
   createChefDistributor,
   type ChefDistributorSummary,
