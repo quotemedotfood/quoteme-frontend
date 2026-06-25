@@ -176,6 +176,9 @@ export const router = createBrowserRouter([
         Component: BrandShellLayout,
         children: [
           { index: true,           Component: BrandDashboardPage },
+          // B-128: /brand/dashboard was the handoff's URL label for the brand
+          // home but was never registered as a route — redirects to canonical.
+          { path: "dashboard",     element: <Navigate to="/brand" replace /> },
           { path: "catalog",       Component: BrandCatalogPage },
           { path: "capture",       Component: BrandCapturePage },
           { path: "packages",      Component: BrandPackagesPage },

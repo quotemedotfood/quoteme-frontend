@@ -139,8 +139,14 @@ export function BrandShellLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const variant = useVariant();
 
+  // B-129: defer child pages until auth resolves so user.email is populated.
+  // Without this guard, BrandSettingsPage renders with user=null and all
+  // user fields (email, first_name, etc.) show their fallback "—" values.
+  // All hooks above must be called unconditionally before this early return.
+  if (isLoading) return null;
+
   // Brand guard: non-brand roles must never land here.
-  if (!isLoading && user && user.role !== 'brand') {
+  if (user && user.role !== 'brand') {
     const landing =
       user.role === 'quoteme_admin'     ? '/qm-admin' :
       user.role === 'distributor_admin' ? '/distributor-admin' :
