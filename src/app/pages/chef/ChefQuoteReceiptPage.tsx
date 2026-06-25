@@ -229,6 +229,9 @@ export function ChefQuoteReceiptPage() {
           <QuoteStateDocument
             state={docState}
             quoteState={quote.state}
+            // H-3: rep-built quotes carry the accepted signal on `status` ('won')
+            // while their J1 `state` stays nil; chef-initiated quotes use state.
+            accepted={quote.status === 'won' || quote.state === 'accepted'}
             restaurant={quote.restaurant}
             quoteDate={formatQuoteDate(quote.created_at)}
             rep={repName || 'your rep'}
