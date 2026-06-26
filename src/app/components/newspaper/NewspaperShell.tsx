@@ -22,6 +22,7 @@
 
 import { useState } from 'react';
 import * as LucideIcons from 'lucide-react';
+import { HelpField } from '../HelpField';
 
 // ── Icon resolver ─────────────────────────────────────────────────────────────
 // Maps Desi's icon name strings (kebab-case) to Lucide component names.
@@ -491,6 +492,8 @@ export function RoleSidebar({
       </div>
 
       <div className="flex-1" />
+
+      <HelpField collapsed={collapsed} lane="brand" />
 
       {/* Settings — bottom-pinned */}
       {settings && (

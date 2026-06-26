@@ -41,6 +41,7 @@ import {
   X,
 } from 'lucide-react';
 import quotemeLogo from '../../../assets/quoteme-logo.png';
+import { HelpField } from '../HelpField';
 
 const C = {
   charcoal: '#2B2B2B',
@@ -441,6 +442,7 @@ export function RepNewspaperSidebar({
           borderTop: `1px solid ${C.softLine}`,
         }}
       >
+        <HelpField collapsed={collapsed} lane="rep" />
         {bottomItems.map((item) => (
           <NavDestination
             key={item.id}
