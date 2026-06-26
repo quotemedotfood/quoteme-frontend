@@ -1,28 +1,19 @@
-// ChefStackPage — /chef/stack
+// ChefDistributorsPage — /chef/distributors
 //
-// Free "My Stack" manage view: pin/unpin distributors, per-location roster.
+// Consolidated view: My Stack (pinned distributors) on top,
+// collapsible distributor list (ChefDistributorsTab) below.
 //
-// This is distinct from ChefMenuStackPage (/chef/menus/:menuId/stack) which
-// is the per-menu compare-spread table. That route is untouched.
-//
-// BE API (api.ts):
-//   GET  /api/v1/chef/stack           → getChefStack()
-//   POST /api/v1/chef/stack           → createChefStack()
-//   POST /api/v1/chef/stack/pins      → addChefStackPin()
-//   DELETE /api/v1/chef/stack/pins/:id → removeChefStackPin()
-//
-// Empty state (no stack yet): auto-creates the stack on first render
-// so the chef can immediately pin distributors.
+// B-124: replaces the split /chef/stack + /chef/distributor/new nav.
+// /chef/stack now redirects here (see routes.tsx).
 //
 // Hard rules:
 //   • NO gradient colors
 //   • NO "Customer" word
-//   • NO paywall / counter gate
 //   • createPortal from 'react-dom' if used (not 'react')
 
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router';
-import { Layers, Trash2, Plus, AlertCircle, Loader2 } from 'lucide-react';
+import { Trash2, Plus, AlertCircle, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
 import {
   getChefStack,
   createChefStack,
@@ -30,20 +21,21 @@ import {
   type ChefStackResponse,
   type ChefStackPin,
 } from '../../services/api';
+import { ChefDistributorsTab } from '../../components/chef/ChefDistributorsTab';
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 
 const C = {
-  charcoal:  '#2B2B2B',
-  orange:    '#F2993D',
+  charcoal:    '#2B2B2B',
+  orange:      '#F2993D',
   orangeHover: '#E08A2E',
-  warmPaper: '#FBFAF7',
-  softLine:  '#E8E8E8',
-  gray700:   '#4F4F4F',
-  gray500:   '#6B7280',
-  gray400:   '#9CA3AF',
-  errorRed:  '#DC2626',
-  errorBg:   '#FEF2F2',
+  warmPaper:   '#FBFAF7',
+  softLine:    '#E8E8E8',
+  gray700:     '#4F4F4F',
+  gray500:     '#6B7280',
+  gray400:     '#9CA3AF',
+  errorRed:    '#DC2626',
+  errorBg:     '#FEF2F2',
 } as const;
 
 const serif: React.CSSProperties = {
@@ -57,14 +49,16 @@ const sans: React.CSSProperties = {
 
 type PageState = 'loading' | 'ready' | 'error';
 
-export function ChefStackPage() {
+export function ChefDistributorsPage() {
   const navigate = useNavigate();
   const [pageState, setPageState] = useState<PageState>('loading');
   const [stack, setStack] = useState<ChefStackResponse | null>(null);
   const [errorMsg, setErrorMsg] = useState<string>('');
-  // Track which pin IDs are mid-delete so we can show per-row loading
   const [deletingPins, setDeletingPins] = useState<Set<string>>(new Set());
   const [deleteError, setDeleteError] = useState<string>('');
+
+  // Collapsible detail section — expanded by default
+  const [detailExpanded, setDetailExpanded] = useState(true);
 
   const loadStack = useCallback(async () => {
     setPageState('loading');
@@ -73,7 +67,6 @@ export function ChefStackPage() {
     const res = await getChefStack();
 
     if (res.error && res.status !== 404) {
-      // Real error (auth failure, server error, etc.)
       setErrorMsg(res.error);
       setPageState('error');
       return;
@@ -85,8 +78,7 @@ export function ChefStackPage() {
       return;
     }
 
-    // stack is null (BE returned { stack: null }) — auto-create so the
-    // chef lands straight into the manage view without an extra click.
+    // stack is null — auto-create so the chef lands straight into the manage view.
     const createRes = await createChefStack();
     if (createRes.data) {
       setStack(createRes.data);
@@ -98,7 +90,7 @@ export function ChefStackPage() {
         setStack(refetch.data);
         setPageState('ready');
       } else {
-        setErrorMsg(refetch.error || 'Could not load your Stack');
+        setErrorMsg(refetch.error || 'Could not load your distributors');
         setPageState('error');
       }
     } else {
@@ -130,7 +122,6 @@ export function ChefStackPage() {
       return;
     }
 
-    // Optimistic update: remove from local state
     setStack((prev) =>
       prev ? { ...prev, pins: prev.pins.filter((p) => p.id !== pin.id) } : prev
     );
@@ -144,11 +135,11 @@ export function ChefStackPage() {
         <Loader2
           size={28}
           strokeWidth={1.6}
-          style={{ color: C.gray400, animation: 'spin 1s linear infinite', display: 'inline-block' }}
+          className="animate-spin"
+          style={{ color: C.gray400, display: 'inline-block' }}
           aria-label="Loading"
         />
-        <p style={{ ...sans, fontSize: 13, color: C.gray500, marginTop: 12 }}>Loading your Stack…</p>
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+        <p style={{ ...sans, fontSize: 13, color: C.gray500, marginTop: 12 }}>Loading your distributors…</p>
       </div>
     );
   }
@@ -196,12 +187,9 @@ export function ChefStackPage() {
     <div className="max-w-2xl mx-auto px-5 pt-6 pb-12">
       {/* Page header */}
       <div style={{ marginBottom: 28 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-          <Layers size={22} strokeWidth={1.6} style={{ color: C.charcoal, flexShrink: 0 }} />
-          <h1 style={{ ...serif, fontSize: 26, fontWeight: 600, color: C.charcoal, lineHeight: 1.15 }}>
-            My Stack
-          </h1>
-        </div>
+        <h1 style={{ ...serif, fontSize: 26, fontWeight: 600, color: C.charcoal, lineHeight: 1.15, marginBottom: 6 }}>
+          Distributors
+        </h1>
         <p style={{ ...sans, fontSize: 13, color: C.gray500, lineHeight: 1.6 }}>
           The distributors you order from. Pin them here to compare pricing across menus.
         </p>
@@ -234,7 +222,7 @@ export function ChefStackPage() {
         </div>
       )}
 
-      {/* Pin list or empty state */}
+      {/* ── Stack section: pin list or empty state ─────────────────────────── */}
       {pins.length === 0 ? (
         <EmptyState onAddDistributor={() => navigate('/chef/distributor/new')} />
       ) : (
@@ -244,6 +232,61 @@ export function ChefStackPage() {
           onUnpin={handleUnpin}
           onAddDistributor={() => navigate('/chef/distributor/new')}
         />
+      )}
+
+      {/* ── Collapsible distributor detail section ─────────────────────────── */}
+      {/* Only render the section when pins exist (or the tab will load its own data). */}
+      {/* Per spec: when stack is empty, just show the empty state above.             */}
+      {pins.length > 0 && (
+        <div style={{ marginTop: 36 }}>
+          {/* Section header with collapse toggle */}
+          <button
+            type="button"
+            aria-expanded={detailExpanded}
+            aria-controls="distributor-detail-section"
+            onClick={() => setDetailExpanded((v) => !v)}
+            style={{
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              background: 'none',
+              border: 'none',
+              borderTop: `2px solid ${C.charcoal}`,
+              padding: '10px 0 8px',
+              cursor: 'pointer',
+            }}
+          >
+            <span
+              style={{
+                ...sans,
+                fontSize: 10,
+                fontWeight: 600,
+                letterSpacing: '0.1em',
+                textTransform: 'uppercase',
+                color: C.gray500,
+              }}
+            >
+              YOUR DISTRIBUTORS
+            </span>
+            {detailExpanded ? (
+              <ChevronUp size={16} strokeWidth={1.8} style={{ color: C.gray500, flexShrink: 0 }} />
+            ) : (
+              <ChevronDown size={16} strokeWidth={1.8} style={{ color: C.gray500, flexShrink: 0 }} />
+            )}
+          </button>
+
+          {/* Collapsible content */}
+          {detailExpanded && (
+            <div id="distributor-detail-section" data-testid="distributor-detail-content">
+              {/* ChefDistributorsTab.nav is only used for: (1) the locked paid-tier "See paid"
+                  link (tab-settings) and (2) UseDistributorForQuoteModal.onContinue which is
+                  unreachable until areaDistributors is surfaced by the BE. Primary row nav
+                  uses the tab's internal useNavigate(). No-op is safe for all live code paths. */}
+              <ChefDistributorsTab nav={() => {}} />
+            </div>
+          )}
+        </div>
       )}
     </div>
   );
@@ -265,12 +308,6 @@ function EmptyState({ onAddDistributor }: { onAddDistributor: () => void }) {
         border: `1px solid ${C.softLine}`,
       }}
     >
-      <Layers
-        size={36}
-        strokeWidth={1.4}
-        style={{ color: C.gray400, marginBottom: 16 }}
-        aria-hidden="true"
-      />
       <h2
         style={{
           ...serif,
@@ -317,7 +354,7 @@ function EmptyState({ onAddDistributor }: { onAddDistributor: () => void }) {
         onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = C.orange; }}
       >
         <Plus size={15} strokeWidth={2} color="#fff" />
-        Browse distributors
+        Add distributor
       </button>
     </div>
   );
@@ -338,7 +375,6 @@ function PinList({
 }) {
   return (
     <div>
-      {/* Pinned distributors */}
       <div
         style={{
           border: `1px solid ${C.softLine}`,
@@ -357,7 +393,6 @@ function PinList({
         ))}
       </div>
 
-      {/* Add another distributor */}
       <button
         type="button"
         onClick={onAddDistributor}
@@ -397,6 +432,18 @@ function PinList({
 
 // ─── Single pin row ───────────────────────────────────────────────────────────
 
+function formatDate(iso: string) {
+  try {
+    return new Date(iso).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  } catch {
+    return '';
+  }
+}
+
 function PinRow({
   pin,
   isFirst,
@@ -408,18 +455,6 @@ function PinRow({
   isDeleting: boolean;
   onUnpin: (pin: ChefStackPin) => void;
 }) {
-  function formatDate(iso: string) {
-    try {
-      return new Date(iso).toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-      });
-    } catch {
-      return '';
-    }
-  }
-
   return (
     <div
       style={{
@@ -433,7 +468,6 @@ function PinRow({
         transition: 'opacity 150ms ease, background 150ms ease',
       }}
     >
-      {/* Distributor info */}
       <div style={{ flex: 1, minWidth: 0 }}>
         <div
           style={{
@@ -460,7 +494,6 @@ function PinRow({
         )}
       </div>
 
-      {/* Unpin button */}
       <button
         type="button"
         onClick={() => !isDeleting && onUnpin(pin)}
@@ -497,7 +530,7 @@ function PinRow({
           <Loader2
             size={16}
             strokeWidth={1.8}
-            style={{ animation: 'spin 1s linear infinite' }}
+            className="animate-spin"
             aria-hidden="true"
           />
         ) : (

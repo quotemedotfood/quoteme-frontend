@@ -1,9 +1,14 @@
 // AuthPage.test.ts
-// Pure-constant tests for B-143 / B-144 / B-145 copy fixes.
+// Pure-constant tests for B-109 / B-143 / B-144 / B-145 fixes.
 // Node-mode only — no jsdom, no @testing-library/react.
 
 import { describe, it, expect } from 'vitest';
 import { LOGIN_EMAIL_PLACEHOLDER, BRAND_CARD_SUBTITLE } from './AuthPage';
+
+// B-109: Sign-in submit button disabled guard — inline JSX, not a standalone pure function,
+// so no DOM test is added here. Guard expression: isSubmitting || !loginEmail.trim() || !loginPassword.trim()
+// This ensures the button is disabled when email or password is empty/whitespace-only.
+// Verified structurally in AuthPage.tsx renderSignIn() Button disabled prop.
 
 // B-143: Brand role card must have no trailing period (matches Rep/Distributor/Restaurant cards)
 describe('B-143 — brand card subtitle has no trailing period', () => {

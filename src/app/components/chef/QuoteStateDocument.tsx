@@ -70,6 +70,13 @@ export interface QuoteStateDocumentProps {
    * 'confirmed' document state, which covers both 'confirmed' (rep-priced,
    * chef not yet accepted) and 'accepted' (chef accepted). */
   quoteState?: string | null;
+  /** H-3: whether the chef has accepted this quote. Derived by the caller from
+   * BOTH axes — J1 state (`state === 'accepted'`, chef-initiated quotes) AND
+   * rep workflow status (`status === 'won'`, rep-built quotes whose J1 `state`
+   * stays nil). When true, the locked-document chrome reads ACCEPTED instead of
+   * the default CONFIRMED. Without this, won/rep-built quotes (state nil) showed
+   * "CONFIRMED" on both the header eyebrow and the seal. */
+  accepted?: boolean;
   restaurant: string;
   forName?: string; // chef full name (omitted on surfaces that don't carry it)
   quoteDate: string;
@@ -88,6 +95,10 @@ interface Chrome {
   bg: string;
   headerRule: string;
   eyebrow: string;
+  /** Title-case date appended after the eyebrow label (rendered outside the
+   * uppercased span so it stays title case). Only set when the eyebrow mixes
+   * a label + a date token. */
+  eyebrowDate?: string;
   watermark: string | null;
   topRightSlot: 'working' | 'seal' | null;
   footerLine: string;
@@ -96,6 +107,7 @@ interface Chrome {
 export function QuoteStateDocument({
   state = 'preview',
   quoteState,
+  accepted,
   restaurant,
   forName,
   quoteDate,
@@ -111,6 +123,9 @@ export function QuoteStateDocument({
 }: QuoteStateDocumentProps) {
   const itemCount = totalCount || groups.reduce((a, g) => a + g.items.length, 0);
   const at = distributorShort ? ` at ${distributorShort}` : '';
+  // H-3: accepted when the caller says so (status==='won' OR state==='accepted'),
+  // falling back to the raw J1 state for callers that only pass quoteState.
+  const isAccepted = accepted || quoteState === 'accepted';
 
   const chrome: Chrome = {
     preview: {
@@ -132,9 +147,12 @@ export function QuoteStateDocument({
     confirmed: {
       bg: '#FFFFFF',
       headerRule: `3px solid ${INK}`,
-      // H-3: use quoteStatusLabel('confirmed', 'header') → "Confirmed Quote"
-      // so the document eyebrow matches the shared label helper used across surfaces.
-      eyebrow: `${quoteStatusLabel('confirmed', 'header').toUpperCase()} · LOCKED ${confirmedAt.toUpperCase()}`,
+      // H-3: an accepted quote reads "ACCEPTED", otherwise "CONFIRMED QUOTE".
+      // Both use the shared label helper so copy stays consistent across surfaces.
+      // B-154: label stays uppercased (CSS textTransform); date is split into
+      // eyebrowDate so it renders in title case, matching the body date format.
+      eyebrow: `${(isAccepted ? quoteStatusLabel('accepted', 'header') : quoteStatusLabel('confirmed', 'header')).toUpperCase()} · LOCKED`,
+      eyebrowDate: confirmedAt ? ` ${confirmedAt.replace(/, \d{4}$/, '')}` : '',
       watermark: null,
       topRightSlot: 'seal',
       footerLine: `Confirmed by ${rep}${at} · ${confirmedAt}`,
@@ -175,12 +193,16 @@ export function QuoteStateDocument({
               style={{
                 fontSize: 10,
                 letterSpacing: '.14em',
-                textTransform: 'uppercase',
                 fontWeight: 600,
                 color: INK_SOFT,
               }}
             >
-              {chrome.eyebrow}
+              {/* B-154: label in uppercase; date (eyebrowDate) rendered outside
+                  the uppercased span so it stays title case — "Jun 24" not "JUN 24". */}
+              <span style={{ textTransform: 'uppercase' }}>{chrome.eyebrow}</span>
+              {chrome.eyebrowDate && (
+                <span style={{ textTransform: 'none' }}>{chrome.eyebrowDate}</span>
+              )}
             </div>
             <h1
               className="font-semibold mt-1"
@@ -220,7 +242,7 @@ export function QuoteStateDocument({
               <ConfirmedSeal
                 date={confirmedAt}
                 label={
-                  quoteState === 'accepted'
+                  isAccepted
                     ? quoteStatusLabel('accepted', 'pill').toUpperCase()
                     : 'CONFIRMED'
                 }
@@ -368,7 +390,9 @@ function QuoteStateGroup({
 }
 
 export function ConfirmedSeal({ date = '', label = 'CONFIRMED' }: { date?: string; label?: string }) {
-  const dateShort = date.replace(/, \d{4}$/, '').toUpperCase();
+  // B-154: strip year only; do NOT uppercase — body date uses title case ("Jun 24"),
+  // and the badge date must match it.
+  const dateShort = date.replace(/, \d{4}$/, '');
   // H-3 fix: label is passed in by the call site, derived from the actual
   // quote.state. Default is "CONFIRMED" (safe fallback for the doc-confirmed
   // state when no quoteState prop is provided). "ACCEPTED" is only set when

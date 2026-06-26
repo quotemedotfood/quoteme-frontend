@@ -5,7 +5,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router';
 import { useUser } from '../contexts/UserContext';
 import { useAuth } from '../contexts/AuthContext';
-import { updateCurrentUser, getBilling, createCheckoutSession, createPortalSession, sendPasswordReset, getLocations, addLocationToGroup, getLocationGroupBilling, createLocationGroupPortalSession, updateDistributorAdminSettings, getDistributorAdminSettings, getDistributorAdminBilling, type LocationItem, type DistributorAdminBilling } from '../services/api';
+import { updateCurrentUser, getBilling, createCheckoutSession, createPortalSession, sendPasswordReset, getLocations, addLocationToGroup, getLocationGroupBilling, createLocationGroupPortalSession, updateDistributorAdminSettings, getDistributorAdminSettings, getDistributorAdminBilling, uploadDistributorAdminLogo, type LocationItem, type DistributorAdminBilling } from '../services/api';
 import { AuthDrawer } from '../components/AuthDrawer';
 import { isBuyerRole } from '../utils/roles';
 import { shouldShowSubscribeCta, quotaDisplayText, billingPlanLabel } from '../utils/quotaGate';
@@ -126,6 +126,9 @@ export function SettingsPage() {
 
   // Track logo load failure so we can fall back to the initials placeholder
   const [logoLoadError, setLogoLoadError] = useState(false);
+  // Logo upload status (distributor_admin backend upload)
+  const [logoUploading, setLogoUploading] = useState(false);
+  const [logoUploadError, setLogoUploadError] = useState<string | null>(null);
 
   // Load rep_settings and avatar from authenticated user
   useEffect(() => {
@@ -278,9 +281,39 @@ export function SettingsPage() {
     setIsEditingDistributor(false);
   };
 
-  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const LOGO_ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+  const LOGO_MAX_BYTES = 5 * 1024 * 1024; // 5 MB
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
+    if (!file) return;
+    // Reset so same file can be re-selected after an error
+    e.target.value = '';
+
+    if (!LOGO_ALLOWED_TYPES.includes(file.type)) {
+      setLogoUploadError('Only JPEG, PNG, or WebP images are accepted.');
+      return;
+    }
+    if (file.size > LOGO_MAX_BYTES) {
+      setLogoUploadError('Image must be 5 MB or smaller.');
+      return;
+    }
+
+    setLogoUploadError(null);
+
+    if (isDistributorAdmin) {
+      // For distributor_admin: POST to backend
+      setLogoUploading(true);
+      const res = await uploadDistributorAdminLogo(file);
+      setLogoUploading(false);
+      if (res.error) {
+        setLogoUploadError(res.error);
+        return;
+      }
+      setLogoLoadError(false);
+      setCompanyLogo(res.data!.logo_url);
+    } else {
+      // For rep: local data URL only (saved on form submit via rep_settings)
       const reader = new FileReader();
       reader.onloadend = () => {
         setLogoLoadError(false);
@@ -651,21 +684,45 @@ export function SettingsPage() {
                       </div>
                     )}
                   </div>
-                  {isEditingDistributor && (
+                  {isDistributorAdmin && isEditingDistributor && (
+                    <div>
+                      <label className={`cursor-pointer${logoUploading ? ' opacity-60 pointer-events-none' : ''}`}>
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp"
+                          className="hidden"
+                          onChange={handleLogoUpload}
+                          disabled={logoUploading}
+                        />
+                        <div className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-3 mb-1">
+                          <Upload className="w-4 h-4 mr-2" />
+                          {logoUploading ? 'Uploading…' : 'Upload Logo'}
+                        </div>
+                      </label>
+                      <p className="text-xs text-[#4F4F4F]">JPEG, PNG, or WebP. Max 5 MB.</p>
+                      {logoUploadError && (
+                        <p className="text-xs mt-1" style={{ color: '#B91C1C' }}>{logoUploadError}</p>
+                      )}
+                    </div>
+                  )}
+                  {!isDistributorAdmin && !isBuyer && (
                     <div>
                       <label className="cursor-pointer">
                         <input
                           type="file"
-                          accept="image/png, image/jpeg"
+                          accept="image/jpeg,image/png,image/webp"
                           className="hidden"
                           onChange={handleLogoUpload}
                         />
                         <div className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-3 mb-1">
                           <Upload className="w-4 h-4 mr-2" />
-                          Upload Logo
+                          {companyLogo && !logoLoadError ? 'Replace Logo' : 'Upload Logo'}
                         </div>
                       </label>
-                      <p className="text-xs text-[#4F4F4F]">PNG, JPG (Max 2MB)</p>
+                      <p className="text-xs text-[#4F4F4F]">JPEG, PNG, or WebP. Max 5 MB.</p>
+                      {logoUploadError && (
+                        <p className="text-xs mt-1" style={{ color: '#B91C1C' }}>{logoUploadError}</p>
+                      )}
                     </div>
                   )}
                 </div>
@@ -1160,13 +1217,13 @@ export function SettingsPage() {
                       </p>
                     )}
                   </div>
-                  <div className="text-right">
-                    <p className="text-2xl text-[#2A2A2A]">
+                  <div className="flex items-baseline gap-0.5 justify-end">
+                    <span className="text-2xl text-[#2A2A2A]">
                       {(billingData?.has_paid_subscription ?? profile.hasPaidSubscription)
                         ? `$${billingData?.price_dollars ?? 29}`
                         : '$0'}
-                    </p>
-                    <p className="text-sm text-[#4F4F4F]">/{billingData?.interval || 'month'}</p>
+                    </span>
+                    <span className="text-sm text-[#4F4F4F]">/{billingData?.interval || 'month'}</span>
                   </div>
                 </div>
                 {billingData?.has_paid_subscription && billingData?.status && (

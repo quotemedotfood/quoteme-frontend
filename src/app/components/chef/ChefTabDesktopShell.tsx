@@ -14,7 +14,7 @@
 //   • CSS vars (--qm-*) → FE color constants.
 
 import React, { useState } from 'react';
-import { FileText, Settings, Home, PanelLeftClose, PanelLeftOpen, Plus, Truck, Layers, BookOpen } from 'lucide-react';
+import { FileText, Settings, Home, PanelLeftClose, PanelLeftOpen, Plus, Truck, BookOpen } from 'lucide-react';
 import quotemeLogo from '../../../assets/quoteme-logo.png';
 import { SidebarHelpInput } from './SidebarHelpInput';
 
@@ -229,13 +229,13 @@ function NewspaperSidebarStub({
                 <Icon size={18} strokeWidth={on ? 2 : 1.6} />
                 {!collapsed && <span>{item.label}</span>}
               </button>
-              {/* PR-3: My Stack sub-item — indented under Distributors */}
+              {/* B-124: Add distributor sub-item — indented under Distributors */}
               {item.id === 'distributors' && (
                 <button
                   type="button"
-                  onClick={() => onNav('tab-stack')}
-                  title={collapsed ? 'My Stack' : undefined}
-                  aria-label="My Stack"
+                  onClick={() => onNav('distributor-new')}
+                  title={collapsed ? 'Add distributor' : undefined}
+                  aria-label="Add distributor"
                   style={{
                     width: '100%',
                     textAlign: 'left',
@@ -256,8 +256,8 @@ function NewspaperSidebarStub({
                   onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = C.charcoal; }}
                   onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = C.gray500; }}
                 >
-                  <Layers size={15} strokeWidth={1.6} />
-                  {!collapsed && <span>My Stack</span>}
+                  <Plus size={15} strokeWidth={1.6} />
+                  {!collapsed && <span>Add distributor</span>}
                 </button>
               )}
             </React.Fragment>

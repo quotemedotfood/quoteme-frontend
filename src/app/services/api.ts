@@ -3595,6 +3595,20 @@ export async function getBrandMatches(menuId: string): Promise<ApiResponse<Brand
   });
 }
 
+// B-174: brand menu capture — extract raw text → get menu_id for /brand/matches
+export interface BrandMenuCreateResponse {
+  menu_id: string;
+  component_count: number;
+  status: string;
+}
+
+export async function createBrandMenu(rawText: string): Promise<ApiResponse<BrandMenuCreateResponse>> {
+  return fetchWithAuth('/api/v1/brand/menus', {
+    method: 'POST',
+    body: JSON.stringify({ raw_text: rawText }),
+  });
+}
+
 // ── Brand Packages ─────────────────────────────────────────────────────────
 
 export interface BrandPackageSummary {
@@ -3708,6 +3722,8 @@ export async function getBrandSecuredUploadLinks(): Promise<ApiResponse<BrandSec
 export async function createBrandSecuredUploadLink(data: {
   distributor_id?: string;
   distributor_name?: string;
+  contact_name?: string;
+  email?: string;
 }): Promise<ApiResponse<{
   token: string;
   url: string;
@@ -3761,4 +3777,58 @@ export async function disableBrandTeamMember(id: string): Promise<BrandTeamMembe
   });
   if (res.error) throw new Error('Failed to disable team member');
   return res.data as BrandTeamMember;
+}
+
+// ── Brand Logo Upload (B-181) ───────────────────────────────────────────────
+
+/** POST /api/v1/brand/branding/logo — brand user uploads own logo. */
+export async function uploadBrandLogo(file: File): Promise<ApiResponse<{ logo_url: string }>> {
+  const authToken = getAuthToken();
+  const headers: Record<string, string> = {};
+  if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
+
+  const formData = new FormData();
+  formData.append('logo', file);
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/v1/brand/branding/logo`, {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      return { error: errorData.error || `HTTP ${response.status}` };
+    }
+    return { data: await response.json() };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : 'Network error' };
+  }
+}
+
+// ── Distributor Admin Logo Upload (B-181) ───────────────────────────────────
+
+/** POST /api/v1/distributor_admin/settings/logo — dist-admin uploads own logo. */
+export async function uploadDistributorAdminLogo(file: File): Promise<ApiResponse<{ logo_url: string }>> {
+  const authToken = getAuthToken();
+  const headers: Record<string, string> = {};
+  if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
+
+  const formData = new FormData();
+  formData.append('logo', file);
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/v1/distributor_admin/settings/logo`, {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      return { error: errorData.error || `HTTP ${response.status}` };
+    }
+    return { data: await response.json() };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : 'Network error' };
+  }
 }

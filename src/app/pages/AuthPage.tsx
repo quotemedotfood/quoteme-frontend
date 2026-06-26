@@ -1054,7 +1054,7 @@ export function AuthPage() {
 
         <Button
           type="submit"
-          disabled={isSubmitting}
+          disabled={isSubmitting || !loginEmail.trim() || !loginPassword.trim()}
           className="w-full text-white"
           style={{ backgroundColor: '#7FAEC2' }}
           size="lg"

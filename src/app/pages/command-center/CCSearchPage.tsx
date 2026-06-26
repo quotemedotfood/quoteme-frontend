@@ -258,6 +258,21 @@ export function CCSearchPage() {
 
   const term = q.trim();
 
+  // B-176: Sync q state when the URL ?q= param changes.
+  // useState initializer only runs on mount — if the user submits a new query
+  // from the top CCSearchBar while already on this page, navigation lands on the
+  // same mounted component with a new searchParams value but stale q state.
+  // This effect detects the URL-driven change and updates q so the debounce
+  // useEffect fires and the search actually runs.
+  const urlQ = searchParams.get('q') ?? '';
+  useEffect(() => {
+    if (urlQ !== q) {
+      setQ(urlQ);
+    }
+    // Only re-run when the URL param changes, not when q changes (typing).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [urlQ]);
+
   // Debounced search: fires 300ms after last keystroke if term ≥ 2 chars
   const runSearch = useCallback((value: string) => {
     const t = value.trim();

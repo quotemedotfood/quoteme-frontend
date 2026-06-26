@@ -6,11 +6,14 @@
 //
 // No distributor wording. No rep-facing fields. No gradient colors.
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router';
 import { useAuth } from '../../contexts/AuthContext';
-import { updateCurrentUser } from '../../services/api';
+import { updateCurrentUser, uploadBrandLogo } from '../../services/api';
 import { BrandMark } from '../../components/brand/BrandPrimitives';
+
+const LOGO_ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+const LOGO_MAX_BYTES = 5 * 1024 * 1024; // 5 MB
 
 export function BrandSettingsPage() {
   const { user, refreshUser, logout } = useAuth();
@@ -21,6 +24,12 @@ export function BrandSettingsPage() {
   const [saving, setSaving]       = useState(false);
   const [success, setSuccess]     = useState(false);
   const [error, setError]         = useState<string | null>(null);
+
+  // Logo upload state
+  const [logoUrl, setLogoUrl]             = useState<string | null>(user?.brand?.logo_url ?? null);
+  const [logoUploading, setLogoUploading] = useState(false);
+  const [logoError, setLogoError]         = useState<string | null>(null);
+  const logoInputRef                      = useRef<HTMLInputElement>(null);
 
   const brandName = user?.brand?.name ?? user?.first_name ?? 'Brand';
   const brandCategory = user?.brand?.category ?? null;
@@ -35,6 +44,34 @@ export function BrandSettingsPage() {
     setSaving(false);
     if (res.error) { setError(res.error); return; }
     setSuccess(true);
+    await refreshUser();
+  };
+
+  const handleLogoFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    // Reset so same file can be re-selected after an error
+    e.target.value = '';
+
+    if (!LOGO_ALLOWED_TYPES.includes(file.type)) {
+      setLogoError('Only JPEG, PNG, or WebP images are accepted.');
+      return;
+    }
+    if (file.size > LOGO_MAX_BYTES) {
+      setLogoError('Image must be 5 MB or smaller.');
+      return;
+    }
+
+    setLogoError(null);
+    setLogoUploading(true);
+    const res = await uploadBrandLogo(file);
+    setLogoUploading(false);
+
+    if (res.error) {
+      setLogoError(res.error);
+      return;
+    }
+    setLogoUrl(res.data!.logo_url);
     await refreshUser();
   };
 
@@ -77,14 +114,58 @@ export function BrandSettingsPage() {
         <div>
           <Section title="LOGO">
             <div className="py-3.5 flex items-center gap-4">
-              <BrandMark mono={brandMono} size={56} radius={12} />
+              {/* Logo preview */}
+              {logoUrl ? (
+                <img
+                  src={logoUrl}
+                  alt={brandName}
+                  style={{
+                    width: 56,
+                    height: 56,
+                    borderRadius: 12,
+                    objectFit: 'contain',
+                    border: '1px solid var(--qm-soft-line)',
+                    flexShrink: 0,
+                  }}
+                />
+              ) : (
+                <BrandMark mono={brandMono} size={56} radius={12} />
+              )}
               <div className="min-w-0">
-                <button className="qm-btn qm-btn-outline" style={{ padding: '8px 14px', fontSize: 12.5 }}>
-                  Replace logo
+                {/* Hidden file input */}
+                <input
+                  ref={logoInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  className="hidden"
+                  onChange={handleLogoFileChange}
+                  disabled={logoUploading}
+                />
+                <button
+                  type="button"
+                  className="qm-btn qm-btn-outline"
+                  style={{
+                    padding: '8px 14px',
+                    fontSize: 12.5,
+                    opacity: logoUploading ? 0.6 : 1,
+                    cursor: logoUploading ? 'not-allowed' : 'pointer',
+                  }}
+                  onClick={() => logoInputRef.current?.click()}
+                  disabled={logoUploading}
+                >
+                  {logoUploading ? 'Uploading…' : logoUrl ? 'Replace logo' : 'Upload logo'}
                 </button>
                 <div className="text-[11px] ink-faint mt-1.5 leading-snug">
-                  Shown on your profile and across the network. PNG or SVG, square.
+                  JPEG, PNG, or WebP. Max 5 MB.
                 </div>
+                {logoError && (
+                  <div
+                    className="mt-1.5 text-[11.5px] px-2 py-1 rounded"
+                    style={{ color: '#B91C1C', background: '#FEF2F2' }}
+                  >
+                    {logoError}
+                  </div>
+                )}
               </div>
             </div>
           </Section>
