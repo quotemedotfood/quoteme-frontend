@@ -87,7 +87,31 @@ type RepRow = RepIncomingQuote & {
   _brandItems?: InboundBrandItem[] | null;
   /** The original inbound opportunity id (for convert call). */
   _opportunityId?: string | null;
+  /** P0-1: the Quote id this row navigates to for the rep quote detail. Real
+   * quote rows use q.id; inbound rows carry a feed/opportunity id in q.id, so
+   * their Quote target is captured here (kind 'quote' → the quote id; an
+   * opportunity with a Quote artifact → the artifact id). Null when the row maps
+   * to no Quote yet (Menu/BrandPackage/cold opportunity) — those must NOT route
+   * to /rep/quotes/:id, which 404s ("Couldn't find Quote"). */
+  _navQuoteId?: string | null;
 };
+
+/**
+ * P0-1: Resolve the Quote id a rep-inbound row should navigate to (rep quote
+ * detail = /rep/quotes/:id, which queries the Quote model), or null when the
+ * row maps to no Quote yet.
+ *
+ * - quote-kind inbound rows: row.id IS the quote id (serialize_inbound_quote).
+ * - opportunity rows: row.id is the InboundOpportunity id — only a Quote
+ *   artifact yields a real quote, so navigate to artifact.id.
+ * - Menu / BrandPackage / cold opportunities: no quote → null. Routing these to
+ *   /rep/quotes/:id produced "Couldn't find Quote with id=" 404s (P0-1).
+ */
+export function resolveInboundNavQuoteId(row: InboundRow): string | null {
+  if (row.kind === 'quote') return row.id;
+  if (row.artifact?.type === 'Quote' && row.artifact?.id) return row.artifact.id;
+  return null;
+}
 
 // ─── Adapter: InboundRow → RepRow ────────────────────────────────────────────
 function adaptInboundRow(row: InboundRow): RepRow {
@@ -122,6 +146,9 @@ function adaptInboundRow(row: InboundRow): RepRow {
     _brandItems: row.brand_items ?? null,
     // Keep the raw opportunity id so the convert call can target it directly.
     _opportunityId: row.kind === 'opportunity' ? row.id : null,
+    // P0-1: resolve the real Quote id to navigate to (null when the row maps to
+    // no Quote — see resolveInboundNavQuoteId).
+    _navQuoteId: resolveInboundNavQuoteId(row),
   };
 }
 
@@ -484,12 +511,15 @@ function TriageRow({
   // other than the fallback 'Inbound') or if _sourceLabel is 'quote'. Opportunity
   // rows come through with label='Inbound' and no artifact name.
   const isInbound = !!q._inbound;
-  const isInboundQuote = isInbound && (
-    (q.label && q.label !== 'Inbound') ||
-    q._sourceLabel === 'quote'
-  );
+  // P0-1: the quote-detail target. Non-inbound rows carry a real Quote id in
+  // q.id; inbound rows resolve to _navQuoteId (null unless they actually map to
+  // a Quote). This replaces the old `label !== 'Inbound'` heuristic, which
+  // wrongly treated every artifact-bearing opportunity (Menu/BrandPackage) as a
+  // quote and routed it to /rep/quotes/:id → 404.
+  const quoteNavId: string | null = isInbound ? (q._navQuoteId ?? null) : q.id;
+  const isInboundQuote = isInbound && !!quoteNavId;
   const isBrandPackageOpp = isInbound && !isInboundQuote && !!(q._brandItems);
-  const isClickable = !isDone && (!isInbound || isInboundQuote);
+  const isClickable = !isDone && !!quoteNavId && (!isInbound || isInboundQuote);
 
   const flags = q._flags ?? [];
 
@@ -519,8 +549,8 @@ function TriageRow({
         opacity: isDone ? 0.7 : 1,
         cursor: isClickable ? 'pointer' : 'default',
       }}
-      onClick={() => isClickable && nav('rep-incoming', { quoteId: q.id })}
-      onKeyDown={(e) => { if (isClickable && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); nav('rep-incoming', { quoteId: q.id }); } }}
+      onClick={() => isClickable && quoteNavId && nav('rep-incoming', { quoteId: quoteNavId })}
+      onKeyDown={(e) => { if (isClickable && quoteNavId && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); nav('rep-incoming', { quoteId: quoteNavId }); } }}
     >
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
@@ -604,7 +634,7 @@ function TriageRow({
       {!isDone && (!isInbound || isInboundQuote) ? (
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
           <RowIconBtn
-            onClick={(e) => { e.stopPropagation(); nav('rep-incoming', { quoteId: q.id }); }}
+            onClick={(e) => { e.stopPropagation(); if (quoteNavId) nav('rep-incoming', { quoteId: quoteNavId }); }}
             color="var(--accent, #7FAEC2)"
             bg="rgba(127,174,194,.10)"
             border="rgba(127,174,194,.55)"
@@ -612,7 +642,7 @@ function TriageRow({
             icon={<SquarePen size={13} color="var(--accent, #7FAEC2)" strokeWidth={1.8} />}
           />
           <RowIconBtn
-            onClick={(e) => { e.stopPropagation(); nav('rep-pricing', { quoteId: q.id }); }}
+            onClick={(e) => { e.stopPropagation(); if (quoteNavId) nav('rep-pricing', { quoteId: quoteNavId }); }}
             color="#fff"
             bg="var(--primary)"
             border="var(--primary)"
@@ -620,10 +650,10 @@ function TriageRow({
             icon={<DollarSign size={13} color="#fff" strokeWidth={1.8} />}
           />
         </span>
-      ) : isDone ? (
+      ) : isDone && quoteNavId ? (
         <button
           type="button"
-          onClick={(e) => { e.stopPropagation(); nav('rep-incoming', { quoteId: q.id }); }}
+          onClick={(e) => { e.stopPropagation(); if (quoteNavId) nav('rep-incoming', { quoteId: quoteNavId }); }}
           style={{
             ...sans, display: 'inline-flex', alignItems: 'center', gap: 2,
             fontSize: 11, color: C.gray500, background: 'none', border: 'none', cursor: 'pointer', flexShrink: 0,
