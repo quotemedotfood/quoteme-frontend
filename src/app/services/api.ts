@@ -3722,6 +3722,8 @@ export async function getBrandSecuredUploadLinks(): Promise<ApiResponse<BrandSec
 export async function createBrandSecuredUploadLink(data: {
   distributor_id?: string;
   distributor_name?: string;
+  contact_name?: string;
+  email?: string;
 }): Promise<ApiResponse<{
   token: string;
   url: string;

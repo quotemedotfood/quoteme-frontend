@@ -90,7 +90,11 @@ export function BrandDistributorsPage() {
     setMintError(null);
     setMinting(true);
     setMintedUrl(null);
-    const res = await createBrandSecuredUploadLink({ distributor_name: mintName.trim() });
+    const res = await createBrandSecuredUploadLink({
+      distributor_name: mintName.trim(),
+      ...(mintContactName.trim() ? { contact_name: mintContactName.trim() } : {}),
+      ...(mintEmail.trim() ? { email: mintEmail.trim() } : {}),
+    });
     setMinting(false);
     if (res.error) { setMintError(res.error); return; }
     setMintedUrl(res.data?.url ?? null);
