@@ -1197,13 +1197,13 @@ export function SettingsPage() {
                       </p>
                     )}
                   </div>
-                  <div className="text-right">
-                    <p className="text-2xl text-[#2A2A2A]">
+                  <div className="flex items-baseline gap-0.5 justify-end">
+                    <span className="text-2xl text-[#2A2A2A]">
                       {(billingData?.has_paid_subscription ?? profile.hasPaidSubscription)
                         ? `$${billingData?.price_dollars ?? 29}`
                         : '$0'}
-                    </p>
-                    <p className="text-sm text-[#4F4F4F]">/{billingData?.interval || 'month'}</p>
+                    </span>
+                    <span className="text-sm text-[#4F4F4F]">/{billingData?.interval || 'month'}</span>
                   </div>
                 </div>
                 {billingData?.has_paid_subscription && billingData?.status && (
