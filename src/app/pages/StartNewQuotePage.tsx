@@ -7,6 +7,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router';
 import { Checkbox } from '../components/ui/checkbox';
 import { useUser } from '../contexts/UserContext';
+import { isGuestVisitor } from '../utils/guestSession';
 import { useLocation2 } from '../contexts/LocationContext';
 import { useAuth } from '../contexts/AuthContext';
 import { UpgradeDrawer } from '../components/UpgradeDrawer';
@@ -140,7 +141,13 @@ export function StartNewQuotePage() {
   const { selectedLocation } = useLocation2();
   const { user, refreshUser } = useAuth();
   const isBuyerRole = checkBuyerRole(user?.role);
-  const isGuest = profile.isGuest || localStorage.getItem('quoteme_token') === null;
+  // B-182: an authenticated user (rep / distributor_admin / quoteme_admin / chef —
+  // anyone holding a real bearer token or a loaded user) is NEVER a guest, even
+  // if a stale profile.isGuest flag lingers. The previous
+  // `profile.isGuest || token===null` let that stale flag flip a logged-in rep
+  // into the guest flow, which then created a guest session and overwrote their
+  // identity with "Guest User" / "Guest Distributor" (silent session bleed).
+  const isGuest = isGuestVisitor(user, localStorage.getItem('quoteme_token'));
   const [isCreatingQuote, setIsCreatingQuote] = useState(false);
   const [serviceBusy, setServiceBusy] = useState(false);
   const [lastAction, setLastAction] = useState<'match' | 'skip' | null>(null);
