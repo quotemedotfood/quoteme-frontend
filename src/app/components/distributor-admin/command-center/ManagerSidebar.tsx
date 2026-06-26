@@ -36,6 +36,7 @@ import {
 } from 'lucide-react';
 import { SACRED_ORANGE, sans, serif, C } from './cc-atoms';
 import { useAuth } from '../../../contexts/AuthContext';
+import { HelpField } from '../../HelpField';
 
 export type CCActiveTab =
   | 'today'
@@ -582,6 +583,7 @@ export function ManagerSidebar({
           </button>
         </div>
 
+        <HelpField collapsed={collapsed} lane="cc" />
         <CCNavItem
           icon={Settings}
           label="Settings"

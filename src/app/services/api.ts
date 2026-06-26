@@ -2513,6 +2513,17 @@ export async function sendChefQuestion(quoteId: string, message: string): Promis
   });
 }
 
+export async function escalateHelp(
+  message: string,
+  source: string,
+  context?: object,
+): Promise<ApiResponse<{ ok: boolean; target?: string; error?: string }>> {
+  return fetchWithAuth(`/api/v1/help/escalate`, {
+    method: 'POST',
+    body: JSON.stringify({ message, source, context }),
+  });
+}
+
 export interface OrderGuideResponse {
   id: string;
   status: string;
