@@ -57,10 +57,16 @@ export function HelpField({ collapsed, lane }: HelpFieldProps) {
     } else {
       // rep / cc / brand
       setQuestion('');
-      await escalateHelp(trimmed, `${lane}-sidebar`);
       // TODO B-183 slice 2: FAQ surface renders here before escalation
-      setConfirmation("Sent to the QuoteMe team — we'll follow up.");
-      setTimeout(() => setConfirmation(''), 3000);
+      const res = await escalateHelp(trimmed, `${lane}-sidebar`);
+      // Honor the result — don't claim "Sent" if the escalation didn't reach Slack
+      // (e.g. SLACK_BOT_TOKEN not configured yet → BE returns ok:false).
+      setConfirmation(
+        res.data?.ok
+          ? "Sent to the QuoteMe team — we'll follow up."
+          : "Couldn't reach the team just now — please try again.",
+      );
+      setTimeout(() => setConfirmation(''), 4000);
     }
   }
 
@@ -91,10 +97,15 @@ export function HelpField({ collapsed, lane }: HelpFieldProps) {
                 setPendingQuestion('How can I get help?');
                 setDrawerOpen(true);
               } else {
-                escalateHelp('Help request from sidebar (collapsed)', `${lane}-sidebar`);
                 // TODO B-183 slice 2: FAQ surface renders here before escalation
-                setConfirmation("Sent to the QuoteMe team — we'll follow up.");
-                setTimeout(() => setConfirmation(''), 3000);
+                escalateHelp('Help request from sidebar (collapsed)', `${lane}-sidebar`).then((res) => {
+                  setConfirmation(
+                    res.data?.ok
+                      ? "Sent to the QuoteMe team — we'll follow up."
+                      : "Couldn't reach the team just now — please try again.",
+                  );
+                  setTimeout(() => setConfirmation(''), 4000);
+                });
               }
             }}
             style={{
