@@ -93,6 +93,10 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   async function initGuestSessionInternal() {
+    // B-182: never initialize a guest session for an authenticated user. A real
+    // bearer token (rep/admin/chef) must not be shadowed by a guest session —
+    // doing so bled the rep's identity into "Guest User"/"Guest Distributor".
+    if (localStorage.getItem('quoteme_token')) return;
     const existingToken = localStorage.getItem('quoteme_guest_token');
     if (existingToken) {
       const response = await getGuestSession(existingToken);
