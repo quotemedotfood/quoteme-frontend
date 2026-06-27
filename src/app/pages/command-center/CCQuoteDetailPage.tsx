@@ -243,7 +243,7 @@ export function CCQuoteDetailPage() {
         onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = C.gray700; }}
       >
         <ChevronLeft size={14} strokeWidth={1.6} />
-        Rep activity
+        Command Center
       </button>
 
       <div style={{ maxWidth: 740 }}>
