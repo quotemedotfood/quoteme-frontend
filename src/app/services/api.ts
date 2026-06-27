@@ -3388,7 +3388,16 @@ export interface ChefStackResponse {
 }
 
 export async function getChefStack(): Promise<ApiResponse<ChefStackResponse>> {
-  return fetchWithAuth('/api/v1/chef/stack');
+  const res = await fetchWithAuth<ChefStackResponse | { stack: null }>('/api/v1/chef/stack');
+  // NF-5: the BE returns { stack: null } (a truthy object with NO pins array)
+  // when the chef has no stack yet, but a flat ChefStackResponse when one
+  // exists. Normalize the stackless case to absent data so consumers always get
+  // either a real stack (with pins) or undefined — never an object to deref
+  // `.pins` on.
+  if (res.data && !Array.isArray((res.data as ChefStackResponse).pins)) {
+    return { ...res, data: undefined };
+  }
+  return res as ApiResponse<ChefStackResponse>;
 }
 
 export async function createChefStack(): Promise<ApiResponse<ChefStackResponse>> {
