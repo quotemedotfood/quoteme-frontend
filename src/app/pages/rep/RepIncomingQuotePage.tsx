@@ -505,6 +505,8 @@ export function RepIncomingQuotePage() {
           isEmptyMenu={isEmptyMenu}
           chefRequestMessage={chefRequestMessage}
           restaurantContact={quote?.restaurant_contact ?? null}
+          backTo={backTo}
+          navigate={navigate}
         />
       </div>
       <div className="block md:hidden">
@@ -540,6 +542,8 @@ function RepDesktopQuoteView({
   isEmptyMenu,
   chefRequestMessage,
   restaurantContact,
+  backTo,
+  navigate,
 }: {
   quote: QuoteResponse | null;
   quoteId: string;
@@ -565,6 +569,8 @@ function RepDesktopQuoteView({
   isEmptyMenu: boolean;
   chefRequestMessage?: string | null;
   restaurantContact?: QuoteRestaurantContact | null;
+  backTo: string;
+  navigate: (path: string) => void;
 }) {
   return (
     <div style={{ maxWidth: 900 }}>
