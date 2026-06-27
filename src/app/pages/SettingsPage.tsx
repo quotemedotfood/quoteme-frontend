@@ -1217,13 +1217,14 @@ export function SettingsPage() {
                       </p>
                     )}
                   </div>
-                  <div className="flex items-baseline gap-0.5 justify-end">
+                  <div className="flex items-baseline justify-end">
+                    {/* B-173: compose price + interval into a single node so the
+                        "/month" suffix never floats as a separate DOM element. */}
                     <span className="text-2xl text-[#2A2A2A]">
                       {(billingData?.has_paid_subscription ?? profile.hasPaidSubscription)
-                        ? `$${billingData?.price_dollars ?? 29}`
-                        : '$0'}
+                        ? `$${billingData?.price_dollars ?? 29}/${billingData?.interval || 'month'}`
+                        : '$0/month'}
                     </span>
-                    <span className="text-sm text-[#4F4F4F]">/{billingData?.interval || 'month'}</span>
                   </div>
                 </div>
                 {billingData?.has_paid_subscription && billingData?.status && (
