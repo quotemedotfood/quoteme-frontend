@@ -517,7 +517,9 @@ export function RepIncomingQuotePage() {
 }
 
 // ─── Desktop quote view (inner body inside shell) ──────────────────────────
-function RepDesktopQuoteView({
+// Exported for the B-183 render regression test (asserts the back-nav
+// breadcrumb resolves backTo/navigate from props, not an out-of-scope binding).
+export function RepDesktopQuoteView({
   quote,
   quoteId,
   lines,
