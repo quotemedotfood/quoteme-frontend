@@ -789,7 +789,7 @@ export function StartNewQuotePage() {
         <p className="text-lg font-medium text-[#2A2A2A]" style={{ fontFamily: "'DM Sans', sans-serif" }}>
           {['Reading menu...', 'Extracting ingredients...', 'Matching to catalog...', 'Building your quote...', 'Almost there...', 'So close...'][loadingPhase]}
         </p>
-        <p className="text-sm text-gray-400 mt-2">This usually takes 15-30 seconds</p>
+        <p className="text-sm text-gray-400 mt-2">This usually takes 15–60 seconds</p>
       </div>
     );
   }

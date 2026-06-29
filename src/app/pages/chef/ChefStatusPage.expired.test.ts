@@ -5,7 +5,7 @@
 // B-127: expired-state action helpers — Sign in href, resend button enable/label.
 
 import { describe, it, expect } from 'vitest';
-import { isSessionExpiredResponse, isResendEnabled, resendButtonLabel, SIGN_IN_HREF } from './ChefStatusPage';
+import { isSessionExpiredResponse, isQuoteNotFoundResponse, isResendEnabled, resendButtonLabel, SIGN_IN_HREF } from './ChefStatusPage';
 
 describe('isSessionExpiredResponse', () => {
   it('returns true for a 401 status code', () => {
@@ -34,6 +34,28 @@ describe('isSessionExpiredResponse', () => {
 
   it('returns false when status is undefined but no expired error string', () => {
     expect(isSessionExpiredResponse({ error: 'Network error' })).toBe(false);
+  });
+});
+
+describe('isQuoteNotFoundResponse', () => {
+  it('returns true for 404 (quote not found)', () => {
+    expect(isQuoteNotFoundResponse({ status: 404 })).toBe(true);
+  });
+
+  it('returns true for 400 (malformed id)', () => {
+    expect(isQuoteNotFoundResponse({ status: 400 })).toBe(true);
+  });
+
+  it('returns true for 500 (invalid UUID can surface as server error)', () => {
+    expect(isQuoteNotFoundResponse({ status: 500 })).toBe(true);
+  });
+
+  it('returns false for 401 (session expired — different handler)', () => {
+    expect(isQuoteNotFoundResponse({ status: 401 })).toBe(false);
+  });
+
+  it('returns false when status is absent (in-progress poll)', () => {
+    expect(isQuoteNotFoundResponse({})).toBe(false);
   });
 });
 
