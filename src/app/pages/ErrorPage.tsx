@@ -1,10 +1,11 @@
-import { useRouteError, isRouteErrorResponse, useNavigate } from "react-router";
+import { useRouteError, isRouteErrorResponse, useNavigate, useLocation } from "react-router";
 import { Button } from "../components/ui/button";
 import { AlertTriangle } from "lucide-react";
 
 export function ErrorPage() {
   const error = useRouteError();
   const navigate = useNavigate();
+  const location = useLocation();
   let errorMessage: string;
 
   if (isRouteErrorResponse(error)) {
@@ -18,6 +19,11 @@ export function ErrorPage() {
     console.error(error);
     errorMessage = 'Unknown error';
   }
+
+  const isChefSurface =
+    location.pathname.startsWith('/chef') || location.pathname.startsWith('/d/');
+  const primaryLabel = isChefSurface ? 'Start over' : 'Return to Dashboard';
+  const primaryPath = isChefSurface ? '/chef/distributor/new' : '/dashboard';
 
   return (
     <div className="min-h-screen bg-[#FFF9F3] flex flex-col items-center justify-center p-4">
@@ -41,9 +47,9 @@ export function ErrorPage() {
         <div className="space-y-3">
           <Button 
             className="w-full bg-[#7FAEC2] hover:bg-[#6A9AB0] text-white"
-            onClick={() => navigate('/dashboard')}
+            onClick={() => navigate(primaryPath)}
           >
-            Return to Dashboard
+            {primaryLabel}
           </Button>
           <Button 
             variant="outline" 

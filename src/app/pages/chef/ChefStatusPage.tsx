@@ -116,6 +116,11 @@ export function isSessionExpiredResponse(res: { status?: number; error?: string 
   return false;
 }
 
+// Quote missing or invalid — stop polling and route to receipt error UX.
+export function isQuoteNotFoundResponse(res: { status?: number }): boolean {
+  return res.status === 404 || res.status === 400 || res.status === 500;
+}
+
 // ─── B-127: Expired-state action helpers ─────────────────────────────────────
 // Pure helpers exported for unit testing — no DOM or React needed.
 
@@ -164,6 +169,11 @@ export function ChefStatusPage({ onTimeout }: ChefStatusPageProps = {}) {
   const [resendState, setResendState] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const stuckTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const currentStepRef = useRef(0);
+
+  useEffect(() => {
+    currentStepRef.current = currentStep;
+  }, [currentStep]);
 
   // c144 — restore menu draft from router state into localStorage so recovery
   // paths (a) and (b) can retrieve it. ChefEntryPage's pasteText onChange also
@@ -211,16 +221,35 @@ export function ChefStatusPage({ onTimeout }: ChefStatusPageProps = {}) {
         return;
       }
 
+      // B-STATUS-01: invalid or missing quote — receipt page shows "not available".
+      if (isQuoteNotFoundResponse(res)) {
+        if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
+        if (stuckTimerRef.current) { clearTimeout(stuckTimerRef.current); stuckTimerRef.current = null; }
+        navigate(`/chef/quotes/${id}`, { replace: true });
+        return;
+      }
+
       if (res.data) {
         const wasFirstPoll = !firstPollDone;
 
-        // C-03: revisiting an already-finished quote should land on the receipt
-        // immediately — no blank Step-1 flash and no FINAL_STEP_DISPLAY_MS delay.
-        if (wasFirstPoll && isQuoteComplete(res.data)) {
+        function finishAndNavigate(immediate: boolean) {
           if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
           if (stuckTimerRef.current) { clearTimeout(stuckTimerRef.current); stuckTimerRef.current = null; }
           localStorage.removeItem(MENU_DRAFT_KEY);
-          navigate(`/chef/quotes/${id}`, { replace: true });
+          if (immediate) {
+            navigate(`/chef/quotes/${id}`, { replace: true });
+          } else {
+            setCurrentStep(2);
+            setTimeout(() => { navigate(`/chef/quotes/${id}`, { replace: true }); }, FINAL_STEP_DISPLAY_MS);
+          }
+        }
+
+        // C-03: revisiting an already-finished quote should land on the receipt
+        // immediately — no blank Step-1 flash and no FINAL_STEP_DISPLAY_MS delay.
+        // Also handles a transient first-poll failure or a minimal first payload.
+        if (isQuoteComplete(res.data)) {
+          const revisit = wasFirstPoll || currentStepRef.current === 0;
+          finishAndNavigate(revisit);
           return;
         }
 
@@ -243,7 +272,7 @@ export function ChefStatusPage({ onTimeout }: ChefStatusPageProps = {}) {
         // Track 22: drive step progression from real backend processing_stage.
         const stage = res.data.processing_stage;
 
-        if (stage && !isQuoteComplete(res.data)) {
+        if (stage) {
           // Stage-driven path — quote was created via the async Track 22 flow.
           if (stage === 'extracting_dishes') {
             setCurrentStep(0);
@@ -258,34 +287,12 @@ export function ChefStatusPage({ onTimeout }: ChefStatusPageProps = {}) {
             setIsStuck(true);
             return;
           } else if (stage === 'complete') {
-            if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
-            if (stuckTimerRef.current) { clearTimeout(stuckTimerRef.current); stuckTimerRef.current = null; }
-            localStorage.removeItem(MENU_DRAFT_KEY);
-            setCurrentStep(2);
-            setTimeout(() => { navigate(`/chef/quotes/${id}`); }, FINAL_STEP_DISPLAY_MS);
+            finishAndNavigate(false);
             return;
           }
         } else {
           // Fallback: legacy behavior — advance by line count.
-          // Handles quotes already in-flight at the time of Track 22 deploy,
-          // or quotes reached directly via /chef/status/:id without async creation.
-          // firstPollDone is already true at this point (set in the block above), so
-          // we check it before this block to set step 1 on the first successful poll.
           setCurrentStep((prev) => Math.max(prev, 1));
-
-          const done =
-            (res.data.lines && res.data.lines.length > 0) ||
-            (res.data.status &&
-              res.data.status !== 'draft' &&
-              res.data.status !== 'processing');
-
-          if (done) {
-            if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
-            if (stuckTimerRef.current) { clearTimeout(stuckTimerRef.current); stuckTimerRef.current = null; }
-            localStorage.removeItem(MENU_DRAFT_KEY);
-            setCurrentStep(2);
-            setTimeout(() => { navigate(`/chef/quotes/${id}`); }, FINAL_STEP_DISPLAY_MS);
-          }
         }
       }
     }
@@ -430,7 +437,7 @@ export function ChefStatusPage({ onTimeout }: ChefStatusPageProps = {}) {
             Building your quote
           </h1>
           <p className="text-[#4F4F4F] text-sm">
-            This usually takes about 30 seconds.
+            This usually takes about 30–60 seconds.
           </p>
         </div>
 

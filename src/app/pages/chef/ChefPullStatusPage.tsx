@@ -18,6 +18,7 @@ import { useParams, useNavigate, useLocation } from 'react-router';
 import { getPullQuote, type PullQuoteDistributor } from '../../services/api';
 import { StuckRecoveryScreen, MENU_DRAFT_KEY } from '../../components/chef/StuckRecoveryScreen';
 import { PullDistributorAnchor } from '../../components/chef/PullDistributorAnchor';
+import { isQuoteNotFoundResponse } from './ChefStatusPage';
 
 // ─── Timeout threshold ────────────────────────────────────────────────────────
 const STUCK_AFTER_MS = 60_000;
@@ -164,6 +165,14 @@ export function ChefPullStatusPage() {
       if (!id) return;
       const res = await getPullQuote(id);
 
+      // Invalid or missing pull quote — receipt page shows error UX.
+      if (isQuoteNotFoundResponse(res)) {
+        if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
+        if (stuckTimerRef.current) { clearTimeout(stuckTimerRef.current); stuckTimerRef.current = null; }
+        navigate(`/chef/pull/receipt/${id}`, { replace: true });
+        return;
+      }
+
       if (res.data) {
         if (!firstPollDone) {
           firstPollDone = true;
@@ -252,8 +261,8 @@ export function ChefPullStatusPage() {
             </h1>
             <p className="text-[#4F4F4F] text-sm">
               {affiliated
-                ? 'This usually takes about 30 seconds.'
-                : 'This usually takes about 30 seconds.'}
+                ? 'This usually takes about 30–60 seconds.'
+                : 'This usually takes about 30–60 seconds.'}
             </p>
           </div>
 
