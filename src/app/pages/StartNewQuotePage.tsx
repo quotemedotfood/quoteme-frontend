@@ -12,7 +12,7 @@ import { useLocation2 } from '../contexts/LocationContext';
 import { useAuth } from '../contexts/AuthContext';
 import { UpgradeDrawer } from '../components/UpgradeDrawer';
 import { CategoryReviewPanel } from '../components/CategoryReviewPanel';
-import { createMenu, createGuestQuote, extractMenuText, getCatalogs, uploadCatalogFile, getRestaurants, getRestaurant, getStockQuotes, generateFromStockQuote, getDemoDistributor, getClassificationStatus, getQuotes, getMenuStatus, updateCurrentUser } from '../services/api';
+import { createMenu, createGuestQuote, extractMenuText, getCatalogs, uploadCatalogFile, getRestaurants, getRestaurant, createRestaurant, createContact, getStockQuotes, generateFromStockQuote, getDemoDistributor, getClassificationStatus, getQuotes, getMenuStatus, updateCurrentUser } from '../services/api';
 import type { CatalogSummary, RestaurantSummary, RestaurantDetail, StockQuoteResponse } from '../services/api';
 import { isDemoMode, isLiquorDemo, demoType } from '../utils/demoMode';
 import { isBuyerRole as checkBuyerRole } from '../utils/roles';
@@ -130,6 +130,7 @@ export function StartNewQuotePage() {
   const [restaurants, setRestaurants] = useState<RestaurantSummary[]>([]);
   const [selectedRestaurant, setSelectedRestaurant] = useState<RestaurantDetail | null>(null);
   const [restaurantsLoading, setRestaurantsLoading] = useState(false);
+  const [isSavingRestaurant, setIsSavingRestaurant] = useState(false);
   const [selectedContactIds, setSelectedContactIds] = useState<string[]>([]);
   const [menuPreviewText, setMenuPreviewText] = useState('');
   const [pasteText, setPasteText] = useState('');
@@ -753,6 +754,70 @@ export function StartNewQuotePage() {
     } else {
       setSelectedRestaurant(null);
       setSelectedContactIds([]);
+    }
+  };
+
+  // H4: the "Save Restaurant" button used to be a no-op (just closed the
+  // drawer), so Customer Information never populated. Wire it to actually
+  // persist the restaurant + primary contact, then select it (mirrors
+  // handleRestaurantChange) so the Customer Information panel fills in.
+  const handleSaveRestaurant = async () => {
+    const fieldValue = (id: string) => {
+      const el = document.getElementById(id) as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement | null;
+      return el?.value.trim() ?? '';
+    };
+
+    const name = fieldValue('new-restaurant-name');
+    if (!name) {
+      setError('Restaurant name is required.');
+      return;
+    }
+
+    setIsSavingRestaurant(true);
+    setError(null);
+    try {
+      const created = await createRestaurant({
+        name,
+        address_line_1: fieldValue('new-street-address') || undefined,
+        city: fieldValue('new-city') || undefined,
+        state: fieldValue('new-state') || undefined,
+        zip: fieldValue('new-zip') || undefined,
+      });
+      if (!created.data) {
+        setError('Failed to save restaurant. Please try again.');
+        return;
+      }
+      const restaurantId = created.data.id;
+
+      // Create the primary contact if any contact detail was entered.
+      const contactName = fieldValue('new-contact-name');
+      const email = fieldValue('new-email');
+      const phone = fieldValue('new-phone');
+      if (contactName || email || phone) {
+        const [firstName, ...lastParts] = contactName.split(/\s+/);
+        await createContact(restaurantId, {
+          first_name: firstName || contactName || email || 'Contact',
+          last_name: lastParts.join(' '),
+          email: email || undefined,
+          phone: phone || undefined,
+          is_primary: true,
+        });
+      }
+
+      // Refresh the dropdown and select the new restaurant so Customer
+      // Information populates (same path as handleRestaurantChange).
+      const listRes = await getRestaurants();
+      if (listRes.data) setRestaurants(listRes.data);
+      const detail = await getRestaurant(restaurantId);
+      if (detail.data) {
+        setSelectedRestaurant(detail.data);
+        setSelectedContactIds(detail.data.contacts.length === 1 ? [detail.data.contacts[0].id] : []);
+      }
+      setIsAddRestaurantOpen(false);
+    } catch {
+      setError('Failed to save restaurant. Please try again.');
+    } finally {
+      setIsSavingRestaurant(false);
     }
   };
 
@@ -1707,9 +1772,9 @@ export function StartNewQuotePage() {
               </div>
             </div>
             <div className="sticky bottom-0 bg-white border-t border-gray-200 px-6 py-4 flex gap-3 justify-end">
-              <Button variant="outline" onClick={() => setIsAddRestaurantOpen(false)}>Cancel</Button>
-              <Button className="bg-[#A5CFDD] hover:bg-[#7FAEC2] text-white" onClick={() => setIsAddRestaurantOpen(false)}>
-                Save Restaurant
+              <Button variant="outline" onClick={() => setIsAddRestaurantOpen(false)} disabled={isSavingRestaurant}>Cancel</Button>
+              <Button className="bg-[#A5CFDD] hover:bg-[#7FAEC2] text-white" onClick={handleSaveRestaurant} disabled={isSavingRestaurant}>
+                {isSavingRestaurant ? 'Saving…' : 'Save Restaurant'}
               </Button>
             </div>
           </div>
