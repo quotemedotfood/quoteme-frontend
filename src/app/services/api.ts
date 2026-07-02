@@ -244,6 +244,13 @@ export interface QuoteResponse {
   detected_concept?: string | null;
   concept_review_required?: boolean | null;
   order_guide_id?: string;
+  /** Root 1 CONFIRM→SEND state machine (BE PR #197). Present on the
+   * rep confirm/send responses. `has_chef_contact` is false for OPEN
+   * quotes (no chef contact) — confirm does NOT send them; the FE then
+   * reveals a post-confirm recipient-email + Send affordance.
+   * `chef_recipient_email` prefills that input when present. */
+  has_chef_contact?: boolean;
+  chef_recipient_email?: string | null;
 }
 
 export interface QuoteLineResponse {
@@ -3044,6 +3051,25 @@ export async function repPriceQuote(
 export async function repConfirmQuote(id: string): Promise<ApiResponse<QuoteResponse>> {
   return fetchWithAuth<QuoteResponse>(`/api/v1/rep/quotes/${id}/confirm`, {
     method: 'POST',
+  });
+}
+
+/**
+ * repSendQuote — POST /api/v1/rep/quotes/:id/send (Bearer auth)
+ *
+ * Root 1 CONFIRM→SEND state machine (BE PR #197). Sends an OPEN quote
+ * (one with no chef contact) to an explicit recipient email. Returns the
+ * updated quote with status "sent". Returns 422 { error } for a missing or
+ * invalid email; 401 unauthenticated. Mirrors repConfirmQuote's shape and
+ * error handling (fetchWithAuth surfaces non-2xx as { error, status }).
+ */
+export async function repSendQuote(
+  id: string,
+  recipientEmail: string,
+): Promise<ApiResponse<QuoteResponse>> {
+  return fetchWithAuth<QuoteResponse>(`/api/v1/rep/quotes/${id}/send`, {
+    method: 'POST',
+    body: JSON.stringify({ recipient_email: recipientEmail }),
   });
 }
 
