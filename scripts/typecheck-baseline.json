@@ -1,0 +1,21 @@
+{
+  "src/app/components/AuthSyncProvider.tsx::TS2339::Property '…' does not exist on type '…'.": 1,
+  "src/app/components/chef/ChefTabDesktopShell.tsx::TS2322::Type '…' is not assignable to type '…'.": 5,
+  "src/app/components/chef/QuoteStateDocument.tsx::TS2322::Type '…' is not assignable to type '…'.": 1,
+  "src/app/components/distributor-admin/command-center/ManagerSidebar.tsx::TS2322::Type '…' is not assignable to type '…'.": 6,
+  "src/app/components/distributor-admin/command-center/cc-atoms.tsx::TS2322::Type '…' is not assignable to type '…'.": 4,
+  "src/app/components/newspaper/NewspaperShell.tsx::TS2320::Interface '…' cannot simultaneously extend types '…' and '…'.": 1,
+  "src/app/components/rep/RepDesktopShell.tsx::TS2322::Type '…' is not assignable to type '…'.": 4,
+  "src/app/components/stack/StackProductDrawer.tsx::TS2339::Property '…' does not exist on type '…'.": 12,
+  "src/app/pages/AuthPage.tsx::TS2352::Conversion of type '…' to type '…' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to '…' first.": 1,
+  "src/app/pages/LocationPage.tsx::TS2551::Property '…' does not exist on type '…'. Did you mean '…'?": 4,
+  "src/app/pages/admin/QMAdminConferenceCommand.tsx::TS2322::Type '…' is not assignable to type '…'.": 2,
+  "src/app/pages/admin/QMAdminConferenceCommand.tsx::TS2339::Property '…' does not exist on type '…'.": 1,
+  "src/app/pages/admin/QMAdminMatchingEngine.tsx::TS2322::Type '…' is not assignable to type '…'.": 12,
+  "src/app/pages/admin/_clusterListTab.tsx::TS2322::Type '…' is not assignable to type '…'.": 5,
+  "src/app/pages/brand/BrandPackagesPage.tsx::TS2339::Property '…' does not exist on type '…'.": 1,
+  "src/app/pages/chef/ChefDistributorEntryPage.tsx::TS2339::Property '…' does not exist on type '…'.": 2,
+  "src/app/pages/chef/SecureTechPreviewPage.tsx::TS2741::Property '…' is missing in type '…' but required in type '…'.": 3,
+  "src/app/pages/rep/RepReviewMobileFallback.tsx::TS2322::Type '…' is not assignable to type '…'.": 1,
+  "src/app/pages/rep/RepTriagePage.tsx::TS2322::Type '…' is not assignable to type '…'.": 1
+}

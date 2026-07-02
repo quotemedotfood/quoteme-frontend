@@ -844,8 +844,8 @@ export async function convertGuestToUser(data: GuestConvertData): Promise<ApiRes
       };
     }
 
-    const data = await response.json();
-    return { data, token: jwtToken };
+    const responseData = await response.json();
+    return { data: responseData, token: jwtToken };
   } catch (error) {
     return {
       error: error instanceof Error ? error.message : 'Network error',
@@ -2500,7 +2500,6 @@ export interface ChefQuoteRow {
   has_order_guide: boolean;
   order_guide_id: string | null;
   latest_question: string | null;
-  preview?: boolean;
 }
 
 export interface ChefQuotesIndexResponse {

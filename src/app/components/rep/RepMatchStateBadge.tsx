@@ -18,7 +18,9 @@
 import React from 'react';
 // B-45: RepMatchState is the canonical type — imported from repCoverageState util
 // which added 'empty' (fewer than MIN_COMPONENTS_FOR_COVERAGE lines extracted).
-// Re-exported here so existing importers continue to resolve from this file.
+// Imported for local use below, and re-exported so existing importers continue
+// to resolve RepMatchState from this file.
+import type { RepMatchState } from '../../utils/repCoverageState';
 export type { RepMatchState } from '../../utils/repCoverageState';
 
 export interface RepMatchStateBadgeProps {

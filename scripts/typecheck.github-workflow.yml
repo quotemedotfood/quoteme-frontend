@@ -1,0 +1,22 @@
+# ⚠️ MOVE THIS FILE to .github/workflows/typecheck.yml to activate the CI gate.
+# It lives under scripts/ only because the PAT used to open this PR lacks the
+# GitHub `workflow` scope and cannot push files under .github/workflows/.
+# A maintainer with workflow scope should `git mv` it into place (contents are
+# final and correct as-is).
+name: typecheck
+
+on:
+  pull_request:
+  push:
+
+jobs:
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
