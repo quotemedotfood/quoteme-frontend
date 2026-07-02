@@ -73,6 +73,7 @@
     "@tailwindcss/vite": "4.1.12",
     "@types/google.maps": "^3.58.1",
     "@vitejs/plugin-react": "4.7.0",
+    "react-test-renderer": "^18.3.1",
     "tailwindcss": "4.1.12",
     "vite": "6.3.5",
     "vitest": "^4.1.7"
