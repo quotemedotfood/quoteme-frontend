@@ -16,7 +16,7 @@
 import React, { useState } from 'react';
 import { FileText, Settings, Home, PanelLeftClose, PanelLeftOpen, Plus, Truck, BookOpen } from 'lucide-react';
 import quotemeLogo from '../../../assets/quoteme-logo.png';
-import { SidebarHelpInput } from './SidebarHelpInput';
+import { HelpField } from '../HelpField';
 
 const C = {
   charcoal: '#2B2B2B',
@@ -264,8 +264,8 @@ function NewspaperSidebarStub({
           );
         })}
 
-        {/* SidebarHelpInput — above Settings per Desi spec lock */}
-        <SidebarHelpInput collapsed={collapsed} />
+        {/* HelpField — above Settings per Desi spec lock */}
+        <HelpField collapsed={collapsed} lane="chef" />
 
         {/* Settings — always last */}
         {NAV_ITEMS.filter((item) => item.id === 'settings').map((item) => {

@@ -19,7 +19,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X, ArrowRight, Clock } from 'lucide-react';
-import { getChefQuotes, sendChefQuestion, type ChefQuoteRow } from '../../services/api';
+import { getChefQuotes, sendChefQuestion, escalateHelp, type ChefQuoteRow } from '../../services/api';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -35,9 +35,6 @@ const C = {
   gray400: '#9CA3AF',
   orange: '#F2993D',
   orangeHover: '#E08A2E',
-  // TODO: Swap to canonical QuoteMe support number when provisioned.
-  // Currently Moose's personal line.
-  supportPhone: '+1 720-504-5127',
 } as const;
 
 const serif: React.CSSProperties = {
@@ -171,6 +168,7 @@ function Composer({
 }) {
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
+  const [talkAck, setTalkAck] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   async function handleSend() {
@@ -259,16 +257,37 @@ function Composer({
         </button>
       </div>
 
-      {/* Phone fallback */}
-      <p style={{ ...sans, fontSize: 11, color: C.gray400, margin: '10px 0 0', textAlign: 'center' }}>
-        Need to talk now?{' '}
-        <a
-          href={`tel:${C.supportPhone.replace(/\D/g, '')}`}
-          style={{ color: C.gray500, textDecoration: 'underline', textUnderlineOffset: 2 }}
+      {talkAck ? (
+        <p style={{ ...sans, fontSize: 10.5, color: C.navy, margin: '10px 0 0', textAlign: 'center', fontWeight: 500 }}>
+          Got it — someone will reach out.
+        </p>
+      ) : (
+        <button
+          type="button"
+          onClick={async () => {
+            await escalateHelp(text || 'Talk request from chef', 'chef-helpdrawer');
+            setTalkAck(true);
+            setTimeout(() => setTalkAck(false), 3000);
+          }}
+          style={{
+            ...sans,
+            display: 'block',
+            width: '100%',
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            fontSize: 11,
+            color: C.gray400,
+            margin: '10px 0 0',
+            textAlign: 'center',
+            padding: 0,
+          }}
+          onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = C.gray500; }}
+          onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = C.gray400; }}
         >
-          {C.supportPhone}
-        </a>
-      </p>
+          Talk to a person →
+        </button>
+      )}
     </div>
   );
 }

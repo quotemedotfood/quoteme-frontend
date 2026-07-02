@@ -507,7 +507,10 @@ export function PinToStackButton({
   const [actionState, setActionState] = useState<'idle' | 'loading'>('idle');
 
   // Derive pinned state: look up this distributor in the stack's pins.
-  const existingPin: ChefStackPin | undefined = stackData?.pins.find(
+  // NF-5 defense-in-depth: guard `pins` too — a stackless { stack: null }
+  // response is a truthy object without a pins array, so `?.` on stackData
+  // alone is not enough.
+  const existingPin: ChefStackPin | undefined = stackData?.pins?.find(
     (p) => p.distributor_id === distributorId,
   );
   const isPinned = !!existingPin;
@@ -530,7 +533,7 @@ export function PinToStackButton({
       return;
     }
 
-    if (stackData === undefined || stackData.pins.length === 0) {
+    if (stackData === undefined || (stackData.pins?.length ?? 0) === 0) {
       // No stack exists yet OR stack has no pins yet — zero-friction path:
       // create stack if needed, then pin immediately.
       setActionState('loading');

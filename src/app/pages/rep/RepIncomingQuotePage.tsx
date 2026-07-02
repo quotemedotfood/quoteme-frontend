@@ -505,6 +505,8 @@ export function RepIncomingQuotePage() {
           isEmptyMenu={isEmptyMenu}
           chefRequestMessage={chefRequestMessage}
           restaurantContact={quote?.restaurant_contact ?? null}
+          backTo={backTo}
+          navigate={navigate}
         />
       </div>
       <div className="block md:hidden">
@@ -515,7 +517,9 @@ export function RepIncomingQuotePage() {
 }
 
 // ─── Desktop quote view (inner body inside shell) ──────────────────────────
-function RepDesktopQuoteView({
+// Exported for the B-183 render regression test (asserts the back-nav
+// breadcrumb resolves backTo/navigate from props, not an out-of-scope binding).
+export function RepDesktopQuoteView({
   quote,
   quoteId,
   lines,
@@ -540,6 +544,8 @@ function RepDesktopQuoteView({
   isEmptyMenu,
   chefRequestMessage,
   restaurantContact,
+  backTo,
+  navigate,
 }: {
   quote: QuoteResponse | null;
   quoteId: string;
@@ -565,6 +571,8 @@ function RepDesktopQuoteView({
   isEmptyMenu: boolean;
   chefRequestMessage?: string | null;
   restaurantContact?: QuoteRestaurantContact | null;
+  backTo: string;
+  navigate: (path: string) => void;
 }) {
   return (
     <div style={{ maxWidth: 900 }}>
