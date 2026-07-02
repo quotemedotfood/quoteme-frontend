@@ -481,16 +481,6 @@ export function AuthPage() {
             </p>
           </div>
         </button>
-        <p className="text-sm text-center" style={{ color: '#4F4F4F', marginTop: '-4px' }}>
-          Brand account?{' '}
-          <button
-            onClick={() => switchView('signin')}
-            className="font-semibold underline-offset-2 hover:underline"
-            style={{ color: '#7FAEC2' }}
-          >
-            Sign in
-          </button>
-        </p>
       </div>
 
       <p className="text-sm" style={{ color: '#4F4F4F' }}>
