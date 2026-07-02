@@ -20,6 +20,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { MapPin, ArrowRight } from 'lucide-react';
 import { CatalogStatusBadge } from './CatalogStatusBadge';
 import { PinToStackButton } from './PinToStackButton';
+import { UseDistributorForQuoteModal } from './UseDistributorForQuoteModal';
 import {
   DEMO,
   YOUR_DISTRIBUTORS,

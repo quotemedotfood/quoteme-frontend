@@ -52,7 +52,6 @@ import {
   adminReclassifyOthers,
   adminBulkUpdateCategory,
   adminBulkUpdateSubcategory,
-  type DiagnosticCatalog,
   type AdminCatalogStats,
   type AdminCatalogProductsResponse,
 } from '../../services/adminApi';
