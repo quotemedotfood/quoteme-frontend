@@ -33,7 +33,7 @@ import { LineCoverageDot } from '../../components/rep/CoverageDots';
 import { ItemsToConfirm } from '../../components/rep/ItemsToConfirm';
 import { RepCtaStrip } from '../../components/rep/RepCtaStrip';
 import { CatalogConfirmBanner } from '../../components/rep/CatalogConfirmBanner';
-import { getRepQuote, repPriceQuote, repConfirmQuote } from '../../services/api';
+import { getRepQuote, repPriceQuote, repConfirmQuote, repSendQuote } from '../../services/api';
 import type { QuoteResponse, QuoteLineResponse, QuoteRestaurantContact } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -81,6 +81,74 @@ function ContactChip({ contact }: { contact: QuoteRestaurantContact }) {
   );
 }
 
+// ─── Post-confirm SEND affordance (Root 1) ─────────────────────────────────
+// Shown after confirming an OPEN quote (no chef contact): confirm did NOT send,
+// so the rep supplies a recipient email and hits Send. Presentational — all
+// state lives in the parent. Exported for the render regression test.
+export function RepSendAffordance({
+  email,
+  onEmailChange,
+  onSend,
+  sending,
+  error,
+}: {
+  email: string;
+  onEmailChange: (v: string) => void;
+  onSend: () => void;
+  sending: boolean;
+  error?: string | null;
+}) {
+  return (
+    <div
+      style={{
+        background: C.warmPaper,
+        border: `1px solid ${C.softLine}`,
+        borderRadius: 8,
+        padding: 16,
+      }}
+    >
+      <div style={eyebrow(9.5)}>SEND QUOTE</div>
+      <div style={{ ...sans, fontSize: 12.5, color: C.gray700, marginTop: 6, lineHeight: 1.5 }}>
+        No chef contact on file — enter where this quote should go.
+      </div>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginTop: 12 }}>
+        <input
+          type="email"
+          value={email}
+          onChange={(e) => onEmailChange(e.target.value)}
+          placeholder="chef@restaurant.com"
+          aria-label="Recipient email"
+          style={{
+            ...sans, flex: 1, minWidth: 220,
+            padding: '9px 12px', fontSize: 13, color: C.charcoal,
+            background: '#fff', border: `1px solid ${C.softLine}`,
+            borderRadius: 6, outline: 'none',
+          }}
+        />
+        <button
+          type="button"
+          onClick={onSend}
+          disabled={sending}
+          style={{
+            ...sans, display: 'inline-flex', alignItems: 'center', gap: 6,
+            padding: '9px 16px', fontSize: 13, fontWeight: 500, color: '#fff',
+            background: 'var(--primary)', border: 'none', borderRadius: 6,
+            cursor: sending ? 'not-allowed' : 'pointer',
+            opacity: sending ? 0.6 : 1,
+          }}
+        >
+          {sending ? 'Sending…' : 'Send quote'}
+        </button>
+      </div>
+      {error && (
+        <div style={{ ...sans, fontSize: 12, color: '#B42318', marginTop: 8, lineHeight: 1.4 }}>
+          {error}
+        </div>
+      )}
+    </div>
+  );
+}
+
 type SortBy = 'category' | 'component' | 'match';
 
 type FlowState = 'first-arrival' | 'auto-fired';
@@ -120,6 +188,13 @@ export function RepIncomingQuotePage() {
   const [showAutoFireToast, setShowAutoFireToast] = useState(false);
   const [bannerDismissed, setBannerDismissed] = useState(false);
   const [saving, setSaving] = useState(false);
+  // Root 1 CONFIRM→SEND state machine: when confirm returns an OPEN quote
+  // (no chef contact, status !== 'sent'), reveal a post-confirm SEND affordance
+  // instead of navigating away. The rep supplies a recipient email and sends.
+  const [showSendAffordance, setShowSendAffordance] = useState(false);
+  const [recipientEmail, setRecipientEmail] = useState('');
+  const [sendError, setSendError] = useState<string | null>(null);
+  const [sending, setSending] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -174,9 +249,39 @@ export function RepIncomingQuotePage() {
     const res = await repConfirmQuote(id);
     if (res.data) {
       setQuote(res.data);
-      navigate('/rep/quotes/inbound');
+      if (res.data.status === 'sent') {
+        // Quote had a chef contact — confirm already sent it. Keep existing behavior.
+        navigate('/rep/quotes/inbound');
+      } else {
+        // OPEN quote (no chef contact) — confirm did NOT send. Reveal the
+        // post-confirm SEND affordance so the rep can supply a recipient.
+        setRecipientEmail(res.data.chef_recipient_email ?? '');
+        setSendError(null);
+        setShowSendAffordance(true);
+      }
     }
     setSaving(false);
+  };
+
+  const handleSendQuote = async () => {
+    if (!id || sending) return;
+    const email = recipientEmail.trim();
+    // Basic presence validation before hitting the endpoint.
+    if (!email) {
+      setSendError('Enter a recipient email.');
+      return;
+    }
+    setSending(true);
+    setSendError(null);
+    const res = await repSendQuote(id, email);
+    if (res.data && res.data.status === 'sent') {
+      setQuote(res.data);
+      navigate('/rep/quotes/inbound');
+    } else {
+      // 422 (invalid/missing email) or other error — show inline.
+      setSendError(res.error || 'Could not send the quote. Try again.');
+    }
+    setSending(false);
   };
 
   // Pricing mode — mobile
@@ -354,6 +459,19 @@ export function RepIncomingQuotePage() {
               />
             </div>
 
+            {/* Post-confirm SEND affordance — OPEN quote (no chef contact) */}
+            {showSendAffordance && (
+              <div style={{ padding: '0 20px 8px' }}>
+                <RepSendAffordance
+                  email={recipientEmail}
+                  onEmailChange={setRecipientEmail}
+                  onSend={handleSendQuote}
+                  sending={sending}
+                  error={sendError}
+                />
+              </div>
+            )}
+
             {/* Auto-fire toast */}
             {showAutoFireToast && (
               <div
@@ -493,6 +611,12 @@ export function RepIncomingQuotePage() {
           handleUseCatalogPrices={handleUseCatalogPrices}
           handleConfirmSend={handleConfirmSend}
           saving={saving}
+          showSendAffordance={showSendAffordance}
+          recipientEmail={recipientEmail}
+          setRecipientEmail={setRecipientEmail}
+          handleSendQuote={handleSendQuote}
+          sending={sending}
+          sendError={sendError}
           nav={nav}
           sortBy={sortBy}
           setSortBy={setSortBy}
@@ -532,6 +656,12 @@ export function RepDesktopQuoteView({
   handleUseCatalogPrices,
   handleConfirmSend,
   saving,
+  showSendAffordance,
+  recipientEmail,
+  setRecipientEmail,
+  handleSendQuote,
+  sending,
+  sendError,
   nav,
   sortBy,
   setSortBy,
@@ -559,6 +689,12 @@ export function RepDesktopQuoteView({
   handleUseCatalogPrices: () => void;
   handleConfirmSend: () => void;
   saving: boolean;
+  showSendAffordance: boolean;
+  recipientEmail: string;
+  setRecipientEmail: (v: string) => void;
+  handleSendQuote: () => void;
+  sending: boolean;
+  sendError: string | null;
   nav: (dest: string, opts?: { quoteId?: string }) => void;
   sortBy: SortBy;
   setSortBy: (s: SortBy) => void;
@@ -683,6 +819,19 @@ export function RepDesktopQuoteView({
         </div>
       ) : (
         <>
+          {/* Post-confirm SEND affordance — OPEN quote (no chef contact) */}
+          {showSendAffordance && (
+            <div style={{ marginTop: 16, maxWidth: 560 }}>
+              <RepSendAffordance
+                email={recipientEmail}
+                onEmailChange={setRecipientEmail}
+                onSend={handleSendQuote}
+                sending={sending}
+                error={sendError}
+              />
+            </div>
+          )}
+
           {/* Auto-fire toast */}
           {showAutoFireToast && (
             <div
