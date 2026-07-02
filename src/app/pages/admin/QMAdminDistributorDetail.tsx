@@ -158,6 +158,13 @@ export function QMAdminDistributorDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [impersonating, setImpersonating] = useState<string | null>(null);
 
+  // Logo upload state (B-181). These were referenced but never declared,
+  // so the page threw ReferenceError on load and hung on "Loading…".
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [logoUploading, setLogoUploading] = useState(false);
+  const [logoError, setLogoError] = useState<string | null>(null);
+  const logoInputRef = useRef<HTMLInputElement>(null);
+
   // Add Admin modal state
   const [showAddAdmin, setShowAddAdmin] = useState(false);
   const [addAdminTab, setAddAdminTab] = useState<'invite' | 'assign'>('invite');
