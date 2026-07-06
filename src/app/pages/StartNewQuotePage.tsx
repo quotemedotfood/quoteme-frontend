@@ -667,7 +667,7 @@ export function StartNewQuotePage() {
           navigate(`/chef/status/${response.data.quote_id}`);
         }
       } else {
-        const response = await createMenu({ raw_text: menuText, name: selectedRestaurant?.name || 'New Quote' });
+        const response = await createMenu({ raw_text: menuText, name: selectedRestaurant?.name || 'New Quote', restaurant_id: selectedRestaurant?.id });
         if (response.error) {
           if (isServiceBusyError(response.error)) { setServiceBusy(true); return; }
           if (response.error.includes('2 quotes in progress')) { setDraftLimitReached(true); return; }
@@ -739,7 +739,7 @@ export function StartNewQuotePage() {
           navigate(`/chef/status/${response.data.quote_id}`);
         }
       } else {
-        const response = await createMenu({ raw_text: menuText, name: selectedRestaurant?.name || 'New Quote' });
+        const response = await createMenu({ raw_text: menuText, name: selectedRestaurant?.name || 'New Quote', restaurant_id: selectedRestaurant?.id });
         if (response.error) {
           if (isServiceBusyError(response.error)) { setServiceBusy(true); return; }
           if (response.error.includes('2 quotes in progress')) { setDraftLimitReached(true); return; }
@@ -1168,7 +1168,9 @@ export function StartNewQuotePage() {
                 </div>
               ) : (
                 <>
-                  {!conceptTipDismissed && (
+                  {/* BUG #27 — hidden for Wednesday: this promised a concept-to-quote
+                      feature that doesn't exist yet. Re-enable when it ships. */}
+                  {false && !conceptTipDismissed && (
                     <div className="mb-3 p-3 bg-[#A5CFDD]/10 border border-[#A5CFDD]/30 rounded-lg flex items-start gap-2">
                       <Lightbulb className="w-4 h-4 text-[#2A5F6F] mt-0.5 shrink-0" />
                       <div className="flex-1">
@@ -1417,9 +1419,12 @@ export function StartNewQuotePage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                     <div>
                       <Label htmlFor="restaurant" className="text-sm mb-2 block">Customer</Label>
+                      {/* BUG #4b — controlled value so the dropdown reflects the
+                          restaurant selected/created after Save (was uncontrolled). */}
                       <select
                         id="restaurant"
                         className="w-full px-3 py-2 border border-gray-200 rounded-md bg-gray-50 text-sm"
+                        value={selectedRestaurant?.id || ''}
                         onChange={handleRestaurantChange}
                       >
                         <option value="">Select a customer</option>

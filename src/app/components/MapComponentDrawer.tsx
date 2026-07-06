@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Drawer,
   DrawerClose,
@@ -76,6 +76,16 @@ export function MapComponentDrawer({
   const [extraCandidates, setExtraCandidates] = useState<AlignmentCandidate[]>([]);
   const [loadingMore, setLoadingMore] = useState(false);
   const [manualPick, setManualPick] = useState<CatalogSearchProduct | null>(null);
+
+  // BUG #26 — vaul's right-direction drawer doesn't reliably fire onOpenChange
+  // on Esc/backdrop (no drag handle for horizontal drawers), leaving the rep
+  // trapped. Guarantee an Escape route independent of vaul's dismiss detection.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onOpenChange(false); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [open, onOpenChange]);
 
   const handleSelectProduct = (productId: string) => {
     setSelectedProductId(prev => prev === productId ? null : productId);
@@ -160,11 +170,11 @@ export function MapComponentDrawer({
                 Choose a product, then replace or add to quote
               </DrawerDescription>
             </div>
-            <DrawerClose asChild>
-              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                <X className="h-4 w-4" />
-              </Button>
-            </DrawerClose>
+            {/* BUG #26 — close directly via onOpenChange rather than vaul's
+                DrawerClose, which is unreliable for right-direction drawers. */}
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => onOpenChange(false)}>
+              <X className="h-4 w-4" />
+            </Button>
           </div>
         </DrawerHeader>
 
