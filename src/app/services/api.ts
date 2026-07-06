@@ -1070,7 +1070,7 @@ export async function extractMenuText(payload: { file?: File; url?: string }): P
   }
 }
 
-export async function createMenu(menuData: { raw_text: string; name: string }): Promise<ApiResponse<MenuCreateResponse>> {
+export async function createMenu(menuData: { raw_text: string; name: string; restaurant_id?: string }): Promise<ApiResponse<MenuCreateResponse>> {
   return fetchWithAuth('/api/v1/menus', {
     method: 'POST',
     body: JSON.stringify(menuData),
