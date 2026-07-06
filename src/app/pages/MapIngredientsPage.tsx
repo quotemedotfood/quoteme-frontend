@@ -1144,14 +1144,16 @@ export function MapIngredientsPage() {
       )}
 
       {/* Sticky bottom CTA - mobile and desktop (sits above review bar) */}
-      <div className="fixed bottom-[52px] left-0 right-0 md:left-64 bg-white border-t border-gray-200 p-4 z-40">
-        <button
-          onClick={() => navigate('/quote-builder', { state: { quoteId, isOpenQuote, locationId } })}
-          className="w-full md:w-auto md:min-w-[200px] md:mx-auto md:block bg-[#F2993D] hover:bg-[#E8953A] text-white font-medium py-3 px-6 rounded-lg text-base min-h-[48px]"
-        >
-          Adjust Pricing
-        </button>
-      </div>
+      {/* BUG #30/#31 — floating centered button instead of a full-width bar:
+          never overlaps the DISHES sidebar (centered, clear of the md:w-64
+          sidebar), and is anchored independently of the feedback control so it
+          doesn't hang mid-air when that dismisses (no layout jump). */}
+      <button
+        onClick={() => navigate('/quote-builder', { state: { quoteId, isOpenQuote, locationId } })}
+        className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 md:min-w-[200px] bg-[#F2993D] hover:bg-[#E8953A] text-white font-medium py-3 px-6 rounded-lg text-base min-h-[48px] shadow-lg"
+      >
+        Adjust Pricing
+      </button>
 
       {/* Quote review bar */}
       {quoteId && <QuoteReviewBar quoteId={quoteId} onMatchesUpdated={handleMatchesUpdated} />}

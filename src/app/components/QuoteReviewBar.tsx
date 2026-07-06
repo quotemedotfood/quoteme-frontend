@@ -10,8 +10,12 @@ interface QuoteReviewBarProps {
 
 type ReviewState = 'idle' | 'expanded' | 'submitting' | 'dismissed';
 
-export function QuoteReviewBar({ quoteId, onMatchesUpdated, noSidebarOffset }: QuoteReviewBarProps) {
-  const sidebarClass = noSidebarOffset ? '' : 'md:left-64';
+export function QuoteReviewBar({ quoteId, onMatchesUpdated }: QuoteReviewBarProps) {
+  // BUG #30/#31 — compact centered floating card (not a full-width bar), stacked
+  // above the floating Adjust Pricing button (bottom-6). Centered so it never
+  // overlaps the DISHES sidebar in any state; fixed height/position so dismissing
+  // it causes no layout jump.
+  const cardClass = 'fixed bottom-[88px] left-1/2 -translate-x-1/2 z-40 w-[calc(100%-2rem)] max-w-md';
   const [state, setState] = useState<ReviewState>('idle');
   const [comment, setComment] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -60,8 +64,8 @@ export function QuoteReviewBar({ quoteId, onMatchesUpdated, noSidebarOffset }: Q
 
   if (state === 'submitting') {
     return (
-      <div className={`fixed bottom-0 left-0 right-0 ${sidebarClass} z-40 bg-white border-t border-gray-200 p-4`}>
-        <div className="flex items-center justify-center gap-3 py-3">
+      <div className={`${cardClass} bg-white border border-gray-200 rounded-xl shadow-lg p-4`}>
+        <div className="flex items-center justify-center gap-3 py-1">
           <Loader2 className="w-5 h-5 animate-spin text-[#7FAEC2]" />
           <span className="text-sm font-medium text-gray-700">Rethinking matches...</span>
         </div>
@@ -71,8 +75,8 @@ export function QuoteReviewBar({ quoteId, onMatchesUpdated, noSidebarOffset }: Q
 
   if (state === 'expanded') {
     return (
-      <div className={`fixed bottom-0 left-0 right-0 ${sidebarClass} z-40 bg-white border-t border-gray-200 shadow-lg`}>
-        <div className="p-4 max-w-2xl mx-auto">
+      <div className={`${cardClass} bg-white border border-gray-200 rounded-xl shadow-lg`}>
+        <div className="p-4">
           <div className="flex items-center justify-between mb-3">
             <span className="text-sm font-medium text-gray-700">What should we fix?</span>
             <button onClick={handleClose} className="p-1 text-gray-400 hover:text-gray-600">
@@ -103,9 +107,9 @@ export function QuoteReviewBar({ quoteId, onMatchesUpdated, noSidebarOffset }: Q
   }
 
   return (
-    <div className={`fixed bottom-0 left-0 right-0 ${sidebarClass} z-40`}>
+    <div className={`${cardClass} rounded-xl shadow-lg overflow-hidden`}>
       {rulesCreated !== null && rulesCreated > 0 && (
-        <div className="bg-green-50 border-t border-green-200 px-4 py-3 text-center">
+        <div className="bg-green-50 border-b border-green-200 px-4 py-3 text-center">
           <p className="text-xs font-medium text-green-800 mb-1">
             Applied {rulesCreated} rule{rulesCreated !== 1 ? 's' : ''}:
           </p>
