@@ -12,7 +12,7 @@ import { useLocation2 } from '../contexts/LocationContext';
 import { useAuth } from '../contexts/AuthContext';
 import { UpgradeDrawer } from '../components/UpgradeDrawer';
 import { CategoryReviewPanel } from '../components/CategoryReviewPanel';
-import { createMenu, createGuestQuote, extractMenuText, getCatalogs, uploadCatalogFile, getRestaurants, getRestaurant, createRestaurant, createContact, getStockQuotes, generateFromStockQuote, getDemoDistributor, getClassificationStatus, getQuotes, getMenuStatus, updateCurrentUser } from '../services/api';
+import { createMenu, createGuestQuote, extractMenuText, extractMenuTextAsync, getCatalogs, uploadCatalogFile, getRestaurants, getRestaurant, createRestaurant, createContact, getStockQuotes, generateFromStockQuote, getDemoDistributor, getClassificationStatus, getQuotes, getMenuStatus, updateCurrentUser } from '../services/api';
 import type { CatalogSummary, RestaurantSummary, RestaurantDetail, StockQuoteResponse } from '../services/api';
 import { isDemoMode, isLiquorDemo, demoType } from '../utils/demoMode';
 import { isBuyerRole as checkBuyerRole } from '../utils/roles';
@@ -44,6 +44,34 @@ export function menuFileRejection(file: { name: string; type: string }): string 
     return `This looks like a Word document. ${MENU_SUPPORTED_SENTENCE}`;
   }
   return `This file type isn't supported. ${MENU_SUPPORTED_SENTENCE}`;
+}
+
+// --- Async extraction status interpretation (C1 endpoint) ---
+// Pure, testable: maps an extended /menus/:id/status body to a terminal outcome.
+// Defensive on status spelling — accepts either "processed" (existing) or
+// "complete"/"completed" as done — so it survives whichever C1 ships.
+export type ExtractionOutcome =
+  | { kind: 'done'; text: string }
+  | { kind: 'failed'; message: string }
+  | { kind: 'empty'; message: string }
+  | { kind: 'pending' };
+
+const EXTRACT_EMPTY_COPY = "We couldn't find any menu text in that file. Try a clearer photo, or paste the menu text instead.";
+const EXTRACT_FAILED_COPY = "We couldn't read that menu. Try a different file, or paste the text instead.";
+
+export function extractionOutcome(
+  s: { status?: string; extracted_text?: string | null; user_message?: string | null } | null | undefined
+): ExtractionOutcome {
+  if (!s) return { kind: 'pending' };
+  const status = (s.status || '').toLowerCase();
+  const terminalDone = status === 'processed' || status === 'complete' || status === 'completed';
+  const failed = status === 'failed' || status === 'error';
+  if (terminalDone) {
+    if (s.extracted_text) return { kind: 'done', text: s.extracted_text };
+    return { kind: 'empty', message: s.user_message || EXTRACT_EMPTY_COPY };
+  }
+  if (failed) return { kind: 'failed', message: s.user_message || EXTRACT_FAILED_COPY };
+  return { kind: 'pending' };
 }
 
 // --- Types for ingredient editing ---
@@ -193,6 +221,7 @@ export function StartNewQuotePage() {
   const [backgroundMenuId, setBackgroundMenuId] = useState<string | null>(null);
   const [backgroundAction, setBackgroundAction] = useState<'match' | 'skip' | null>(null);
   const backgroundPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const extractPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Draft limit state (Fix 131 + Fix 139)
   const [draftLimitReached, setDraftLimitReached] = useState(false);
@@ -405,7 +434,78 @@ export function StartNewQuotePage() {
     }
   };
 
+  const applyExtractedText = (text: string) => {
+    const stripped = stripPrices(text);
+    setPasteText(text);
+    setMenuPreviewText(stripped);
+    setParsedDishes(parseMenuText(stripped));
+  };
+
+  const stopExtractPoll = () => {
+    if (extractPollRef.current) { clearInterval(extractPollRef.current); extractPollRef.current = null; }
+  };
+
+  // Authed users go through C1's async extraction endpoint; guests stay on the
+  // synchronous extractMenuText path (ChefEntryPage guest flow is untouched).
+  const isAuthedExtraction = () => !(profile.isGuest || localStorage.getItem('quoteme_token') === null);
+
+  // ~3 min ceiling at 2.5s per poll — never spin forever.
+  const MAX_EXTRACT_POLLS = 72;
+
+  // C1 async extraction: kick off (202 { menu_id }), then poll
+  // getMenuStatus(menu_id). On terminal-done populate the textarea; on failed
+  // render C1's user_message verbatim (Justin's LAW copy from the typed error).
+  async function runAsyncExtraction(payload: { file?: File; url?: string }) {
+    setIsExtracting(true);
+    setExtractError(null);
+    setIsExtractingPreview(true);
+    stopExtractPoll();
+
+    let kickoff;
+    try {
+      kickoff = await extractMenuTextAsync(payload);
+    } catch (e: any) {
+      setExtractError(e?.message || "We couldn't start reading that menu. Please try again.");
+      setIsExtracting(false); setIsExtractingPreview(false);
+      return;
+    }
+    if (kickoff.error || !kickoff.data?.menu_id) {
+      setExtractError(isServiceBusyError(kickoff.error)
+        ? 'Our menu analysis service is temporarily busy. Please try again in a few seconds.'
+        : (kickoff.error || "We couldn't start reading that menu. Please try again."));
+      setIsExtracting(false); setIsExtractingPreview(false);
+      return;
+    }
+
+    const menuId = kickoff.data.menu_id;
+    let attempts = 0;
+    const finish = () => { stopExtractPoll(); setIsExtracting(false); setIsExtractingPreview(false); };
+
+    extractPollRef.current = setInterval(async () => {
+      attempts += 1;
+      const res = await getMenuStatus(menuId);
+      const outcome = extractionOutcome(res.data);
+      if (outcome.kind === 'done') {
+        finish();
+        applyExtractedText(outcome.text);
+        return;
+      }
+      if (outcome.kind === 'failed' || outcome.kind === 'empty') {
+        finish();
+        setExtractError(outcome.message); // user_message rendered verbatim
+        return;
+      }
+      if (attempts >= MAX_EXTRACT_POLLS) {
+        finish();
+        setExtractError("This is taking longer than expected. Please try again, or paste the menu text instead.");
+      }
+    }, 2500);
+  }
+
   async function handleFileExtract(file: File) {
+    if (isAuthedExtraction()) { await runAsyncExtraction({ file }); return; }
+
+    // Guest sync path (unchanged).
     setIsExtracting(true);
     setExtractError(null);
     setIsExtractingPreview(true);
@@ -416,10 +516,7 @@ export function StartNewQuotePage() {
           ? 'Our menu analysis service is temporarily busy. Please try again in a few seconds.'
           : res.error);
       } else if (res.data?.text) {
-        const stripped = stripPrices(res.data.text);
-        setPasteText(res.data.text);
-        setMenuPreviewText(stripped);
-        setParsedDishes(parseMenuText(stripped));
+        applyExtractedText(res.data.text);
       }
     } catch (e: any) {
       setExtractError(e.message || 'Failed to extract text');
@@ -431,31 +528,26 @@ export function StartNewQuotePage() {
 
   async function handleUrlExtract() {
     if (!menuUrl.trim()) return;
+    let url = menuUrl.trim();
+    if (!url.startsWith('http://') && !url.startsWith('https://')) url = 'https://' + url;
+
+    if (isAuthedExtraction()) { await runAsyncExtraction({ url }); return; }
+
+    // Guest sync path (unchanged).
     setIsExtracting(true);
     setExtractError(null);
     setIsExtractingPreview(true);
     try {
-      let url = menuUrl.trim();
-      if (!url.startsWith('http://') && !url.startsWith('https://')) url = 'https://' + url;
       const res = await extractMenuText({ url });
       if (res.error) {
         const err = res.error;
         if (isServiceBusyError(err)) {
           setExtractError('Our menu analysis service is temporarily busy. Please try again in a few seconds.');
-        } else if (err.includes('pdf_too_large')) {
-          setExtractError("This menu is too large to process at once. Try uploading just the section you need — dinner entrees, cocktail list, or appetizers.");
-        } else if (err.includes('url_fetch_failed')) {
-          setExtractError("We couldn't fetch that URL. Check the link or try uploading the PDF directly.");
-        } else if (err.includes('url_unsupported_type')) {
-          setExtractError("That URL didn't return a menu we can read. Try uploading the PDF directly.");
         } else {
           setExtractError(err);
         }
       } else if (res.data?.text) {
-        const stripped = stripPrices(res.data.text);
-        setPasteText(res.data.text);
-        setMenuPreviewText(stripped);
-        setParsedDishes(parseMenuText(stripped));
+        applyExtractedText(res.data.text);
       }
     } catch (e: any) {
       setExtractError(e.message || 'Failed to extract text from URL');
@@ -464,6 +556,9 @@ export function StartNewQuotePage() {
       setIsExtractingPreview(false);
     }
   }
+
+  // Stop extraction polling on unmount.
+  useEffect(() => () => { if (extractPollRef.current) clearInterval(extractPollRef.current); }, []);
 
   const handleDragOver = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(true); };
   const handleDragLeave = (e: React.DragEvent) => { e.preventDefault(); setIsDragging(false); };
