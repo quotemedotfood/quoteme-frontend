@@ -17,6 +17,35 @@ import type { CatalogSummary, RestaurantSummary, RestaurantDetail, StockQuoteRes
 import { isDemoMode, isLiquorDemo, demoType } from '../utils/demoMode';
 import { isBuyerRole as checkBuyerRole } from '../utils/roles';
 
+// --- Client-side menu file-type gate ---
+// The <input accept="…"> attribute is only a file-picker hint, and drag-and-drop
+// bypasses it entirely — so we guard programmatically here too. Copy mirrors the
+// backend gate (MenuTextExtractorService) exactly so the message is identical
+// whether the file is caught client-side or slips through to the server.
+const MENU_ACCEPTED_EXTS = ['.pdf', '.png', '.jpg', '.jpeg', '.gif', '.webp', '.csv', '.txt'];
+const MENU_SUPPORTED_SENTENCE = 'The menu reader takes a PDF, photo, CSV, or text file.';
+
+// Returns plain-language rejection copy, or null if the file is accepted.
+export function menuFileRejection(file: { name: string; type: string }): string | null {
+  const name = (file.name || '').toLowerCase();
+  const type = file.type || '';
+  const extOk = MENU_ACCEPTED_EXTS.some((e) => name.endsWith(e));
+  const typeOk =
+    type.startsWith('image/') ||
+    type.startsWith('text/') ||
+    type === 'application/pdf' ||
+    type === 'application/csv';
+  if (extOk || typeOk) return null;
+
+  if (/\.(xlsx|xls|xlsm|xlsb|ods|numbers|tsv)$/.test(name) || /spreadsheet|excel/.test(type)) {
+    return `This looks like a spreadsheet. ${MENU_SUPPORTED_SENTENCE}`;
+  }
+  if (/\.(docx|doc|odt|rtf|pages)$/.test(name) || /wordprocessing|msword/.test(type)) {
+    return `This looks like a Word document. ${MENU_SUPPORTED_SENTENCE}`;
+  }
+  return `This file type isn't supported. ${MENU_SUPPORTED_SENTENCE}`;
+}
+
 // --- Types for ingredient editing ---
 interface ParsedIngredient {
   id: string;
@@ -344,6 +373,12 @@ export function StartNewQuotePage() {
   };
 
   const handleFileSelect = (file: File) => {
+    // Client-side gate FIRST — reject spreadsheets/docs/etc before touching any
+    // state, so a bad drag-and-drop can't wipe an in-progress menu. Mirrors the
+    // backend gate; drag-drop and "All files" picks bypass the <input accept>.
+    const rejection = menuFileRejection(file);
+    if (rejection) { setExtractError(rejection); return; }
+
     if (menuPreviewText && !confirm('You have a menu in progress. Replace it with this new file?')) return;
     setUploadedFile(file);
     setExtractError(null);
