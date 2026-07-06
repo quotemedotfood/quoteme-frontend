@@ -3,7 +3,7 @@
 // programmatic guard in menuFileRejection is the real defense. Copy must match
 // the backend gate verbatim.
 import { describe, it, expect } from 'vitest';
-import { menuFileRejection } from './StartNewQuotePage';
+import { menuFileRejection, extractionOutcome } from './StartNewQuotePage';
 
 const SUPPORTED = 'The menu reader takes a PDF, photo, CSV, or text file.';
 
@@ -59,3 +59,48 @@ describe('menuFileRejection — rejected types return plain-language copy', () =
     expect(msg).not.toContain('.bin');
   });
 });
+
+describe('extractionOutcome — C1 async status interpretation', () => {
+  it('returns pending for null/undefined (transient poll error)', () => {
+    expect(extractionOutcome(null).kind).toBe('pending');
+    expect(extractionOutcome(undefined).kind).toBe('pending');
+  });
+
+  it('returns pending while still processing', () => {
+    expect(extractionOutcome({ status: 'processing' }).kind).toBe('pending');
+    expect(extractionOutcome({ status: 'pending' }).kind).toBe('pending');
+  });
+
+  it('accepts the existing "processed" spelling as done', () => {
+    const o = extractionOutcome({ status: 'processed', extracted_text: 'TACOS $3' });
+    expect(o).toEqual({ kind: 'done', text: 'TACOS $3' });
+  });
+
+  it('accepts a "complete"/"completed" spelling as done (defensive)', () => {
+    expect(extractionOutcome({ status: 'complete', extracted_text: 'X' })).toEqual({ kind: 'done', text: 'X' });
+    expect(extractionOutcome({ status: 'completed', extracted_text: 'Y' })).toEqual({ kind: 'done', text: 'Y' });
+  });
+
+  it('renders user_message verbatim on failed', () => {
+    const o = extractionOutcome({
+      status: 'failed',
+      user_message: 'This PDF couldn\'t be read automatically. Try a clear photo of the menu, or a CSV/text version.',
+    });
+    expect(o).toEqual({
+      kind: 'failed',
+      message: 'This PDF couldn\'t be read automatically. Try a clear photo of the menu, or a CSV/text version.',
+    });
+  });
+
+  it('falls back to plain copy when a failed status carries no user_message', () => {
+    const o = extractionOutcome({ status: 'failed' });
+    expect(o.kind).toBe('failed');
+    expect((o as any).message).toMatch(/couldn't read that menu/i);
+  });
+
+  it('treats terminal-done with no extracted_text as empty (plain copy)', () => {
+    const o = extractionOutcome({ status: 'processed', extracted_text: null });
+    expect(o.kind).toBe('empty');
+    expect((o as any).message).toMatch(/couldn't find any menu text/i);
+  });
+})

@@ -308,6 +308,11 @@ export interface MenuStatusResponse {
   status: string;
   quote_id: string | null;
   updated_at: string;
+  // C1 async extraction — extended /menus/:id/status. Present once extraction
+  // has run: extracted_text on success; user_message/error_code on failure.
+  extracted_text?: string | null;
+  user_message?: string | null;
+  error_code?: string | null;
 }
 
 // Helper to get auth token
@@ -1063,6 +1068,42 @@ export async function extractMenuText(payload: { file?: File; url?: string }): P
       return { error: errorData.error || `HTTP ${response.status}` };
     }
 
+    const data = await response.json();
+    return { data };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : 'Network error' };
+  }
+}
+
+// C1 authed async extraction: kicks off extraction, returns 202 { menu_id }.
+// Poll getMenuStatus(menu_id) until status is terminal (processed/complete or
+// failed). Guests stay on the sync extractMenuText path.
+//
+// RECONCILE with C1's PR body before merge: confirm ASYNC_EXTRACT_PATH and that
+// the endpoint accepts file/url via multipart the same way extract_text does.
+const ASYNC_EXTRACT_PATH = '/api/v1/menus/extract_text_async';
+
+export async function extractMenuTextAsync(
+  payload: { file?: File; url?: string }
+): Promise<ApiResponse<{ menu_id: string }>> {
+  const token = getAuthToken();
+  const headers: Record<string, string> = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const formData = new FormData();
+  if (payload.file) formData.append('file', payload.file);
+  if (payload.url) formData.append('url', payload.url);
+
+  try {
+    const response = await fetch(`${API_BASE_URL}${ASYNC_EXTRACT_PATH}`, {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      return { error: errorData.user_message || errorData.error || `HTTP ${response.status}` };
+    }
     const data = await response.json();
     return { data };
   } catch (error) {
