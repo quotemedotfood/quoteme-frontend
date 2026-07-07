@@ -19,6 +19,7 @@
 //   PATCH /api/v1/distributor_admin/restaurants/:id/assign_rep body: { rep_id }
 
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router';
 import { FileText, RotateCcw, Check } from 'lucide-react';
 import {
   CCSectionHead,
@@ -62,6 +63,13 @@ function AssignRow({
     error: null,
     saving: false,
   });
+
+  const navigate = useNavigate();
+
+  // B-186 — open the underlying quote (rep flow accepts distributor admins).
+  const openQuote = () => {
+    if (row.kind === 'quote') navigate(`/rep/quotes/${row.id}`);
+  };
 
   const assignedRep = state.assignedRepId
     ? reps.find((r) => r.id === state.assignedRepId) ?? null
@@ -133,7 +141,7 @@ function AssignRow({
 
   // ── Assigned confirmation state ──
   if (state.assignedRepId) {
-    const repName = assignedRep?.name ?? 'your rep';
+    const repName = state.assignedRepId === 'self' ? 'you' : (assignedRep?.name ?? 'your rep');
     const contextLabel =
       row.kind === 'quote' && row.q_label
         ? stripSeedPrefix(row.q_label)
@@ -251,7 +259,13 @@ function AssignRow({
             strokeWidth={1.6}
             style={{ marginTop: 2, flexShrink: 0 }}
           />
-          <div style={{ flex: 1, minWidth: 0 }}>
+          {/* B-186 — clicking the quote info opens the quote in the rep flow. */}
+          <div
+            style={{ flex: 1, minWidth: 0, cursor: row.kind === 'quote' ? 'pointer' : 'default' }}
+            onClick={row.kind === 'quote' ? openQuote : undefined}
+            role={row.kind === 'quote' ? 'button' : undefined}
+            title={row.kind === 'quote' ? 'Open this quote' : undefined}
+          >
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
               <span
                 style={{
@@ -290,15 +304,47 @@ function AssignRow({
               {metaLine}
             </div>
           </div>
-          {/* Single assign workflow: RepTypeahead (consistent with Inbound Forward-To) */}
-          <div style={{ flexShrink: 0 }}>
-            <RepTypeahead
-              reps={reps}
-              value={undefined}
-              onSelect={handlePick}
-              placeholder="Assign rep…"
-              disabled={state.saving}
-            />
+          {/* Assign control. B-188: with zero reps the typeahead is a dead end —
+              offer "Take this one" (self-assign) + "+ Add a rep". B-187: the
+              admin can take any quote himself even when reps exist. */}
+          <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 12 }}>
+            {reps.length > 0 && (
+              <RepTypeahead
+                reps={reps}
+                value={undefined}
+                onSelect={handlePick}
+                placeholder="Assign rep…"
+                disabled={state.saving}
+              />
+            )}
+            {row.kind === 'quote' && (
+              <button
+                onClick={() => handlePick('self')}
+                disabled={state.saving}
+                style={{
+                  ...sans,
+                  fontSize: 12,
+                  fontWeight: 500,
+                  color: CC_ACK_NAVY,
+                  background: 'transparent',
+                  border: `1px solid ${CC_ACK_NAVY}`,
+                  borderRadius: 6,
+                  padding: '6px 12px',
+                  cursor: state.saving ? 'default' : 'pointer',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                Take this one
+              </button>
+            )}
+            {reps.length === 0 && (
+              <a
+                href="/distributor-admin/invite"
+                style={{ ...sans, fontSize: 12, color: C.gray500, textDecoration: 'underline', whiteSpace: 'nowrap' }}
+              >
+                + Add a rep
+              </a>
+            )}
           </div>
         </div>
 
