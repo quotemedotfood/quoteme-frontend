@@ -12,7 +12,7 @@ import { useLocation2 } from '../contexts/LocationContext';
 import { useAuth } from '../contexts/AuthContext';
 import { UpgradeDrawer } from '../components/UpgradeDrawer';
 import { CategoryReviewPanel } from '../components/CategoryReviewPanel';
-import { createMenu, createGuestQuote, extractMenuText, getCatalogs, uploadCatalogFile, getRestaurants, getRestaurant, createRestaurant, createContact, getStockQuotes, generateFromStockQuote, getDemoDistributor, getClassificationStatus, getQuotes, getMenuStatus, updateCurrentUser } from '../services/api';
+import { createMenu, createGuestQuote, extractMenuText, extractMenuTextAsync, getCatalogs, uploadCatalogFile, getRestaurants, getRestaurant, createRestaurant, createContact, getStockQuotes, generateFromStockQuote, getDemoDistributor, getClassificationStatus, getQuotes, getMenuStatus, updateCurrentUser } from '../services/api';
 import type { CatalogSummary, RestaurantSummary, RestaurantDetail, StockQuoteResponse } from '../services/api';
 import { isDemoMode, isLiquorDemo, demoType } from '../utils/demoMode';
 import { isBuyerRole as checkBuyerRole } from '../utils/roles';
@@ -150,6 +150,26 @@ export function customerSelectionError(params: {
   return null;
 }
 
+// C1 async extraction status interpretation. Pure + testable. Terminal states
+// (per BE /menus/:id/status): "extracted" → done (extracted_text); "failed" →
+// error (user_message); anything else ("extracting") → still polling.
+export type ExtractionOutcome =
+  | { kind: 'done'; text: string }
+  | { kind: 'failed'; message: string }
+  | { kind: 'pending' };
+
+const EXTRACT_ASYNC_FAILED_COPY = "We couldn't read that menu. Try a different file, or paste the text instead.";
+
+export function extractionOutcome(
+  s: { status?: string; extracted_text?: string | null; user_message?: string | null } | null | undefined
+): ExtractionOutcome {
+  if (!s) return { kind: 'pending' };
+  const status = (s.status || '').toLowerCase();
+  if (status === 'extracted') return { kind: 'done', text: s.extracted_text || '' };
+  if (status === 'failed') return { kind: 'failed', message: s.user_message || EXTRACT_ASYNC_FAILED_COPY };
+  return { kind: 'pending' };
+}
+
 export function StartNewQuotePage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -193,6 +213,12 @@ export function StartNewQuotePage() {
   const [backgroundMenuId, setBackgroundMenuId] = useState<string | null>(null);
   const [backgroundAction, setBackgroundAction] = useState<'match' | 'skip' | null>(null);
   const backgroundPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const extractPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const actionErrorRef = useRef<HTMLDivElement>(null); // B-189 scroll target
+  // Menu row anchored by C1's async extractions endpoint — threaded into
+  // createMenu so it reuses that row (menu_id idempotency) instead of minting a
+  // second Menu.
+  const [extractedMenuId, setExtractedMenuId] = useState<string | null>(null);
 
   // Draft limit state (Fix 131 + Fix 139)
   const [draftLimitReached, setDraftLimitReached] = useState(false);
@@ -391,6 +417,7 @@ export function StartNewQuotePage() {
     }
     const ext = file.name.toLowerCase();
     if (ext.endsWith('.csv') || ext.endsWith('.txt')) {
+      setExtractedMenuId(null); // local read — not an async-anchored menu
       const reader = new FileReader();
       reader.onload = (e) => {
         const text = e.target?.result as string;
@@ -405,7 +432,80 @@ export function StartNewQuotePage() {
     }
   };
 
+  const applyExtractedText = (text: string) => {
+    const stripped = stripPrices(text);
+    setPasteText(text);
+    setMenuPreviewText(stripped);
+    setParsedDishes(parseMenuText(stripped));
+  };
+
+  const stopExtractPoll = () => {
+    if (extractPollRef.current) { clearInterval(extractPollRef.current); extractPollRef.current = null; }
+  };
+
+  // Authed users go through C1's async extraction endpoint (big PDFs don't hit
+  // the 30s request timeout); guests stay on the synchronous path.
+  const isAuthedExtraction = () => !(profile.isGuest || localStorage.getItem('quoteme_token') === null);
+
+  const MAX_EXTRACT_POLLS = 90; // ~3.75 min at 2.5s
+
+  // C1 async extraction: POST /menus/extractions (202 { menu_id }), poll
+  // getMenuStatus until "extracted" (populate textarea) or "failed" (render
+  // user_message verbatim). Anchors extractedMenuId for createMenu reuse.
+  async function runAsyncExtraction(payload: { file?: File; url?: string }) {
+    setIsExtracting(true);
+    setExtractError(null);
+    setIsExtractingPreview(true);
+    setExtractedMenuId(null);
+    stopExtractPoll();
+
+    let kickoff;
+    try {
+      kickoff = await extractMenuTextAsync(payload);
+    } catch (e: any) {
+      setExtractError(e?.message || "We couldn't start reading that menu. Please try again.");
+      setIsExtracting(false); setIsExtractingPreview(false);
+      return;
+    }
+    if (kickoff.error || !kickoff.data?.menu_id) {
+      setExtractError(isServiceBusyError(kickoff.error)
+        ? 'Our menu analysis service is temporarily busy. Please try again in a few seconds.'
+        : (kickoff.error || "We couldn't start reading that menu. Please try again."));
+      setIsExtracting(false); setIsExtractingPreview(false);
+      return;
+    }
+
+    const menuId = kickoff.data.menu_id;
+    setExtractedMenuId(menuId);
+    let attempts = 0;
+    const finish = () => { stopExtractPoll(); setIsExtracting(false); setIsExtractingPreview(false); };
+
+    extractPollRef.current = setInterval(async () => {
+      attempts += 1;
+      const res = await getMenuStatus(menuId);
+      const outcome = extractionOutcome(res.data);
+      if (outcome.kind === 'done') {
+        finish();
+        if (outcome.text) applyExtractedText(outcome.text);
+        else setExtractError("We couldn't find any menu text in that file. Try a clearer photo, or paste the menu text instead.");
+        return;
+      }
+      if (outcome.kind === 'failed') {
+        finish();
+        setExtractError(outcome.message);
+        return;
+      }
+      if (attempts >= MAX_EXTRACT_POLLS) {
+        finish();
+        setExtractError("This is taking longer than expected. Please try again, or paste the menu text instead.");
+      }
+    }, 2500);
+  }
+
   async function handleFileExtract(file: File) {
+    if (isAuthedExtraction()) { await runAsyncExtraction({ file }); return; }
+
+    // Guest sync path (unchanged).
     setIsExtracting(true);
     setExtractError(null);
     setIsExtractingPreview(true);
@@ -416,10 +516,7 @@ export function StartNewQuotePage() {
           ? 'Our menu analysis service is temporarily busy. Please try again in a few seconds.'
           : res.error);
       } else if (res.data?.text) {
-        const stripped = stripPrices(res.data.text);
-        setPasteText(res.data.text);
-        setMenuPreviewText(stripped);
-        setParsedDishes(parseMenuText(stripped));
+        applyExtractedText(res.data.text);
       }
     } catch (e: any) {
       setExtractError(e.message || 'Failed to extract text');
@@ -431,12 +528,15 @@ export function StartNewQuotePage() {
 
   async function handleUrlExtract() {
     if (!menuUrl.trim()) return;
+    let url = menuUrl.trim();
+    if (!url.startsWith('http://') && !url.startsWith('https://')) url = 'https://' + url;
+
+    if (isAuthedExtraction()) { await runAsyncExtraction({ url }); return; }
+
     setIsExtracting(true);
     setExtractError(null);
     setIsExtractingPreview(true);
     try {
-      let url = menuUrl.trim();
-      if (!url.startsWith('http://') && !url.startsWith('https://')) url = 'https://' + url;
       const res = await extractMenuText({ url });
       if (res.error) {
         const err = res.error;
@@ -505,8 +605,17 @@ export function StartNewQuotePage() {
   useEffect(() => {
     return () => {
       if (classificationPollRef.current) clearInterval(classificationPollRef.current);
+      if (extractPollRef.current) clearInterval(extractPollRef.current);
     };
   }, []);
+
+  // B-189 — when an action error appears (e.g. "Select a customer"), bring it
+  // into view so the user sees it at the button, not just in the top banner.
+  useEffect(() => {
+    if (error && actionErrorRef.current) {
+      actionErrorRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [error]);
 
   const handleCatalogFileSelect = async (file: File) => {
     const ext = file.name.toLowerCase();
@@ -667,7 +776,7 @@ export function StartNewQuotePage() {
           navigate(`/chef/status/${response.data.quote_id}`);
         }
       } else {
-        const response = await createMenu({ raw_text: menuText, name: selectedRestaurant?.name || 'New Quote', restaurant_id: selectedRestaurant?.id });
+        const response = await createMenu({ raw_text: menuText, name: selectedRestaurant?.name || 'New Quote', restaurant_id: selectedRestaurant?.id, menu_id: extractedMenuId ?? undefined });
         if (response.error) {
           if (isServiceBusyError(response.error)) { setServiceBusy(true); return; }
           if (response.error.includes('2 quotes in progress')) { setDraftLimitReached(true); return; }
@@ -739,7 +848,7 @@ export function StartNewQuotePage() {
           navigate(`/chef/status/${response.data.quote_id}`);
         }
       } else {
-        const response = await createMenu({ raw_text: menuText, name: selectedRestaurant?.name || 'New Quote', restaurant_id: selectedRestaurant?.id });
+        const response = await createMenu({ raw_text: menuText, name: selectedRestaurant?.name || 'New Quote', restaurant_id: selectedRestaurant?.id, menu_id: extractedMenuId ?? undefined });
         if (response.error) {
           if (isServiceBusyError(response.error)) { setServiceBusy(true); return; }
           if (response.error.includes('2 quotes in progress')) { setDraftLimitReached(true); return; }
@@ -869,6 +978,8 @@ export function StartNewQuotePage() {
     setMenuUrl('');
     setExtractError(null);
     setParsedDishes([]);
+    setExtractedMenuId(null);
+    stopExtractPoll();
     if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl);
     setImagePreviewUrl(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
@@ -1380,6 +1491,16 @@ export function StartNewQuotePage() {
               Clear Results
             </Button>
           </div>
+          {/* B-189 — surface the error next to the button that was pressed, not
+              only in the top-of-page banner far above the fold. */}
+          {error && (
+            <div
+              ref={actionErrorRef}
+              className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-2 text-center max-w-md"
+            >
+              {error}
+            </div>
+          )}
         </div>
 
         {/* ── Customer Information ── */}

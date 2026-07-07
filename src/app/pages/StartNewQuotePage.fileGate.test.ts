@@ -3,7 +3,7 @@
 // programmatic guard in menuFileRejection is the real defense. Copy must match
 // the backend gate verbatim.
 import { describe, it, expect } from 'vitest';
-import { menuFileRejection } from './StartNewQuotePage';
+import { menuFileRejection, extractionOutcome } from './StartNewQuotePage';
 
 const SUPPORTED = 'The menu reader takes a PDF, photo, CSV, or text file.';
 
@@ -57,5 +57,25 @@ describe('menuFileRejection — rejected types return plain-language copy', () =
     const msg = menuFileRejection({ name: 'weird.bin', type: 'application/x-secret-internal' });
     expect(msg).not.toContain('application/x-secret-internal');
     expect(msg).not.toContain('.bin');
+  });
+});
+
+describe('extractionOutcome — C1 async extraction status', () => {
+  it('pending for null / still extracting', () => {
+    expect(extractionOutcome(null).kind).toBe('pending');
+    expect(extractionOutcome({ status: 'extracting' }).kind).toBe('pending');
+  });
+  it('done on "extracted" with the extracted_text', () => {
+    expect(extractionOutcome({ status: 'extracted', extracted_text: 'TACOS $3' }))
+      .toEqual({ kind: 'done', text: 'TACOS $3' });
+  });
+  it('failed on "failed" — renders user_message verbatim', () => {
+    const o = extractionOutcome({ status: 'failed', user_message: 'This PDF couldn\'t be read automatically.' });
+    expect(o).toEqual({ kind: 'failed', message: 'This PDF couldn\'t be read automatically.' });
+  });
+  it('failed with fallback copy when no user_message', () => {
+    const o = extractionOutcome({ status: 'failed' });
+    expect(o.kind).toBe('failed');
+    expect((o as any).message).toMatch(/couldn't read that menu/i);
   });
 });
