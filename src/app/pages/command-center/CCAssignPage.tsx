@@ -49,6 +49,40 @@ interface RowState {
   saving: boolean;
 }
 
+// ── Assign-control visibility (B-188 / B-188b) ───────────────────────────────
+//
+// `reps` here comes straight from GET .../command_center/unassigned, and the
+// BE already scopes that query to `rep_profiles.is_active = true`
+// (see command_center_controller.rb#unassigned) — inactive reps are never
+// included in the payload at all. So `reps.length === 0` already means
+// "zero ACTIVE reps" (whether that's because the distributor has no reps yet,
+// or because every rep on file happens to be inactive) — there is no separate
+// "reps exist but are all inactive" state reachable on the FE. CCUnassignedRep
+// intentionally has no active/status field for this reason; if the BE contract
+// ever starts returning inactive reps in this array, this resolver is the one
+// place that needs updating (and CCUnassignedRep would need the extra field).
+//
+// This resolver mirrors that contract explicitly so the zero-active-reps
+// empty state (self-assign + invite link, never a dead typeahead) is a single
+// tested decision rather than three independent JSX conditions that could
+// drift apart.
+export interface AssignRowControls {
+  showTypeahead: boolean;
+  showTakeThis: boolean; // quote rows only — restaurant assign_rep has no self-assign yet
+  showAddRep: boolean;
+}
+
+export function resolveAssignRowControls(
+  kind: 'quote' | 'relationship',
+  repsCount: number
+): AssignRowControls {
+  return {
+    showTypeahead: repsCount > 0,
+    showTakeThis: kind === 'quote',
+    showAddRep: repsCount === 0,
+  };
+}
+
 // ── Assign row ────────────────────────────────────────────────────────────────
 
 function AssignRow({
@@ -248,6 +282,8 @@ function AssignRow({
       ? row.age
       : null;
 
+  const rowControls = resolveAssignRowControls(row.kind, reps.length);
+
   return (
     <div>
       <div style={{ padding: '14px 0' }}>
@@ -304,11 +340,14 @@ function AssignRow({
               {metaLine}
             </div>
           </div>
-          {/* Assign control. B-188: with zero reps the typeahead is a dead end —
-              offer "Take this one" (self-assign) + "+ Add a rep". B-187: the
-              admin can take any quote himself even when reps exist. */}
+          {/* Assign control. B-188/B-188b: with zero ACTIVE reps (none on file,
+              or every rep on file is inactive — `reps` is already BE-filtered
+              to active-only, see resolveAssignRowControls above) the typeahead
+              is a dead end — offer "Take this one" (self-assign, quote rows
+              only) + "+ Add a rep" instead. B-187: the admin can take any
+              quote himself even when reps exist. */}
           <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 12 }}>
-            {reps.length > 0 && (
+            {rowControls.showTypeahead && (
               <RepTypeahead
                 reps={reps}
                 value={undefined}
@@ -317,7 +356,7 @@ function AssignRow({
                 disabled={state.saving}
               />
             )}
-            {row.kind === 'quote' && (
+            {rowControls.showTakeThis && (
               <button
                 onClick={() => handlePick('self')}
                 disabled={state.saving}
@@ -337,7 +376,7 @@ function AssignRow({
                 Take this one
               </button>
             )}
-            {reps.length === 0 && (
+            {rowControls.showAddRep && (
               <a
                 href="/distributor-admin/invite"
                 style={{ ...sans, fontSize: 12, color: C.gray500, textDecoration: 'underline', whiteSpace: 'nowrap' }}

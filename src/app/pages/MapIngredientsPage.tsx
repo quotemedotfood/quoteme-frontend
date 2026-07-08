@@ -648,10 +648,8 @@ export function MapIngredientsPage() {
             </div>
           ) : (
             <div className="text-xs">
-              {line?.chef_note?.includes('Category not carried') ? (
+              {line?.chef_note?.includes('Category not carried') && (
                 <span className="italic text-amber-600">Category not carried</span>
-              ) : (
-                <span className="italic text-gray-400">No match found</span>
               )}
               {badge && (
                 <span className={`mt-1 inline-block rounded px-2 py-0.5 text-xs font-medium ${badge.cls}`}>
@@ -1143,15 +1141,17 @@ export function MapIngredientsPage() {
         </div>
       )}
 
-      {/* Sticky bottom CTA - mobile and desktop (sits above review bar) */}
-      <div className="fixed bottom-[52px] left-0 right-0 md:left-64 bg-white border-t border-gray-200 p-4 z-40">
-        <button
-          onClick={() => navigate('/quote-builder', { state: { quoteId, isOpenQuote, locationId } })}
-          className="w-full md:w-auto md:min-w-[200px] md:mx-auto md:block bg-[#F2993D] hover:bg-[#E8953A] text-white font-medium py-3 px-6 rounded-lg text-base min-h-[48px]"
-        >
-          Adjust Pricing
-        </button>
-      </div>
+      {/* Floating Adjust Pricing button — bottom-center pill, matches the Finish
+          Quote button pattern on QuoteBuilderPage (rounded-full, shadow-lg,
+          same color/sizing). Fixed independently of QuoteReviewBar so it never
+          overlaps the DISHES sidebar and never jumps when the review card
+          above it dismisses (BUG #30/#31). */}
+      <button
+        onClick={() => navigate('/quote-builder', { state: { quoteId, isOpenQuote, locationId } })}
+        className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 md:min-w-[200px] bg-[#F2993D] hover:bg-[#E8953A] text-white font-medium py-3 px-6 rounded-full shadow-lg text-base min-h-[48px]"
+      >
+        Adjust Pricing
+      </button>
 
       {/* Quote review bar */}
       {quoteId && <QuoteReviewBar quoteId={quoteId} onMatchesUpdated={handleMatchesUpdated} />}
