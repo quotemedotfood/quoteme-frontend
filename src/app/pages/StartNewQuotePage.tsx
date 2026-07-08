@@ -1132,6 +1132,11 @@ export function StartNewQuotePage() {
 
         {/* ── Upload Zone ── */}
         <div className={`bg-white rounded-xl p-6 mb-6 shadow-sm border border-gray-100 ${draftLimitReached ? 'opacity-40 pointer-events-none' : ''}`}>
+          <h2 className="text-lg font-semibold text-[#2A2A2A] mb-1">Menu</h2>
+          <p className="text-xs text-gray-500 mb-4">
+            Upload the restaurant's menu — dishes and drinks, not a product catalog or price list.
+            Uploading a catalog instead? Use the Catalog section below.
+          </p>
           <input
             ref={fileInputRef}
             type="file"
