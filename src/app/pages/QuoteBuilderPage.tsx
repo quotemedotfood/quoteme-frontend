@@ -7,7 +7,7 @@ import { useUser } from '../contexts/UserContext';
 import { isDemoMode } from '../utils/demoMode';
 import { formatProductName } from '../utils/format';
 import { categoryLabel } from '../utils/categoryLabel';
-import { getQuote, getGuestQuote, updateQuote, updateGuestQuote, addGuestQuoteLine, removeGuestQuoteLine, createStockQuote, getMoreMatches } from '../services/api';
+import { getQuote, getGuestQuote, updateQuote, updateGuestQuote, addGuestQuoteLine, addQuoteLine, removeGuestQuoteLine, createStockQuote, getMoreMatches } from '../services/api';
 import { CatalogProductSearch } from '../components/CatalogProductSearch';
 import { QuoteReviewBar } from '../components/QuoteReviewBar';
 import { MapComponentDrawer } from '../components/MapComponentDrawer';
@@ -59,7 +59,7 @@ interface ProductItem {
   alignmentCandidates?: AlignmentCandidate[];
 }
 
-function getItemMatchStatus(item: ProductItem): 'Needs Your Pick' | 'Review Suggested' | null {
+export function getItemMatchStatus(item: ProductItem): 'Needs Your Pick' | 'Review Suggested' | null {
   if (item.unmatched) return 'Needs Your Pick';
   const score = item.matchScore != null ? Math.round(item.matchScore * 100) : null;
   if (score !== null && score < 50) return 'Needs Your Pick';
@@ -308,10 +308,9 @@ export function QuoteBuilderPage() {
     if (!quoteId) return;
     const isGuest = !localStorage.getItem('quoteme_token');
     try {
-      // TODO: add authenticated add_line endpoint when needed
       const res = isGuest
         ? await addGuestQuoteLine(quoteId, product.id)
-        : { data: null, error: 'Not implemented for authenticated users' };
+        : await addQuoteLine(quoteId, product.id);
       if (res.error || !res.data) {
         console.error('Failed to add line:', res.error);
         return;
@@ -621,7 +620,13 @@ export function QuoteBuilderPage() {
                     : formatProductName(item.product, item.brand)}
                 </p>
                 {item.unmatched && (
-                  <span className="inline-flex bg-amber-50 text-amber-800 border border-amber-200 px-2 py-0.5 rounded text-xs mb-1">
+                  <span
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openMatchDrawer(item);
+                    }}
+                    className="inline-flex bg-amber-50 text-amber-800 border border-amber-200 px-2 py-0.5 rounded text-xs mb-1 cursor-pointer hover:opacity-80 transition-opacity"
+                  >
                     {item.resolution_label || 'Awaiting rep review'}
                   </span>
                 )}
@@ -824,7 +829,13 @@ export function QuoteBuilderPage() {
                       <div className="flex flex-col gap-1">
                         <span>{toTitleCase(item.unmatched ? item.component : (item.matched_product_name || item.product))}</span>
                         {item.unmatched && (
-                          <span className="inline-flex self-start bg-amber-50 text-amber-800 border border-amber-200 px-2 py-0.5 rounded text-xs">
+                          <span
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openMatchDrawer(item);
+                            }}
+                            className="inline-flex self-start bg-amber-50 text-amber-800 border border-amber-200 px-2 py-0.5 rounded text-xs cursor-pointer hover:opacity-80 transition-opacity"
+                          >
                             {item.resolution_label || 'Awaiting rep review'}
                           </span>
                         )}
@@ -971,6 +982,7 @@ export function QuoteBuilderPage() {
           }}
           componentName={matchDrawerItem.component}
           candidates={matchDrawerItem.alignmentCandidates || []}
+          isUnmatched={matchDrawerItem.unmatched}
           onFindMoreMatches={quoteId ? async () => {
             const res = await getMoreMatches(quoteId, matchDrawerItem.id);
             return res.data?.candidates || [];
