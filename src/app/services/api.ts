@@ -1212,6 +1212,16 @@ export async function updateQuote(id: string, updates: any): Promise<ApiResponse
   });
 }
 
+// Authenticated counterpart to addGuestQuoteLine — POSTs to the same
+// add_line action (Api::V1::QuotesController#add_line), just on the
+// authed /api/v1/quotes path instead of /api/v1/guest/quotes.
+export async function addQuoteLine(quoteId: string, productId: string): Promise<ApiResponse<any>> {
+  return fetchWithAuth(`/api/v1/quotes/${quoteId}/add_line`, {
+    method: 'POST',
+    body: JSON.stringify({ product_id: productId }),
+  });
+}
+
 export async function sendQuote(id: string, recipientEmail?: string, note?: string): Promise<ApiResponse<any>> {
   const options: RequestInit = { method: 'POST' };
   const body: Record<string, string> = {};
