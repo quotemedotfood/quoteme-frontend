@@ -308,6 +308,42 @@ export interface MenuStatusResponse {
   status: string;
   quote_id: string | null;
   updated_at: string;
+  // C1 async extraction — /menus/:id/status returns these once extraction runs:
+  // status "extracted" → extracted_text; status "failed" → user_message/error_code.
+  extracted_text?: string | null;
+  user_message?: string | null;
+  error_code?: string | null;
+}
+
+// C1 authed async extraction: POST /menus/extractions returns 202 { menu_id };
+// poll getMenuStatus(menu_id) until status is "extracted" (extracted_text) or
+// "failed" (user_message). Big PDFs extract off the request cycle (no 30s
+// Railway timeout). Guests stay on the synchronous extractMenuText path.
+export async function extractMenuTextAsync(
+  payload: { file?: File; url?: string }
+): Promise<ApiResponse<{ menu_id: string; status: string }>> {
+  const token = getAuthToken();
+  const headers: Record<string, string> = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const formData = new FormData();
+  if (payload.file) formData.append('file', payload.file);
+  if (payload.url) formData.append('url', payload.url);
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/v1/menus/extractions`, {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      return { error: errorData.user_message || errorData.error || `HTTP ${response.status}` };
+    }
+    return { data: await response.json() };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : 'Network error' };
+  }
 }
 
 // Helper to get auth token
@@ -1070,7 +1106,7 @@ export async function extractMenuText(payload: { file?: File; url?: string }): P
   }
 }
 
-export async function createMenu(menuData: { raw_text: string; name: string }): Promise<ApiResponse<MenuCreateResponse>> {
+export async function createMenu(menuData: { raw_text: string; name: string; restaurant_id?: string; menu_id?: string }): Promise<ApiResponse<MenuCreateResponse>> {
   return fetchWithAuth('/api/v1/menus', {
     method: 'POST',
     body: JSON.stringify(menuData),
