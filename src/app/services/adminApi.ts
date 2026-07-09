@@ -2142,3 +2142,58 @@ export async function uploadAdminDistributorLogo(
     return { error: err instanceof Error ? err.message : 'Network error' };
   }
 }
+
+// ═══════════════════════════════════════════════════════════════════════
+// Operational Memory Milestone 0 — Gap Filler "Needs Your Pick" (OME-M0)
+// ═══════════════════════════════════════════════════════════════════════
+//
+// Distinct from the Knowledge Gap Filler (corpus/ontology tail-clumping tool
+// above). This surfaces components the matching engine could NOT confidently
+// resolve on live quotes -- deduped by (distributor_id, canonical_key) and
+// frequency-ranked by the BE -- so an admin can pick the right catalog product
+// once and have it stick for every future occurrence.
+
+export interface GapFillerNeedPick {
+  canonical_key: string;
+  distributor_id: string;
+  distributor_name: string;
+  component_name: string;
+  occurrence_count: number;
+  miss_reasons: Record<string, number>;
+  first_seen: string;
+  last_seen: string;
+  drill_down_token: string;
+}
+
+export interface GapFillerNeedsPickResponse {
+  needs_pick: GapFillerNeedPick[];
+  count: number;
+}
+
+export async function getGapFillerNeedsPick(params?: {
+  distributor_id?: string;
+  limit?: number;
+}): Promise<ApiResponse<GapFillerNeedsPickResponse>> {
+  const searchParams = new URLSearchParams();
+  if (params?.distributor_id) searchParams.set('distributor_id', params.distributor_id);
+  if (params?.limit) searchParams.set('limit', String(params.limit));
+  const qs = searchParams.toString();
+  return fetchWithAuth(`/api/v1/admin/gap_filler_needs_pick${qs ? `?${qs}` : ''}`);
+}
+
+export interface GapFillerSourceQuote {
+  quote_id: string;
+  quote_status: string;
+  restaurant_id: string;
+  restaurant_name: string;
+  rep_id: string;
+  rep_email: string;
+  miss_reason: string;
+  occurred_at: string;
+}
+
+export async function getGapFillerNeedsPickQuotes(
+  drillDownToken: string
+): Promise<ApiResponse<GapFillerSourceQuote[]>> {
+  return fetchWithAuth(`/api/v1/admin/gap_filler_needs_pick/${encodeURIComponent(drillDownToken)}/quotes`);
+}

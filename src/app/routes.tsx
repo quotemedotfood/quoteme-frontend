@@ -36,6 +36,7 @@ import { QMAdminMatchingEngine } from "./pages/admin/QMAdminMatchingEngine";
 import { QMAdminBrandRules } from "./pages/admin/QMAdminBrandRules";
 import { QMAdminClusterLabels } from "./pages/admin/QMAdminClusterLabels";
 import { QMAdminKnowledgeGapFiller } from "./pages/admin/QMAdminKnowledgeGapFiller";
+import { QMAdminGapFillerNeedsPick } from "./pages/admin/QMAdminGapFillerNeedsPick";
 import { QMAdminChefs } from "./pages/admin/QMAdminChefs";
 import { QMAdminProductPipeline } from "./pages/admin/QMAdminProductPipeline";
 import { SentryTestPage } from "./pages/admin/SentryTestPage";
@@ -308,6 +309,7 @@ export const router = createBrowserRouter([
           { path: "cluster-labels", Component: QMAdminClusterLabels },
           { path: "knowledge-gaps", element: <Navigate to="/qm-admin/knowledge-gap-filler" replace /> },
           { path: "knowledge-gap-filler", Component: QMAdminKnowledgeGapFiller },
+          { path: "needs-your-pick", Component: QMAdminGapFillerNeedsPick },
           { path: "chefs", Component: QMAdminChefs },
           { path: "product-pipeline", Component: QMAdminProductPipeline },
           { path: "conference-command", Component: QMAdminConferenceCommand },
