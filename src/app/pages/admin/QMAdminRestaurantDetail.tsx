@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router';
-import { ArrowLeft, ExternalLink, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, ExternalLink, CheckCircle2, Loader2, Check } from 'lucide-react';
 import {
   getAdminRestaurant,
   AdminRestaurantDetail,
@@ -9,6 +9,7 @@ import {
   getAdminRestaurantGroups,
   addRestaurantToGroup,
   AdminRestaurantGroup,
+  createAdminRestaurantContact,
 } from '../../services/adminApi';
 import {
   Table,
@@ -19,6 +20,15 @@ import {
   TableCell,
 } from '../../components/ui/table';
 import { stripSeedPrefix } from '../../utils/format';
+import { ManageAdminDrawer } from './_manageAdminDrawer';
+
+const CONTACT_ROLE_OPTIONS = [
+  { value: 'chef', label: 'Chef' },
+  { value: 'owner', label: 'Owner' },
+  { value: 'manager', label: 'Manager' },
+  { value: 'sous_chef', label: 'Sous Chef' },
+  { value: 'other', label: 'Other' },
+];
 
 export function QMAdminRestaurantDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -38,6 +48,20 @@ export function QMAdminRestaurantDetailPage() {
   const [selectedGroupId, setSelectedGroupId] = useState<string>('');
   const [groupStatus, setGroupStatus] = useState<'idle' | 'loading' | 'ok' | 'error'>('idle');
   const [groupMsg, setGroupMsg] = useState<string | null>(null);
+
+  // --- 2a: link / create admin user ---
+  const [manageAdminOpen, setManageAdminOpen] = useState(false);
+
+  // --- 2b: add contact ---
+  const [addContactOpen, setAddContactOpen] = useState(false);
+  const [contactFirstName, setContactFirstName] = useState('');
+  const [contactLastName, setContactLastName] = useState('');
+  const [contactPhone, setContactPhone] = useState('');
+  const [contactEmail, setContactEmail] = useState('');
+  const [contactRole, setContactRole] = useState('chef');
+  const [contactIsPrimary, setContactIsPrimary] = useState(false);
+  const [contactStatus, setContactStatus] = useState<'idle' | 'loading' | 'error'>('idle');
+  const [contactError, setContactError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -125,6 +149,50 @@ export function QMAdminRestaurantDetailPage() {
     }
   }
 
+  async function refreshRestaurant() {
+    if (!id) return;
+    const refreshed = await getAdminRestaurant(id);
+    if (refreshed.data) setRestaurant(refreshed.data);
+  }
+
+  function resetContactForm() {
+    setContactFirstName('');
+    setContactLastName('');
+    setContactPhone('');
+    setContactEmail('');
+    setContactRole('chef');
+    setContactIsPrimary(false);
+    setContactStatus('idle');
+    setContactError(null);
+  }
+
+  async function handleAddContact(e: React.FormEvent) {
+    e.preventDefault();
+    setContactError(null);
+    if (!restaurant) return;
+    if (!contactFirstName.trim() || !contactLastName.trim()) {
+      setContactError('First and last name are required.');
+      return;
+    }
+    setContactStatus('loading');
+    const res = await createAdminRestaurantContact(restaurant.id, {
+      first_name: contactFirstName.trim(),
+      last_name: contactLastName.trim(),
+      phone: contactPhone.trim() || undefined,
+      email: contactEmail.trim() || undefined,
+      role: contactRole,
+      is_primary: contactIsPrimary,
+    });
+    if (res.error) {
+      setContactStatus('error');
+      setContactError(res.error);
+      return;
+    }
+    await refreshRestaurant();
+    resetContactForm();
+    setAddContactOpen(false);
+  }
+
   return (
     <div className="p-6 md:p-10 max-w-6xl">
       <Link to="/qm-admin/restaurants" className="text-sm text-[#7FAEC2] hover:underline flex items-center gap-1 mb-4">
@@ -200,27 +268,37 @@ export function QMAdminRestaurantDetailPage() {
               <p className="text-sm text-gray-400">No admin user linked</p>
             )}
           </div>
-          {/* Buttons — only shown when a user is linked */}
-          {restaurant.restaurant_admin_id && (
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                disabled={resetStatus === 'loading'}
-                onClick={handlePasswordReset}
-                className="px-3 py-1.5 rounded text-xs font-medium bg-gray-100 hover:bg-gray-200 text-[#2A2A2A] disabled:opacity-50 transition-colors"
-              >
-                {resetStatus === 'loading' ? 'Sending…' : 'Send password reset'}
-              </button>
-              <button
-                type="button"
-                disabled={welcomeStatus === 'loading'}
-                onClick={handleResendWelcome}
-                className="px-3 py-1.5 rounded text-xs font-medium bg-gray-100 hover:bg-gray-200 text-[#2A2A2A] disabled:opacity-50 transition-colors"
-              >
-                {welcomeStatus === 'loading' ? 'Sending…' : 'Resend welcome'}
-              </button>
-            </div>
-          )}
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Buttons — only shown when a user is linked */}
+            {restaurant.restaurant_admin_id && (
+              <>
+                <button
+                  type="button"
+                  disabled={resetStatus === 'loading'}
+                  onClick={handlePasswordReset}
+                  className="px-3 py-1.5 rounded text-xs font-medium bg-gray-100 hover:bg-gray-200 text-[#2A2A2A] disabled:opacity-50 transition-colors"
+                >
+                  {resetStatus === 'loading' ? 'Sending…' : 'Send password reset'}
+                </button>
+                <button
+                  type="button"
+                  disabled={welcomeStatus === 'loading'}
+                  onClick={handleResendWelcome}
+                  className="px-3 py-1.5 rounded text-xs font-medium bg-gray-100 hover:bg-gray-200 text-[#2A2A2A] disabled:opacity-50 transition-colors"
+                >
+                  {welcomeStatus === 'loading' ? 'Sending…' : 'Resend welcome'}
+                </button>
+              </>
+            )}
+            {/* 2a: link an existing user by email, or create one, as the restaurant's admin */}
+            <button
+              type="button"
+              onClick={() => setManageAdminOpen(true)}
+              className="px-3 py-1.5 rounded text-xs font-medium bg-[#7FAEC2] hover:bg-[#6a9aae] text-white transition-colors"
+            >
+              {restaurant.restaurant_admin_id ? 'Manage Admin' : 'Add Admin'}
+            </button>
+          </div>
         </div>
         {/* Inline feedback */}
         {resetMsg && (
@@ -234,6 +312,13 @@ export function QMAdminRestaurantDetailPage() {
           </p>
         )}
       </section>
+
+      <ManageAdminDrawer
+        open={manageAdminOpen}
+        restaurant={restaurant}
+        onClose={() => setManageAdminOpen(false)}
+        onAssigned={refreshRestaurant}
+      />
 
       {/* ── Add to restaurant group ─────────────────────────────── */}
       <section className="mb-8">
@@ -284,7 +369,115 @@ export function QMAdminRestaurantDetailPage() {
 
       {/* Contacts */}
       <section className="mb-8">
-        <h2 className="text-lg font-semibold text-[#2A2A2A] mb-3" style={{ fontFamily: "'Playfair Display', serif" }}>Contacts</h2>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-lg font-semibold text-[#2A2A2A]" style={{ fontFamily: "'Playfair Display', serif" }}>Contacts</h2>
+          <button
+            type="button"
+            onClick={() => setAddContactOpen((v) => !v)}
+            className="px-3 py-1.5 rounded text-xs font-medium bg-[#7FAEC2] hover:bg-[#6a9aae] text-white transition-colors"
+          >
+            {addContactOpen ? 'Cancel' : 'Add contact'}
+          </button>
+        </div>
+
+        {/* 2b: Add Chef to Contacts — NAME / PHONE / EMAIL / ROLE (default chef) + Primary */}
+        {addContactOpen && (
+          <form
+            onSubmit={handleAddContact}
+            className="bg-white border border-gray-200 rounded-xl px-5 py-4 mb-4 flex flex-col gap-3"
+          >
+            {contactError && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+                {contactError}
+              </div>
+            )}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-medium text-[#4F4F4F] uppercase tracking-wide">
+                  Name <span className="text-red-500">*</span>
+                </label>
+                <div className="flex gap-2 mt-1">
+                  <input
+                    value={contactFirstName}
+                    onChange={(e) => setContactFirstName(e.target.value)}
+                    placeholder="First name"
+                    disabled={contactStatus === 'loading'}
+                    className="w-1/2 text-sm border border-gray-200 rounded px-3 py-1.5 text-[#2A2A2A] bg-white focus:outline-none focus:ring-2 focus:ring-[#2A2A2A]/10 disabled:opacity-50"
+                  />
+                  <input
+                    value={contactLastName}
+                    onChange={(e) => setContactLastName(e.target.value)}
+                    placeholder="Last name"
+                    disabled={contactStatus === 'loading'}
+                    className="w-1/2 text-sm border border-gray-200 rounded px-3 py-1.5 text-[#2A2A2A] bg-white focus:outline-none focus:ring-2 focus:ring-[#2A2A2A]/10 disabled:opacity-50"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-[#4F4F4F] uppercase tracking-wide">Role</label>
+                <select
+                  value={contactRole}
+                  onChange={(e) => setContactRole(e.target.value)}
+                  disabled={contactStatus === 'loading'}
+                  className="mt-1 w-full text-sm border border-gray-200 rounded px-3 py-1.5 text-[#2A2A2A] bg-white focus:outline-none focus:ring-2 focus:ring-[#2A2A2A]/10 disabled:opacity-50"
+                >
+                  {CONTACT_ROLE_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-[#4F4F4F] uppercase tracking-wide">Phone</label>
+                <input
+                  type="tel"
+                  value={contactPhone}
+                  onChange={(e) => setContactPhone(e.target.value)}
+                  placeholder="(555) 000-0000"
+                  disabled={contactStatus === 'loading'}
+                  className="mt-1 w-full text-sm border border-gray-200 rounded px-3 py-1.5 text-[#2A2A2A] bg-white focus:outline-none focus:ring-2 focus:ring-[#2A2A2A]/10 disabled:opacity-50"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-[#4F4F4F] uppercase tracking-wide">Email</label>
+                <input
+                  type="email"
+                  value={contactEmail}
+                  onChange={(e) => setContactEmail(e.target.value)}
+                  placeholder="name@restaurant.com"
+                  disabled={contactStatus === 'loading'}
+                  className="mt-1 w-full text-sm border border-gray-200 rounded px-3 py-1.5 text-[#2A2A2A] bg-white focus:outline-none focus:ring-2 focus:ring-[#2A2A2A]/10 disabled:opacity-50"
+                />
+              </div>
+            </div>
+            <label className="flex items-center gap-2 text-sm text-[#4F4F4F]">
+              <input
+                type="checkbox"
+                checked={contactIsPrimary}
+                onChange={(e) => setContactIsPrimary(e.target.checked)}
+                disabled={contactStatus === 'loading'}
+              />
+              Primary contact
+            </label>
+            <div className="flex justify-end">
+              <button
+                type="submit"
+                disabled={contactStatus === 'loading'}
+                className="px-3 py-1.5 rounded text-xs font-medium bg-[#A5CFDD] hover:bg-[#7FAEC2] text-white disabled:opacity-50 transition-colors flex items-center gap-2"
+              >
+                {contactStatus === 'loading' ? (
+                  <>
+                    <Loader2 size={14} className="animate-spin" /> Saving…
+                  </>
+                ) : (
+                  <>
+                    <Check size={14} /> Save contact
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
+        )}
+
         {restaurant.contacts.length === 0 ? (
           <p className="text-sm text-gray-400 py-4">No contacts yet</p>
         ) : (

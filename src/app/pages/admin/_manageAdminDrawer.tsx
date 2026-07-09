@@ -13,9 +13,17 @@ import {
 
 type Tab = 'invite' | 'assign';
 
+// Minimal shape the drawer actually needs. Structurally compatible with both
+// the restaurant-list `AdminRestaurant` and the detail-page `AdminRestaurantDetail`
+// types, so the same drawer can be reused from either surface without a cast.
+export type ManageAdminDrawerRestaurant = Pick<
+  AdminRestaurant,
+  'id' | 'name' | 'restaurant_admin_id' | 'restaurant_admin_name'
+>;
+
 interface Props {
   open: boolean;
-  restaurant: AdminRestaurant | null;
+  restaurant: ManageAdminDrawerRestaurant | null;
   onClose: () => void;
   onAssigned: () => void;
 }
