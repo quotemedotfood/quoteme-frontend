@@ -21,6 +21,7 @@
 // by list views (which show "Ready" via the 'pill' context).
 
 import { quoteStatusLabel } from '../../utils/quoteStatusLabel';
+import { formatCurrency } from '../../utils/formatCurrency';
 
 export type QuoteDocumentState = 'preview' | 'distributor' | 'confirmed';
 
@@ -39,8 +40,7 @@ export function stateFromQuoteState(quoteState: string | null | undefined): Quot
   }
 }
 
-const money = (n: number) =>
-  '$' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const money = (n: number, currency?: string) => formatCurrency(Math.round(n * 100), currency);
 
 // ── Palette (FE canonical; matches existing ChefQuoteReceiptPage hex) ──
 const INK = '#2A2A2A'; // foreground / charcoal
@@ -83,6 +83,10 @@ export interface QuoteStateDocumentProps {
   rep: string;
   repPhone?: string;
   distributorShort?: string; // omitted when the surface has no distributor name
+  /** CANADA-CURRENCY: ISO code (e.g. "USD"/"CAD") threaded from the caller's
+   * quote.distributor.currency. Optional/forward-compatible — defaults to
+   * USD via formatCurrency() when the caller has none in scope. */
+  currency?: string;
   catalogUpdated?: string;
   groups: QuoteDocGroup[];
   pricedCount?: number; // for distributor state
@@ -114,6 +118,7 @@ export function QuoteStateDocument({
   rep,
   repPhone,
   distributorShort,
+  currency,
   catalogUpdated,
   groups,
   pricedCount = 0,
@@ -373,7 +378,7 @@ function QuoteStateGroup({
                     className={`text-[13.5px] ${state === 'confirmed' ? 'font-semibold' : 'font-medium'}`}
                     style={{ color: INK }}
                   >
-                    {it.unit != null ? money(it.unit) : <span style={{ color: INK_FAINT }}>—</span>}
+                    {it.unit != null ? money(it.unit, currency) : <span style={{ color: INK_FAINT }}>—</span>}
                   </div>
                 ) : (
                   <div className="text-[12.5px] italic" style={{ color: INK_FAINT }}>

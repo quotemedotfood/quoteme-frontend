@@ -206,6 +206,7 @@ export function ChefPullReceiptPage() {
                 quoteDate={docDate}
                 rep={rep?.name || 'your rep'}
                 distributorShort={distributor?.name}
+                currency={distributor?.currency}
                 groups={docGroups}
                 pricedCount={pricedCount}
                 totalCount={matchedLines.length}

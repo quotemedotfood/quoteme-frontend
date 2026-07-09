@@ -6,6 +6,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useUser } from '../contexts/UserContext';
 import { isDemoMode } from '../utils/demoMode';
 import { formatProductName } from '../utils/format';
+import { formatCurrency } from '../utils/formatCurrency';
 import { categoryLabel } from '../utils/categoryLabel';
 import { getQuote, getGuestQuote, updateQuote, updateGuestQuote, addGuestQuoteLine, addQuoteLine, removeGuestQuoteLine, createStockQuote, getMoreMatches } from '../services/api';
 import { CatalogProductSearch } from '../components/CatalogProductSearch';
@@ -108,6 +109,11 @@ export function QuoteBuilderPage() {
   const [savingStockQuote, setSavingStockQuote] = useState(false);
   const [inputMode, setInputMode] = useState<string | null>(null);
   const [detectedConcept, setDetectedConcept] = useState<string | null>(null);
+  // CANADA-CURRENCY: threaded from the same getQuote/getGuestQuote response
+  // used to build `items` below — no separate fetch. Optional/forward-
+  // compatible until distributor.currency ships on this serializer;
+  // formatCurrency() defaults to USD when undefined.
+  const [distributorCurrency, setDistributorCurrency] = useState<string | undefined>(undefined);
 
   // ── Attention / match drawer state ──
   const [matchDrawerOpen, setMatchDrawerOpen] = useState(false);
@@ -163,6 +169,7 @@ export function QuoteBuilderPage() {
         });
       }
       setItems(productItems);
+      setDistributorCurrency(data.distributor?.currency);
       if (data.input_mode) setInputMode(data.input_mode);
       if (data.detected_concept) setDetectedConcept(data.detected_concept);
       setLoading(false);
@@ -656,7 +663,7 @@ export function QuoteBuilderPage() {
                         <input
                           type="text"
                           inputMode="decimal"
-                          value={editingPriceId === item.id ? editingPriceValue : `$${item.currentPrice.toFixed(2)}`}
+                          value={editingPriceId === item.id ? editingPriceValue : formatCurrency(Math.round(item.currentPrice * 100), distributorCurrency)}
                           onClick={(e) => e.stopPropagation()}
                           onChange={(e) => {
                             if (editingPriceId === item.id) {
@@ -732,7 +739,7 @@ export function QuoteBuilderPage() {
                 ) : (
                   <div className="flex justify-between items-center mt-2 pt-2 border-t border-gray-100">
                     <span className="text-xs text-gray-400">Price</span>
-                    <span className="font-semibold text-[#2A2A2A] text-base">${item.currentPrice.toFixed(2)}</span>
+                    <span className="font-semibold text-[#2A2A2A] text-base">{formatCurrency(Math.round(item.currentPrice * 100), distributorCurrency)}</span>
                   </div>
                 )}
 
@@ -894,7 +901,7 @@ export function QuoteBuilderPage() {
                           <input
                             type="text"
                             inputMode="decimal"
-                            value={editingPriceId === item.id ? editingPriceValue : `$${item.currentPrice.toFixed(2)}`}
+                            value={editingPriceId === item.id ? editingPriceValue : formatCurrency(Math.round(item.currentPrice * 100), distributorCurrency)}
                             onClick={(e) => e.stopPropagation()}
                             onChange={(e) => {
                               if (editingPriceId === item.id) {
@@ -936,7 +943,7 @@ export function QuoteBuilderPage() {
                           </button>
                         </div>
                       ) : (
-                        item.unmatched && item.currentPrice === 0 ? '—' : `$${item.currentPrice.toFixed(2)}`
+                        item.unmatched && item.currentPrice === 0 ? '—' : formatCurrency(Math.round(item.currentPrice * 100), distributorCurrency)
                       )}
                     </td>
                     {editMode && (

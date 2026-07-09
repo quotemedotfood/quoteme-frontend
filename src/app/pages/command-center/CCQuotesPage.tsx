@@ -35,11 +35,15 @@ import {
   type CCQuoteRow,
   type CCQuoteStatus,
 } from '../../services/api';
+import { formatCurrency } from '../../utils/formatCurrency';
 
 // ── Money formatter ───────────────────────────────────────────────────────────
-
+// `n` is a dollar amount (CCQuoteRow.total is dollars, not cents).
+// TODO: no currency in scope here — CCQuoteRow has no currency field yet
+// (BE CANADA-CURRENCY only bakes currency into pre-formatted mailer/PDF
+// strings so far); defaulting to USD.
 function money(n: number): string {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(n);
+  return formatCurrency(Math.round(n * 100));
 }
 
 // ── Skeletons ─────────────────────────────────────────────────────────────────

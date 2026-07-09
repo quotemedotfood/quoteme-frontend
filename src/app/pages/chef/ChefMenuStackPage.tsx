@@ -670,7 +670,7 @@ export function ChefMenuStackPage() {
                                       <ArrowDown size={10} color={C.charcoal} />
                                     )}
                                     <span style={{ ...num, fontSize: 13, fontWeight: 500, color: C.charcoal }}>
-                                      {priceOrDash(o.price)}
+                                      {priceOrDash(o.price, cols[ci]?.currency)}
                                     </span>
                                   </div>
                                 ) : (

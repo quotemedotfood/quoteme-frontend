@@ -10,6 +10,7 @@ import {
   type OrderGuideItemResponse,
 } from '../../services/api';
 import { categoryLabel } from '../../utils/categoryLabel';
+import { formatCurrency } from '../../utils/formatCurrency';
 
 // ─── Shared styles ──────────────────────────────────────────────────────────────
 
@@ -23,11 +24,14 @@ function toTitleCase(str: string): string {
   return str.replace(/\w\S*/g, (w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
 }
 
-function formatCurrency(cents: number): string {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0 }).format(
-    cents / 100
-  );
-}
+// NOTE: the previous local formatter used minimumFractionDigits: 0 (trimmed
+// trailing zeros, e.g. "$1,234" / "$1,234.5"). The shared util always shows a
+// fixed 2 decimals ("$1,234.00" / "$1,234.50") to match every other money
+// site in the app — a deliberate, small visible consistency change on this
+// one page, called out in the CANADA-CURRENCY FE report.
+// guide.distributor.currency is optional/forward-compatible (BE hasn't
+// shipped it on this serializer yet) — formatCurrency() defaults to USD
+// until it does.
 
 function groupByCategory(items: OrderGuideItemResponse[]): Record<string, OrderGuideItemResponse[]> {
   return items.reduce<Record<string, OrderGuideItemResponse[]>>((acc, item) => {
@@ -348,7 +352,9 @@ export function ChefOrderGuidePage() {
 
   const effectiveDate = guide.effective_date ? parseEffectiveDate(guide.effective_date) : null;
 
-  const minimumOrder = guide.minimum_order_cents ? formatCurrency(guide.minimum_order_cents) : null;
+  const minimumOrder = guide.minimum_order_cents
+    ? formatCurrency(guide.minimum_order_cents, guide.distributor?.currency)
+    : null;
 
   // ── Render ───────────────────────────────────────────────────────────────────
 

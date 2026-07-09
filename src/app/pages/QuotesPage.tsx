@@ -9,6 +9,7 @@ import { stripSeedPrefix } from '../utils/format';
 import { legacyStatusToState } from '../components/chef/QuoteStatusPill';
 import { quoteStatusLabel } from '../utils/quoteStatusLabel';
 import { isPricedQuote } from '../utils/quoteStatus';
+import { formatCurrency } from '../utils/formatCurrency';
 
 /** Statuses where the quote workflow is closed. Requote is hidden for these. */
 export const CLOSED_STATUSES = ['won', 'confirmed', 'accepted', 'declined'] as const;
@@ -163,9 +164,8 @@ export function QuotesPage() {
     setConfirmDeleteId(null);
   };
 
-  const formatCurrency = (cents: number) => {
-    return `$${(cents / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  };
+  // TODO: no currency in scope here — QuoteListItem (rep quotes index) has no
+  // distributor/currency field; defaulting to USD via the shared util.
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);

@@ -34,6 +34,7 @@
 import React, { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Info, ArrowDown } from 'lucide-react';
+import { formatCurrency } from '../../utils/formatCurrency';
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 
@@ -92,6 +93,9 @@ export interface StackDistributor {
   status:   'connected' | 'unaffiliated' | string;
   coverage?: string;
   role?:    string;
+  /** currency optional/forward-compatible — see QuoteResponse.distributor
+   * note in services/api.ts. priceOrDash() defaults to USD when absent. */
+  currency?: string;
 }
 
 /** Props for StackProductDrawer. Export so callers (STACK-FE-1/3/4) can import. */
@@ -123,9 +127,9 @@ export interface StackProductDrawerProps {
  * "$—" is the ONE place an em-dash is allowed in a price slot (Justin / Q-Stack-1).
  * Exported so V1 + V2 stack views can import the single source of truth.
  */
-export function priceOrDash(p: number | null | undefined): string {
-  if (p == null) return '$—'; // "$—"
-  return '$' + p.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+export function priceOrDash(p: number | null | undefined, currency?: string): string {
+  if (p == null) return '$—'; // "$—" — kept literal (dollar-sign dash placeholder, no amount to localize)
+  return formatCurrency(Math.round(p * 100), currency);
 }
 
 // ─── Demo enrichment data ─────────────────────────────────────────────────────
@@ -455,7 +459,7 @@ function StackProductBody({
                 color: C.charcoal,
               }}
             >
-              {priceOrDash(p.price)}
+              {priceOrDash(p.price, distributor?.currency)}
             </div>
           </div>
         ))}
