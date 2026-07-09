@@ -82,6 +82,9 @@ function parsePlace(place: google.maps.places.PlaceResult): ParsedAddress {
 
 interface UseGooglePlacesOptions {
   types?: string[];
+  // Component restriction country codes (ISO 3166-1 alpha-2, e.g. 'us', 'ca').
+  // Defaults to ['us'] for backward-compat with existing US-only forms.
+  countries?: string[];
 }
 
 export function useGooglePlaces(
@@ -126,6 +129,8 @@ export function useGooglePlaces(
   }, [inputRef]);
 
   const typesKey = options?.types?.join(',') || 'address';
+  const countries = options?.countries?.length ? options.countries : ['us'];
+  const countriesKey = countries.join(',');
 
   useEffect(() => {
     if (!ready || !inputElement) return;
@@ -138,7 +143,7 @@ export function useGooglePlaces(
 
     const autocomplete = new google.maps.places.Autocomplete(inputElement, {
       types: options?.types || ['address'],
-      componentRestrictions: { country: 'us' },
+      componentRestrictions: { country: countries },
       fields: ['address_components', 'formatted_address', 'place_id', 'geometry'],
     });
 
@@ -155,7 +160,7 @@ export function useGooglePlaces(
       google.maps.event.clearInstanceListeners(autocomplete);
       autocompleteRef.current = null;
     };
-  }, [ready, inputElement, typesKey]);
+  }, [ready, inputElement, typesKey, countriesKey]);
 
   return { ready: ready && !!GOOGLE_MAPS_API_KEY, error };
 }
