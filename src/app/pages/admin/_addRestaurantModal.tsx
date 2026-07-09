@@ -68,7 +68,7 @@ export function AddRestaurantModal({ open, onClose, onCreated }: Props) {
       setPickedLat(addr.lat);
       setPickedLng(addr.lng);
     },
-    { types: ['establishment', 'geocode'] },
+    { types: ['establishment', 'geocode'], countries: country === 'CA' ? ['us', 'ca'] : ['us'] },
   );
 
   // Load distributors on modal open.

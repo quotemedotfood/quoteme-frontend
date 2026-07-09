@@ -55,7 +55,7 @@ export function CreateRestaurantPage() {
       setPickedLat(addr.lat);
       setPickedLng(addr.lng);
     },
-    { types: ['establishment', 'geocode'] },
+    { types: ['establishment', 'geocode'], countries: country === 'CA' ? ['us', 'ca'] : ['us'] },
   );
 
   const validate = () => {
