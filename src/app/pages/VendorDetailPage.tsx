@@ -10,6 +10,7 @@ import {
   type LocationQuote,
 } from '../services/api';
 import { stripSeedPrefix } from '../utils/format';
+import { formatCurrency } from '../utils/formatCurrency';
 
 const statusStyles: Record<string, { bg: string; text: string; label: string }> = {
   inbound: { bg: 'bg-yellow-100', text: 'text-yellow-700', label: 'Inbound' },
@@ -93,7 +94,9 @@ export function VendorDetailPage() {
 
   const formatCents = (cents: number | null) => {
     if (!cents) return '--';
-    return `$${(cents / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    // vendor.distributor.currency is optional/forward-compatible — see
+    // LocationDistributorRelationship note; defaults to USD until BE ships it.
+    return formatCurrency(cents, vendor.distributor?.currency);
   };
 
   const formatDate = (d: string) => {

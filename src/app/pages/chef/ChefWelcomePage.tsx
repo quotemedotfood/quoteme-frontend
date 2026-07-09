@@ -5,6 +5,7 @@ import type { ChefMagicLinkConsumeResponse } from '../../services/api';
 import { useUser } from '../../contexts/UserContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { stripSeedPrefix } from '../../utils/format';
+import { formatCurrency } from '../../utils/formatCurrency';
 
 // V2 W4 — Justin/Moose lock: the page IS the quote arrival. No greeting,
 // no "welcome", no account framing. Lead with rep + distributor + the
@@ -51,10 +52,8 @@ function formatDate(iso: string | null | undefined): string {
   } catch { return ''; }
 }
 
-function money(cents: number): string {
-  return '$' + (cents / 100).toLocaleString('en-US', {
-    minimumFractionDigits: 2, maximumFractionDigits: 2,
-  });
+function money(cents: number, currency?: string): string {
+  return formatCurrency(cents, currency);
 }
 
 function initials(name: string | null | undefined): string {
@@ -226,7 +225,7 @@ export function ChefWelcomePage() {
               <div
                 style={{ ...serif, fontSize: 18, fontWeight: 600, color: C.charcoal, fontVariantNumeric: 'tabular-nums' }}
               >
-                {money(q.total_cents)}
+                {money(q.total_cents, q.distributor?.currency)}
               </div>
             </div>
           </div>

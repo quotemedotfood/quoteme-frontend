@@ -36,15 +36,16 @@ import {
   type CCLineGroup,
 } from '../../services/api';
 import { categoryLabel } from '../../utils/categoryLabel';
+import { formatCurrency } from '../../utils/formatCurrency';
 
 // ── Money formatter ───────────────────────────────────────────────────────────
-
+// `n` here is a dollar amount (CCLineGroup items carry `unit` in dollars, not
+// cents), so it's converted to cents before handing off to the shared util.
+// TODO: no currency in scope here — CCQuoteDetail payload has no currency
+// field yet (BE CANADA-CURRENCY only bakes currency into pre-formatted
+// mailer/PDF strings so far); defaulting to USD.
 function money(n: number): string {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 2,
-  }).format(n);
+  return formatCurrency(Math.round(n * 100));
 }
 
 // ── Loading skeleton ──────────────────────────────────────────────────────────

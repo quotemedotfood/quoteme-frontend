@@ -9,6 +9,7 @@ import type { QuoteResponse, QuoteLineResponse } from '../services/api';
 import { isDemoMode, PROD_SIGNUP_URL } from '../utils/demoMode';
 import { useUser } from '../contexts/UserContext';
 import { categoryLabel } from '../utils/categoryLabel';
+import { formatCurrency } from '../utils/formatCurrency';
 
 function toTitleCase(str: string): string {
   if (!str) return '';
@@ -337,7 +338,7 @@ export function QuoteReviewPage() {
                     <div className="flex justify-between items-center mt-3 pt-2 border-t border-gray-100">
                       <span className="text-xs text-gray-400">{categoryLabel(line.category || '')}</span>
                       <span className="text-sm font-semibold text-[#2A2A2A]">
-                        {isUnmatched ? '--' : `$${((line.unit_price_cents || 0) / 100).toFixed(2)}`}
+                        {isUnmatched ? '--' : formatCurrency(line.unit_price_cents || 0, quote?.distributor?.currency)}
                         <span className="text-xs text-gray-400 ml-1">×{line.quantity || 1}</span>
                       </span>
                     </div>
@@ -407,7 +408,7 @@ export function QuoteReviewPage() {
                         <td className="px-4 py-3 text-right text-[#2A2A2A] font-medium">
                           {isUnmatched
                             ? '--'
-                            : `$${((line.unit_price_cents || 0) / 100).toFixed(2)}`}
+                            : formatCurrency(line.unit_price_cents || 0, quote?.distributor?.currency)}
                         </td>
                       </tr>
                     );
@@ -419,7 +420,7 @@ export function QuoteReviewPage() {
                       Total
                     </td>
                     <td className="px-4 py-3 text-right text-sm font-bold text-[#2A2A2A]">
-                      ${(totalCents / 100).toFixed(2)}
+                      {formatCurrency(totalCents, quote?.distributor?.currency)}
                     </td>
                   </tr>
                 </tfoot>

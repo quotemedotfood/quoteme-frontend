@@ -16,6 +16,7 @@ import { ChevronLeft } from 'lucide-react';
 import { getRepQuote, repPriceQuote, repConfirmQuote } from '../../services/api';
 import type { QuoteLineResponse } from '../../services/api';
 import { stripSeedPrefix } from '../../utils/format';
+import { formatCurrency } from '../../utils/formatCurrency';
 
 const serif: React.CSSProperties = {
   fontFamily: "'Playfair Display', Georgia, 'Times New Roman', serif",
@@ -55,12 +56,18 @@ export function RepPricingOnlyView({ quoteId }: { quoteId: string }) {
   const [quoteLabel, setQuoteLabel] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  // CANADA-CURRENCY: threaded from the same getRepQuote response used to
+  // build `lines` below — no separate fetch. Optional/forward-compatible
+  // until distributor.currency ships on this serializer; formatCurrency()
+  // defaults to USD when undefined.
+  const [distributorCurrency, setDistributorCurrency] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     getRepQuote(quoteId).then((res) => {
       if (res.data) {
         setRestaurant(res.data.restaurant || '');
         setQuoteLabel(res.data.working_label || '');
+        setDistributorCurrency(res.data.distributor?.currency);
         const mapped: PricingLine[] = res.data.lines.map((l: QuoteLineResponse) => ({
           id: l.id,
           name: l.component?.name || l.product?.product || '—',
@@ -194,7 +201,7 @@ export function RepPricingOnlyView({ quoteId }: { quoteId: string }) {
               <div style={{ textAlign: 'right' }}>
                 {l.matched && !isEditing ? (
                   <span style={{ ...sans, fontSize: 12.5, color: C.charcoal, fontWeight: 500, fontVariantNumeric: 'tabular-nums' }}>
-                    ${(l.priceCents / 100).toFixed(2)}
+                    {formatCurrency(l.priceCents, distributorCurrency)}
                   </span>
                 ) : (
                   <input

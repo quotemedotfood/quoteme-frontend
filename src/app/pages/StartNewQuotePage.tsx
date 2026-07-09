@@ -772,8 +772,12 @@ export function StartNewQuotePage() {
         }
         if (response.data) {
           // Track 22: quote is processing async — navigate to chef/status to show
-          // real pipeline stages. ChefStatusPage navigates to /chef/quotes/:id on completion.
-          navigate(`/chef/status/${response.data.quote_id}`);
+          // real pipeline stages. "Match to Catalog" must still land the guest on
+          // the review/map-ingredients step-through once processing completes (the
+          // authed rep branch below does this directly) — carry that intent through
+          // as router state so ChefStatusPage knows to redirect there instead of the
+          // read-only receipt page it defaults to (see ChefStatusPage.getStatusCompleteTarget).
+          navigate(`/chef/status/${response.data.quote_id}`, { state: { completionTarget: 'map-ingredients' } });
         }
       } else {
         const response = await createMenu({ raw_text: menuText, name: selectedRestaurant?.name || 'New Quote', restaurant_id: selectedRestaurant?.id, menu_id: extractedMenuId ?? undefined });
@@ -844,8 +848,14 @@ export function StartNewQuotePage() {
         }
         if (response.data) {
           // Track 22: quote is processing async — navigate to chef/status to show
-          // real pipeline stages. ChefStatusPage navigates to /chef/quotes/:id on completion.
-          navigate(`/chef/status/${response.data.quote_id}`);
+          // real pipeline stages. "Skip to Export" is meant to skip the review
+          // step (that's its whole purpose) and land on /export-finalize once
+          // processing completes, exactly as the authed rep branch below does
+          // immediately — 0ac243b left this hardcoded to the read-only receipt
+          // page instead. Carry the original target through as router state
+          // (see ChefStatusPage.getStatusCompleteTarget) so it's restored, not
+          // reinvented.
+          navigate(`/chef/status/${response.data.quote_id}`, { state: { completionTarget: 'export-finalize' } });
         }
       } else {
         const response = await createMenu({ raw_text: menuText, name: selectedRestaurant?.name || 'New Quote', restaurant_id: selectedRestaurant?.id, menu_id: extractedMenuId ?? undefined });

@@ -35,6 +35,7 @@ import {
 } from '../../services/api';
 import { PinToStackButton } from '../../components/chef/PinToStackButton';
 import { stripSeedPrefix } from '../../utils/format';
+import { formatCurrency } from '../../utils/formatCurrency';
 
 // ─── Color constants (matches ChefDashboardPage / ChefQuotesPage convention) ──
 const C = {
@@ -84,11 +85,8 @@ function formatDate(iso: string): string {
   }
 }
 
-function money(cents: number): string {
-  return '$' + (cents / 100).toLocaleString('en-US', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
+function money(cents: number, currency?: string): string {
+  return formatCurrency(cents, currency);
 }
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -493,7 +491,7 @@ function quoteStatusColor(status: string): { bg: string; color: string } {
 
 function QuoteRow({ q }: { q: ChefQuoteRow }) {
   const { bg, color } = quoteStatusColor(q.status);
-  const total = q.total_cents > 0 ? money(q.total_cents) : null;
+  const total = q.total_cents > 0 ? money(q.total_cents, q.distributor?.currency) : null;
 
   return (
     <Link

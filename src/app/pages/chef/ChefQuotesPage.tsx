@@ -8,6 +8,7 @@ import { PreviewPill } from '../../components/chef/PreviewPill';
 import { stripSeedPrefix } from '../../utils/format';
 import { QuoteStatusPill, legacyStatusToState } from '../../components/chef/QuoteStatusPill';
 import { isPricedQuote } from '../../utils/quoteStatus';
+import { formatCurrency } from '../../utils/formatCurrency';
 
 const C = {
   charcoal: '#2B2B2B',
@@ -24,8 +25,8 @@ const sans: React.CSSProperties = {
   fontFamily: "'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
 };
 
-function money(cents: number): string {
-  return '$' + (cents / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+function money(cents: number, currency?: string): string {
+  return formatCurrency(cents, currency);
 }
 function formatDate(iso: string): string {
   try { return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }); }
@@ -100,7 +101,7 @@ function QuoteRow({ q }: { q: ChefQuoteRow }) {
         className="mt-0.5"
         style={{ ...sans, fontSize: 11.5, color: C.gray500, lineHeight: 1.4, fontVariantNumeric: 'tabular-nums' }}
       >
-        {q.quote_number} · {q.distributor?.name ?? 'Unaffiliated'} · {formatDate(q.created_at)} · {q.item_count} {q.item_count === 1 ? 'item' : 'items'} · {isPricedQuote(q) ? money(q.total_cents) : '—'}
+        {q.quote_number} · {q.distributor?.name ?? 'Unaffiliated'} · {formatDate(q.created_at)} · {q.item_count} {q.item_count === 1 ? 'item' : 'items'} · {isPricedQuote(q) ? money(q.total_cents, q.distributor?.currency) : '—'}
       </div>
     </Link>
   );

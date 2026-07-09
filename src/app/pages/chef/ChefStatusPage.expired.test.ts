@@ -5,7 +5,15 @@
 // B-127: expired-state action helpers — Sign in href, resend button enable/label.
 
 import { describe, it, expect } from 'vitest';
-import { isSessionExpiredResponse, isQuoteNotFoundResponse, isResendEnabled, resendButtonLabel, SIGN_IN_HREF } from './ChefStatusPage';
+import {
+  isSessionExpiredResponse,
+  isQuoteNotFoundResponse,
+  isResendEnabled,
+  resendButtonLabel,
+  SIGN_IN_HREF,
+  getStatusCompleteTarget,
+  completionTargetStorageKey,
+} from './ChefStatusPage';
 
 describe('isSessionExpiredResponse', () => {
   it('returns true for a 401 status code', () => {
@@ -116,5 +124,44 @@ describe('B-127 resendButtonLabel', () => {
 
   it('shows "Resend status email" in success state', () => {
     expect(resendButtonLabel('success')).toBe('Resend status email');
+  });
+});
+
+// ─── P1 fix: guest step-through regression — completion-target routing ──────
+// Track 22 diverted the guest "Match to Catalog" and "Skip to Export" buttons
+// straight to the receipt page, skipping the review step-through authed reps
+// get. getStatusCompleteTarget is the pure decision point: default (no flag)
+// must be byte-for-byte identical to the pre-existing /chef/quotes/:id
+// behavior so the canonical /chef entry flow (which never had a review step)
+// is completely unaffected.
+describe('P1 getStatusCompleteTarget — completion routing', () => {
+  it('defaults to the read-only receipt page when no completionTarget is set (canonical /chef flow — must not change)', () => {
+    expect(getStatusCompleteTarget('quote-1', undefined)).toEqual({ path: '/chef/quotes/quote-1' });
+  });
+
+  it('routes to /map-ingredients with quoteId in state when completionTarget is "map-ingredients" ("Match to Catalog")', () => {
+    expect(getStatusCompleteTarget('quote-2', 'map-ingredients')).toEqual({
+      path: '/map-ingredients',
+      state: { quoteId: 'quote-2' },
+    });
+  });
+
+  it('routes to /export-finalize with quoteId in state when completionTarget is "export-finalize" ("Skip to Export")', () => {
+    expect(getStatusCompleteTarget('quote-3', 'export-finalize')).toEqual({
+      path: '/export-finalize',
+      state: { quoteId: 'quote-3' },
+    });
+  });
+
+  it('falls back to the receipt page for an unrecognized completionTarget value', () => {
+    expect(getStatusCompleteTarget('quote-4', 'bogus' as any)).toEqual({ path: '/chef/quotes/quote-4' });
+  });
+});
+
+describe('P1 completionTargetStorageKey — sessionStorage fallback key', () => {
+  it('is namespaced per quote id so different quotes never collide', () => {
+    expect(completionTargetStorageKey('abc')).toBe('chef_status_completion_target_abc');
+    expect(completionTargetStorageKey('xyz')).toBe('chef_status_completion_target_xyz');
+    expect(completionTargetStorageKey('abc')).not.toBe(completionTargetStorageKey('xyz'));
   });
 });

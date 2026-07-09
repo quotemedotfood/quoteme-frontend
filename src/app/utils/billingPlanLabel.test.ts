@@ -25,13 +25,17 @@ describe('billingPlanLabel', () => {
     })).toBe('Free');
   });
 
-  it('returns "Pro · $20/month" for a paid subscriber with full fields', () => {
+  // CANADA-CURRENCY: billingPlanLabel now formats price_dollars through the
+  // shared formatCurrency util, which always shows a fixed 2 decimals
+  // ("$20.00" instead of the previous whole-dollar "$20") to match every
+  // other money site in the app. Deliberate, disclosed visual change.
+  it('returns "Pro · $20.00/month" for a paid subscriber with full fields', () => {
     expect(billingPlanLabel({
       has_paid_subscription: true,
       plan_name: 'Pro',
       price_dollars: 20,
       interval: 'month',
-    })).toBe('Pro · $20/month');
+    })).toBe('Pro · $20.00/month');
   });
 
   it('falls back to "Premium" when plan_name is absent', () => {
@@ -39,7 +43,7 @@ describe('billingPlanLabel', () => {
       has_paid_subscription: true,
       price_dollars: 20,
       interval: 'month',
-    })).toBe('Premium · $20/month');
+    })).toBe('Premium · $20.00/month');
   });
 
   it('falls back to "month" when interval is absent', () => {
@@ -47,7 +51,7 @@ describe('billingPlanLabel', () => {
       has_paid_subscription: true,
       plan_name: 'Pro',
       price_dollars: 20,
-    })).toBe('Pro · $20/month');
+    })).toBe('Pro · $20.00/month');
   });
 
   it('omits price segment when price_dollars is null', () => {
@@ -64,6 +68,6 @@ describe('billingPlanLabel', () => {
       plan_name: 'Pro',
       price_dollars: 200,
       interval: 'year',
-    })).toBe('Pro · $200/year');
+    })).toBe('Pro · $200.00/year');
   });
 });
