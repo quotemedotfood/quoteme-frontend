@@ -331,7 +331,7 @@ export async function extractMenuTextAsync(
   if (payload.url) formData.append('url', payload.url);
 
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/menus/extractions`, {
+    const response = await fetchWithRetry(`${API_BASE_URL}/api/v1/menus/extractions`, {
       method: 'POST',
       headers,
       body: formData,
@@ -354,6 +354,60 @@ function getAuthToken(): string | null {
 // Helper to get guest token
 export function getGuestToken(): string | null {
   return localStorage.getItem('quoteme_guest_token');
+}
+
+// ── Core fetch helper: auto-retry-once on network/CORS-class failure ───────
+// A mid-deploy blip (Railway swapping instances, a dropped CORS preflight,
+// a flaky wifi hop) throws a raw TypeError ("Failed to fetch") that has
+// nothing to do with the request itself — it never reached a server, so
+// there's no HTTP status or body to inspect. Retrying once, after a short
+// backoff, silently absorbs that class of transient failure. HTTP error
+// responses (4xx/5xx) are NOT retried here — `fetch()` resolves normally for
+// those (it only rejects on network-level failure), so this helper never
+// even sees them; they flow straight back to the caller with their status
+// and body intact for normal error handling.
+//
+// Every call site in this file goes through here (see the `await fetch(` ->
+// `await fetchWithRetry(` sites below), so the retry-once behavior and the
+// plain-language fallback copy are centralized in one place.
+const NETWORK_RETRY_DELAY_MS = 600;
+export const NETWORK_FAILURE_MESSAGE =
+  "That didn't go through — give it a second and try again.";
+
+function isNetworkFetchFailure(error: unknown): boolean {
+  // The Fetch API only rejects (as opposed to resolving with a non-ok
+  // response) for network-level failures — connection refused, DNS failure,
+  // CORS block, offline, etc. Those surface as a TypeError.
+  return error instanceof TypeError;
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// Thrown only after BOTH the original attempt and the single retry fail with
+// a network-class error. Callers' existing `catch (error) { ... error
+// instanceof Error ? error.message : 'Network error' }` blocks pick this up
+// for free — `.message` is already the plain-language copy above.
+export class NetworkFetchFailedError extends Error {}
+
+async function fetchWithRetry(input: string, init?: RequestInit): Promise<Response> {
+  try {
+    return await fetch(input, init);
+  } catch (firstError) {
+    if (!isNetworkFetchFailure(firstError)) {
+      throw firstError;
+    }
+    await delay(NETWORK_RETRY_DELAY_MS);
+    try {
+      return await fetch(input, init);
+    } catch (secondError) {
+      if (!isNetworkFetchFailure(secondError)) {
+        throw secondError;
+      }
+      throw new NetworkFetchFailedError(NETWORK_FAILURE_MESSAGE);
+    }
+  }
 }
 
 // Helper to make authenticated requests
@@ -381,7 +435,7 @@ async function fetchWithAuth<T>(
   }
 
   try {
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    const response = await fetchWithRetry(`${API_BASE_URL}${endpoint}`, {
       ...options,
       headers,
     });
@@ -448,7 +502,7 @@ async function fetchWithGuest<T>(
   }
 
   try {
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    const response = await fetchWithRetry(`${API_BASE_URL}${endpoint}`, {
       ...options,
       headers,
     });
@@ -482,7 +536,7 @@ export async function signIn(credentials: LoginData): Promise<ApiResponse<{ mess
   };
 
   try {
-    const response = await fetch(`${API_BASE_URL}/users/sign_in`, {
+    const response = await fetchWithRetry(`${API_BASE_URL}/users/sign_in`, {
       method: 'POST',
       headers,
       body: JSON.stringify({
@@ -532,7 +586,7 @@ export async function signUp(data: SignUpData): Promise<ApiResponse<{ message: s
   };
 
   try {
-    const response = await fetch(`${API_BASE_URL}/users`, {
+    const response = await fetchWithRetry(`${API_BASE_URL}/users`, {
       method: 'POST',
       headers,
       body: JSON.stringify({ user: { ...data, role: data.role || 'rep' } }),
@@ -634,7 +688,7 @@ export interface DistributorSearchResult {
 
 export async function getDistributorById(id: string): Promise<ApiResponse<DistributorSearchResult>> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/distributors/${id}`, {
+    const response = await fetchWithRetry(`${API_BASE_URL}/api/v1/distributors/${id}`, {
       headers: { 'Content-Type': 'application/json' },
     });
     if (!response.ok) {
@@ -650,7 +704,7 @@ export async function getDistributorById(id: string): Promise<ApiResponse<Distri
 
 export async function searchDistributors(query: string): Promise<ApiResponse<DistributorSearchResult[]>> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/distributors/search?q=${encodeURIComponent(query)}`, {
+    const response = await fetchWithRetry(`${API_BASE_URL}/api/v1/distributors/search?q=${encodeURIComponent(query)}`, {
       headers: { 'Content-Type': 'application/json' },
     });
     if (!response.ok) {
@@ -674,7 +728,7 @@ export interface DistributorRepInfo {
 
 export async function getDistributorReps(distributorId: string): Promise<ApiResponse<DistributorRepInfo[]>> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/distributors/${distributorId}/reps`, {
+    const response = await fetchWithRetry(`${API_BASE_URL}/api/v1/distributors/${distributorId}/reps`, {
       headers: { 'Content-Type': 'application/json' },
     });
     if (!response.ok) {
@@ -692,7 +746,7 @@ export async function getDistributorReps(distributorId: string): Promise<ApiResp
 
 export async function sendPasswordReset(email: string): Promise<ApiResponse<{ message: string }>> {
   try {
-    const response = await fetch(`${API_BASE_URL}/users/password`, {
+    const response = await fetchWithRetry(`${API_BASE_URL}/users/password`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ user: { email } }),
@@ -713,7 +767,7 @@ export async function resetPassword(params: {
   password_confirmation: string;
 }): Promise<ApiResponse<{ message: string }>> {
   try {
-    const response = await fetch(`${API_BASE_URL}/users/password`, {
+    const response = await fetchWithRetry(`${API_BASE_URL}/users/password`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ user: params }),
@@ -736,7 +790,7 @@ export async function createGuestSession(): Promise<ApiResponse<GuestSession>> {
   };
 
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/guest/sessions`, {
+    const response = await fetchWithRetry(`${API_BASE_URL}/api/v1/guest/sessions`, {
       method: 'POST',
       headers,
       body: JSON.stringify({}),
@@ -762,7 +816,7 @@ export async function createGuestSession(): Promise<ApiResponse<GuestSession>> {
 
 export async function getGuestSession(token: string): Promise<ApiResponse<GuestSession>> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/guest/sessions/${token}`);
+    const response = await fetchWithRetry(`${API_BASE_URL}/api/v1/guest/sessions/${token}`);
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
@@ -784,7 +838,7 @@ export async function getGuestSession(token: string): Promise<ApiResponse<GuestS
 
 export async function getDemoDistributor(type: 'food' | 'liquor' = 'food'): Promise<ApiResponse<{ distributor_id: string; distributor_name: string; has_catalog: boolean; product_count: number }>> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/guest/sessions/demo-distributor?type=${type}`);
+    const response = await fetchWithRetry(`${API_BASE_URL}/api/v1/guest/sessions/demo-distributor?type=${type}`);
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       return { error: errorData.error || `HTTP ${response.status}`, data: undefined };
@@ -859,7 +913,7 @@ export async function convertGuestToUser(data: GuestConvertData): Promise<ApiRes
   };
 
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/guest/convert`, {
+    const response = await fetchWithRetry(`${API_BASE_URL}/api/v1/guest/convert`, {
       method: 'POST',
       headers,
       body: JSON.stringify(data),
@@ -1050,7 +1104,7 @@ export async function uploadCatalogFile(file: File): Promise<ApiResponse<Catalog
   formData.append('file', file);
 
   try {
-    const response = await fetch(endpoint, {
+    const response = await fetchWithRetry(endpoint, {
       method: 'POST',
       headers,
       body: formData,
@@ -1088,7 +1142,7 @@ export async function extractMenuText(payload: { file?: File; url?: string }): P
   }
 
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/menus/extract_text`, {
+    const response = await fetchWithRetry(`${API_BASE_URL}/api/v1/menus/extract_text`, {
       method: 'POST',
       headers,
       body: formData,
@@ -1193,7 +1247,7 @@ export interface QuotePreviewResponse {
 
 export async function getQuotePreview(id: string): Promise<ApiResponse<QuotePreviewResponse>> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/quotes/${id}/preview`);
+    const response = await fetchWithRetry(`${API_BASE_URL}/api/v1/quotes/${id}/preview`);
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       return { error: errorData.error || `HTTP ${response.status}` };
@@ -1260,7 +1314,7 @@ export async function downloadQuotePdf(id: string): Promise<{ blob?: Blob; error
     const endpoint = token
       ? `${API_BASE_URL}/api/v1/quotes/${id}/pdf`
       : `${API_BASE_URL}/api/v1/guest/quotes/${id}/pdf`;
-    const response = await fetch(endpoint, { headers, cache: 'no-store' });
+    const response = await fetchWithRetry(endpoint, { headers, cache: 'no-store' });
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       return { error: errorData.error || `HTTP ${response.status}` };
@@ -1287,7 +1341,7 @@ export async function downloadQuoteCsv(id: string): Promise<{ blob?: Blob; error
     const endpoint = token
       ? `${API_BASE_URL}/api/v1/quotes/${id}/csv`
       : `${API_BASE_URL}/api/v1/guest/quotes/${id}/csv`;
-    const response = await fetch(endpoint, { headers });
+    const response = await fetchWithRetry(endpoint, { headers });
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       return { error: errorData.error || `HTTP ${response.status}` };
@@ -1314,7 +1368,7 @@ export async function downloadOrderGuide(id: string): Promise<{ blob?: Blob; err
     const endpoint = token
       ? `${API_BASE_URL}/api/v1/quotes/${id}/order_guide`
       : `${API_BASE_URL}/api/v1/guest/quotes/${id}/order_guide`;
-    const response = await fetch(endpoint, { headers });
+    const response = await fetchWithRetry(endpoint, { headers });
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       return { error: errorData.error || `HTTP ${response.status}` };
@@ -1338,7 +1392,7 @@ export async function downloadChefOrderGuidePdf(orderGuideId: string): Promise<{
   }
 
   try {
-    const response = await fetch(
+    const response = await fetchWithRetry(
       `${API_BASE_URL}/api/v1/chef/order_guides/${orderGuideId}/pdf`,
       { headers, cache: 'no-store' }
     );
@@ -1365,7 +1419,7 @@ export async function downloadChefOrderGuideExcel(orderGuideId: string): Promise
   }
 
   try {
-    const response = await fetch(
+    const response = await fetchWithRetry(
       `${API_BASE_URL}/api/v1/chef/order_guides/${orderGuideId}/excel`,
       { headers, cache: 'no-store' }
     );
@@ -1970,7 +2024,7 @@ export async function createOnboardingDoc(data: FormData): Promise<ApiResponse<O
   if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
 
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/distributor_admin/onboarding_docs`, {
+    const response = await fetchWithRetry(`${API_BASE_URL}/api/v1/distributor_admin/onboarding_docs`, {
       method: 'POST',
       headers,
       body: data,
@@ -1991,7 +2045,7 @@ export async function updateOnboardingDoc(id: string, data: FormData): Promise<A
   if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
 
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/distributor_admin/onboarding_docs/${id}`, {
+    const response = await fetchWithRetry(`${API_BASE_URL}/api/v1/distributor_admin/onboarding_docs/${id}`, {
       method: 'PATCH',
       headers,
       body: data,
@@ -2454,7 +2508,7 @@ export async function consumeChefMagicLink(
   token: string,
 ): Promise<ApiResponse<ChefMagicLinkConsumeResponse>> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/chef/magic_links/consume`, {
+    const response = await fetchWithRetry(`${API_BASE_URL}/api/v1/chef/magic_links/consume`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ token }),
@@ -2899,7 +2953,7 @@ export async function createChefDistributor(
     }
     form.append('catalog_file', catalogFile);
     try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/chef/distributors`, {
+      const response = await fetchWithRetry(`${API_BASE_URL}/api/v1/chef/distributors`, {
         method: 'POST',
         headers,
         body: form,
@@ -2918,7 +2972,7 @@ export async function createChefDistributor(
   // JSON body for pick / request
   headers['Content-Type'] = 'application/json';
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/chef/distributors`, {
+    const response = await fetchWithRetry(`${API_BASE_URL}/api/v1/chef/distributors`, {
       method: 'POST',
       headers,
       body: JSON.stringify(data),
@@ -3005,7 +3059,7 @@ export async function consumeRepMagicLink(
   token: string,
 ): Promise<ApiResponse<RepMagicLinkConsumeResponse>> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/rep/magic_links/consume`, {
+    const response = await fetchWithRetry(`${API_BASE_URL}/api/v1/rep/magic_links/consume`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ token }),
@@ -3286,7 +3340,7 @@ export async function uploadChefRestaurantLogo(
   formData.append('logo', file);
 
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/chef/restaurant/logo${query}`, {
+    const response = await fetchWithRetry(`${API_BASE_URL}/api/v1/chef/restaurant/logo${query}`, {
       method: 'POST',
       headers,
       body: formData,
@@ -3319,7 +3373,7 @@ export async function deleteChefRestaurantLogo(
   const query = restaurantId ? `?restaurant_id=${restaurantId}` : '';
 
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/chef/restaurant/logo${query}`, {
+    const response = await fetchWithRetry(`${API_BASE_URL}/api/v1/chef/restaurant/logo${query}`, {
       method: 'DELETE',
       headers,
     });
@@ -3516,7 +3570,7 @@ export async function verifyCatalogUploadLink(
   token: string,
 ): Promise<{ data?: CatalogUploadLinkVerifyResponse; status: number; error?: string }> {
   try {
-    const response = await fetch(
+    const response = await fetchWithRetry(
       `${API_BASE_URL}/api/v1/catalog_upload_links/${encodeURIComponent(token)}/verify`,
     );
     const status = response.status;
@@ -3550,7 +3604,7 @@ export async function uploadCatalogViaLink(
     const formData = new FormData();
     formData.append('file', file);
 
-    const response = await fetch(
+    const response = await fetchWithRetry(
       `${API_BASE_URL}/api/v1/catalog_upload_links/${encodeURIComponent(token)}/upload`,
       { method: 'POST', body: formData },
     );
@@ -3573,7 +3627,7 @@ export async function consumeRepInvitation(
   password: string,
 ): Promise<ApiResponse<RepInviteConsumeResponse>> {
   try {
-    const response = await fetch(
+    const response = await fetchWithRetry(
       `${API_BASE_URL}/api/v1/rep_invitations/${encodeURIComponent(token)}/consume`,
       {
         method: 'POST',
@@ -3641,7 +3695,7 @@ export async function uploadBrandCatalog(file: File): Promise<ApiResponse<{
   const formData = new FormData();
   formData.append('file', file);
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/brand/catalogs`, {
+    const response = await fetchWithRetry(`${API_BASE_URL}/api/v1/brand/catalogs`, {
       method: 'POST',
       headers,
       body: formData,
@@ -3882,7 +3936,7 @@ export async function uploadBrandLogo(file: File): Promise<ApiResponse<{ logo_ur
   formData.append('logo', file);
 
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/brand/branding/logo`, {
+    const response = await fetchWithRetry(`${API_BASE_URL}/api/v1/brand/branding/logo`, {
       method: 'POST',
       headers,
       body: formData,
@@ -3909,7 +3963,7 @@ export async function uploadDistributorAdminLogo(file: File): Promise<ApiRespons
   formData.append('logo', file);
 
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/distributor_admin/settings/logo`, {
+    const response = await fetchWithRetry(`${API_BASE_URL}/api/v1/distributor_admin/settings/logo`, {
       method: 'POST',
       headers,
       body: formData,
