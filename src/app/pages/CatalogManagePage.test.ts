@@ -11,7 +11,7 @@
 // currently node-only).
 
 import { describe, it, expect } from 'vitest';
-import { shouldShowUpdateCatalogButton } from './CatalogManagePage';
+import { shouldShowUpdateCatalogButton, categoryColor } from './CatalogManagePage';
 
 describe('shouldShowUpdateCatalogButton — CC catalog page update button visibility', () => {
   it('returns true when a catalog is loaded (catalogId is set)', () => {
@@ -24,5 +24,39 @@ describe('shouldShowUpdateCatalogButton — CC catalog page update button visibi
 
   it('returns false for empty string (guards against accidental empty ID)', () => {
     expect(shouldShowUpdateCatalogButton('')).toBe(false);
+  });
+});
+
+describe('categoryColor — category chip color resolution (fix for "all blue" chips)', () => {
+  it('is deterministic: the same raw category string always resolves to the same class', () => {
+    const inputs = ['SPICES', 'ASIAN FOODS', 'VINEGARS', 'produce', 'random_distributor_bucket'];
+    for (const raw of inputs) {
+      const first = categoryColor(raw);
+      const second = categoryColor(raw);
+      const third = categoryColor(raw);
+      expect(second).toBe(first);
+      expect(third).toBe(first);
+    }
+  });
+
+  it('gives different raw distributor categories different colors (not all falling to one default)', () => {
+    const colors = new Set(
+      ['SPICES', 'ASIAN FOODS', 'VINEGARS', 'CANNED GOODS', 'DAIRY & EGGS'].map((raw) => categoryColor(raw))
+    );
+    // With a 14-color palette and 5 distinct inputs it would be extraordinarily
+    // unlikely (and a sign of a hashing bug) for them to all collide on one color.
+    expect(colors.size).toBeGreaterThan(1);
+  });
+
+  it('still uses the curated canonical color for known categories, case-insensitively', () => {
+    expect(categoryColor('produce')).toBe('bg-green-100 text-green-700');
+    expect(categoryColor('PRODUCE')).toBe('bg-green-100 text-green-700');
+    expect(categoryColor('  produce  ')).toBe('bg-green-100 text-green-700');
+  });
+
+  it('handles null/undefined/empty input without throwing', () => {
+    expect(() => categoryColor(null)).not.toThrow();
+    expect(() => categoryColor(undefined)).not.toThrow();
+    expect(() => categoryColor('')).not.toThrow();
   });
 });

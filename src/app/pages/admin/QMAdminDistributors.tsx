@@ -258,8 +258,12 @@ export function QMAdminDistributors() {
                   <TableHead className="cursor-pointer text-right" onClick={() => toggleSort('product_count')}>
                     <div className="flex items-center justify-end gap-1">Products <SortIcon field="product_count" /></div>
                   </TableHead>
-                  <TableHead className="cursor-pointer text-right" onClick={() => toggleSort('categorization_pct')}>
-                    <div className="flex items-center justify-end gap-1">Categorized % <SortIcon field="categorization_pct" /></div>
+                  <TableHead
+                    className="cursor-pointer text-right"
+                    onClick={() => toggleSort('categorization_pct')}
+                    title="% of active products the classifier placed into a specific category (not 'Other'/unclassified). Not a measure of whether a raw category value is present."
+                  >
+                    <div className="flex items-center justify-end gap-1">Classification Confidence <SortIcon field="categorization_pct" /></div>
                   </TableHead>
                   <TableHead className="cursor-pointer" onClick={() => toggleSort('status')}>
                     <div className="flex items-center gap-1">Status <SortIcon field="status" /></div>
