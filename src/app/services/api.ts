@@ -1881,6 +1881,8 @@ export interface DistributorHomeData {
   catalog_product_count: number;
   rep_count: number;
   quote_count: number;
+  /** branding_config.slug — guaranteed non-nil for new distributors, but nil for pre-existing ones until backfilled. */
+  slug: string | null;
 }
 
 export async function getDistributorHome(): Promise<ApiResponse<DistributorHomeData>> {
