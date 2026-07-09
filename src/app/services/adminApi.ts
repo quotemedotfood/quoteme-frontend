@@ -421,6 +421,34 @@ export async function assignDistributorAdmin(
   });
 }
 
+// B-188 fix: QM-admin "+ Add Rep" — creates a brand new, immediately-active
+// rep tied to this distributor (mirrors assignDistributorAdmin's sibling,
+// the invite-tab path in Add Admin, but always role=rep).
+export interface AddRepResult {
+  id: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  role: string;
+  rep_profile: {
+    id: string;
+    distributor_id: string;
+    phone: string | null;
+    is_active: boolean;
+  };
+  distributor: { id: string; name: string };
+}
+
+export async function addRepToDistributor(
+  distributorId: string,
+  data: { first_name: string; last_name: string; email: string; phone?: string }
+): Promise<ApiResponse<AddRepResult>> {
+  return fetchWithAuth(`/api/v1/admin/distributors/${distributorId}/add_rep`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
 // ============= ADMIN RESTAURANTS =============
 
 export async function getAdminRestaurants(): Promise<ApiResponse<AdminRestaurant[]>> {
