@@ -220,6 +220,65 @@
     border-color: #8db9c9;
   }
 
+  /* Global auto-hide overlay scrollbars (desktop/pointer devices).
+     One treatment for every scroll container app-wide (page body, dishes
+     list, match panel, drawers, etc.) so they read as thin overlay bars —
+     invisible at rest, revealed on hover/focus — instead of each container
+     showing its own chunky native scrollbar at once (reported heavily on
+     Windows, where several panels scrolling side-by-side used to stack up
+     multiple full-width bars). The max-width:768px block below still fully
+     hides scrollbars on mobile/touch and takes precedence there. */
+  * {
+    scrollbar-width: thin; /* Firefox: thin gutter, always reserved but... */
+    scrollbar-color: transparent transparent; /* ...invisible thumb at rest */
+  }
+
+  *:hover,
+  *:focus-within {
+    scrollbar-color: rgba(0, 0, 0, 0.25) transparent;
+  }
+
+  .dark *:hover,
+  .dark *:focus-within {
+    scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+  }
+
+  /* Chromium/WebKit (Chrome, Edge, Safari): thin bar, transparent track,
+     transparent thumb at rest, revealed on hover/focus-within. */
+  *::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background-color: transparent;
+    border-radius: 9999px;
+    background-clip: padding-box;
+    border: 2px solid transparent;
+  }
+
+  *:hover::-webkit-scrollbar-thumb,
+  *:focus-within::-webkit-scrollbar-thumb {
+    background-color: rgba(0, 0, 0, 0.25);
+  }
+
+  .dark *:hover::-webkit-scrollbar-thumb,
+  .dark *:focus-within::-webkit-scrollbar-thumb {
+    background-color: rgba(255, 255, 255, 0.3);
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(0, 0, 0, 0.4);
+  }
+
+  .dark *::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(255, 255, 255, 0.4);
+  }
+
   /* Hide scrollbars on mobile, show on desktop */
   @media (max-width: 768px) {
     /* Hide scrollbar for Chrome, Safari and Opera */
