@@ -11,12 +11,16 @@ interface QuoteReviewBarProps {
 type ReviewState = 'idle' | 'expanded' | 'submitting' | 'dismissed';
 
 export function QuoteReviewBar({ quoteId, onMatchesUpdated }: QuoteReviewBarProps) {
-  // BUG #30/#31 — compact centered floating card (not a full-width bar), stacked
-  // above the floating Adjust Pricing / Finish Quote button. Centered so it never
-  // overlaps the DISHES sidebar in any state; fixed height/position so dismissing
-  // it causes no layout jump. `noSidebarOffset` is kept in QuoteReviewBarProps
-  // (unused here) so QuoteBuilderPage's call site keeps compiling unchanged.
-  const cardClass = 'fixed bottom-[88px] left-1/2 -translate-x-1/2 z-40 w-[calc(100%-2rem)] max-w-md';
+  // BUG #30/#31 — compact floating card (not a full-width bar), stacked above
+  // the floating Adjust Pricing / Finish Quote button. Right-justified (moved
+  // off dead-center per Moose's 100km Foods demo feedback — a centered card
+  // sat on top of the match rows) so it never overlaps the DISHES sidebar
+  // (far left column) in any state, and stays clear of match-row content
+  // which now reads uncovered on the left/center of the screen; fixed
+  // height/position so dismissing it causes no layout jump. `noSidebarOffset`
+  // is kept in QuoteReviewBarProps (unused here) so QuoteBuilderPage's call
+  // site keeps compiling unchanged.
+  const cardClass = 'fixed bottom-[88px] right-4 md:right-6 z-40 w-[calc(100%-2rem)] max-w-md';
   const [state, setState] = useState<ReviewState>('idle');
   const [comment, setComment] = useState('');
   const [error, setError] = useState<string | null>(null);

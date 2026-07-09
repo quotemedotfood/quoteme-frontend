@@ -1141,14 +1141,16 @@ export function MapIngredientsPage() {
         </div>
       )}
 
-      {/* Floating Adjust Pricing button — bottom-center pill, matches the Finish
-          Quote button pattern on QuoteBuilderPage (rounded-full, shadow-lg,
-          same color/sizing). Fixed independently of QuoteReviewBar so it never
-          overlaps the DISHES sidebar and never jumps when the review card
-          above it dismisses (BUG #30/#31). */}
+      {/* Floating Adjust Pricing button — bottom-right pill (right-justified
+          per Moose's 100km Foods demo feedback: the old bottom-center
+          placement sat on top of the match rows), matches the Finish Quote
+          button pattern on QuoteBuilderPage (same right-anchored position,
+          rounded-full, shadow-lg, color/sizing). Fixed independently of
+          QuoteReviewBar so it never overlaps the DISHES sidebar and never
+          jumps when the review card above it dismisses (BUG #30/#31). */}
       <button
         onClick={() => navigate('/quote-builder', { state: { quoteId, isOpenQuote, locationId } })}
-        className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 md:min-w-[200px] bg-[#F2993D] hover:bg-[#E8953A] text-white font-medium py-3 px-6 rounded-full shadow-lg text-base min-h-[48px]"
+        className="fixed bottom-6 right-4 md:right-6 z-50 md:min-w-[200px] bg-[#F2993D] hover:bg-[#E8953A] text-white font-medium py-3 px-6 rounded-full shadow-lg text-base min-h-[48px]"
       >
         Adjust Pricing
       </button>

@@ -7,14 +7,13 @@ import { Loader2, Check, Store } from 'lucide-react';
 import { useGooglePlaces } from '../hooks/useGooglePlaces';
 import { createRestaurant } from '../services/adminApi';
 import type { Restaurant } from '../services/adminApi';
-
-const US_STATES = [
-  'AL','AK','AZ','AR','CA','CO','CT','DE','DC','FL',
-  'GA','HI','ID','IL','IN','IA','KS','KY','LA','ME',
-  'MD','MA','MI','MN','MS','MO','MT','NE','NV','NH',
-  'NJ','NM','NY','NC','ND','OH','OK','OR','PA','RI',
-  'SC','SD','TN','TX','UT','VT','VA','WA','WV','WI','WY',
-];
+import {
+  COUNTRY_OPTIONS,
+  DEFAULT_COUNTRY,
+  regionsForCountry,
+  isValidRegion,
+  type CountryCode,
+} from '../constants/regions';
 
 export function CreateRestaurantPage() {
   const navigate = useNavigate();
@@ -24,6 +23,7 @@ export function CreateRestaurantPage() {
   const [address, setAddress] = useState('');
   const [address2, setAddress2] = useState('');
   const [city, setCity] = useState('');
+  const [country, setCountry] = useState<CountryCode>(DEFAULT_COUNTRY);
   const [state, setState] = useState('');
   const [zip, setZip] = useState('');
   const [phone, setPhone] = useState('');
@@ -55,14 +55,16 @@ export function CreateRestaurantPage() {
       setPickedLat(addr.lat);
       setPickedLng(addr.lng);
     },
-    { types: ['establishment', 'geocode'] },
+    { types: ['establishment', 'geocode'], countries: country === 'CA' ? ['us', 'ca'] : ['us'] },
   );
 
   const validate = () => {
     if (!name.trim()) return 'Customer name is required.';
     if (!city.trim()) return 'City is required.';
-    if (!state) return 'State is required.';
-    if (state && !US_STATES.includes(state.toUpperCase())) return 'Invalid state code.';
+    if (!state) return country === 'CA' ? 'Province is required.' : 'State is required.';
+    if (state && !isValidRegion(state, country)) {
+      return country === 'CA' ? 'Invalid province code.' : 'Invalid state code.';
+    }
     return null;
   };
 
@@ -74,7 +76,7 @@ export function CreateRestaurantPage() {
 
     const validationError = validate();
     if (validationError) {
-      if (validationError.includes('state') || validationError.includes('State')) {
+      if (/state|province/i.test(validationError)) {
         setStateError(validationError);
       } else {
         setErrorMsg(validationError);
@@ -88,6 +90,7 @@ export function CreateRestaurantPage() {
       name: name.trim(),
       city: city.trim(),
       state: state.toUpperCase(),
+      country,
       address: address.trim() || undefined,
       address_2: address2.trim() || undefined,
       zip: zip.trim() || undefined,
@@ -105,8 +108,8 @@ export function CreateRestaurantPage() {
     }
 
     if (res.error) {
-      // 422 state error
-      if (res.error.toLowerCase().includes('state')) {
+      // 422 state/province error
+      if (/state|province/i.test(res.error)) {
         setStateError(res.error);
       } else {
         setErrorMsg(res.error);
@@ -149,6 +152,7 @@ export function CreateRestaurantPage() {
                 setAddress('');
                 setAddress2('');
                 setCity('');
+                setCountry(DEFAULT_COUNTRY);
                 setState('');
                 setZip('');
                 setPhone('');
@@ -286,6 +290,29 @@ export function CreateRestaurantPage() {
           />
         </div>
 
+        {/* Country row */}
+        <div>
+          <Label htmlFor="country" className="text-sm font-medium text-[#4F4F4F]">
+            Country
+          </Label>
+          <select
+            id="country"
+            value={country}
+            onChange={(e) => {
+              setCountry(e.target.value as CountryCode);
+              // Clear region when switching country so a US state can't leak
+              // into a CA selection (and vice-versa).
+              setState('');
+              setStateError('');
+            }}
+            className="mt-1 w-full h-9 rounded-md border border-gray-200 bg-white px-3 text-sm text-[#2A2A2A] focus:outline-none focus:ring-2 focus:ring-[#A5CFDD]"
+          >
+            {COUNTRY_OPTIONS.map((c) => (
+              <option key={c.value} value={c.value}>{c.label}</option>
+            ))}
+          </select>
+        </div>
+
         {/* City / State / Zip row */}
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
           <div className="col-span-2 sm:col-span-1">
@@ -304,7 +331,7 @@ export function CreateRestaurantPage() {
 
           <div>
             <Label htmlFor="state" className="text-sm font-medium text-[#4F4F4F]">
-              State <span className="text-red-500">*</span>
+              {country === 'CA' ? 'Province' : 'State'} <span className="text-red-500">*</span>
             </Label>
             <select
               id="state"
@@ -316,7 +343,7 @@ export function CreateRestaurantPage() {
               required
             >
               <option value="">—</option>
-              {US_STATES.map((s) => (
+              {regionsForCountry(country).map((s) => (
                 <option key={s} value={s}>{s}</option>
               ))}
             </select>
@@ -327,13 +354,13 @@ export function CreateRestaurantPage() {
 
           <div>
             <Label htmlFor="zip" className="text-sm font-medium text-[#4F4F4F]">
-              Zip
+              {country === 'CA' ? 'Postal Code' : 'Zip'}
             </Label>
             <Input
               id="zip"
               value={zip}
               onChange={(e) => setZip(e.target.value)}
-              placeholder="97201"
+              placeholder={country === 'CA' ? 'M5V 2T6' : '97201'}
               className="mt-1"
             />
           </div>

@@ -6,6 +6,7 @@ import {
   updateAdminDistributor,
   inviteAdminUser,
   assignDistributorAdmin,
+  addRepToDistributor,
   getAdminUsers,
   AdminDistributorDetail,
   AdminUser,
@@ -26,27 +27,24 @@ import {
   TableCell,
 } from '../../components/ui/table';
 import { handleImpersonate } from '../../utils/impersonate';
-
-const US_STATES = [
-  'AL','AK','AZ','AR','CA','CO','CT','DE','DC','FL',
-  'GA','HI','ID','IL','IN','IA','KS','KY','LA','ME',
-  'MD','MA','MI','MN','MS','MO','MT','NE','NV','NH',
-  'NJ','NM','NY','NC','ND','OH','OK','OR','PA','RI',
-  'SC','SD','TN','TX','UT','VT','VA','WA','WV','WI','WY',
-];
+import { regionsForCountry } from '../../constants/regions';
 
 // ─── StatesServedEditor ───────────────────────────────────────────────────────
-// Chip-based multi-select for the 50 US states + DC.
-// Saves via PATCH /api/v1/admin/distributors/:id.
+// Chip-based multi-select for the region codes served (US states/DC or CA
+// provinces depending on the distributor's country). Saves via
+// PATCH /api/v1/admin/distributors/:id.
 
 interface StatesServedEditorProps {
   distributorId: string;
   initialStates: string[];
   primaryState: string | null;
+  country: string | null;
   onSaved: (updated: AdminDistributorDetail) => void;
 }
 
-function StatesServedEditor({ distributorId, initialStates, primaryState, onSaved }: StatesServedEditorProps) {
+function StatesServedEditor({ distributorId, initialStates, primaryState, country, onSaved }: StatesServedEditorProps) {
+  const isCanada = country === 'CA';
+  const regionNoun = isCanada ? 'province' : 'state';
   const [selected, setSelected] = useState<string[]>(initialStates);
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -78,13 +76,13 @@ function StatesServedEditor({ distributorId, initialStates, primaryState, onSave
     }
   }
 
-  const available = US_STATES.filter((s) => !selected.includes(s));
+  const available = regionsForCountry(country).filter((s) => !selected.includes(s));
 
   return (
     <div className="bg-white border border-gray-200 rounded-xl p-5 mb-8">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg font-semibold text-[#2A2A2A]" style={{ fontFamily: "'Playfair Display', serif" }}>
-          States Served
+          {isCanada ? 'Provinces Served' : 'States Served'}
         </h2>
         {primaryState && (
           <span className="text-xs text-gray-500">
@@ -95,7 +93,7 @@ function StatesServedEditor({ distributorId, initialStates, primaryState, onSave
 
       {/* Chips for selected states */}
       {selected.length === 0 ? (
-        <p className="text-sm text-gray-400 mb-4">No states configured yet. Add states below.</p>
+        <p className="text-sm text-gray-400 mb-4">No {regionNoun}s configured yet. Add {regionNoun}s below.</p>
       ) : (
         <div className="flex flex-wrap gap-1.5 mb-4">
           {selected.map((s) => (
@@ -120,13 +118,13 @@ function StatesServedEditor({ distributorId, initialStates, primaryState, onSave
       {/* Add dropdown */}
       {available.length > 0 && (
         <div className="mb-4">
-          <label className="text-xs text-gray-500 mb-1 block">Add a state</label>
+          <label className="text-xs text-gray-500 mb-1 block">Add a {regionNoun}</label>
           <select
             className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-[#2A2A2A] bg-white focus:outline-none focus:ring-2 focus:ring-[#7FAEC2]/40"
             value=""
             onChange={(e) => { if (e.target.value) toggle(e.target.value); }}
           >
-            <option value="">Select state…</option>
+            <option value="">Select {regionNoun}…</option>
             {available.map((s) => (
               <option key={s} value={s}>{s}</option>
             ))}
@@ -183,6 +181,17 @@ export function QMAdminDistributorDetailPage() {
   const [assignSubmitting, setAssignSubmitting] = useState(false);
   const [assignMsg, setAssignMsg] = useState<string | null>(null);
   const [assignError, setAssignError] = useState<string | null>(null);
+
+  // Add Rep modal state (B-188 fix: mirrors the Add Admin "invite new" tab,
+  // scoped to always creating role=rep)
+  const [showAddRep, setShowAddRep] = useState(false);
+  const [addRepFirst, setAddRepFirst] = useState('');
+  const [addRepLast, setAddRepLast] = useState('');
+  const [addRepEmail, setAddRepEmail] = useState('');
+  const [addRepPhone, setAddRepPhone] = useState('');
+  const [addRepSubmitting, setAddRepSubmitting] = useState(false);
+  const [addRepMsg, setAddRepMsg] = useState<string | null>(null);
+  const [addRepError, setAddRepError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -282,6 +291,36 @@ export function QMAdminDistributorDetailPage() {
     const refreshed = await getAdminDistributor(id);
     if (refreshed.data) setDist(refreshed.data);
     setTimeout(() => closeAddAdmin(), 2000);
+  }
+
+  function closeAddRep() {
+    setShowAddRep(false);
+    setAddRepFirst(''); setAddRepLast(''); setAddRepEmail(''); setAddRepPhone('');
+    setAddRepMsg(null); setAddRepError(null); setAddRepSubmitting(false);
+  }
+
+  async function handleAddRep(e: React.FormEvent) {
+    e.preventDefault();
+    if (!id) return;
+    setAddRepError(null);
+    if (!addRepFirst.trim() || !addRepLast.trim() || !addRepEmail.trim()) {
+      setAddRepError('First name, last name, and email are required.');
+      return;
+    }
+    setAddRepSubmitting(true);
+    const res = await addRepToDistributor(id, {
+      first_name: addRepFirst.trim(),
+      last_name: addRepLast.trim(),
+      email: addRepEmail.trim(),
+      phone: addRepPhone.trim() || undefined,
+    });
+    setAddRepSubmitting(false);
+    if (res.error) { setAddRepError(res.error); return; }
+    setAddRepMsg(`Invite sent to ${addRepEmail.trim()}.`);
+    // Refresh distributor detail so the new active rep appears in the list
+    const refreshed = await getAdminDistributor(id);
+    if (refreshed.data) setDist(refreshed.data);
+    setTimeout(() => closeAddRep(), 2000);
   }
 
   const filteredExisting = existingUsers.filter(
@@ -401,6 +440,7 @@ export function QMAdminDistributorDetailPage() {
         distributorId={dist.id}
         initialStates={dist.service_states ?? []}
         primaryState={dist.primary_state ?? null}
+        country={dist.country ?? null}
         onSaved={(updated) => setDist(updated)}
       />
 
@@ -533,6 +573,58 @@ export function QMAdminDistributorDetailPage() {
         </div>
       )}
 
+      {/* Add Rep Modal (B-188 fix: mirrors the Add Admin modal exactly, always role=rep) */}
+      {showAddRep && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-md mx-4">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-bold text-[#2A2A2A]" style={{ fontFamily: "'Playfair Display', serif" }}>
+                Add Rep
+              </h2>
+              <button onClick={closeAddRep} className="text-gray-400 hover:text-gray-600">
+                <X size={20} />
+              </button>
+            </div>
+
+            <form onSubmit={handleAddRep} className="space-y-4">
+              {addRepError && <p className="text-sm text-red-500">{addRepError}</p>}
+              {addRepMsg && <p className="text-sm text-green-600">{addRepMsg}</p>}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-[#4F4F4F] mb-1">First Name</label>
+                  <Input value={addRepFirst} onChange={(e) => setAddRepFirst(e.target.value)} placeholder="First name" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-[#4F4F4F] mb-1">Last Name</label>
+                  <Input value={addRepLast} onChange={(e) => setAddRepLast(e.target.value)} placeholder="Last name" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-[#4F4F4F] mb-1">Email</label>
+                <Input type="email" value={addRepEmail} onChange={(e) => setAddRepEmail(e.target.value)} placeholder="rep@distributor.com" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-[#4F4F4F] mb-1">Phone (optional)</label>
+                <Input type="tel" value={addRepPhone} onChange={(e) => setAddRepPhone(e.target.value)} placeholder="555-123-4567" />
+              </div>
+              <p className="text-xs text-gray-400">
+                Will be created as <span className="font-medium">rep</span> linked to {dist.name}.
+              </p>
+              <div className="flex justify-end gap-2 pt-1">
+                <Button variant="outline" type="button" onClick={closeAddRep}>Cancel</Button>
+                <Button
+                  type="submit"
+                  disabled={addRepSubmitting || !addRepFirst.trim() || !addRepLast.trim() || !addRepEmail.trim()}
+                  className="bg-[#7FAEC2] hover:bg-[#6a9ab0] text-white"
+                >
+                  {addRepSubmitting ? 'Sending...' : 'Send Invite'}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Admins */}
       <section className="mb-8">
         <div className="flex items-center justify-between mb-3">
@@ -591,7 +683,17 @@ export function QMAdminDistributorDetailPage() {
 
       {/* Reps */}
       <section className="mb-8">
-        <h2 className="text-lg font-semibold text-[#2A2A2A] mb-3" style={{ fontFamily: "'Playfair Display', serif" }}>Reps</h2>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-lg font-semibold text-[#2A2A2A]" style={{ fontFamily: "'Playfair Display', serif" }}>Reps</h2>
+          <Button
+            size="sm"
+            onClick={() => setShowAddRep(true)}
+            className="bg-[#7FAEC2] hover:bg-[#6a9ab0] text-white text-xs"
+          >
+            <UserPlus size={14} className="mr-1" />
+            Add Rep
+          </Button>
+        </div>
         {!dist.reps?.length ? (
           <p className="text-sm text-gray-400 py-4">No reps yet</p>
         ) : (
@@ -682,7 +784,7 @@ export function QMAdminDistributorDetailPage() {
                   <TableHead>File</TableHead>
                   <TableHead>Uploaded by</TableHead>
                   <TableHead>Products</TableHead>
-                  <TableHead>% Uncategorized</TableHead>
+                  <TableHead title="% of active products the classifier could not place into a specific category (bucketed as 'Other'/unclassified). Not a measure of missing raw category values.">% Low Classification Confidence</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

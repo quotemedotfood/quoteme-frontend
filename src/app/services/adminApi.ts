@@ -102,8 +102,10 @@ export interface AdminDistributor {
   categorization_pct: number | null;
   /** USPS two-letter state codes this distributor services. */
   service_states: string[];
-  /** Primary state (USPS) this distributor is headquartered in or primarily serves. */
+  /** Primary state/province code this distributor is headquartered in or primarily serves. */
   primary_state: string | null;
+  /** ISO country code ("US" | "CA"); defaults to "US" server-side. */
+  country?: string | null;
 }
 
 export interface AdminDistributorDetail extends AdminDistributor {
@@ -339,6 +341,7 @@ export async function updateAdminDistributor(
     region?: string;
     primary_state?: string | null;
     service_states?: string[];
+    country?: string;
   }
 ): Promise<ApiResponse<AdminDistributorDetail>> {
   return fetchWithAuth(`/api/v1/admin/distributors/${id}`, {
@@ -418,6 +421,34 @@ export async function assignDistributorAdmin(
   return fetchWithAuth(`/api/v1/admin/distributors/${distributorId}/assign_admin`, {
     method: 'POST',
     body: JSON.stringify({ user_id: userId }),
+  });
+}
+
+// B-188 fix: QM-admin "+ Add Rep" — creates a brand new, immediately-active
+// rep tied to this distributor (mirrors assignDistributorAdmin's sibling,
+// the invite-tab path in Add Admin, but always role=rep).
+export interface AddRepResult {
+  id: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  role: string;
+  rep_profile: {
+    id: string;
+    distributor_id: string;
+    phone: string | null;
+    is_active: boolean;
+  };
+  distributor: { id: string; name: string };
+}
+
+export async function addRepToDistributor(
+  distributorId: string,
+  data: { first_name: string; last_name: string; email: string; phone?: string }
+): Promise<ApiResponse<AddRepResult>> {
+  return fetchWithAuth(`/api/v1/admin/distributors/${distributorId}/add_rep`, {
+    method: 'POST',
+    body: JSON.stringify(data),
   });
 }
 
@@ -1727,6 +1758,7 @@ export interface CreateRestaurantInput {
   name: string;
   city: string;
   state: string;
+  country?: string;
   address?: string;
   address_2?: string;
   zip?: string;
@@ -1805,6 +1837,38 @@ export async function assignRestaurantAdminExistingUser(
   return fetchWithAuth(`/api/v1/admin/restaurants/${restaurantId}/restaurant_admin`, {
     method: 'POST',
     body: JSON.stringify({ user_id: userId }),
+  });
+}
+
+// ============= ADMIN RESTAURANT CONTACTS =============
+
+export interface AdminRestaurantContact {
+  id: string;
+  restaurant_id: string;
+  first_name: string;
+  last_name: string;
+  role: string | null;
+  email: string | null;
+  phone: string | null;
+  is_primary: boolean;
+}
+
+export interface CreateAdminRestaurantContactInput {
+  first_name: string;
+  last_name: string;
+  email?: string;
+  phone?: string;
+  role?: string;
+  is_primary?: boolean;
+}
+
+export async function createAdminRestaurantContact(
+  restaurantId: string,
+  data: CreateAdminRestaurantContactInput
+): Promise<ApiResponse<AdminRestaurantContact>> {
+  return fetchWithAuth(`/api/v1/admin/restaurants/${restaurantId}/contacts`, {
+    method: 'POST',
+    body: JSON.stringify(data),
   });
 }
 
@@ -2113,4 +2177,59 @@ export async function uploadAdminDistributorLogo(
   } catch (err) {
     return { error: err instanceof Error ? err.message : 'Network error' };
   }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// Operational Memory Milestone 0 — Gap Filler "Needs Your Pick" (OME-M0)
+// ═══════════════════════════════════════════════════════════════════════
+//
+// Distinct from the Knowledge Gap Filler (corpus/ontology tail-clumping tool
+// above). This surfaces components the matching engine could NOT confidently
+// resolve on live quotes -- deduped by (distributor_id, canonical_key) and
+// frequency-ranked by the BE -- so an admin can pick the right catalog product
+// once and have it stick for every future occurrence.
+
+export interface GapFillerNeedPick {
+  canonical_key: string;
+  distributor_id: string;
+  distributor_name: string;
+  component_name: string;
+  occurrence_count: number;
+  miss_reasons: Record<string, number>;
+  first_seen: string;
+  last_seen: string;
+  drill_down_token: string;
+}
+
+export interface GapFillerNeedsPickResponse {
+  needs_pick: GapFillerNeedPick[];
+  count: number;
+}
+
+export async function getGapFillerNeedsPick(params?: {
+  distributor_id?: string;
+  limit?: number;
+}): Promise<ApiResponse<GapFillerNeedsPickResponse>> {
+  const searchParams = new URLSearchParams();
+  if (params?.distributor_id) searchParams.set('distributor_id', params.distributor_id);
+  if (params?.limit) searchParams.set('limit', String(params.limit));
+  const qs = searchParams.toString();
+  return fetchWithAuth(`/api/v1/admin/gap_filler_needs_pick${qs ? `?${qs}` : ''}`);
+}
+
+export interface GapFillerSourceQuote {
+  quote_id: string;
+  quote_status: string;
+  restaurant_id: string;
+  restaurant_name: string;
+  rep_id: string;
+  rep_email: string;
+  miss_reason: string;
+  occurred_at: string;
+}
+
+export async function getGapFillerNeedsPickQuotes(
+  drillDownToken: string
+): Promise<ApiResponse<GapFillerSourceQuote[]>> {
+  return fetchWithAuth(`/api/v1/admin/gap_filler_needs_pick/${encodeURIComponent(drillDownToken)}/quotes`);
 }

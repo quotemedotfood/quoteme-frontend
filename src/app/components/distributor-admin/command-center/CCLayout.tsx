@@ -67,7 +67,7 @@ export function CCLayout() {
   const [unassignedCount, setUnassignedCount] = useState(0);
   const [inboundOpenCount, setInboundOpenCount] = useState(0);
   const [teamCount, setTeamCount] = useState(0);
-  // P5: distributor slug from home payload (not yet in API — graceful hide when absent)
+  // P5: distributor slug from home payload — nil for pre-existing distributors, hide when absent.
   const [distributorSlug, setDistributorSlug] = useState<string | null>(null);
   const [copyConfirm, setCopyConfirm] = useState(false);
   const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -88,14 +88,12 @@ export function CCLayout() {
       if (cancelled) return;
       if (res.data) setInboundOpenCount(res.data.length);
     });
-    // P8: Rep count for Team badge. P5: slug if BE adds it.
+    // P8: Rep count for Team badge. P5: slug for menu-drop copy-link.
     getDistributorHome().then((res) => {
       if (cancelled) return;
       if (res.data) {
         setTeamCount(res.data.rep_count ?? 0);
-        // P5: BE needs to add `slug` to DistributorHomeData — hide until present.
-        const maybeSlug = (res.data as any).slug as string | undefined;
-        setDistributorSlug(maybeSlug ?? null);
+        setDistributorSlug(res.data.slug);
       }
     });
     return () => { cancelled = true; };
