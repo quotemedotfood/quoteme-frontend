@@ -27,27 +27,24 @@ import {
   TableCell,
 } from '../../components/ui/table';
 import { handleImpersonate } from '../../utils/impersonate';
-
-const US_STATES = [
-  'AL','AK','AZ','AR','CA','CO','CT','DE','DC','FL',
-  'GA','HI','ID','IL','IN','IA','KS','KY','LA','ME',
-  'MD','MA','MI','MN','MS','MO','MT','NE','NV','NH',
-  'NJ','NM','NY','NC','ND','OH','OK','OR','PA','RI',
-  'SC','SD','TN','TX','UT','VT','VA','WA','WV','WI','WY',
-];
+import { regionsForCountry } from '../../constants/regions';
 
 // ─── StatesServedEditor ───────────────────────────────────────────────────────
-// Chip-based multi-select for the 50 US states + DC.
-// Saves via PATCH /api/v1/admin/distributors/:id.
+// Chip-based multi-select for the region codes served (US states/DC or CA
+// provinces depending on the distributor's country). Saves via
+// PATCH /api/v1/admin/distributors/:id.
 
 interface StatesServedEditorProps {
   distributorId: string;
   initialStates: string[];
   primaryState: string | null;
+  country: string | null;
   onSaved: (updated: AdminDistributorDetail) => void;
 }
 
-function StatesServedEditor({ distributorId, initialStates, primaryState, onSaved }: StatesServedEditorProps) {
+function StatesServedEditor({ distributorId, initialStates, primaryState, country, onSaved }: StatesServedEditorProps) {
+  const isCanada = country === 'CA';
+  const regionNoun = isCanada ? 'province' : 'state';
   const [selected, setSelected] = useState<string[]>(initialStates);
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -79,13 +76,13 @@ function StatesServedEditor({ distributorId, initialStates, primaryState, onSave
     }
   }
 
-  const available = US_STATES.filter((s) => !selected.includes(s));
+  const available = regionsForCountry(country).filter((s) => !selected.includes(s));
 
   return (
     <div className="bg-white border border-gray-200 rounded-xl p-5 mb-8">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg font-semibold text-[#2A2A2A]" style={{ fontFamily: "'Playfair Display', serif" }}>
-          States Served
+          {isCanada ? 'Provinces Served' : 'States Served'}
         </h2>
         {primaryState && (
           <span className="text-xs text-gray-500">
@@ -96,7 +93,7 @@ function StatesServedEditor({ distributorId, initialStates, primaryState, onSave
 
       {/* Chips for selected states */}
       {selected.length === 0 ? (
-        <p className="text-sm text-gray-400 mb-4">No states configured yet. Add states below.</p>
+        <p className="text-sm text-gray-400 mb-4">No {regionNoun}s configured yet. Add {regionNoun}s below.</p>
       ) : (
         <div className="flex flex-wrap gap-1.5 mb-4">
           {selected.map((s) => (
@@ -121,13 +118,13 @@ function StatesServedEditor({ distributorId, initialStates, primaryState, onSave
       {/* Add dropdown */}
       {available.length > 0 && (
         <div className="mb-4">
-          <label className="text-xs text-gray-500 mb-1 block">Add a state</label>
+          <label className="text-xs text-gray-500 mb-1 block">Add a {regionNoun}</label>
           <select
             className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-[#2A2A2A] bg-white focus:outline-none focus:ring-2 focus:ring-[#7FAEC2]/40"
             value=""
             onChange={(e) => { if (e.target.value) toggle(e.target.value); }}
           >
-            <option value="">Select state…</option>
+            <option value="">Select {regionNoun}…</option>
             {available.map((s) => (
               <option key={s} value={s}>{s}</option>
             ))}
@@ -443,6 +440,7 @@ export function QMAdminDistributorDetailPage() {
         distributorId={dist.id}
         initialStates={dist.service_states ?? []}
         primaryState={dist.primary_state ?? null}
+        country={dist.country ?? null}
         onSaved={(updated) => setDist(updated)}
       />
 

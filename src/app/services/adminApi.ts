@@ -102,8 +102,10 @@ export interface AdminDistributor {
   categorization_pct: number | null;
   /** USPS two-letter state codes this distributor services. */
   service_states: string[];
-  /** Primary state (USPS) this distributor is headquartered in or primarily serves. */
+  /** Primary state/province code this distributor is headquartered in or primarily serves. */
   primary_state: string | null;
+  /** ISO country code ("US" | "CA"); defaults to "US" server-side. */
+  country?: string | null;
 }
 
 export interface AdminDistributorDetail extends AdminDistributor {
@@ -339,6 +341,7 @@ export async function updateAdminDistributor(
     region?: string;
     primary_state?: string | null;
     service_states?: string[];
+    country?: string;
   }
 ): Promise<ApiResponse<AdminDistributorDetail>> {
   return fetchWithAuth(`/api/v1/admin/distributors/${id}`, {
@@ -1755,6 +1758,7 @@ export interface CreateRestaurantInput {
   name: string;
   city: string;
   state: string;
+  country?: string;
   address?: string;
   address_2?: string;
   zip?: string;
