@@ -1836,6 +1836,38 @@ export async function assignRestaurantAdminExistingUser(
   });
 }
 
+// ============= ADMIN RESTAURANT CONTACTS =============
+
+export interface AdminRestaurantContact {
+  id: string;
+  restaurant_id: string;
+  first_name: string;
+  last_name: string;
+  role: string | null;
+  email: string | null;
+  phone: string | null;
+  is_primary: boolean;
+}
+
+export interface CreateAdminRestaurantContactInput {
+  first_name: string;
+  last_name: string;
+  email?: string;
+  phone?: string;
+  role?: string;
+  is_primary?: boolean;
+}
+
+export async function createAdminRestaurantContact(
+  restaurantId: string,
+  data: CreateAdminRestaurantContactInput
+): Promise<ApiResponse<AdminRestaurantContact>> {
+  return fetchWithAuth(`/api/v1/admin/restaurants/${restaurantId}/contacts`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
 // ============= KNOWLEDGE GAP REVIEW QUEUE =============
 
 export interface KnowledgeGapSubmissionSourceData {
