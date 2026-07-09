@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { useGooglePlaces } from '../hooks/useGooglePlaces';
 import { PasswordRequirements, passwordMeetsRequirements } from '../components/PasswordRequirements';
+import { US_STATES } from '../constants/regions';
 
 // B-144: neutral placeholder — not distributor-biased
 export const LOGIN_EMAIL_PLACEHOLDER = 'you@example.com';
@@ -812,11 +813,7 @@ export function AuthPage() {
               }}
             >
               <option value="">Add a state…</option>
-              {['AL','AK','AZ','AR','CA','CO','CT','DE','DC','FL',
-                'GA','HI','ID','IL','IN','IA','KS','KY','LA','ME',
-                'MD','MA','MI','MN','MS','MO','MT','NE','NV','NH',
-                'NJ','NM','NY','NC','ND','OH','OK','OR','PA','RI',
-                'SC','SD','TN','TX','UT','VT','VA','WA','WV','WI','WY']
+              {US_STATES
                 .filter((s) => !signupServiceStates.includes(s))
                 .map((s) => <option key={s} value={s}>{s}</option>)
               }

@@ -11,15 +11,13 @@ import {
   type AdminDistributor,
   type Restaurant,
 } from '../../services/adminApi';
-
-
-const US_STATES = [
-  'AL','AK','AZ','AR','CA','CO','CT','DE','DC','FL',
-  'GA','HI','ID','IL','IN','IA','KS','KY','LA','ME',
-  'MD','MA','MI','MN','MS','MO','MT','NE','NV','NH',
-  'NJ','NM','NY','NC','ND','OH','OK','OR','PA','RI',
-  'SC','SD','TN','TX','UT','VT','VA','WA','WV','WI','WY',
-];
+import {
+  COUNTRY_OPTIONS,
+  DEFAULT_COUNTRY,
+  regionsForCountry,
+  isValidRegion,
+  type CountryCode,
+} from '../../constants/regions';
 
 interface Props {
   open: boolean;
@@ -39,6 +37,7 @@ export function AddRestaurantModal({ open, onClose, onCreated }: Props) {
   const [address, setAddress] = useState('');
   const [address2, setAddress2] = useState('');
   const [city, setCity] = useState('');
+  const [country, setCountry] = useState<CountryCode>(DEFAULT_COUNTRY);
   const [state, setState] = useState('');
   const [zip, setZip] = useState('');
   const [phone, setPhone] = useState('');
@@ -102,6 +101,7 @@ export function AddRestaurantModal({ open, onClose, onCreated }: Props) {
     setAddress('');
     setAddress2('');
     setCity('');
+    setCountry(DEFAULT_COUNTRY);
     setState('');
     setZip('');
     setPhone('');
@@ -119,7 +119,10 @@ export function AddRestaurantModal({ open, onClose, onCreated }: Props) {
   function validate(): string | null {
     if (!name.trim()) return 'Restaurant name is required.';
     if (!city.trim()) return 'City is required.';
-    if (!state) return 'State is required.';
+    if (!state) return country === 'CA' ? 'Province is required.' : 'State is required.';
+    if (state && !isValidRegion(state, country)) {
+      return country === 'CA' ? 'Invalid province code.' : 'Invalid state code.';
+    }
     return null;
   }
 
@@ -140,6 +143,7 @@ export function AddRestaurantModal({ open, onClose, onCreated }: Props) {
       name: name.trim(),
       city: city.trim(),
       state: state.toUpperCase(),
+      country,
       address: address.trim() || undefined,
       address_2: address2.trim() || undefined,
       zip: zip.trim() || undefined,
@@ -326,6 +330,23 @@ export function AddRestaurantModal({ open, onClose, onCreated }: Props) {
               />
             </div>
 
+            {/* Country */}
+            <div>
+              <Label className="text-sm font-medium text-[#4F4F4F]">Country</Label>
+              <select
+                value={country}
+                onChange={(e) => {
+                  setCountry(e.target.value as CountryCode);
+                  setState('');
+                }}
+                className="mt-1 w-full h-9 rounded-md border border-gray-200 bg-white px-3 text-sm text-[#2A2A2A] focus:outline-none focus:ring-2 focus:ring-[#A5CFDD]"
+              >
+                {COUNTRY_OPTIONS.map((c) => (
+                  <option key={c.value} value={c.value}>{c.label}</option>
+                ))}
+              </select>
+            </div>
+
             {/* City / State / Zip */}
             <div className="grid grid-cols-3 gap-3">
               <div className="col-span-1">
@@ -341,7 +362,7 @@ export function AddRestaurantModal({ open, onClose, onCreated }: Props) {
               </div>
               <div>
                 <Label className="text-sm font-medium text-[#4F4F4F]">
-                  State <span className="text-red-500">*</span>
+                  {country === 'CA' ? 'Province' : 'State'} <span className="text-red-500">*</span>
                 </Label>
                 <select
                   value={state}
@@ -349,17 +370,19 @@ export function AddRestaurantModal({ open, onClose, onCreated }: Props) {
                   className="mt-1 w-full h-9 rounded-md border border-gray-200 bg-white px-3 text-sm text-[#2A2A2A] focus:outline-none focus:ring-2 focus:ring-[#A5CFDD]"
                 >
                   <option value="">-</option>
-                  {US_STATES.map((s) => (
+                  {regionsForCountry(country).map((s) => (
                     <option key={s} value={s}>{s}</option>
                   ))}
                 </select>
               </div>
               <div>
-                <Label className="text-sm font-medium text-[#4F4F4F]">Zip</Label>
+                <Label className="text-sm font-medium text-[#4F4F4F]">
+                  {country === 'CA' ? 'Postal Code' : 'Zip'}
+                </Label>
                 <Input
                   value={zip}
                   onChange={(e) => setZip(e.target.value)}
-                  placeholder="97201"
+                  placeholder={country === 'CA' ? 'M5V 2T6' : '97201'}
                   className="mt-1"
                 />
               </div>
