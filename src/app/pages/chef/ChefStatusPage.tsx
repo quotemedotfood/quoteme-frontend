@@ -121,6 +121,42 @@ export function isQuoteNotFoundResponse(res: { status?: number }): boolean {
   return res.status === 404 || res.status === 400 || res.status === 500;
 }
 
+// ─── P1 fix: guest "Match to Catalog" / "Skip to Export" completion routing ──
+// ChefStatusPage is a shared processing-wait screen: the canonical /chef
+// entry flow (ChefEntryPage → /chef/status → /chef/quotes/:id) has never had
+// a review step and must keep landing on the read-only receipt page — that's
+// the default, untouched by anything below. StartNewQuotePage's guest/demo
+// branch, however, needs the SAME step-through authed reps get once the
+// async GuestMenuProcessingJob finishes:
+//   - "Match to Catalog" → /map-ingredients (the review/mapping step-through)
+//   - "Skip to Export"   → /export-finalize (its original pre-regression
+//     target — skipping review is its whole purpose, it just needs to land
+//     on the right page once processing completes instead of the receipt)
+// The entry point signals its intent via router state's `completionTarget`;
+// absent/unrecognized values fall through to the default receipt page.
+export type StatusCompletionTarget = 'map-ingredients' | 'export-finalize' | undefined;
+
+export interface StatusCompleteNavigation {
+  path: string;
+  state?: Record<string, unknown>;
+}
+
+/** Pure — computes where ChefStatusPage should navigate once a quote's processing completes. */
+export function getStatusCompleteTarget(quoteId: string, completionTarget: StatusCompletionTarget): StatusCompleteNavigation {
+  if (completionTarget === 'map-ingredients') {
+    return { path: '/map-ingredients', state: { quoteId } };
+  }
+  if (completionTarget === 'export-finalize') {
+    return { path: '/export-finalize', state: { quoteId } };
+  }
+  return { path: `/chef/quotes/${quoteId}` };
+}
+
+/** sessionStorage key used to remember `completionTarget` across a page reload during polling. */
+export function completionTargetStorageKey(quoteId: string): string {
+  return `chef_status_completion_target_${quoteId}`;
+}
+
 // ─── B-127: Expired-state action helpers ─────────────────────────────────────
 // Pure helpers exported for unit testing — no DOM or React needed.
 
@@ -170,10 +206,33 @@ export function ChefStatusPage({ onTimeout }: ChefStatusPageProps = {}) {
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const stuckTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const currentStepRef = useRef(0);
+  // P1 fix: which page to land on once processing completes (see
+  // getStatusCompleteTarget above). Read once from router state and mirrored
+  // into sessionStorage keyed by quote id — location.state doesn't survive a
+  // reload mid-poll (e.g. the chef refreshes this tab), so the sessionStorage
+  // copy is the fallback that keeps the intent alive across that reload.
+  const completionTargetRef = useRef<StatusCompletionTarget>(undefined);
 
   useEffect(() => {
     currentStepRef.current = currentStep;
   }, [currentStep]);
+
+  useEffect(() => {
+    if (!id) return;
+    const key = completionTargetStorageKey(id);
+    const stateTarget = (location.state as { completionTarget?: StatusCompletionTarget } | null)?.completionTarget;
+    if (stateTarget === 'map-ingredients' || stateTarget === 'export-finalize') {
+      completionTargetRef.current = stateTarget;
+      try { sessionStorage.setItem(key, stateTarget); } catch { /* sessionStorage unavailable — state-only for this load */ }
+      return;
+    }
+    try {
+      const stored = sessionStorage.getItem(key);
+      if (stored === 'map-ingredients' || stored === 'export-finalize') {
+        completionTargetRef.current = stored;
+      }
+    } catch { /* ignore — falls through to default receipt target */ }
+  }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // c144 — restore menu draft from router state into localStorage so recovery
   // paths (a) and (b) can retrieve it. ChefEntryPage's pasteText onChange also
@@ -236,11 +295,16 @@ export function ChefStatusPage({ onTimeout }: ChefStatusPageProps = {}) {
           if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
           if (stuckTimerRef.current) { clearTimeout(stuckTimerRef.current); stuckTimerRef.current = null; }
           localStorage.removeItem(MENU_DRAFT_KEY);
+          // P1 fix: default (no completionTarget) preserves the exact prior
+          // behavior — always the read-only receipt page. Only guest flows that
+          // opted in via router state (StartNewQuotePage) get redirected instead.
+          const target = getStatusCompleteTarget(id!, completionTargetRef.current);
+          if (id) { try { sessionStorage.removeItem(completionTargetStorageKey(id)); } catch { /* ignore */ } }
           if (immediate) {
-            navigate(`/chef/quotes/${id}`, { replace: true });
+            navigate(target.path, { replace: true, state: target.state });
           } else {
             setCurrentStep(2);
-            setTimeout(() => { navigate(`/chef/quotes/${id}`, { replace: true }); }, FINAL_STEP_DISPLAY_MS);
+            setTimeout(() => { navigate(target.path, { replace: true, state: target.state }); }, FINAL_STEP_DISPLAY_MS);
           }
         }
 
