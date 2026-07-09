@@ -786,7 +786,7 @@ export function QMAdminDistributorDetailPage() {
                   <TableHead>File</TableHead>
                   <TableHead>Uploaded by</TableHead>
                   <TableHead>Products</TableHead>
-                  <TableHead>% Uncategorized</TableHead>
+                  <TableHead title="% of active products the classifier could not place into a specific category (bucketed as 'Other'/unclassified). Not a measure of missing raw category values.">% Low Classification Confidence</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

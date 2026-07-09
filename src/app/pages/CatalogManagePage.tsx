@@ -49,6 +49,61 @@ const CATEGORY_COLORS: Record<string, string> = {
 // M-5: use shared categoryLabel so "protein" renders as "Proteins" everywhere.
 const formatCategory = categoryLabel;
 
+// Fixed pool of chip color classes used for categories that don't match the
+// canonical CATEGORY_COLORS map above (e.g. a distributor's raw taxonomy like
+// "SPICES", "ASIAN FOODS", "VINEGARS"). Previously any non-canonical category
+// fell through to a single indigo default, so every chip on a raw-taxonomy
+// catalog rendered identically ("all blue"). Instead we hash the category
+// string to a stable index into this palette so distinct categories get
+// visually distinct (but repeatable) colors.
+const CATEGORY_COLOR_PALETTE: string[] = [
+  'bg-green-100 text-green-700',
+  'bg-blue-100 text-blue-700',
+  'bg-purple-100 text-purple-700',
+  'bg-amber-100 text-amber-700',
+  'bg-pink-100 text-pink-700',
+  'bg-teal-100 text-teal-700',
+  'bg-orange-100 text-orange-700',
+  'bg-cyan-100 text-cyan-700',
+  'bg-rose-100 text-rose-700',
+  'bg-lime-100 text-lime-700',
+  'bg-indigo-100 text-indigo-700',
+  'bg-fuchsia-100 text-fuchsia-700',
+  'bg-emerald-100 text-emerald-700',
+  'bg-violet-100 text-violet-700',
+];
+
+/**
+ * Deterministic 32-bit FNV-1a hash. Pure function of the input string only
+ * (no Math.random, no insertion order dependence) so the same category
+ * string always maps to the same palette index across renders and sessions.
+ */
+function stableStringHash(str: string): number {
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < str.length; i++) {
+    hash ^= str.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return hash >>> 0;
+}
+
+/**
+ * Resolves the chip color classes for a category. Canonical categories
+ * (matching CATEGORY_COLORS, case-insensitively) keep their curated colors;
+ * anything else (raw distributor taxonomy strings) gets a deterministic
+ * hash-derived color from CATEGORY_COLOR_PALETTE instead of a single
+ * catch-all default, so chips are legible/distinguishable at a glance.
+ * Exported for unit testing.
+ */
+export function categoryColor(raw: string | null | undefined): string {
+  if (!raw) return CATEGORY_COLOR_PALETTE[0];
+  const key = raw.trim().toLowerCase();
+  if (CATEGORY_COLORS[key]) return CATEGORY_COLORS[key];
+  const normalized = key.replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || key;
+  const index = stableStringHash(normalized) % CATEGORY_COLOR_PALETTE.length;
+  return CATEGORY_COLOR_PALETTE[index];
+}
+
 /**
  * Returns true when the CC catalog page should show the "Update Catalog"
  * button (i.e. a catalog is already loaded). Exported for unit testing.
@@ -373,7 +428,7 @@ export function CatalogManagePage() {
             {sortedCategories.map(([cat, count]) => {
               const pct = (count / totalProducts) * 100;
               if (pct < 0.5) return null;
-              const colors = CATEGORY_COLORS[cat] || 'bg-indigo-100 text-indigo-700';
+              const colors = categoryColor(cat);
               const bgClass = colors.split(' ')[0];
               return (
                 <div
@@ -397,7 +452,7 @@ export function CatalogManagePage() {
         {/* Category chips */}
         <div className="flex flex-wrap gap-2">
           {sortedCategories.map(([cat, count]) => {
-            const colors = CATEGORY_COLORS[cat] || 'bg-indigo-100 text-indigo-700';
+            const colors = categoryColor(cat);
             const isActive = filterCategory === cat;
             return (
               <button
@@ -604,7 +659,7 @@ export function CatalogManagePage() {
                           </button>
                         </div>
                       ) : (
-                        <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${CATEGORY_COLORS[product.category] || 'bg-indigo-100 text-indigo-700'}`}>
+                        <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${categoryColor(product.category)}`}>
                           {formatCategory(product.category)}
                         </span>
                       )}
