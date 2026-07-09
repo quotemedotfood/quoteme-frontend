@@ -14,6 +14,8 @@
  * lives in exactly one place.
  */
 
+import { formatCurrency } from './formatCurrency';
+
 export interface QuotaBilling {
   has_paid_subscription: boolean;
   quotes_used?: number;
@@ -41,18 +43,27 @@ export function shouldShowSubscribeCta(billing: QuotaBilling | null | undefined)
 
 /**
  * Returns the plan label for billing section headers.
- *   Paid  → "Pro · $20/month"
+ *   Paid  → "Pro · $20.00/month"
  *   Free  → "Free"
  *   null  → null (caller should show a loading placeholder)
  *
  * B-141 — replaces hardcoded "Free" in ChefSettingsTab mobile + desktop billing sections.
+ *
+ * CANADA-CURRENCY: this is the platform's Stripe SUBSCRIPTION price (chef/rep
+ * pays QuoteMe directly), not distributor-scoped catalog/quote money — it is
+ * always USD regardless of which distributor's currency the user otherwise
+ * sees (Stripe billing currency is explicitly out of scope for this rollout;
+ * see BE CANADA-CURRENCY commit notes). No currency threading applies here
+ * by design. Uses the shared formatCurrency util purely to eliminate the
+ * hand-rolled `$${...}` string (was previously whole-dollar, no decimals —
+ * now shows a fixed 2 decimals like every other money site in the app).
  */
 export function billingPlanLabel(billing: QuotaBilling | null | undefined): string | null {
   if (billing == null) return null;
   if (billing.has_paid_subscription) {
     const name = billing.plan_name || 'Premium';
     const interval = billing.interval || 'month';
-    const price = billing.price_dollars != null ? `$${billing.price_dollars}` : null;
+    const price = billing.price_dollars != null ? formatCurrency(Math.round(billing.price_dollars * 100)) : null;
     return price ? `${name} · ${price}/${interval}` : name;
   }
   return 'Free';

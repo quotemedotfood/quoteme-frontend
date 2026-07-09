@@ -9,6 +9,7 @@ import { updateCurrentUser, getBilling, createCheckoutSession, createPortalSessi
 import { AuthDrawer } from '../components/AuthDrawer';
 import { isBuyerRole } from '../utils/roles';
 import { shouldShowSubscribeCta, quotaDisplayText, billingPlanLabel } from '../utils/quotaGate';
+import { formatCurrency } from '../utils/formatCurrency';
 import { ManagerSidebar } from '../components/distributor-admin/command-center/ManagerSidebar';
 import type { CCSidebarMode, CCManagerInfo } from '../components/distributor-admin/command-center/ManagerSidebar';
 
@@ -1038,7 +1039,10 @@ export function SettingsPage() {
                 <div className="flex justify-between text-sm">
                   <span className="text-[#4F4F4F]">Plan</span>
                   <span className="font-medium text-[#2A2A2A]">
-                    {groupBilling.billable_locations === 0 ? 'Free' : `$${groupBilling.monthly_total_cents / 100}/month`}
+                    {/* CANADA-CURRENCY: platform group-billing add-on, Stripe USD subscription
+                        money — not distributor-scoped, so no currency threading applies here
+                        by design (see quotaGate.ts billingPlanLabel note). */}
+                    {groupBilling.billable_locations === 0 ? 'Free' : `${formatCurrency(groupBilling.monthly_total_cents)}/month`}
                   </span>
                 </div>
                 {groupBilling.billable_locations > 0 && (
@@ -1221,9 +1225,11 @@ export function SettingsPage() {
                     {/* B-173: compose price + interval into a single node so the
                         "/month" suffix never floats as a separate DOM element. */}
                     <span className="text-2xl text-[#2A2A2A]">
+                      {/* CANADA-CURRENCY: Stripe USD subscription price, not
+                          distributor-scoped — see quotaGate.ts billingPlanLabel note. */}
                       {(billingData?.has_paid_subscription ?? profile.hasPaidSubscription)
-                        ? `$${billingData?.price_dollars ?? 29}/${billingData?.interval || 'month'}`
-                        : '$0/month'}
+                        ? `${formatCurrency(Math.round((billingData?.price_dollars ?? 29) * 100))}/${billingData?.interval || 'month'}`
+                        : formatCurrency(0) + '/month'}
                     </span>
                   </div>
                 </div>

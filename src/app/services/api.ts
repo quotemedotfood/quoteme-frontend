@@ -149,6 +149,9 @@ export interface ChefMagicLinkConsumeResponse {
     distributor: {
       name: string;
       short_name: string;
+      /** forward-compatible: not all serializers expose distributor.currency
+       * yet (BE CANADA-CURRENCY rollout in progress) — FE defaults to USD. */
+      currency?: string;
     } | null;
     restaurant: {
       name: string;
@@ -238,7 +241,10 @@ export interface QuoteResponse {
   contacts?: QuoteContact[];
   /** Primary contact for the restaurant, returned by rep/quotes/:id */
   restaurant_contact?: QuoteRestaurantContact | null;
-  distributor?: { id: string; name: string } | null;
+  /** currency is optional/forward-compatible: BE CANADA-CURRENCY has landed
+   * distributors.currency but not all serializers expose it on this object
+   * yet — FE formatCurrency() calls default to USD when absent. */
+  distributor?: { id: string; name: string; currency?: string } | null;
   lines: QuoteLineResponse[];
   input_mode?: string | null;
   detected_concept?: string | null;
@@ -2596,7 +2602,8 @@ export interface ChefQuoteRow {
   sent_at: string | null;
   item_count: number;
   total_cents: number;
-  distributor: { id: string; name: string } | null;
+  /** currency optional/forward-compatible — see QuoteResponse.distributor note. */
+  distributor: { id: string; name: string; currency?: string } | null;
   restaurant: { id: string; name: string } | null;
   rep: { name: string; first_name: string | null } | null;
   has_order_guide: boolean;
@@ -2638,7 +2645,8 @@ export interface OrderGuideResponse {
   effective_date: string | null;
   order_days: string | null;
   minimum_order_cents: number | null;
-  distributor: { name: string; phone: string | null; email: string | null } | null;
+  /** currency optional/forward-compatible — see QuoteResponse.distributor note. */
+  distributor: { name: string; phone: string | null; email: string | null; currency?: string } | null;
   restaurant: { name: string; address: string | null } | null;
   rep: { name: string; email: string | null; phone: string | null } | null;
   items: OrderGuideItemResponse[];
@@ -2778,6 +2786,8 @@ export interface ChefMenusIndexResponse {
 export interface ChefMenuDistributorHistory {
   distributor_id: string;
   distributor_name: string;
+  /** currency optional/forward-compatible — see QuoteResponse.distributor note. */
+  distributor_currency?: string;
   /** ISO datetime of the most recent quote for this distributor. */
   last_quoted_at: string;
   /** Total quoted value across all quotes for this distributor (cents). */
@@ -2819,6 +2829,8 @@ export interface PullQuoteDistributor {
   affiliated: boolean;
   catalog_item_count?: number | null;
   catalog_refreshed_at?: string | null;
+  /** currency optional/forward-compatible — see QuoteResponse.distributor note. */
+  currency?: string;
   rep?: {
     name: string;
     first_name?: string | null;

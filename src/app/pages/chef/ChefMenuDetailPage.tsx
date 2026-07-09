@@ -12,6 +12,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import { getChefMenu, type ChefMenuDetail, type ChefMenuItemDetail } from '../../services/api';
+import { formatCurrency } from '../../utils/formatCurrency';
 
 // ─── Palette ──────────────────────────────────────────────────────────────────
 
@@ -46,14 +47,8 @@ function formatDate(iso: string): string {
   }
 }
 
-function money(cents: number): string {
-  return (
-    '$' +
-    (cents / 100).toLocaleString('en-US', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    })
-  );
+function money(cents: number, currency?: string): string {
+  return formatCurrency(cents, currency);
 }
 
 // Group items by category for document-style rendering
@@ -223,7 +218,7 @@ function DistributorHistory({ menu }: { menu: ChefMenuDetail }) {
               whiteSpace: 'nowrap',
             }}
           >
-            {money(d.total_cents)}
+            {money(d.total_cents, d.distributor_currency)}
           </span>
         </div>
       ))}
