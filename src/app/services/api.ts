@@ -1699,7 +1699,7 @@ export interface LocationDistributorRelationship {
   id: string;
   status: string;
   distributor_name_text: string;
-  distributor: { id: string; name: string; logo_url?: string } | null;
+  distributor: { id: string; name: string; logo_url?: string; currency?: string } | null;
   rep: { id: string; name: string; email: string } | null;
   rep_name_text: string | null;
   rep_email_text: string | null;
