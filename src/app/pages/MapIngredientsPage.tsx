@@ -11,6 +11,7 @@ import { toTitleCase, formatProductName } from '../utils/format';
 import { categoryLabel } from '../utils/categoryLabel';
 import { MapComponentDrawer } from '../components/MapComponentDrawer';
 import { QuoteReviewBar } from '../components/QuoteReviewBar';
+import { Drawer, DrawerContent } from '../components/ui/drawer';
 import {
   createMenu,
   getMenuStatus,
@@ -1061,85 +1062,83 @@ export function MapIngredientsPage() {
         isUnmatched={!selectedLine?.product && (selectedLine?.alignment_candidates?.length ?? 0) === 0}
       />
 
-      {/* Mobile Dish List Drawer */}
-      {isDishListDrawerOpen && (
-        <div className="fixed inset-0 z-50 flex justify-end">
-          <div className="fixed inset-0 bg-black/20" onClick={() => setIsDishListDrawerOpen(false)} />
-          <div className="relative w-full max-w-xs bg-white h-full shadow-xl flex flex-col animate-in slide-in-from-right duration-300">
-            <div className="flex items-center justify-between p-4 border-b border-gray-100">
-              <h2 className="text-lg font-semibold text-[#2A2A2A]">Select Dish</h2>
-              <button onClick={() => setIsDishListDrawerOpen(false)} className="p-2 hover:bg-gray-100 rounded-full">
-                <X className="w-5 h-5 text-gray-500" />
-              </button>
-            </div>
-            <div className="flex-1 overflow-y-auto">
-              {dishes.map(dish => (
-                <button
-                  key={dish.id}
-                  onClick={() => { setSelectedDish(dish); setIsDishListDrawerOpen(false); }}
-                  className={`w-full p-4 text-left border-b border-gray-100 hover:bg-gray-50 ${selectedDish?.id === dish.id ? 'bg-[#A5CFDD]/10 border-l-4 border-l-[#A5CFDD]' : ''}`}
-                >
-                  <p className="text-sm font-medium text-[#2A2A2A]">{dish.name}</p>
-                  <p className="text-xs text-gray-500 mt-1">{dish.components.length} ingredients</p>
-                </button>
-              ))}
-            </div>
-            <div className="p-4 border-t border-gray-100 bg-gray-50">
-              <Button onClick={() => setIsAddDishDrawerOpen(true)} className="w-full bg-[#7FAEC2] hover:bg-[#6A9AB0] text-white">
-                <Plus className="w-4 h-4 mr-2" /> Manually Add A Dish
-              </Button>
-            </div>
+      {/* Mobile Dish List Drawer — canonical vaul-based primitive (was a
+          hand-rolled fixed-inset overlay; structural alignment only, same
+          inner markup/behavior). */}
+      <Drawer open={isDishListDrawerOpen} onOpenChange={setIsDishListDrawerOpen} direction="right">
+        <DrawerContent className="w-full max-w-xs h-full flex flex-col">
+          <div className="flex items-center justify-between p-4 border-b border-gray-100">
+            <h2 className="text-lg font-semibold text-[#2A2A2A]">Select Dish</h2>
+            <button onClick={() => setIsDishListDrawerOpen(false)} className="p-2 hover:bg-gray-100 rounded-full">
+              <X className="w-5 h-5 text-gray-500" />
+            </button>
           </div>
-        </div>
-      )}
-
-      {/* Add Dish Drawer */}
-      {isAddDishDrawerOpen && (
-        <div className="fixed inset-0 z-50 flex justify-end">
-          <div className="fixed inset-0 bg-black/20" onClick={() => setIsAddDishDrawerOpen(false)} />
-          <div className="relative w-full max-w-md bg-white h-full shadow-xl flex flex-col animate-in slide-in-from-right duration-300">
-            <div className="flex items-center justify-between p-4 border-b border-gray-100">
-              <h2 className="text-lg font-semibold text-[#2A2A2A]">Manually Add Dish</h2>
-              <button onClick={() => setIsAddDishDrawerOpen(false)} className="p-2 hover:bg-gray-100 rounded-full">
-                <X className="w-5 h-5 text-gray-500" />
-              </button>
-            </div>
-            <div className="flex-1 overflow-y-auto p-6 space-y-6">
-              <div className="space-y-2">
-                <Label htmlFor="dish-name">Dish Name (Optional)</Label>
-                <Input
-                  id="dish-name"
-                  placeholder="e.g. Spaghetti Carbonara"
-                  value={newDishName}
-                  onChange={(e) => setNewDishName(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="dish-components">List Ingredients</Label>
-                <p className="text-xs text-gray-500">Enter each ingredient on a new line.</p>
-                <Textarea
-                  id="dish-components"
-                  placeholder={"Spaghetti\nPancetta\nEggs\nParmesan cheese\nBlack pepper"}
-                  className="min-h-[200px]"
-                  value={newDishComponents}
-                  onChange={(e) => setNewDishComponents(e.target.value)}
-                />
-              </div>
-            </div>
-            <div className="p-4 border-t border-gray-100 bg-gray-50">
-              <Button
-                onClick={handleAlignWithCatalog}
-                className="w-full bg-[#7FAEC2] hover:bg-[#6A9AB0] text-white"
-                disabled={!newDishComponents.trim() || addDishLoading}
+          <div className="flex-1 overflow-y-auto">
+            {dishes.map(dish => (
+              <button
+                key={dish.id}
+                onClick={() => { setSelectedDish(dish); setIsDishListDrawerOpen(false); }}
+                className={`w-full p-4 text-left border-b border-gray-100 hover:bg-gray-50 ${selectedDish?.id === dish.id ? 'bg-[#A5CFDD]/10 border-l-4 border-l-[#A5CFDD]' : ''}`}
               >
-                {addDishLoading ? (
-                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Matching…</>
-                ) : 'Match With Catalog'}
-              </Button>
+                <p className="text-sm font-medium text-[#2A2A2A]">{dish.name}</p>
+                <p className="text-xs text-gray-500 mt-1">{dish.components.length} ingredients</p>
+              </button>
+            ))}
+          </div>
+          <div className="p-4 border-t border-gray-100 bg-gray-50">
+            <Button onClick={() => setIsAddDishDrawerOpen(true)} className="w-full bg-[#7FAEC2] hover:bg-[#6A9AB0] text-white">
+              <Plus className="w-4 h-4 mr-2" /> Manually Add A Dish
+            </Button>
+          </div>
+        </DrawerContent>
+      </Drawer>
+
+      {/* Add Dish Drawer — canonical vaul-based primitive (was a hand-rolled
+          fixed-inset overlay; structural alignment only, same inner
+          markup/behavior). */}
+      <Drawer open={isAddDishDrawerOpen} onOpenChange={setIsAddDishDrawerOpen} direction="right">
+        <DrawerContent className="w-full max-w-md h-full flex flex-col">
+          <div className="flex items-center justify-between p-4 border-b border-gray-100">
+            <h2 className="text-lg font-semibold text-[#2A2A2A]">Manually Add Dish</h2>
+            <button onClick={() => setIsAddDishDrawerOpen(false)} className="p-2 hover:bg-gray-100 rounded-full">
+              <X className="w-5 h-5 text-gray-500" />
+            </button>
+          </div>
+          <div className="flex-1 overflow-y-auto p-6 space-y-6">
+            <div className="space-y-2">
+              <Label htmlFor="dish-name">Dish Name (Optional)</Label>
+              <Input
+                id="dish-name"
+                placeholder="e.g. Spaghetti Carbonara"
+                value={newDishName}
+                onChange={(e) => setNewDishName(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="dish-components">List Ingredients</Label>
+              <p className="text-xs text-gray-500">Enter each ingredient on a new line.</p>
+              <Textarea
+                id="dish-components"
+                placeholder={"Spaghetti\nPancetta\nEggs\nParmesan cheese\nBlack pepper"}
+                className="min-h-[200px]"
+                value={newDishComponents}
+                onChange={(e) => setNewDishComponents(e.target.value)}
+              />
             </div>
           </div>
-        </div>
-      )}
+          <div className="p-4 border-t border-gray-100 bg-gray-50">
+            <Button
+              onClick={handleAlignWithCatalog}
+              className="w-full bg-[#7FAEC2] hover:bg-[#6A9AB0] text-white"
+              disabled={!newDishComponents.trim() || addDishLoading}
+            >
+              {addDishLoading ? (
+                <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Matching…</>
+              ) : 'Match With Catalog'}
+            </Button>
+          </div>
+        </DrawerContent>
+      </Drawer>
 
       {/* Floating Adjust Pricing button — bottom-right pill (right-justified
           per Moose's 100km Foods demo feedback: the old bottom-center
