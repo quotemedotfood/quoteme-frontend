@@ -291,6 +291,7 @@ export function QuoteStateDocument({
             state={state}
             pricedCount={pricedCount}
             groupIndex={gi}
+            currency={currency}
           />
         ))}
 
@@ -330,12 +331,14 @@ function QuoteStateGroup({
   state,
   pricedCount,
   groupIndex,
+  currency,
 }: {
   group: QuoteDocGroup;
   groups: QuoteDocGroup[];
   state: QuoteDocumentState;
   pricedCount: number;
   groupIndex: number;
+  currency?: string;
 }) {
   let cumBefore = 0;
   for (let i = 0; i < groupIndex; i++) cumBefore += groups[i].items.length;
