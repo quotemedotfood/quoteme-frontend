@@ -1,14 +1,30 @@
-// CCQuoteFlowShell — role-aware shell wrapper for the quote-build flow.
+// CCQuoteFlowShell -- consistent, chrome-less shell wrapper for the quote-build flow.
 //
-// Problem: /start-new-quote (and the downstream flow pages) are top-level
-// routes outside CCLayout. When a distributor_admin navigates there from the
-// Command Center, the CC sidebar/shell disappears.
+// History: this component used to special-case distributor_admin, wrapping the
+// quote-build routes (/start-new-quote, /map-ingredients, /quote-builder,
+// /export-finalize) in the full CCLayout (sidebar + sticky search bar) while
+// every other role (chef, rep, guest, quoteme_admin, buyer) got a bare
+// <Outlet/>. That produced two genuinely different quote-flow experiences --
+// e.g. two different "map-ingredients" designs depending on who was looking --
+// which is the divergence this component now exists to close.
 //
-// Fix: wrap the quote-flow routes in this pathless layout route. For
-// distributor_admin users it renders the full CCLayout (sidebar + search bar)
-// around the Outlet. For every other role (chef, rep, guest, quoteme_admin,
-// buyer) it renders Outlet directly — identical to the previous shell-less
-// behaviour, so no existing flow is broken.
+// Fix (quoting-flow audit precursor): render ONE consistent surface for every
+// role -- bare <Outlet/>, no CCLayout injection here. Rationale:
+// * CCLayout carries a hard role guard (see CCLayout.tsx "B-42") that redirects
+//   any role that can't access the Command Center -- wrapping every role in
+//   CCLayout would have actively broken the flow for chef/rep/guest/buyer
+//   instead of unifying it.
+// * CCLayout's sidebar/search bar/counts are Command-Center-specific
+//   (Today/Quotes/Assign/Team/Inbound nav, distributor-scoped API calls) and
+//   don't describe "building a quote" for any role -- injecting it here was
+//   incidental, not load-bearing.
+// * Bare Outlet is already the experience for the majority of roles that
+//   reach this route (rep, and -- via RootLayout's own role-aware chrome --
+//   chef/group_admin/buyer get ChefTopbar and quoteme_admin gets AppSidebar
+//   independently of this component). Removing the one-role special case
+//   here makes CCQuoteFlowShell a true no-op pass-through, so the quote flow's
+//   chrome is driven consistently by RootLayout for every role, not doubled
+//   up by a second, role-specific shell layer.
 //
 // Usage in routes.tsx:
 //   {
@@ -20,35 +36,23 @@
 //       { path: "export-finalize", Component: ExportFinalizePage },
 //     ],
 //   }
-//
-// Design notes:
-// • Imports CCLayout (not a re-implementation) so sidebar state, counts, and
-//   search bar are identical to the rest of the CC shell.
-// • Uses useAuth() — same hook used by every other role gate in RootLayout.
-// • No gradient colors. No AppSidebar (that's the old shell for non-CC users).
 
 import { Outlet } from 'react-router';
-import { useAuth } from '../../../contexts/AuthContext';
-import { CCLayout } from './CCLayout';
 
 export function CCQuoteFlowShell() {
-  const { user } = useAuth();
-
-  if (user?.role === 'distributor_admin') {
-    // Render the full CC shell (sidebar + search bar) with the page as Outlet.
-    return <CCLayout />;
-  }
-
-  // All other roles: no CC shell — Outlet only, preserving existing behaviour.
+  // Consistent across roles: no CCLayout injection, no role branching.
   return <Outlet />;
 }
 
-// ── Pure helper (exported for unit tests) ────────────────────────────────────
+// -- Pure helper (exported for unit tests) -----------------------------------
 
 /**
  * Returns true when the CC shell should wrap the quote-build flow.
- * Extracted as a pure function so tests don't need jsdom / router context.
+ * Always false now -- CCQuoteFlowShell no longer role-branches (see history
+ * note above). Kept as a named export so existing call sites/tests have a
+ * single source of truth to assert against rather than reading the component
+ * internals directly.
  */
-export function shouldUseCCShellForQuoteFlow(role: string | undefined): boolean {
-  return role === 'distributor_admin';
+export function shouldUseCCShellForQuoteFlow(_role: string | undefined): boolean {
+  return false;
 }

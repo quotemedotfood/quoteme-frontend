@@ -413,11 +413,13 @@ export const router = createBrowserRouter([
             },
           ]),
           { path: "upgrade", Component: PaywallPage },
-          // ── Quote-build flow — CC shell for distributor_admin, bare Outlet for others ──
-          // CCQuoteFlowShell gates on role: distributor_admin gets CCLayout (sidebar +
-          // search bar); every other role (chef, rep, guest, buyer) gets Outlet only,
-          // preserving existing shell-less behaviour. All four quote-flow steps are
-          // wrapped so the manager never loses navigation mid-flow.
+          // ── Quote-build flow — one consistent shell-less surface for every role ──
+          // CCQuoteFlowShell is a pure pass-through Outlet; it no longer wraps
+          // distributor_admin in CCLayout (that special case produced two divergent
+          // quote-flow designs by role — see CCQuoteFlowShell.tsx for the fix history).
+          // Chrome for the flow, where it exists, comes from RootLayout's own
+          // role-aware chrome (ChefTopbar for chef/group_admin/buyer, AppSidebar for
+          // quoteme_admin), not from a second shell layer here.
           {
             Component: CCQuoteFlowShell,
             children: [
