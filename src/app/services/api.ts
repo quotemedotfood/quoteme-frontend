@@ -1251,9 +1251,9 @@ export interface QuotePreviewResponse {
   lines: QuotePreviewLine[];
 }
 
-export async function getQuotePreview(id: string): Promise<ApiResponse<QuotePreviewResponse>> {
+export async function getQuotePreview(id: string, token: string): Promise<ApiResponse<QuotePreviewResponse>> {
   try {
-    const response = await fetchWithRetry(`${API_BASE_URL}/api/v1/quotes/${id}/preview`);
+    const response = await fetchWithRetry(`${API_BASE_URL}/api/v1/quotes/${id}/preview?token=${encodeURIComponent(token)}`);
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       return { error: errorData.error || `HTTP ${response.status}` };
