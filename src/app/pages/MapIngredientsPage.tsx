@@ -9,7 +9,7 @@ import { useUser } from '../contexts/UserContext';
 import { isDemoMode } from '../utils/demoMode';
 import { toTitleCase, formatProductName } from '../utils/format';
 import { categoryLabel } from '../utils/categoryLabel';
-import { MapComponentDrawer } from '../components/MapComponentDrawer';
+import { MatchDrawer } from '../components/MatchDrawer';
 import { QuoteReviewBar } from '../components/QuoteReviewBar';
 import { Drawer, DrawerContent } from '../components/ui/drawer';
 import {
@@ -480,102 +480,12 @@ export function MapIngredientsPage() {
     setMapDrawerOpen(true);
   };
 
-  const handleApplyMapping = (componentName: string, skuIds: string[]) => {
-    if (skuIds.length > 0) {
-      setMappedComponents(prev => ({ ...prev, [componentName]: skuIds }));
-    }
-  };
-
-  const updateDishProduct = (componentName: string, candidateProduct: { id: string; item_number: string; brand: string; product: string; pack_size: string; category: string }) => {
-    setDishes(prev => {
-      const updated = prev.map(dish => {
-        if (dish.componentLines[componentName]) {
-          const updatedLine = { ...dish.componentLines[componentName], product: candidateProduct };
-          return {
-            ...dish,
-            componentLines: { ...dish.componentLines, [componentName]: updatedLine },
-          };
-        }
-        return dish;
-      });
-      // Keep selectedDish in sync
-      if (selectedDish) {
-        const refreshed = updated.find(d => d.id === selectedDish.id);
-        if (refreshed) setSelectedDish(refreshed);
-      }
-      return updated;
-    });
-  };
-
-  const handleReplaceMatch = (componentName: string, productId: string, product?: { id: string; item_number: string; brand: string; product: string; pack_size: string; category: string }) => {
-    // Look up the line fresh from current dishes state to avoid stale closures
-    let line: QuoteLine | undefined;
-    for (const dish of dishes) {
-      if (dish.componentLines[componentName]) {
-        line = dish.componentLines[componentName];
-        break;
-      }
-    }
-    const allCandidates = line?.alignment_candidates || [];
-    const candidate = allCandidates.find(c => c.product.id === productId);
-    const candidateProduct = candidate?.product || product;
-    if (candidateProduct) {
-      updateDishProduct(componentName, candidateProduct);
-    }
-    setMappedComponents(prev => ({ ...prev, [componentName]: [productId] }));
-
-    // Persist to backend so downstream pages see the change
-    if (quoteId && line) {
-      const lineUpdate: any = { id: line.id };
-      if (candidate) {
-        lineUpdate.alignment_selected = candidate.position;
-      } else {
-        lineUpdate.product_id = productId;
-      }
-      persistQuote(quoteId, { lines: [lineUpdate] }).catch(() => {
-        setError('Failed to save match. Please try again.');
-      });
-    }
-  };
-
-  const handleAddToQuote = (componentName: string, productId: string, product?: { id: string; item_number: string; brand: string; product: string; pack_size: string; category: string }) => {
-    // Look up the line fresh from current dishes state to avoid stale closures
-    let line: QuoteLine | undefined;
-    for (const dish of dishes) {
-      if (dish.componentLines[componentName]) {
-        line = dish.componentLines[componentName];
-        break;
-      }
-    }
-    const allCandidates = line?.alignment_candidates || [];
-    const candidate = allCandidates.find(c => c.product.id === productId);
-    const candidateProduct = candidate?.product || product;
-    if (candidateProduct) {
-      // Update the component line so the main page shows the match
-      updateDishProduct(componentName, candidateProduct);
-      setAdditions(prev => [...prev, {
-        id: `atq-${Date.now()}-${productId}`,
-        componentName,
-        sourceDish: selectedDish?.name || 'Unknown Dish',
-        product: candidateProduct,
-        type: 'add_to_quote' as const,
-      }]);
-    }
-    setMappedComponents(prev => ({ ...prev, [componentName]: [...(prev[componentName] || []), productId] }));
-
-    // Persist to backend so downstream pages see the change
-    if (quoteId && line) {
-      const lineUpdate: any = { id: line.id };
-      if (candidate) {
-        lineUpdate.alignment_selected = candidate.position;
-      } else {
-        lineUpdate.product_id = productId;
-      }
-      persistQuote(quoteId, { lines: [lineUpdate] }).catch(() => {
-        setError('Failed to save match. Please try again.');
-      });
-    }
-  };
+  // NOTE: the legacy handleApplyMapping/updateDishProduct/handleReplaceMatch/
+  // handleAddToQuote client-side-mutation handlers were removed when
+  // MapComponentDrawer (single-select) was swapped for MatchDrawer
+  // (multi-select "Your Call"). MatchDrawer submits directly to the BE
+  // (submitYourCallSelection) and the result is reflected via a full
+  // handleMatchesUpdated() refetch instead of local optimistic patching.
 
   const toggleCategory = (id: string) => {
     setExpandedCategories(prev =>
@@ -1042,24 +952,26 @@ export function MapIngredientsPage() {
         </div>
       </div>
 
-      {/* Match Ingredient Drawer */}
-      <MapComponentDrawer
+      {/* Match Ingredient Drawer — multi-select "Your Call" redesign (checkbox-only:
+          first pick replaces the current match, the rest add alongside it). */}
+      <MatchDrawer
         open={mapDrawerOpen}
         onOpenChange={setMapDrawerOpen}
-        componentName={selectedComponent}
-        onApplyMapping={handleApplyMapping}
+        ingredientName={selectedComponent}
+        currentProduct={selectedLine?.product || null}
         candidates={selectedLine?.alignment_candidates || []}
         onFindMoreMatches={quoteId && selectedLine && (selectedLine?.alignment_candidates?.length ?? 0) > 0 ? async () => {
           const res = await getMoreMatches(quoteId, selectedLine.id);
           return res.data?.candidates || [];
         } : undefined}
         quoteId={quoteId || undefined}
-        onManualSelect={(componentName, product) => {
-          setMappedComponents(prev => ({ ...prev, [componentName]: [product.id] }));
+        quoteLineId={selectedLine?.id || null}
+        dishComponentId={selectedLine?.component?.id || null}
+        canonicalKey={null}
+        onSubmitted={(pickedProductIds) => {
+          setMappedComponents(prev => ({ ...prev, [selectedComponent]: pickedProductIds }));
+          handleMatchesUpdated();
         }}
-        onReplaceMatch={handleReplaceMatch}
-        onAddToQuote={handleAddToQuote}
-        isUnmatched={!selectedLine?.product && (selectedLine?.alignment_candidates?.length ?? 0) === 0}
       />
 
       {/* Mobile Dish List Drawer — canonical vaul-based primitive (was a
