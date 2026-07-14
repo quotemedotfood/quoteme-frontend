@@ -40,9 +40,14 @@ export default defineConfig({
 
   test: {
     // Run in node environment — no DOM / jsdom needed for pure-logic unit tests.
-    // Component-level tests that require a DOM should use environment: 'jsdom'
-    // on a per-file basis once @testing-library/react is added to devDependencies.
+    // Component-level tests that require a DOM opt in per-file with a
+    // `// @vitest-environment jsdom` pragma at the top of the file (jsdom +
+    // @testing-library/react were added as devDependencies for FE-TESTING
+    // epic slice 1 — see QuoteReviewBar.render.test.tsx for the first one).
     environment: 'node',
+    // Loaded for every test file; only matters for the jsdom-opted-in files
+    // (adds jest-dom matchers like toBeDisabled/toBeEnabled on top of expect).
+    setupFiles: ['./src/test/setup.ts'],
     // Only pick up files explicitly named *.test.ts / *.test.tsx so the broad
     // glob doesn't accidentally match storybook or playground files.
     include: ['src/**/*.test.{ts,tsx}'],
