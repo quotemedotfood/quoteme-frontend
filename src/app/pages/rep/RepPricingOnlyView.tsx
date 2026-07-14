@@ -273,7 +273,7 @@ export function RepPricingOnlyView({ quoteId }: { quoteId: string }) {
         <button
           type="button"
           onClick={handleConfirm}
-          disabled={saving}
+          disabled={saving || pricedCount === 0}
           style={{
             ...sans,
             display: 'flex',

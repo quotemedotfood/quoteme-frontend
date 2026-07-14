@@ -1,0 +1,26 @@
+# FE-TESTING epic slice 2: run the vitest suite on every PR and every push.
+#
+# Concurrency group cancels superseded runs on rapid follow-up commits / the
+# staging->main promotion double-run (push + pull_request firing for the same
+# commit) — same pattern as the backend repo's ci.yml.
+name: test
+
+on:
+  pull_request:
+  push:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run test

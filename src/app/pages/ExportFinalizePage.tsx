@@ -132,6 +132,20 @@ export function ExportFinalizePage() {
   const [rating, setRating] = useState<'up' | 'down' | null>(null);
   const [feedback, setFeedback] = useState('');
   const [hasInteracted, setHasInteracted] = useState(false);
+  // Found-and-fixed gap (not part of the original ticket): the success/
+  // feedback drawer used to pop open unconditionally on every successful
+  // export/send action (CSV, PDF, email, SMS) in a session, even if the
+  // chef/rep had already seen and dismissed it once. Gate it to show once
+  // per page session — always mark hasInteracted (used elsewhere), but only
+  // open the drawer the first time it's triggered.
+  const [feedbackShownOnce, setFeedbackShownOnce] = useState(false);
+  const triggerSuccessFeedback = useCallback(() => {
+    setHasInteracted(true);
+    setFeedbackShownOnce(prev => {
+      if (!prev) setShowSuccessDrawer(true);
+      return true;
+    });
+  }, []);
 
   // Quote data
   const [quoteData, setQuoteData] = useState<QuoteResponse | null>(null);
@@ -239,8 +253,7 @@ export function ExportFinalizePage() {
       a.download = `quote-${quoteId}.csv`;
       a.click();
       URL.revokeObjectURL(url);
-      setHasInteracted(true);
-      setShowSuccessDrawer(true);
+      triggerSuccessFeedback();
     } finally {
       setDownloadingCsv(false);
     }
@@ -259,8 +272,7 @@ export function ExportFinalizePage() {
         a.download = `quote-${quoteId}.pdf`;
         a.click();
         URL.revokeObjectURL(url);
-        setHasInteracted(true);
-        setShowSuccessDrawer(true);
+        triggerSuccessFeedback();
       }
     } finally {
       setDownloadingPdf(false);
@@ -405,8 +417,7 @@ export function ExportFinalizePage() {
         return false;
       } else {
         setEmailSent(true);
-        setHasInteracted(true);
-        setShowSuccessDrawer(true);
+        triggerSuccessFeedback();
         incrementQuoteCount();
         return true;
       }
@@ -431,8 +442,7 @@ export function ExportFinalizePage() {
         setSendError(res.error);
       } else {
         setSmsSent(true);
-        setHasInteracted(true);
-        setShowSuccessDrawer(true);
+        triggerSuccessFeedback();
         incrementQuoteCount();
       }
     } finally {
