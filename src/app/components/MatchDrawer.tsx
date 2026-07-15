@@ -486,7 +486,9 @@ export function MatchDrawer({
             <label className="text-[12.5px] font-semibold" style={{ color: 'var(--qm-charcoal)' }}>
               Notes (Optional)
             </label>
-            <VoiceNoteButton onTranscript={(text) => setNotes(prev => (prev ? `${prev} ${text}` : text))} />
+            {/* Voice-note button HIDDEN until real Whisper transcription wires up
+                (VoiceNoteButton is a UI-only stub — no mic capture / no real STT).
+                No dead buttons on prod. Re-enable when the STT endpoint lands (task #42). */}
           </div>
           <textarea
             value={notes}
