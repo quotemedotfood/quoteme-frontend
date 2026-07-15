@@ -165,7 +165,7 @@ export function ChefPullEntryPage() {
       if (res.error) {
         const err = res.error;
         if (err.includes('pdf_too_large')) {
-          setError("This menu is too large to read at once. Try a single section — entrees, apps, or the cocktail list.");
+          setError("This menu is too large to read at once. Try a single section: entrees, apps, or the cocktail list.");
         } else if (err.includes('service_busy') || err === 'service_busy') {
           setError("Our menu service is temporarily busy. Please try again in a few seconds.");
         } else {
@@ -597,7 +597,7 @@ export function ChefPullEntryPage() {
             {/* Disabled reasons — shown ABOVE the button so the chef sees why before clicking */}
             {!catalogReady && distributor != null && (
               <p className="text-sm text-[#9E9E9E] text-center leading-relaxed">
-                This distributor's catalog isn't set up yet — ask your rep to upload it.
+                This distributor's catalog isn't set up yet, ask your rep to upload it.
               </p>
             )}
             {catalogReady && !hasContent && (

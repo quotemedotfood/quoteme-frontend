@@ -330,7 +330,7 @@ function EmptyState({ onAddDistributor }: { onAddDistributor: () => void }) {
           marginBottom: 24,
         }}
       >
-        Start a quote to see pricing — pinned distributors will appear here so you can compare across menus.
+        Start a quote to see pricing, pinned distributors will appear here so you can compare across menus.
       </p>
       <button
         type="button"

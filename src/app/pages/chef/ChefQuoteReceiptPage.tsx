@@ -429,7 +429,7 @@ function receiptErrorCopy(status: number | null): { title: string; body: string 
   if (status === 401) {
     return {
       title: "We couldn't open this quote.",
-      body: "Your link may have expired or moved on. Ask your rep for a fresh quote link — they can resend in a moment.",
+      body: "Your link may have expired or moved on. Ask your rep for a fresh quote link, they can resend in a moment.",
     };
   }
   if (status === 404) {

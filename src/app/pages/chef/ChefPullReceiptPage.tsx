@@ -177,7 +177,7 @@ export function ChefPullReceiptPage() {
     const subject = encodeURIComponent('Quote ready for review');
     const shareLink = quote?.share_url ?? window.location.href;
     const body = encodeURIComponent(
-      `Hi${rep.first_name ? ` ${rep.first_name}` : ''} — a new quote is ready for your review.\n\n${shareLink}`,
+      `Hi${rep.first_name ? ` ${rep.first_name}` : ''}, a new quote is ready for your review.\n\n${shareLink}`,
     );
     window.location.href = `mailto:${rep.email}?subject=${subject}&body=${body}`;
   }
@@ -220,7 +220,7 @@ export function ChefPullReceiptPage() {
           {lines.length === 0 && (
             <div className="mb-8 border border-[#F0EDE7] rounded-xl px-5 py-6 bg-white text-center">
               <p className="text-[#4F4F4F] text-sm">
-                No line items yet. The quote may still be processing — check back in a moment.
+                No line items yet. The quote may still be processing, check back in a moment.
               </p>
             </div>
           )}

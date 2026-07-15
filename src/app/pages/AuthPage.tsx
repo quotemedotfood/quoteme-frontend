@@ -781,7 +781,7 @@ export function AuthPage() {
               States you serve{' '}
               <span className="font-normal text-gray-400">(optional)</span>
             </label>
-            <p className="text-xs text-gray-400 mb-2">Add any you want — you can update this later in your settings.</p>
+            <p className="text-xs text-gray-400 mb-2">Add any you want, you can update this later in your settings.</p>
             {signupServiceStates.length > 0 && (
               <div className="flex flex-wrap gap-1.5 mb-2">
                 {signupServiceStates.map((s) => (

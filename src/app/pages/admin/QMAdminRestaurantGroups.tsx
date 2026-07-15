@@ -343,8 +343,8 @@ export function QMAdminRestaurantGroups() {
                                     {detail.restaurants.map((r) => (
                                       <tr key={r.id} className="border-t border-gray-100 hover:bg-gray-50">
                                         <td className="px-4 py-2 font-medium text-[#2A2A2A]">{r.name}</td>
-                                        <td className="px-4 py-2 text-gray-500">{r.city || '—'}</td>
-                                        <td className="px-4 py-2 text-gray-500">{r.state || '—'}</td>
+                                        <td className="px-4 py-2 text-gray-500">{r.city || '-'}</td>
+                                        <td className="px-4 py-2 text-gray-500">{r.state || '-'}</td>
                                         <td className="px-4 py-2">
                                           <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${r.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
                                             {r.status}

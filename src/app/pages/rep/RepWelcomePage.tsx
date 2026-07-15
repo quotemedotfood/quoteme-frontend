@@ -221,14 +221,14 @@ export function RepWelcomePage() {
                 <span style={{ width: 6, height: 6, borderRadius: '50%', background: C.accent, display: 'inline-block', flexShrink: 0 }} />
                 <span>
                   <span style={{ color: C.charcoal, fontWeight: 500 }}>Review the quote</span>
-                  {' — see what '}{q.chef_first} matched, swap items where needed.
+                  {', see what '}{q.chef_first} matched, swap items where needed.
                 </span>
               </li>
               <li style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
                 <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--primary)', display: 'inline-block', flexShrink: 0 }} />
                 <span>
                   <span style={{ color: C.charcoal, fontWeight: 500 }}>Go straight to pricing</span>
-                  {' — price what\'s there and send it back.'}
+                  {', price what\'s there and send it back.'}
                 </span>
               </li>
             </ul>

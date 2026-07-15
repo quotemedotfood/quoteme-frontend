@@ -52,7 +52,7 @@ export function ChefCatalogEmailPreviewPage() {
             marginBottom: 4,
           }}
         >
-          ChefCatalogEmail — SU-FE-5 preview
+          ChefCatalogEmail: SU-FE-5 preview
         </h1>
         <p style={{ fontSize: 13, color: '#6B7280', marginBottom: 32 }}>
           Chef catalog-live notification email · mobile + desktop frames · route: /chef/_preview/chef-catalog-email

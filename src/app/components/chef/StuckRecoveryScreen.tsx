@@ -60,7 +60,7 @@ export function StuckRecoveryScreen({ quoteId, repEmail, repName, onWaitItOut }:
     const savedMenu = localStorage.getItem(MENU_DRAFT_KEY) ?? '';
     const subject = encodeURIComponent('Menu needs help');
     const body = encodeURIComponent(
-      `Hi${repName ? ` ${repName}` : ''} — my menu didn't finish processing. Could you take a look?\n\nQuote ID: ${quoteId ?? 'unknown'}\n\n---\n${savedMenu}`,
+      `Hi${repName ? ` ${repName}` : ''}, my menu didn't finish processing. Could you take a look?\n\nQuote ID: ${quoteId ?? 'unknown'}\n\n---\n${savedMenu}`,
     );
     window.location.href = `mailto:${repEmail}?subject=${subject}&body=${body}`;
   }
@@ -185,7 +185,7 @@ export function StuckRecoveryScreen({ quoteId, repEmail, repName, onWaitItOut }:
               Go back and try again
             </p>
             <p className="text-[#9E9E9E] text-xs leading-relaxed">
-              Something went wrong — head back and try again.
+              Something went wrong, head back and try again.
             </p>
           </button>
         </div>

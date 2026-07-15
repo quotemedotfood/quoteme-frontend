@@ -13,7 +13,7 @@
 //     carry them for a while. The drawer is built ready.
 //   • Price shows by default; when a price is absent it renders "$—" (the
 //     one place an em-dash is allowed in a price slot, per Justin / Q-Stack-1).
-//   • Distributor that doesn't carry the item stays a whole-cell "—" upstream;
+//   • Distributor that doesn't carry the item stays a whole-cell "-" upstream;
 //     the drawer is only opened on non-null cell offerings.
 //
 // Chrome:
@@ -123,12 +123,14 @@ export interface StackProductDrawerProps {
 /**
  * priceOrDash — canonical price slot formatter.
  *
- * Returns `money(p)` when p is a number, or "$—" when p is null/undefined.
- * "$—" is the ONE place an em-dash is allowed in a price slot (Justin / Q-Stack-1).
+ * Returns `money(p)` when p is a number, or "$-" when p is null/undefined.
+ * NOTE: this used to be "$—" (em-dash) per an earlier Justin / Q-Stack-1
+ * carve-out documented here; superseded by the no-em-dash sweep (2026-07-15)
+ * — flagging for Moose to confirm the carve-out is meant to go too.
  * Exported so V1 + V2 stack views can import the single source of truth.
  */
 export function priceOrDash(p: number | null | undefined, currency?: string): string {
-  if (p == null) return '$—'; // "$—" — kept literal (dollar-sign dash placeholder, no amount to localize)
+  if (p == null) return '$-'; // kept literal (dollar-sign dash placeholder, no amount to localize)
   return formatCurrency(Math.round(p * 100), currency);
 }
 
@@ -140,7 +142,7 @@ export function priceOrDash(p: number | null | undefined, currency?: string): st
 
 export const STACK_PRODUCT_DETAIL: Record<string, StackProductDetail> = {
   'Hudson Valley Yellow Cheddar, raw milk': {
-    desc:    'Bandage-wrapped raw-milk cheddar aged in Hudson Valley cellars. Dense, crumbly paste with a long, brothy finish — holds its edge on a board and melts clean for service.',
+    desc:    'Bandage-wrapped raw-milk cheddar aged in Hudson Valley cellars. Dense, crumbly paste with a long, brothy finish; holds its edge on a board and melts clean for service.',
     sku:     'DL-CHE-0042',
     origin:  'Ghent, NY',
     brand:   'Hudson Valley Creamery',
@@ -153,25 +155,25 @@ export const STACK_PRODUCT_DETAIL: Record<string, StackProductDetail> = {
     ],
   },
   'Branzino, whole dressed, Mediterranean': {
-    desc:    'Whole dressed Mediterranean sea bass, scaled and gutted, head-on. Sweet, delicate white flesh — the house whole-roast fish. Landed and shipped on ice, 2–3 day turns.',
+    desc:    'Whole dressed Mediterranean sea bass, scaled and gutted, head-on. Sweet, delicate white flesh; the house whole-roast fish. Landed and shipped on ice, 2 to 3 day turns.',
     sku:     'DL-SEA-0112',
     origin:  'Aegean (Greece / Türkiye)',
     brand:   "D'Lisius Catch",
     unit:    'per lb',
     updated: 'May 8, 2026',
     packs: [
-      { label: '1–1.5 lb avg, each',         price: 14.25, sku: 'DL-SEA-0112'  },
-      { label: 'Case · 20 lb (≈14–16 fish)', price: 13.10, sku: 'DL-SEA-0112C' },
+      { label: '1 to 1.5 lb avg, each',      price: 14.25, sku: 'DL-SEA-0112'  },
+      { label: 'Case · 20 lb (≈14 to 16 fish)', price: 13.10, sku: 'DL-SEA-0112C' },
     ],
   },
   'Berkshire pork shoulder, skin-on': {
-    desc:    'Skin-on bone-in Berkshire (Kurobuta) shoulder. Heavy marbling, deep color — built for long braises, porchetta, and house charcuterie.',
+    desc:    'Skin-on bone-in Berkshire (Kurobuta) shoulder. Heavy marbling, deep color; built for long braises, porchetta, and house charcuterie.',
     sku:     'DL-MEA-0211',
     origin:  'Beeler\'s, IA',
     brand:   'Berkshire Heritage',
     unit:    'per lb',
     updated: 'May 8, 2026',
-    packs: [{ label: '8–10 lb avg, each', price: 78.50, sku: 'DL-MEA-0211' }],
+    packs: [{ label: '8 to 10 lb avg, each', price: 78.50, sku: 'DL-MEA-0211' }],
   },
   'Prosciutto di Parma, 18-mo, sliced': {
     desc:    'DOP Prosciutto di Parma, aged 18 months, machine-sliced and interleaved. Silky, nutty, faintly sweet. Ready for the plate or the panino station.',
@@ -186,19 +188,19 @@ export const STACK_PRODUCT_DETAIL: Record<string, StackProductDetail> = {
     ],
   },
   'Tellicherry peppercorns, single-origin': {
-    desc:    'Single-origin Tellicherry black peppercorns, late-harvest and extra-bold grade. Bright, citrus-forward heat — mill-side staple.',
+    desc:    'Single-origin Tellicherry black peppercorns, late-harvest and extra-bold grade. Bright, citrus-forward heat; mill-side staple.',
     sku:     'DL-SPI-0501',
     origin:  'Malabar Coast, India',
-    brand:   '—',
+    brand:   '-',
     unit:    'per lb',
     updated: 'May 8, 2026',
     packs: [{ label: '1 lb', price: 18.40, sku: 'DL-SPI-0501' }],
   },
   'Meyer lemons, California': {
-    desc:    'Thin-skinned Meyer lemons — lower acid, floral, faintly sweet. Good for curds, vinaigrettes, and preserved-lemon batches.',
+    desc:    'Thin-skinned Meyer lemons: lower acid, floral, faintly sweet. Good for curds, vinaigrettes, and preserved-lemon batches.',
     sku:     'DL-PRO-0620',
     origin:  'Central Valley, CA',
-    brand:   '—',
+    brand:   '-',
     unit:    'per case',
     updated: 'May 8, 2026',
     packs: [
@@ -207,7 +209,7 @@ export const STACK_PRODUCT_DETAIL: Record<string, StackProductDetail> = {
     ],
   },
   'Late Treviso, local Hudson Valley grow': {
-    desc:    'Late-season Treviso radicchio from a Hudson Valley grower — tight, tapered heads, deep burgundy. Bitter edge mellows on the grill.',
+    desc:    'Late-season Treviso radicchio from a Hudson Valley grower: tight, tapered heads, deep burgundy. Bitter edge mellows on the grill.',
     sku:     null,
     origin:  'Hudson Valley, NY',
     brand:   'Local Grower Co-Op',
@@ -371,7 +373,7 @@ function StackProductBody({
           marginTop: 16,
         }}
       >
-        <DetailFact label="SKU"     value={detail.sku || (packs[0]?.sku) || '—'} />
+        <DetailFact label="SKU"     value={detail.sku || (packs[0]?.sku) || '-'} />
         <DetailFact label="Origin"  value={detail.origin} />
         <DetailFact label="Brand"   value={detail.brand} />
         <DetailFact label="Sold By" value={detail.unit} />
@@ -481,7 +483,7 @@ function StackProductBody({
         <div>
           From {distributor ? distributor.short : 'this distributor'}'s catalog
           {detail.updated ? `, updated ${detail.updated}` : ''}.
-          {packs.some((p) => p.price == null) && ' Prices we don\'t have yet show as $—.'}
+          {packs.some((p) => p.price == null) && ' Prices we don\'t have yet show as $-.'}
         </div>
       </div>
     </div>

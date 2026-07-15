@@ -272,7 +272,7 @@ export function CCLayout() {
             <button
               type="button"
               onClick={() => navigate('/settings')}
-              aria-label={`${manager.name} — open settings`}
+              aria-label={`${manager.name}: open settings`}
               title={`${manager.name} · Settings`}
               style={{
                 display: 'inline-flex',

@@ -107,7 +107,7 @@ export function RepActivitySection() {
             </thead>
             <tbody>
               {rows.map((row) => {
-                const name = [row.first_name, row.last_name].filter(Boolean).join(' ') || '—';
+                const name = [row.first_name, row.last_name].filter(Boolean).join(' ') || '-';
                 return (
                   <tr
                     key={row.user_id}
@@ -144,7 +144,7 @@ export function RepActivitySection() {
                       className="px-6 py-4 text-right text-sm text-gray-400"
                       style={{ ...DM_SANS, ...TABULAR }}
                     >
-                      {row.last_activity_at ? timeAgo(row.last_activity_at) : '—'}
+                      {row.last_activity_at ? timeAgo(row.last_activity_at) : '-'}
                     </td>
                   </tr>
                 );

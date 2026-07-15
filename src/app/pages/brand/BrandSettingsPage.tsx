@@ -80,7 +80,7 @@ export function BrandSettingsPage() {
     return (
       <div className="doc-divider py-3 flex items-baseline justify-between gap-3">
         <span className="qm-eyebrow" style={{ fontSize: 9 }}>{label}</span>
-        <span className="text-[13px] ink leading-snug">{value || '—'}</span>
+        <span className="text-[13px] ink leading-snug">{value || '-'}</span>
       </div>
     );
   }
@@ -251,7 +251,7 @@ export function BrandSettingsPage() {
         style={{ borderTop: '1px solid var(--qm-soft-line)' }}
       >
         <div className="text-[12px] ink-faint">
-          Signed in as {user?.email ?? '—'}
+          Signed in as {user?.email ?? '-'}
         </div>
         <button
           type="button"

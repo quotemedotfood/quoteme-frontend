@@ -342,7 +342,7 @@ export function CreateRestaurantPage() {
               }`}
               required
             >
-              <option value="">—</option>
+              <option value="">-</option>
               {regionsForCountry(country).map((s) => (
                 <option key={s} value={s}>{s}</option>
               ))}

@@ -265,7 +265,7 @@ export function CatalogUploadDrawer({ open, onOpenChange, onUploadComplete }: Ca
                           )}
                         </div>
                         <span className="text-gray-400 text-[11px] truncate max-w-[180px]">
-                          {isMapped ? `← "${mappedHeader}"` : '—'}
+                          {isMapped ? `← "${mappedHeader}"` : '-'}
                         </span>
                       </div>
                     );
@@ -306,7 +306,7 @@ export function CatalogUploadDrawer({ open, onOpenChange, onUploadComplete }: Ca
                   ))}
                 </div>
                 <p className="text-[10px] text-gray-400 mt-3">
-                  Column headers are auto-mapped — exact names not required
+                  Column headers are auto-mapped, exact names not required
                 </p>
               </>
             )}
@@ -320,7 +320,7 @@ export function CatalogUploadDrawer({ open, onOpenChange, onUploadComplete }: Ca
               className="w-full bg-[#F2993D] hover:bg-[#E08A2E] text-white"
             >
               <Check className="w-4 h-4 mr-2" />
-              Done — {uploadedCatalog.item_count} Products Imported
+              Done: {uploadedCatalog.item_count} Products Imported
             </Button>
           ) : (
             <Button

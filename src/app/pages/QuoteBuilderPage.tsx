@@ -849,7 +849,7 @@ export function QuoteBuilderPage() {
                       </div>
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-500">
-                      {item.sub_description ? toTitleCase(item.sub_description) : '—'}
+                      {item.sub_description ? toTitleCase(item.sub_description) : '-'}
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-500">{item.pack}</td>
                     <td className="px-4 py-3 text-sm text-gray-500">{categoryLabel(item.category)}</td>
@@ -943,7 +943,7 @@ export function QuoteBuilderPage() {
                           </button>
                         </div>
                       ) : (
-                        item.unmatched && item.currentPrice === 0 ? '—' : formatCurrency(Math.round(item.currentPrice * 100), distributorCurrency)
+                        item.unmatched && item.currentPrice === 0 ? '-' : formatCurrency(Math.round(item.currentPrice * 100), distributorCurrency)
                       )}
                     </td>
                     {editMode && (

@@ -101,7 +101,7 @@ function QuoteRow({ q }: { q: ChefQuoteRow }) {
         className="mt-0.5"
         style={{ ...sans, fontSize: 11.5, color: C.gray500, lineHeight: 1.4, fontVariantNumeric: 'tabular-nums' }}
       >
-        {q.quote_number} · {q.distributor?.name ?? 'Unaffiliated'} · {formatDate(q.created_at)} · {q.item_count} {q.item_count === 1 ? 'item' : 'items'} · {isPricedQuote(q) ? money(q.total_cents, q.distributor?.currency) : '—'}
+        {q.quote_number} · {q.distributor?.name ?? 'Unaffiliated'} · {formatDate(q.created_at)} · {q.item_count} {q.item_count === 1 ? 'item' : 'items'} · {isPricedQuote(q) ? money(q.total_cents, q.distributor?.currency) : '-'}
       </div>
     </Link>
   );

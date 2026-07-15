@@ -37,7 +37,7 @@ export function BrandNotificationsPage() {
       <div>
         <h1 className="serif font-semibold ink" style={{ fontSize: 32, lineHeight: 1.15 }}>Notifications</h1>
         <p className="mt-1 ink-faint" style={{ fontSize: 13.5 }}>
-          Where every package you've sent stands. Read-only — nothing to action here.
+          Where every package you've sent stands. Read-only, nothing to action here.
         </p>
       </div>
 
@@ -99,7 +99,7 @@ export function BrandNotificationsPage() {
 
       <div className="mt-6 flex items-start gap-3 text-[11.5px] ink-soft" style={{ borderTop: '1px solid var(--qm-soft-line)', paddingTop: 12 }}>
         <NpIcon name="bell" size={14} color="var(--accent)" />
-        <div>You'll be notified as each package advances. Quotes are between chefs and distributors — they never come to you.</div>
+        <div>You'll be notified as each package advances. Quotes are between chefs and distributors, they never come to you.</div>
       </div>
     </>
   );

@@ -55,7 +55,7 @@ export const DROP_STATUS: DropStatus[] = [
     key: 'requested',
     label: 'Requested',
     short: 'Requested',
-    chefSub: (rep) => `Asked ${rep} — he passes it to whoever keeps the catalog current.`,
+    chefSub: (rep) => `Asked ${rep}, he passes it to whoever keeps the catalog current.`,
   },
   {
     key: 'uploading',
@@ -73,7 +73,7 @@ export const DROP_STATUS: DropStatus[] = [
     key: 'live',
     label: 'Live In Your Stack',
     short: 'Live',
-    chefSub: () => 'Updated and ready — your quotes price against it now.',
+    chefSub: () => 'Updated and ready: your quotes price against it now.',
   },
 ];
 

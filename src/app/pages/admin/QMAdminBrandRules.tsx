@@ -507,13 +507,13 @@ export function QMAdminBrandRules() {
                         title="Click to edit category"
                         className={`px-2.5 py-0.5 rounded-full text-xs font-medium capitalize cursor-pointer hover:opacity-80 ${categoryBadgeClass(rule.category)}`}
                       >
-                        {rule.category || '—'}
+                        {rule.category || '-'}
                       </button>
                     )}
                   </TableCell>
 
                   {/* Product count */}
-                  <TableCell className="text-sm text-[#4F4F4F]">{rule.product_count ?? '—'}</TableCell>
+                  <TableCell className="text-sm text-[#4F4F4F]">{rule.product_count ?? '-'}</TableCell>
 
                   {/* Category distribution */}
                   <TableCell>
@@ -537,7 +537,7 @@ export function QMAdminBrandRules() {
                         )}
                       </div>
                     ) : (
-                      <span className="text-xs text-gray-300">—</span>
+                      <span className="text-xs text-gray-300">-</span>
                     )}
                   </TableCell>
 

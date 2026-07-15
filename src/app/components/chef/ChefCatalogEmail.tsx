@@ -171,7 +171,7 @@ export function ChefCatalogEmail({ desktop = false }: ChefCatalogEmailProps) {
             margin: 0,
           }}
         >
-          {SECURE.chefFirst} —
+          {SECURE.chefFirst},
         </p>
 
         {/* Body copy */}
@@ -186,7 +186,7 @@ export function ChefCatalogEmail({ desktop = false }: ChefCatalogEmailProps) {
           }}
         >
           {SECURE.repFirst} had {SECURE.distributorFull}'s current price list loaded for you. It's in
-          and ready — your quotes price against it now, including the{' '}
+          and ready, your quotes price against it now, including the{' '}
           <span style={{ fontWeight: 600, color: C.charcoal }}>{SECURE.quoteNo}</span>{' '}
           you had going.
         </p>
@@ -268,7 +268,7 @@ export function ChefCatalogEmail({ desktop = false }: ChefCatalogEmailProps) {
             marginTop: desktop ? 22 : 18,
           }}
         >
-          That's the only note you'll get about this — no need to watch for updates.
+          That's the only note you'll get about this: no need to watch for updates.
         </p>
 
         {/* Sign-off */}
@@ -281,7 +281,7 @@ export function ChefCatalogEmail({ desktop = false }: ChefCatalogEmailProps) {
             marginTop: desktop ? 16 : 13,
           }}
         >
-          — QuoteMe
+          - QuoteMe
         </p>
       </div>
 

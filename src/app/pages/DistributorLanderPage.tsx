@@ -662,8 +662,8 @@ function LanderForm({ config, desktop, onDelivered, slug }: LanderFormProps) {
             rows={desktop ? 8 : 6}
             placeholder={
               payloadType === 'menu'
-                ? 'Paste your full menu here — dishes, ingredients, sections…'
-                : 'Paste your order guide here — items, quantities, case sizes…'
+                ? 'Paste your full menu here: dishes, ingredients, sections…'
+                : 'Paste your order guide here: items, quantities, case sizes…'
             }
             style={{
               ...inputStyle,

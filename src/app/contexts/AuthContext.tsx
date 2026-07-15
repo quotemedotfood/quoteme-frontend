@@ -55,7 +55,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         role: response.data.role,
       });
     } else {
-      console.warn(`[validateToken:${context}] /me failed — clearing token. Error: ${response.error}`);
+      console.warn(`[validateToken:${context}] /me failed, clearing token. Error: ${response.error}`);
       localStorage.removeItem('quoteme_token');
     }
     setIsLoading(false);
@@ -80,7 +80,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { success: true };
     }
 
-    console.warn('[login] No token in response — login will fail');
+    console.warn('[login] No token in response, login will fail');
     return { success: false, error: 'No token received. Check browser console for details.' };
   }
 

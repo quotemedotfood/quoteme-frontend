@@ -81,7 +81,7 @@ function ReadOnlyField({ label, value }: { label: string; value: string }) {
           lineHeight: 1.4,
         }}
       >
-        {value || '—'}
+        {value || '-'}
       </div>
     </div>
   );
@@ -269,7 +269,7 @@ export function RepProfilePage() {
       .replace(/_/g, ' ')
       .replace(/\b\w/g, (c) => c.toUpperCase());
 
-  const distributorDisplay = profile.distributor?.name ?? '—';
+  const distributorDisplay = profile.distributor?.name ?? '-';
 
   const formBody = (
     <>

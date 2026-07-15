@@ -52,7 +52,7 @@ export function RepCatalogEmailPreviewPage() {
             marginBottom: 4,
           }}
         >
-          RepCatalogEmail — SU-FE-2 preview
+          RepCatalogEmail: SU-FE-2 preview
         </h1>
         <p style={{ fontSize: 13, color: '#6B7280', marginBottom: 32 }}>
           Rep forward email · mobile + desktop frames · route: /chef/_preview/rep-email

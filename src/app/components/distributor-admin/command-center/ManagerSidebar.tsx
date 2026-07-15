@@ -78,7 +78,7 @@ function CCNavItem({ icon: Icon, label, count, current, collapsed, muted, onClic
       <button
         type="button"
         onClick={muted ? undefined : onClick}
-        title={collapsed ? (muted ? `${label} — coming soon` : label) : (muted ? `${label} — coming soon` : undefined)}
+        title={collapsed ? (muted ? `${label}: coming soon` : label) : (muted ? `${label}: coming soon` : undefined)}
         aria-label={label}
         style={{
           ...sans,
@@ -476,8 +476,8 @@ export function ManagerSidebar({
             <button
               type="button"
               disabled
-              title="Inside sales — coming soon"
-              aria-label="Inside sales — coming soon"
+              title="Inside sales: coming soon"
+              aria-label="Inside sales: coming soon"
               style={{
                 ...sans,
                 display: 'flex',

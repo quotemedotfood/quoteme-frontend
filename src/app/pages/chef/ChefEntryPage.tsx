@@ -126,7 +126,7 @@ export function ChefEntryPage() {
       if (res.error) {
         const err = res.error;
         if (err.includes('pdf_too_large')) {
-          setError("This menu is too large to read at once. Try a single section — entrees, apps, or the cocktail list.");
+          setError("This menu is too large to read at once. Try a single section: entrees, apps, or the cocktail list.");
         } else if (err.includes('service_busy') || err === 'service_busy') {
           setError("Our menu service is temporarily busy. Please try again in a few seconds.");
         } else {

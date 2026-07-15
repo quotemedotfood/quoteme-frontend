@@ -82,7 +82,7 @@ export function QuoteStateDocumentPreviewPage() {
           className="text-2xl font-semibold mb-1"
           style={{ fontFamily: "'Playfair Display', serif", color: '#2A2A2A' }}
         >
-          QuoteStateDocument — D6 preview
+          QuoteStateDocument: D6 preview
         </h1>
         <p className="text-sm mb-8" style={{ color: '#6B7280' }}>
           Temporary visual-sign-off surface. Three document states, same content. Remove once

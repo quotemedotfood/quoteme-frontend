@@ -60,7 +60,7 @@ export function QuoteRowActions({ quoteId, onEdit }: QuoteRowActionsProps) {
     <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
       <button
         type="button"
-        title={viewState === 'error' ? "Couldn't generate PDF — click to retry" : 'View quote PDF'}
+        title={viewState === 'error' ? "Couldn't generate PDF, click to retry" : 'View quote PDF'}
         onClick={handleView}
         disabled={viewState === 'loading'}
         style={{

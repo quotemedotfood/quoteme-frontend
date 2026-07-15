@@ -21,7 +21,7 @@ export function SecureTechPreviewPage() {
           SU-FE-3 · Design sign-off
         </div>
         <h1 style={{ fontSize: 22, fontWeight: 600, color: '#2B2B2B', marginTop: 6 }}>
-          TechLandingPage — three states
+          TechLandingPage: three states
         </h1>
         <p style={{ fontSize: 13, color: '#6B7280', marginTop: 4, lineHeight: 1.5 }}>
           Token-gated public catalog upload landing (/c/:token).
@@ -44,7 +44,7 @@ export function SecureTechPreviewPage() {
         {/* ── idle ── */}
         <section>
           <div style={{ marginBottom: 12, padding: '6px 10px', background: '#E8E8E8', borderRadius: 4, display: 'inline-block', fontSize: 11, fontWeight: 600, color: '#4F4F4F', letterSpacing: '.06em', textTransform: 'uppercase' }}>
-            idle — drop zone
+            idle: drop zone
           </div>
           <div style={{ border: '1px solid #E8E8E8', borderRadius: 10, overflow: 'hidden' }}>
             <TechLandingDesktop state="idle" onSend={NOOP_SEND} />
@@ -54,7 +54,7 @@ export function SecureTechPreviewPage() {
         {/* ── sent ── */}
         <section>
           <div style={{ marginBottom: 12, padding: '6px 10px', background: '#E8E8E8', borderRadius: 4, display: 'inline-block', fontSize: 11, fontWeight: 600, color: '#4F4F4F', letterSpacing: '.06em', textTransform: 'uppercase' }}>
-            sent — confirmation
+            sent: confirmation
           </div>
           <div style={{ border: '1px solid #E8E8E8', borderRadius: 10, overflow: 'hidden' }}>
             <TechLandingDesktop
@@ -69,7 +69,7 @@ export function SecureTechPreviewPage() {
         {/* ── expired ── */}
         <section>
           <div style={{ marginBottom: 12, padding: '6px 10px', background: '#E8E8E8', borderRadius: 4, display: 'inline-block', fontSize: 11, fontWeight: 600, color: '#4F4F4F', letterSpacing: '.06em', textTransform: 'uppercase' }}>
-            expired — recovery
+            expired: recovery
           </div>
           <div style={{ border: '1px solid #E8E8E8', borderRadius: 10, overflow: 'hidden' }}>
             <TechLandingDesktop state="expired" onSend={NOOP_SEND} />

@@ -173,7 +173,7 @@ function RulesTab({ rules, onRefresh }: { rules: MatchingEngineRules | null; onR
               </div>
             </div>
           ))}
-          <p className="text-xs text-gray-400 italic pt-1">Protein families are hardcoded — edit in ProteinIntelligenceService</p>
+          <p className="text-xs text-gray-400 italic pt-1">Protein families are hardcoded, edit in ProteinIntelligenceService</p>
         </div>
       </RuleSection>
 
@@ -187,7 +187,7 @@ function RulesTab({ rules, onRefresh }: { rules: MatchingEngineRules | null; onR
               <span className="text-xs text-gray-400">→ {c.canonical}</span>
             </div>
           ))}
-          <p className="text-xs text-gray-400 italic pt-1">Iconic locks are hardcoded — edit in CocktailIntelligenceService</p>
+          <p className="text-xs text-gray-400 italic pt-1">Iconic locks are hardcoded, edit in CocktailIntelligenceService</p>
         </div>
       </RuleSection>
 
@@ -195,17 +195,17 @@ function RulesTab({ rules, onRefresh }: { rules: MatchingEngineRules | null; onR
       <RuleSection title="Wine Protected" icon={Wine} count={rules.wine_protected.class_a.length + rules.wine_protected.class_b.length + rules.wine_protected.class_c.length}>
         <div className="space-y-3 pt-2">
           <div>
-            <h4 className="text-xs font-semibold text-red-600 uppercase tracking-wide mb-1">Class A — Hard Locked</h4>
+            <h4 className="text-xs font-semibold text-red-600 uppercase tracking-wide mb-1">Class A: Hard Locked</h4>
             {rules.wine_protected.class_a.map(w => (
               <div key={w.term} className="flex items-center gap-2 py-1">
                 <Lock size={12} className="text-red-400" />
                 <span className="text-sm font-medium text-[#2A2A2A]">{toTitleCase(w.term)}</span>
-                {w.notes && <span className="text-xs text-gray-400">— {w.notes}</span>}
+                {w.notes && <span className="text-xs text-gray-400">: {w.notes}</span>}
               </div>
             ))}
           </div>
           <div>
-            <h4 className="text-xs font-semibold text-amber-600 uppercase tracking-wide mb-1">Class B — Classification Preserved</h4>
+            <h4 className="text-xs font-semibold text-amber-600 uppercase tracking-wide mb-1">Class B: Classification Preserved</h4>
             <div className="flex flex-wrap gap-1">
               {rules.wine_protected.class_b.map(w => (
                 <span key={w.term} className="text-xs bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded">{toTitleCase(w.term)}</span>
@@ -213,14 +213,14 @@ function RulesTab({ rules, onRefresh }: { rules: MatchingEngineRules | null; onR
             </div>
           </div>
           <div>
-            <h4 className="text-xs font-semibold text-green-600 uppercase tracking-wide mb-1">Class C — Region Flexible</h4>
+            <h4 className="text-xs font-semibold text-green-600 uppercase tracking-wide mb-1">Class C: Region Flexible</h4>
             <div className="flex flex-wrap gap-1">
               {rules.wine_protected.class_c.map(w => (
                 <span key={w.term} className="text-xs bg-green-50 text-green-700 px-1.5 py-0.5 rounded">{toTitleCase(w.term)}</span>
               ))}
             </div>
           </div>
-          <p className="text-xs text-gray-400 italic">Wine classes are hardcoded — edit in SommelierWineService</p>
+          <p className="text-xs text-gray-400 italic">Wine classes are hardcoded, edit in SommelierWineService</p>
         </div>
       </RuleSection>
 
@@ -236,7 +236,7 @@ function RulesTab({ rules, onRefresh }: { rules: MatchingEngineRules | null; onR
               {cb.notes && <p className="text-xs text-gray-400 mt-0.5">{cb.notes}</p>}
             </div>
           ))}
-          <p className="text-xs text-gray-400 italic pt-1">Fortified locks are hardcoded — edit in ChefBeverageService</p>
+          <p className="text-xs text-gray-400 italic pt-1">Fortified locks are hardcoded, edit in ChefBeverageService</p>
         </div>
       </RuleSection>
 
@@ -554,7 +554,7 @@ function TrainingTab() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-220px)]">
-      <p className="text-sm text-[#4F4F4F] mb-3">Type natural language instructions to create or update matching rules. Rules are validated before saving — review and confirm.</p>
+      <p className="text-sm text-[#4F4F4F] mb-3">Type natural language instructions to create or update matching rules. Rules are validated before saving: review and confirm.</p>
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto space-y-4 border border-gray-200 rounded-lg bg-white p-4 mb-3">
         {messages.length === 0 && (
@@ -833,7 +833,7 @@ function ConceptsTab() {
                 <tr key={i} className="border-b border-gray-100">
                   <td className="py-2 pr-4 font-medium">{l.label}</td>
                   <td className="py-2 pr-4 font-mono text-xs">{l.concept}</td>
-                  <td className="py-2 pr-4">{l.cuisine || '—'}</td>
+                  <td className="py-2 pr-4">{l.cuisine || '-'}</td>
                   <td className="py-2 pr-4 text-xs">{l.format}</td>
                   <td className="py-2 pr-4 text-center">{l.strong_fit_count}</td>
                   <td className="py-2 pr-4 text-center">{l.likely_fit_count}</td>
@@ -1101,7 +1101,7 @@ function DiagnoseTab() {
             >
               {catalogs.map(c => (
                 <option key={c.id} value={c.id}>
-                  {c.distributor_name}{c.is_demo ? ' (Demo)' : ''} — {c.product_count} products
+                  {c.distributor_name}{c.is_demo ? ' (Demo)' : ''}: {c.product_count} products
                 </option>
               ))}
             </select>
@@ -2040,15 +2040,15 @@ function CatalogsTab() {
                           className="rounded border-gray-300 text-[#A5CFDD]" />
                       </td>
                       <td className="px-3 py-2 text-[#2A2A2A] font-medium">{p.product_name}</td>
-                      <td className="px-3 py-2 text-gray-500">{p.brand || '—'}</td>
-                      <td className="px-3 py-2 text-gray-500">{p.pack_size || '—'}</td>
+                      <td className="px-3 py-2 text-gray-500">{p.brand || '-'}</td>
+                      <td className="px-3 py-2 text-gray-500">{p.pack_size || '-'}</td>
                       <td className="px-3 py-2">
                         <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-medium ${CAT_COLORS[p.category] || 'bg-indigo-100 text-indigo-700'}`}>
                           {toTitleCase(p.category)}
                         </span>
                       </td>
                       <td className="px-3 py-2 text-[10px] text-gray-400 max-w-[180px] truncate" title={p.standard_subcategory || p.subcategory || ''}>
-                        {toTitleCase(p.standard_subcategory || p.subcategory || '—')}
+                        {toTitleCase(p.standard_subcategory || p.subcategory || '-')}
                       </td>
                     </tr>
                   ))}

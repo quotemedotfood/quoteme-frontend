@@ -141,7 +141,7 @@ export function BrandShellLayout() {
 
   // B-129: defer child pages until auth resolves so user.email is populated.
   // Without this guard, BrandSettingsPage renders with user=null and all
-  // user fields (email, first_name, etc.) show their fallback "—" values.
+  // user fields (email, first_name, etc.) show their fallback "-" values.
   // All hooks above must be called unconditionally before this early return.
   if (isLoading) return null;
 

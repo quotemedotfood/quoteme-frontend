@@ -71,7 +71,7 @@ function AckCallout({ repName, distributorName }: { repName: string | null; dist
             {distributorName ? (
               <> at <strong style={{ fontWeight: 600 }}>{distributorName}</strong></>
             ) : null}
-            . Most chefs hear back within 1–2 hours.
+            . Most chefs hear back within 1 to 2 hours.
           </>
         ) : (
           'Your question has been sent. Routing to QuoteMe support.'
@@ -151,7 +151,7 @@ function ReplyPane({ reply, repName }: { reply: string | null; repName: string |
       }}
     >
       <p style={{ ...sans, fontSize: 13, color: C.gray400, margin: 0 }}>
-        No reply yet — you'll hear back within 1–2 hours.
+        No reply yet, you'll hear back within 1 to 2 hours.
       </p>
     </div>
   );
@@ -259,7 +259,7 @@ function Composer({
 
       {talkAck ? (
         <p style={{ ...sans, fontSize: 10.5, color: C.navy, margin: '10px 0 0', textAlign: 'center', fontWeight: 500 }}>
-          Got it — someone will reach out.
+          Got it, someone will reach out.
         </p>
       ) : (
         <button

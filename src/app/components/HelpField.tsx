@@ -63,8 +63,8 @@ export function HelpField({ collapsed, lane }: HelpFieldProps) {
       // (e.g. SLACK_BOT_TOKEN not configured yet → BE returns ok:false).
       setConfirmation(
         res.data?.ok
-          ? "Sent to the QuoteMe team — we'll follow up."
-          : "Couldn't reach the team just now — please try again.",
+          ? "Sent to the QuoteMe team, we'll follow up."
+          : "Couldn't reach the team just now, please try again.",
       );
       setTimeout(() => setConfirmation(''), 4000);
     }
@@ -101,8 +101,8 @@ export function HelpField({ collapsed, lane }: HelpFieldProps) {
                 escalateHelp('Help request from sidebar (collapsed)', `${lane}-sidebar`).then((res) => {
                   setConfirmation(
                     res.data?.ok
-                      ? "Sent to the QuoteMe team — we'll follow up."
-                      : "Couldn't reach the team just now — please try again.",
+                      ? "Sent to the QuoteMe team, we'll follow up."
+                      : "Couldn't reach the team just now, please try again.",
                   );
                   setTimeout(() => setConfirmation(''), 4000);
                 });
@@ -222,7 +222,7 @@ export function HelpField({ collapsed, lane }: HelpFieldProps) {
             lineHeight: 1.4,
           }}
         >
-          Press Enter — we'll route to QuoteMe support.
+          Press Enter to route to QuoteMe support.
         </p>
         {sent && (
           <p style={{ ...sans, fontSize: 10.5, color: '#2A5F6F', margin: '4px 0 0', lineHeight: 1.4, fontWeight: 500 }}>

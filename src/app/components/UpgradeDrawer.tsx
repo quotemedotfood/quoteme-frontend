@@ -35,7 +35,7 @@ export function UpgradeDrawer({ isOpen, onClose }: UpgradeDrawerProps) {
         (user as { last_name?: string } | null)?.last_name,
       ].filter(Boolean).join(' ').trim() || user?.email || 'a QuoteMe chef';
       const subject = encodeURIComponent('QuoteMe subscription request');
-      const body = encodeURIComponent(`I'd like to subscribe to QuoteMe at $20/month. — ${fullName}`);
+      const body = encodeURIComponent(`I'd like to subscribe to QuoteMe at $20/month. - ${fullName}`);
       window.location.href = `mailto:justinl@quoteme.food?subject=${subject}&body=${body}`;
       onClose();
       return;

@@ -34,16 +34,16 @@ function missReasonLabel(reason: string): string {
 }
 
 function formatDate(d: string | null | undefined): string {
-  if (!d) return '—';
+  if (!d) return '-';
   const parsed = new Date(d);
-  if (Number.isNaN(parsed.getTime())) return '—';
+  if (Number.isNaN(parsed.getTime())) return '-';
   return parsed.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 function formatDateTime(d: string | null | undefined): string {
-  if (!d) return '—';
+  if (!d) return '-';
   const parsed = new Date(d);
-  if (Number.isNaN(parsed.getTime())) return '—';
+  if (Number.isNaN(parsed.getTime())) return '-';
   return parsed.toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
 }
 
@@ -53,7 +53,7 @@ interface MissReasonChipsProps {
 
 function MissReasonChips({ missReasons }: MissReasonChipsProps) {
   const entries = Object.entries(missReasons || {}).sort((a, b) => b[1] - a[1]);
-  if (entries.length === 0) return <span className="text-xs text-gray-400">—</span>;
+  if (entries.length === 0) return <span className="text-xs text-gray-400">-</span>;
   return (
     <div className="flex flex-wrap gap-1">
       {entries.map(([reason, count]) => (

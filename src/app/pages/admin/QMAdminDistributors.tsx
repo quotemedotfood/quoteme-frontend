@@ -297,7 +297,7 @@ export function QMAdminDistributors() {
                     <TableCell className="text-sm text-right">{d.product_count ?? 0}</TableCell>
                     <TableCell className="text-sm text-right">
                       {d.categorization_pct == null ? (
-                        <span className="text-gray-400">—</span>
+                        <span className="text-gray-400">-</span>
                       ) : (
                         <span className={d.categorization_pct < 50 ? 'text-amber-600' : 'text-gray-700'}>
                           {d.categorization_pct}%
@@ -362,7 +362,7 @@ export function QMAdminDistributors() {
         <SheetContent side="right">
           <SheetHeader>
             <SheetTitle style={{ fontFamily: "'Playfair Display', serif" }}>
-              Export — {exportDistributor?.name}
+              Export: {exportDistributor?.name}
             </SheetTitle>
           </SheetHeader>
           <div className="flex flex-col gap-3 px-1">

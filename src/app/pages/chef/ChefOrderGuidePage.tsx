@@ -74,7 +74,7 @@ function SavingIndicator({ saving, saveError }: { saving: boolean; saveError: bo
   }
   if (saveError) {
     return (
-      <span className="text-[10px] text-[#E53E3E]" title="Save failed — check connection">
+      <span className="text-[10px] text-[#E53E3E]" title="Save failed, check connection">
         ✕
       </span>
     );
@@ -134,12 +134,12 @@ function OrderGuideRow({ item, orderGuideId }: RowProps) {
     <div className="grid grid-cols-12 gap-x-2 items-center py-2 border-b border-[#F5F5F5] last:border-0 print:border-[#E0E0E0]">
       {/* Item # */}
       <div className="col-span-1 hidden sm:block">
-        <span className="text-[11px] text-[#9E9E9E]">{item.item_number || '—'}</span>
+        <span className="text-[11px] text-[#9E9E9E]">{item.item_number || '-'}</span>
       </div>
 
       {/* Brand */}
       <div className="col-span-2 hidden sm:block">
-        <span className="text-[11px] text-[#9E9E9E]">{item.brand ? toTitleCase(item.brand) : '—'}</span>
+        <span className="text-[11px] text-[#9E9E9E]">{item.brand ? toTitleCase(item.brand) : '-'}</span>
       </div>
 
       {/* Product description — full width on mobile */}
@@ -156,7 +156,7 @@ function OrderGuideRow({ item, orderGuideId }: RowProps) {
 
       {/* Pack size */}
       <div className="col-span-2 hidden sm:block">
-        <span className="text-[11px] text-[#9E9E9E]">{item.pack_size || '—'}</span>
+        <span className="text-[11px] text-[#9E9E9E]">{item.pack_size || '-'}</span>
       </div>
 
       {/* Qty input */}

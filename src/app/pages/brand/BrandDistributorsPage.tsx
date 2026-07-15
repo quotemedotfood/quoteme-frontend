@@ -131,7 +131,7 @@ export function BrandDistributorsPage() {
           Link sent to {mintDist}.
         </h1>
         <p className="ink-soft mt-2 leading-relaxed" style={{ fontSize: 14, maxWidth: 440 }}>
-          Their catalog person can drop the current catalog through it — no account needed. You'll see them move to Loaded once it's in.
+          Their catalog person can drop the current catalog through it, no account needed. You'll see them move to Loaded once it's in.
         </p>
 
         {/* Show the link */}
@@ -224,7 +224,7 @@ export function BrandDistributorsPage() {
                   <option value="">Select distributor…</option>
                   {availableDirectory.map((d) => (
                     <option key={d.id} value={d.id}>
-                      {d.name}{d.headquarters_city ? ` — ${d.headquarters_city}` : ''}
+                      {d.name}{d.headquarters_city ? `, ${d.headquarters_city}` : ''}
                     </option>
                   ))}
                 </select>
@@ -247,7 +247,7 @@ export function BrandDistributorsPage() {
             <div className="qm-eyebrow" style={{ fontSize: 10 }}>BRING ON A DISTRIBUTOR</div>
             <div className="serif font-medium ink mt-1" style={{ fontSize: 14.5, lineHeight: 1.3 }}>Send a secure catalog link.</div>
             <p className="mt-1 text-[11.5px] ink-soft leading-relaxed">
-              For a distributor that isn't on QuoteMe yet. Their catalog person drops the current catalog through a secure link — then chefs in range can order your line.
+              For a distributor that isn't on QuoteMe yet. Their catalog person drops the current catalog through a secure link, then chefs in range can order your line.
             </p>
 
             <div className="mt-4 flex flex-col gap-3" style={{ maxWidth: 460 }}>
@@ -291,7 +291,7 @@ export function BrandDistributorsPage() {
               <div className="px-3.5 py-3 rounded-md flex items-start gap-2.5" style={{ background: '#fff', border: '1px solid var(--qm-soft-line)' }}>
                 <NpIcon name="lock" size={14} color="var(--qm-charcoal)" style={{ marginTop: 2 }} />
                 <div className="text-[11.5px] ink-soft leading-relaxed">
-                  The link is good for seven days and only does one thing: take a catalog. Their prices stay private — you never see a distributor's pricing.
+                  The link is good for seven days and only does one thing: take a catalog. Their prices stay private, you never see a distributor's pricing.
                 </div>
               </div>
 
