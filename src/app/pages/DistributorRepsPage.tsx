@@ -291,7 +291,7 @@ export function DistributorRepsPage() {
                     <p className="text-sm text-gray-600">{rep.email}</p>
                   </td>
                   <td className="px-6 py-4 hidden md:table-cell">
-                    <p className="text-sm text-gray-500">{rep.territory || '—'}</p>
+                    <p className="text-sm text-gray-500">{rep.territory || '-'}</p>
                   </td>
                   <td className="px-6 py-4">
                     {rep.is_admin ? (
@@ -313,7 +313,7 @@ export function DistributorRepsPage() {
                     <p className="text-sm text-gray-500">
                       {rep.last_activity_at
                         ? new Date(rep.last_activity_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-                        : '—'}
+                        : '-'}
                     </p>
                   </td>
                   <td className="px-6 py-4 text-right">
@@ -357,7 +357,7 @@ export function DistributorRepsPage() {
                 <tr key={rep.id} className="border-b border-gray-50">
                   <td className="px-6 py-4">
                     <p className="text-sm font-medium text-[#2A2A2A]" style={{ fontFamily: "'DM Sans', sans-serif" }}>
-                      {rep.first_name || '—'}
+                      {rep.first_name || '-'}
                     </p>
                     <p className="text-xs text-gray-400 sm:hidden">{rep.email}</p>
                   </td>
@@ -365,7 +365,7 @@ export function DistributorRepsPage() {
                     <p className="text-sm text-gray-600">{rep.email}</p>
                   </td>
                   <td className="px-6 py-4 hidden md:table-cell">
-                    <p className="text-sm text-gray-500">{rep.territory || '—'}</p>
+                    <p className="text-sm text-gray-500">{rep.territory || '-'}</p>
                   </td>
                   <td className="px-6 py-4">
                     <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700">
@@ -378,7 +378,7 @@ export function DistributorRepsPage() {
                     </p>
                   </td>
                   <td className="px-6 py-4 hidden xl:table-cell">
-                    <p className="text-sm text-gray-500">—</p>
+                    <p className="text-sm text-gray-500">-</p>
                   </td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end gap-1">
@@ -426,7 +426,7 @@ export function DistributorRepsPage() {
                     <p className="text-sm text-gray-400">{rep.email}</p>
                   </td>
                   <td className="px-6 py-4 hidden md:table-cell">
-                    <p className="text-sm text-gray-400">{rep.territory || '—'}</p>
+                    <p className="text-sm text-gray-400">{rep.territory || '-'}</p>
                   </td>
                   <td className="px-6 py-4">
                     <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-500">
@@ -442,7 +442,7 @@ export function DistributorRepsPage() {
                     <p className="text-sm text-gray-400">
                       {rep.last_activity_at
                         ? new Date(rep.last_activity_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-                        : '—'}
+                        : '-'}
                     </p>
                   </td>
                   <td className="px-6 py-4" />

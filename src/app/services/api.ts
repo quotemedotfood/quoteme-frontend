@@ -378,7 +378,7 @@ export function getGuestToken(): string | null {
 // plain-language fallback copy are centralized in one place.
 const NETWORK_RETRY_DELAY_MS = 600;
 export const NETWORK_FAILURE_MESSAGE =
-  "That didn't go through — give it a second and try again.";
+  "That didn't go through, give it a second and try again.";
 
 function isNetworkFetchFailure(error: unknown): boolean {
   // The Fetch API only rejects (as opposed to resolving with a non-ok

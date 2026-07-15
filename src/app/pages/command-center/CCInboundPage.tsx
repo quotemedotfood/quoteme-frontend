@@ -147,7 +147,7 @@ export function CCInboundPage() {
     <div>
       <CCSectionHead
         eyebrow="INBOUND"
-        title={isMobile ? 'Inbound.' : 'Inbound — route each lead.'}
+        title={isMobile ? 'Inbound.' : 'Inbound: route each lead.'}
         sub={
           isMobile
             ? undefined
@@ -229,7 +229,7 @@ export function CCInboundPage() {
             )}
           </div>
           <span style={{ ...sans, ...tabular, fontSize: 11, color: C.gray400, paddingTop: 2 }}>
-            {loading ? '—' : headlineCount}
+            {loading ? '-' : headlineCount}
           </span>
         </div>
 

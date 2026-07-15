@@ -271,7 +271,7 @@ export function QuoteStateDocument({
           <div className="flex-1 text-right min-w-0">
             <div style={eyebrowSm}>DISTRIBUTOR</div>
             <div className="text-[13px] mt-0.5 truncate" style={{ color: INK }}>
-              {distributorShort || '—'}
+              {distributorShort || '-'}
             </div>
             {catalogUpdated && (
               <div className="text-[12px]" style={{ color: INK_SOFT }}>
@@ -372,13 +372,13 @@ function QuoteStateGroup({
                   only — no qty multiplier, no per-line total. */}
               <div className="text-right shrink-0" style={TABULAR}>
                 {state === 'preview' ? (
-                  <div className="text-[13.5px]" style={{ color: INK_FAINT }}>—</div>
+                  <div className="text-[13.5px]" style={{ color: INK_FAINT }}>-</div>
                 ) : priced ? (
                   <div
                     className={`text-[13.5px] ${state === 'confirmed' ? 'font-semibold' : 'font-medium'}`}
                     style={{ color: INK }}
                   >
-                    {it.unit != null ? money(it.unit, currency) : <span style={{ color: INK_FAINT }}>—</span>}
+                    {it.unit != null ? money(it.unit, currency) : <span style={{ color: INK_FAINT }}>-</span>}
                   </div>
                 ) : (
                   <div className="text-[12.5px] italic" style={{ color: INK_FAINT }}>

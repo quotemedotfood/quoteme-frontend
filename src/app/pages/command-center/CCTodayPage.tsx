@@ -114,7 +114,7 @@ function StatCard({ icon, count, label, onClick }: StatCardProps) {
             ...tabular,
           }}
         >
-          {count === null ? '—' : count}
+          {count === null ? '-' : count}
         </div>
         <div
           style={{

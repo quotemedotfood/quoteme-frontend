@@ -126,7 +126,7 @@ function adaptInboundRow(row: InboundRow): RepRow {
     label: stripSeedPrefix(row.artifact?.name ?? row.source_label ?? 'Inbound'),
     state: row.status ?? 'new',
     match_state: 'ready', // inbound rows have no match state; placeholder.
-    restaurant: row.restaurant_name ?? row.contact_name ?? '—',
+    restaurant: row.restaurant_name ?? row.contact_name ?? '-',
     chef_first,
     chef_last,
     item_count: 0,

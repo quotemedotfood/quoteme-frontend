@@ -25,7 +25,7 @@ function isStale(dateStr: string): boolean {
 }
 
 function formatDate(dateStr: string | null): string {
-  if (!dateStr) return '—';
+  if (!dateStr) return '-';
   return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
@@ -361,10 +361,10 @@ export function QMAdminBrandDetail() {
                 {brand.catalogs.map((c) => (
                   <TableRow key={c.id} className="hover:bg-gray-50">
                     <TableCell className="font-medium text-[#2A2A2A]">
-                      {c.original_filename || '—'}
+                      {c.original_filename || '-'}
                     </TableCell>
                     <TableCell className="text-sm text-gray-500">
-                      {c.row_count != null ? c.row_count.toLocaleString() : '—'}
+                      {c.row_count != null ? c.row_count.toLocaleString() : '-'}
                     </TableCell>
                     <TableCell
                       className={`text-sm font-medium ${isStale(c.uploaded_at) ? 'text-red-600' : 'text-gray-500'}`}

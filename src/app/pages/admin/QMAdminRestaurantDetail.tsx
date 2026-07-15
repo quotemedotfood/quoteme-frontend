@@ -258,7 +258,7 @@ export function QMAdminRestaurantDetailPage() {
             {restaurant.restaurant_admin_id || restaurant.restaurant_admin_name ? (
               <>
                 <p className="text-sm font-medium text-[#2A2A2A]">
-                  {restaurant.restaurant_admin_name ?? '—'}
+                  {restaurant.restaurant_admin_name ?? '-'}
                 </p>
                 {restaurant.restaurant_admin_id && (
                   <p className="text-xs text-gray-400 mt-0.5">ID: {restaurant.restaurant_admin_id}</p>
@@ -496,11 +496,11 @@ export function QMAdminRestaurantDetailPage() {
                 {restaurant.contacts.map((c) => (
                   <TableRow key={c.id} className="hover:bg-gray-50">
                     <TableCell className="font-medium text-[#2A2A2A]">
-                      {[c.first_name, c.last_name].filter(Boolean).join(' ') || '—'}
+                      {[c.first_name, c.last_name].filter(Boolean).join(' ') || '-'}
                     </TableCell>
-                    <TableCell className="text-sm text-gray-500">{c.email || '—'}</TableCell>
-                    <TableCell className="text-sm text-gray-500">{c.phone || '—'}</TableCell>
-                    <TableCell className="text-sm text-gray-500">{c.role || '—'}</TableCell>
+                    <TableCell className="text-sm text-gray-500">{c.email || '-'}</TableCell>
+                    <TableCell className="text-sm text-gray-500">{c.phone || '-'}</TableCell>
+                    <TableCell className="text-sm text-gray-500">{c.role || '-'}</TableCell>
                     <TableCell>
                       {c.is_primary && (
                         <span className="inline-block px-2 py-0.5 rounded text-xs bg-[#7FAEC2]/10 text-[#7FAEC2] font-medium">

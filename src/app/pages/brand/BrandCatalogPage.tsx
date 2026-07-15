@@ -168,7 +168,7 @@ export function BrandCatalogPage() {
           <div className="mt-6 flex items-start gap-3 text-[11.5px] ink-soft" style={{ borderTop: '1px solid var(--qm-soft-line)', paddingTop: 12 }}>
             <NpIcon name="info" size={14} color="var(--qm-gray-500)" />
             <div>
-              This is your own catalog. Pricing is set by your distributors, never here — your products show prices only inside a distributor's catalog.
+              This is your own catalog. Pricing is set by your distributors, never here. Your products show prices only inside a distributor's catalog.
             </div>
           </div>
         </>

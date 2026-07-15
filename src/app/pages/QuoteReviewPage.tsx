@@ -281,7 +281,7 @@ export function QuoteReviewPage() {
                 <p className="text-xs text-amber-600 mt-0.5">
                   {unmatchedLines.length > 0
                     ? `${unmatchedLines.length} unmatched, ${flaggedLines.length - unmatchedLines.length} low-confidence matches`
-                    : `${flaggedLines.length} low-confidence match${flaggedLines.length > 1 ? 'es' : ''} — consider reviewing`}
+                    : `${flaggedLines.length} low-confidence match${flaggedLines.length > 1 ? 'es' : ''}, consider reviewing`}
                 </p>
               </div>
             </div>

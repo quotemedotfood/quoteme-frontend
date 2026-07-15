@@ -255,7 +255,7 @@ export function ChefWelcomePage() {
             className="mt-3 text-center"
             style={{ ...sans, fontSize: 10.5, color: C.gray500, lineHeight: 1.4 }}
           >
-            You'll always come back to this quote — saved with your quote history.
+            You'll always come back to this quote, saved with your quote history.
           </div>
         </div>
       </div>
@@ -455,7 +455,7 @@ function errorCopy(code: string, message?: string): { title: string; body: strin
   if (code === 'expired') {
     return {
       title: 'This link has expired.',
-      body: message || 'Ask your rep to send the quote again — they can re-issue a fresh link in a moment.',
+      body: message || 'Ask your rep to send the quote again, they can re-issue a fresh link in a moment.',
     };
   }
   if (code === 'role_conflict') {

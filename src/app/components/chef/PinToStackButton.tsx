@@ -226,7 +226,7 @@ function PinToStackDrawer({
             </h2>
             <p style={{ ...sans, fontSize: 12.5, color: C.gray700, lineHeight: 1.6, marginTop: 6, maxWidth: 380 }}>
               Pick a stack to add this distributor to, or start a new one.
-              Stacks are how you group distributors — like playlists.
+              Stacks are how you group distributors, like playlists.
             </p>
           </div>
           <button

@@ -637,7 +637,7 @@ function QuoteHistory({
               className="mt-0.5"
               style={{ ...sans, fontSize: 11.5, color: C.gray500, lineHeight: 1.4, fontVariantNumeric: 'tabular-nums' }}
             >
-              {q.quote_number} · {q.distributor?.name ?? 'Unaffiliated'} · {formatDate(q.created_at)} · {q.item_count} {q.item_count === 1 ? 'item' : 'items'} · {isPricedQuote(q) ? money(q.total_cents, q.distributor?.currency) : '—'}
+              {q.quote_number} · {q.distributor?.name ?? 'Unaffiliated'} · {formatDate(q.created_at)} · {q.item_count} {q.item_count === 1 ? 'item' : 'items'} · {isPricedQuote(q) ? money(q.total_cents, q.distributor?.currency) : '-'}
             </div>
           </div>
         ))}
@@ -659,7 +659,7 @@ function EmptyState() {
         className="mt-3 max-w-md mx-auto"
         style={{ ...sans, fontSize: 14, color: C.gray700, lineHeight: 1.55 }}
       >
-        Pick a distributor, send your menu, and get pricing back — no rep needed.
+        Pick a distributor, send your menu, and get pricing back, no rep needed.
       </p>
       <button
         type="button"

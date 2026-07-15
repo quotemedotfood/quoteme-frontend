@@ -77,10 +77,10 @@ const UUID_REGEX = /^[0-9a-f-]{36}$/i;
 function friendlyError(err: string | undefined): string {
   if (!err) return 'An unknown error occurred.';
   if (err.toLowerCase().includes('failed to fetch') || err.toLowerCase().includes('network')) {
-    return 'Network error — could not reach the server. Check your connection and retry.';
+    return 'Network error: could not reach the server. Check your connection and retry.';
   }
   if (err.includes('500')) {
-    return 'Server error — your change was not saved. Try again or contact support if it persists.';
+    return 'Server error: your change was not saved. Try again or contact support if it persists.';
   }
   return err; // 422 messages from the API are already user-readable
 }
@@ -109,13 +109,13 @@ function SummaryCard({ label }: { label: ClusterLabel }) {
   const [flagsOpen, setFlagsOpen] = useState(false);
 
   const rows: [string, string][] = [
-    ['Canonical',     label.canonical_product ?? '—'],
-    ['Category',      label.category ?? '—'],
-    ['Form type',     label.form_type ?? '—'],
-    ['Compound type', label.compound_type ?? '—'],
-    ['Confidence',    label.confidence !== null ? `${Math.round(label.confidence * 100)}%` : '—'],
+    ['Canonical',     label.canonical_product ?? '-'],
+    ['Category',      label.category ?? '-'],
+    ['Form type',     label.form_type ?? '-'],
+    ['Compound type', label.compound_type ?? '-'],
+    ['Confidence',    label.confidence !== null ? `${Math.round(label.confidence * 100)}%` : '-'],
     ['Status',        label.status],
-    ['Created via',   (label as unknown as { created_via?: string }).created_via ?? '—'],
+    ['Created via',   (label as unknown as { created_via?: string }).created_via ?? '-'],
   ];
 
   const flagKeys = Object.keys(label.identity_flags ?? {});
@@ -228,7 +228,7 @@ function RevertDialog({ log, onCancel, onConfirm, reverting }: RevertDialogProps
           This will roll back the cluster label to the state before the change recorded at:
         </p>
         <p className="text-sm font-mono text-[#2A2A2A] mb-4">
-          {new Date(log.changed_at).toLocaleString()} — field: {log.field_name}
+          {new Date(log.changed_at).toLocaleString()}, field: {log.field_name}
         </p>
         <div className="mb-4">
           <label className="block text-sm font-medium text-[#4F4F4F] mb-1">
@@ -294,9 +294,9 @@ function AuditLogTable({ logs, onRevert }: AuditLogTableProps) {
               <td className="py-2 pr-3 text-xs text-[#2A2A2A] max-w-[120px] break-all">
                 {log.new_value ?? <span className="italic">null</span>}
               </td>
-              <td className="py-2 pr-3 text-xs text-[#4F4F4F]">{log.reason_code ?? '—'}</td>
+              <td className="py-2 pr-3 text-xs text-[#4F4F4F]">{log.reason_code ?? '-'}</td>
               <td className="py-2 pr-3 text-xs text-[#4F4F4F] max-w-[160px] break-words">
-                {log.reason ?? '—'}
+                {log.reason ?? '-'}
               </td>
               <td className="py-2">
                 <button
@@ -724,7 +724,7 @@ export function QMAdminClusterLabels() {
 
     // Shape guard: verify the response has the expected wrapped structure
     if (!res.data || !res.data.cluster_label) {
-      setApiError('Save returned an unexpected response shape. The change may have persisted — refresh the page to verify.');
+      setApiError('Save returned an unexpected response shape. The change may have persisted: refresh the page to verify.');
       console.error('[ClusterLabels] Unexpected response shape from updateClusterLabelV2:', res);
       return;
     }
@@ -852,7 +852,7 @@ export function QMAdminClusterLabels() {
                 >
                   <option value="">
                     {detail?.cluster_label.category
-                      ? `(no change — currently ${detail.cluster_label.category})`
+                      ? `(no change: currently ${detail.cluster_label.category})`
                       : '(no change)'}
                   </option>
                   {CATEGORY_OPTIONS.map((c) => (
@@ -873,7 +873,7 @@ export function QMAdminClusterLabels() {
                 >
                   <option value="">
                     {detail?.cluster_label.form_type
-                      ? `(no change — currently ${detail.cluster_label.form_type})`
+                      ? `(no change: currently ${detail.cluster_label.form_type})`
                       : '(no change)'}
                   </option>
                   {FORM_TYPE_OPTIONS.map((f) => (
@@ -894,20 +894,20 @@ export function QMAdminClusterLabels() {
                 >
                   <option value="">
                     {detail?.cluster_label.compound_type
-                      ? `(no change — currently ${detail.cluster_label.compound_type})`
+                      ? `(no change: currently ${detail.cluster_label.compound_type})`
                       : '(no change)'}
                   </option>
                   <option value="identity">identity</option>
                   <option value="modified">modified</option>
                   <option value="true">true</option>
-                  <option value="__clear__">(clear — set to null)</option>
+                  <option value="__clear__">(clear: set to null)</option>
                 </select>
               </div>
 
               {/* Identity flags */}
               <div>
                 <label className="block text-sm font-medium text-[#4F4F4F] mb-1">
-                  Identity flags (JSON — merge semantics)
+                  Identity flags (JSON, merge semantics)
                 </label>
                 <textarea
                   value={identityFlagsRaw}

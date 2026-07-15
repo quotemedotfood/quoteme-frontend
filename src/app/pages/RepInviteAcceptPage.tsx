@@ -232,7 +232,7 @@ export function RepInviteAcceptPage() {
         {success && (
           <div style={{ background: C.green50, border: `1px solid ${C.green200}`, borderRadius: 6, padding: '12px 14px', marginBottom: 20 }}>
             <p style={{ ...sans, fontSize: 13, color: '#166534', margin: 0, fontWeight: 500, lineHeight: 1.5 }}>
-              Account created — welcome to QuoteMe!
+              Account created, welcome to QuoteMe!
             </p>
             <p style={{ ...sans, fontSize: 12, color: '#166534', margin: '4px 0 0', lineHeight: 1.4 }}>
               Taking you to your dashboard…

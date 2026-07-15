@@ -188,7 +188,7 @@ export function SidebarHelpInput({ collapsed }: SidebarHelpInputProps) {
             lineHeight: 1.4,
           }}
         >
-          Press Enter — we'll route to QuoteMe support.
+          Press Enter to route to QuoteMe support.
         </p>
         {sent && (
           <p style={{ ...sans, fontSize: 10.5, color: '#2A5F6F', margin: '4px 0 0', lineHeight: 1.4, fontWeight: 500 }}>

@@ -1224,7 +1224,7 @@ function TailClusterPanel({ cluster, onClusterResolved }: TailClusterPanelProps)
       console.warn('[TailClusterPanel] recordTailClusterDecision (split) failed (non-blocking):', err);
     });
     setSubmitting(false);
-    showToast(`Cluster split — members returned to individual review.`);
+    showToast(`Cluster split: members returned to individual review.`);
     onClusterResolved(cluster.members.map((s) => s.id), 'split');
   }
 
@@ -1356,7 +1356,7 @@ function TailClusterPanel({ cluster, onClusterResolved }: TailClusterPanelProps)
                 type="button"
                 onClick={handleSplit}
                 disabled={submitting}
-                title="Split cluster — review members individually"
+                title="Split cluster: review members individually"
                 className="px-3 py-1.5 rounded text-xs font-semibold border border-gray-300 text-[#4F4F4F] hover:bg-gray-100 transition-colors disabled:opacity-40"
               >
                 Split
@@ -1367,7 +1367,7 @@ function TailClusterPanel({ cluster, onClusterResolved }: TailClusterPanelProps)
                 type="button"
                 onClick={handleReject}
                 disabled={submitting}
-                title="Reject cluster — archive all members"
+                title="Reject cluster: archive all members"
                 className="px-3 py-1.5 rounded text-xs font-semibold border border-red-200 text-red-600 hover:bg-red-50 transition-colors disabled:opacity-40"
               >
                 Reject all
@@ -2179,7 +2179,7 @@ export function QMAdminKnowledgeGapFiller() {
               {FEATURE_FLAG_CLUMP_VIEW && tailClusters.length > 0 && (
                 <div className="px-4 pt-3 pb-1 bg-white border-t border-indigo-100">
                   <p className="text-xs font-semibold text-indigo-700 mb-2 uppercase tracking-wide">
-                    Suspected Clusters — {tailClusters.length} group{tailClusters.length !== 1 ? 's' : ''}
+                    Suspected Clusters: {tailClusters.length} group{tailClusters.length !== 1 ? 's' : ''}
                   </p>
                   {tailClusters.map((cluster) => (
                     <TailClusterPanel

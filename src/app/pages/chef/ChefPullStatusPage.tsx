@@ -261,8 +261,8 @@ export function ChefPullStatusPage() {
             </h1>
             <p className="text-[#4F4F4F] text-sm">
               {affiliated
-                ? 'This usually takes about 30–60 seconds.'
-                : 'This usually takes about 30–60 seconds.'}
+                ? 'This usually takes about 30-60 seconds.'
+                : 'This usually takes about 30-60 seconds.'}
             </p>
           </div>
 

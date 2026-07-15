@@ -459,7 +459,7 @@ export function ChefStatusPage({ onTimeout }: ChefStatusPageProps = {}) {
             ) : resendState === 'error' ? (
               <div className="flex flex-col gap-2">
                 <p className="text-sm text-[#E53935]">
-                  Something went wrong — try again
+                  Something went wrong, try again
                 </p>
                 <button
                   onClick={handleResendEmail}
@@ -501,7 +501,7 @@ export function ChefStatusPage({ onTimeout }: ChefStatusPageProps = {}) {
             Building your quote
           </h1>
           <p className="text-[#4F4F4F] text-sm">
-            This usually takes about 30–60 seconds.
+            This usually takes about 30-60 seconds.
           </p>
         </div>
 

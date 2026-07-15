@@ -151,7 +151,7 @@ function ForwardedContext({ desktop = false, ctx }: ForwardedContextProps) {
         }}
       >
         He's pricing a quote for {SECURE.restaurant} in {SECURE.restaurantCity}, and the price
-        list on file is from {SECURE.catalogHeldFrom}. You're the one who keeps ours current — so he
+        list on file is from {SECURE.catalogHeldFrom}. You're the one who keeps ours current, so he
         sent it your way. A current catalog is all he needs: a PDF, a spreadsheet, even photos of a
         printed sheet.
       </p>
@@ -390,7 +390,7 @@ function CatalogDropZoneV45({ desktop = false, onSend, ctx, uploadError }: Catal
           value={note}
           onChange={(e) => setNote(e.target.value)}
           rows={desktop ? 3 : 2}
-          placeholder="e.g. seafood prices update again Monday — I'll resend if you want to wait."
+          placeholder="e.g. seafood prices update again Monday, I'll resend if you want to wait."
           style={{
             ...sans,
             width: '100%',
@@ -662,12 +662,12 @@ function V45Expired({ desktop = false, ctx }: V45ExpiredProps) {
         }}
       >
         Catalog links are good for seven days, then they close on their own. {ctx.repFirst} can
-        send a fresh one in a couple of taps — the new link will work just like this one.
+        send a fresh one in a couple of taps, the new link will work just like this one.
       </p>
 
       {/* CTA — email the rep (sacred orange, same role as Send CTA on idle) */}
       <a
-        href={`mailto:${ctx.repEmail}?subject=${encodeURIComponent('Catalog link expired — can you resend?')}`}
+        href={`mailto:${ctx.repEmail}?subject=${encodeURIComponent('Catalog link expired, can you resend?')}`}
         style={{
           ...sans,
           display: 'inline-flex',
@@ -918,7 +918,7 @@ export function TechLandingPage() {
     const errorCode = result.error;
     if (errorCode === 'no_products_found') {
       setUploadError(
-        "We couldn't read any products from that file. Try a different format — a spreadsheet or clear PDF usually works best.",
+        "We couldn't read any products from that file. Try a different format: a spreadsheet or clear PDF usually works best.",
       );
     } else if (errorCode === 'file_required') {
       setUploadError('Please attach a file before sending.');

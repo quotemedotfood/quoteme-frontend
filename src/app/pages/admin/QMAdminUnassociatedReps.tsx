@@ -169,7 +169,7 @@ export function QMAdminUnassociatedReps() {
                   <TableRow key={u.id} className={u.flagged_for_review ? 'bg-amber-50' : 'hover:bg-gray-50'}>
                     <TableCell className="font-medium text-[#2A2A2A]">{u.first_name} {u.last_name}</TableCell>
                     <TableCell className="text-sm text-gray-500">{u.email}</TableCell>
-                    <TableCell className="text-sm">{u.distributor_name || '—'}</TableCell>
+                    <TableCell className="text-sm">{u.distributor_name || '-'}</TableCell>
                     <TableCell>
                       {u.flagged_for_review && (
                         <div className="flex items-center gap-1 text-amber-600">
