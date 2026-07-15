@@ -372,6 +372,12 @@ export const router = createBrowserRouter([
             { path: "vendors/:id", Component: VendorDetailPage },
             { path: "locations", Component: LocationPage },
             { path: "quotes", Component: QuotesRoleRouter },
+            // BUG#1: a bare /quotes/:id deep link (no /rep, /chef prefix) had no
+            // matching route and 404'd. Redirect it into the canonical build flow
+            // via the same RepQuoteIdRedirect used by /rep/quotes/:id, so any
+            // lingering bookmark or hand-typed link lands on the quote, never a
+            // dead end.
+            { path: "quotes/:id", Component: RepQuoteIdRedirect },
             { path: "settings", Component: SettingsPage },
             { path: "settings/billing", Component: SettingsPage },
             // ── Rep suite routes (auth-guarded via RootLayout) ──────────────
