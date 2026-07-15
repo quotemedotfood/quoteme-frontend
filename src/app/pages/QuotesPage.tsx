@@ -151,7 +151,10 @@ export function QuotesPage() {
   };
 
   const handleEditQuote = (quoteId: string) => {
-    navigate(`/rep/quotes/${quoteId}`);
+    // P0: old triage view (/rep/quotes/:id) deleted — route into the
+    // canonical quote-build flow instead (MapIngredientsPage loads the
+    // existing quote's matches).
+    navigate('/map-ingredients', { state: { quoteId } });
   };
 
   const handleDeleteQuote = async (quoteId: string) => {

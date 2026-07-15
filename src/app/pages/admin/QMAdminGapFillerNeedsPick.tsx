@@ -124,8 +124,12 @@ function DrillDownPanel({ row }: DrillDownPanelProps) {
                       <TableCell className="text-xs text-gray-600">{missReasonLabel(q.miss_reason)}</TableCell>
                       <TableCell className="text-xs text-gray-500">{formatDateTime(q.occurred_at)}</TableCell>
                       <TableCell className="text-right">
+                        {/* P0: old triage view (/rep/quotes/:id) deleted — route
+                            into the canonical quote-build flow instead. Uses the
+                            ?quoteId= query form (not state) since this opens in a
+                            new tab. */}
                         <Link
-                          to={`/rep/quotes/${q.quote_id}`}
+                          to={`/map-ingredients?quoteId=${q.quote_id}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="inline-flex items-center gap-1 text-xs text-[#7FAEC2] hover:underline"

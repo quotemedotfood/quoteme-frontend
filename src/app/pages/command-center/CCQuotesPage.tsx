@@ -694,11 +694,13 @@ export function CCQuotesPage() {
             <React.Fragment key={q.id}>
               {/* Desktop row — hidden on small screens */}
               <div className="hidden lg:block">
-                <DeskRow q={q} onClick={() => goToDetail(q.id)} onEdit={() => navigate(`/rep/quotes/${q.id}`, { state: { from: location.pathname } })} onRepClick={goToRep} />
+                {/* P0: old triage view (/rep/quotes/:id) deleted — route into the
+                    canonical quote-build flow instead. */}
+                <DeskRow q={q} onClick={() => goToDetail(q.id)} onEdit={() => navigate('/map-ingredients', { state: { quoteId: q.id, from: location.pathname } })} onRepClick={goToRep} />
               </div>
               {/* Mobile row — hidden on large screens */}
               <div className="lg:hidden">
-                <PhoneRow q={q} onClick={() => goToDetail(q.id)} onEdit={() => navigate(`/rep/quotes/${q.id}`, { state: { from: location.pathname } })} onRepClick={goToRep} />
+                <PhoneRow q={q} onClick={() => goToDetail(q.id)} onEdit={() => navigate('/map-ingredients', { state: { quoteId: q.id, from: location.pathname } })} onRepClick={goToRep} />
               </div>
             </React.Fragment>
           ))

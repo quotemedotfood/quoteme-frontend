@@ -101,8 +101,10 @@ function AssignRow({
   const navigate = useNavigate();
 
   // B-186 — open the underlying quote (rep flow accepts distributor admins).
+  // P0: old triage view (/rep/quotes/:id) deleted — route into the canonical
+  // quote-build flow instead (MapIngredientsPage loads the existing quote).
   const openQuote = () => {
-    if (row.kind === 'quote') navigate(`/rep/quotes/${row.id}`);
+    if (row.kind === 'quote') navigate('/map-ingredients', { state: { quoteId: row.id } });
   };
 
   const assignedRep = state.assignedRepId
