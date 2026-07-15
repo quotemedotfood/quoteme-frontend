@@ -2228,8 +2228,21 @@ export interface GapFillerSourceQuote {
   occurred_at: string;
 }
 
+// The drill-down endpoint returns an OBJECT ({ canonical_key, distributor_id,
+// quotes: [...], count }), not a bare array — the source quotes live under
+// `.quotes`. (This mismatch is exactly why the row expander rendered empty:
+// the caller was setting the whole object where a GapFillerSourceQuote[] was
+// expected, so `.length` was undefined and neither the empty-state nor the
+// table branch fired.)
+export interface GapFillerDrillDownResponse {
+  canonical_key: string;
+  distributor_id: string;
+  quotes: GapFillerSourceQuote[];
+  count: number;
+}
+
 export async function getGapFillerNeedsPickQuotes(
   drillDownToken: string
-): Promise<ApiResponse<GapFillerSourceQuote[]>> {
+): Promise<ApiResponse<GapFillerDrillDownResponse>> {
   return fetchWithAuth(`/api/v1/admin/gap_filler_needs_pick/${encodeURIComponent(drillDownToken)}/quotes`);
 }
