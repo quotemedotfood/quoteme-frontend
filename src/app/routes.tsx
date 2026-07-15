@@ -1,4 +1,4 @@
-import { createBrowserRouter, Navigate, useSearchParams } from "react-router";
+import { createBrowserRouter, Navigate, useParams, useSearchParams } from "react-router";
 import { RootWrapper } from "./components/RootWrapper";
 import { RootLayout } from "./components/RootLayout";
 import { useAuth } from "./contexts/AuthContext";
@@ -88,7 +88,6 @@ import { rootRedirectTarget } from "./utils/rootRedirect";
 import { RepWelcomePage } from "./pages/rep/RepWelcomePage";
 import { RepInviteAcceptPage } from "./pages/RepInviteAcceptPage";
 import { RepTriagePage } from "./pages/rep/RepTriagePage";
-import { RepIncomingQuotePage } from "./pages/rep/RepIncomingQuotePage";
 import { RepCustomersPage } from "./pages/rep/RepCustomersPage";
 import { RepProfilePage } from "./pages/rep/RepProfilePage";
 import { RepLayout } from "./components/rep/RepLayout";
@@ -133,6 +132,16 @@ function AuthRoute() {
     return <Navigate to="/" replace />;
   }
   return <AuthPage />;
+}
+
+// P0: the old quote-triage view (`RepIncomingQuotePage` — "Search your
+// catalog" links, "Items to Confirm" block) has been deleted entirely. Any
+// remaining deep link / bookmark to /rep/quotes/:id now redirects into the
+// canonical quote-build flow (MapIngredientsPage reads ?quoteId= and loads
+// the existing quote's matches) at the same quote id.
+function RepQuoteIdRedirect() {
+  const { id } = useParams<{ id: string }>();
+  return <Navigate to={`/map-ingredients?quoteId=${id}`} replace />;
 }
 
 export const router = createBrowserRouter([
@@ -377,7 +386,9 @@ export const router = createBrowserRouter([
             //   /rep/quotes              → redirects to /rep/quotes/inbound (index)
             //   /rep/quotes/inbound      → RepTriagePage (was /rep/triage)
             //   /rep/quotes/history      → QuotesPage (was /rep/quotes)
-            //   /rep/quotes/:id          → RepIncomingQuotePage (unchanged)
+            //   /rep/quotes/:id          → P0: old triage view (RepIncomingQuotePage)
+            //                              DELETED; redirects to /map-ingredients?quoteId=:id
+            //                              (see RepQuoteIdRedirect) for any lingering deep link.
             //
             // Legacy redirect: /rep/triage → /rep/quotes/inbound
             {
@@ -402,7 +413,8 @@ export const router = createBrowserRouter([
                     // Detail route must be nested here so /rep/quotes/:id still resolves.
                     // The :id segment won't collide with "inbound"/"history" because
                     // react-router matches static segments before dynamic ones.
-                    { path: ":id", Component: RepIncomingQuotePage },
+                    // P0: old triage view deleted — redirect to the canonical flow.
+                    { path: ":id", Component: RepQuoteIdRedirect },
                   ],
                 },
                 // Card 11 (Desi Lock D-2): customer list shell — list only,
