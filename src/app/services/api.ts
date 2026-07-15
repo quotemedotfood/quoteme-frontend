@@ -1251,9 +1251,9 @@ export interface QuotePreviewResponse {
   lines: QuotePreviewLine[];
 }
 
-export async function getQuotePreview(id: string): Promise<ApiResponse<QuotePreviewResponse>> {
+export async function getQuotePreview(id: string, token: string): Promise<ApiResponse<QuotePreviewResponse>> {
   try {
-    const response = await fetchWithRetry(`${API_BASE_URL}/api/v1/quotes/${id}/preview`);
+    const response = await fetchWithRetry(`${API_BASE_URL}/api/v1/quotes/${id}/preview?token=${encodeURIComponent(token)}`);
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       return { error: errorData.error || `HTTP ${response.status}` };
@@ -1476,6 +1476,38 @@ export async function getMoreMatches(
   return fetchWithAuth(`/api/v1/quotes/${quoteId}/more_matches`, {
     method: 'POST',
     body: JSON.stringify({ line_id: lineId }),
+  });
+}
+
+// Match Drawer — "Your Call" multi-select submission. One ordered list of
+// picks: rank 0 replaces the line's current product, ranks 1+ are added
+// alongside it as additional quote lines. Rank = index in the selections
+// array (matches MatchDrawer's `picks` ordering 1:1).
+export interface YourCallSelectionEntry {
+  product_id: string;
+  rank: number;
+}
+
+export interface YourCallSelectionPayload {
+  quote_line_id: string;
+  dish_component_id?: string | null;
+  canonical_key?: string | null;
+  selections: YourCallSelectionEntry[];
+  notes?: string | null;
+}
+
+export interface YourCallSelectionResponse {
+  quote_line_id: string;
+  applied: YourCallSelectionEntry[];
+}
+
+export async function submitYourCallSelection(
+  quoteId: string,
+  payload: YourCallSelectionPayload
+): Promise<ApiResponse<YourCallSelectionResponse>> {
+  return fetchWithGuest(`/api/v1/quotes/${quoteId}/your_call_selection`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
   });
 }
 
