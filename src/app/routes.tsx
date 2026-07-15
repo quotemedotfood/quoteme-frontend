@@ -1,4 +1,4 @@
-import { createBrowserRouter, Navigate, useSearchParams } from "react-router";
+import { createBrowserRouter, Navigate, useParams, useSearchParams } from "react-router";
 import { RootWrapper } from "./components/RootWrapper";
 import { RootLayout } from "./components/RootLayout";
 import { useAuth } from "./contexts/AuthContext";
@@ -88,7 +88,6 @@ import { rootRedirectTarget } from "./utils/rootRedirect";
 import { RepWelcomePage } from "./pages/rep/RepWelcomePage";
 import { RepInviteAcceptPage } from "./pages/RepInviteAcceptPage";
 import { RepTriagePage } from "./pages/rep/RepTriagePage";
-import { RepIncomingQuotePage } from "./pages/rep/RepIncomingQuotePage";
 import { RepCustomersPage } from "./pages/rep/RepCustomersPage";
 import { RepProfilePage } from "./pages/rep/RepProfilePage";
 import { RepLayout } from "./components/rep/RepLayout";
@@ -133,6 +132,16 @@ function AuthRoute() {
     return <Navigate to="/" replace />;
   }
   return <AuthPage />;
+}
+
+// P0: the old quote-triage view (`RepIncomingQuotePage` — "Search your
+// catalog" links, "Items to Confirm" block) has been deleted entirely. Any
+// remaining deep link / bookmark to /rep/quotes/:id now redirects into the
+// canonical quote-build flow (MapIngredientsPage reads ?quoteId= and loads
+// the existing quote's matches) at the same quote id.
+function RepQuoteIdRedirect() {
+  const { id } = useParams<{ id: string }>();
+  return <Navigate to={`/map-ingredients?quoteId=${id}`} replace />;
 }
 
 export const router = createBrowserRouter([
@@ -377,7 +386,9 @@ export const router = createBrowserRouter([
             //   /rep/quotes              → redirects to /rep/quotes/inbound (index)
             //   /rep/quotes/inbound      → RepTriagePage (was /rep/triage)
             //   /rep/quotes/history      → QuotesPage (was /rep/quotes)
-            //   /rep/quotes/:id          → RepIncomingQuotePage (unchanged)
+            //   /rep/quotes/:id          → P0: old triage view (RepIncomingQuotePage)
+            //                              DELETED; redirects to /map-ingredients?quoteId=:id
+            //                              (see RepQuoteIdRedirect) for any lingering deep link.
             //
             // Legacy redirect: /rep/triage → /rep/quotes/inbound
             {
@@ -402,7 +413,8 @@ export const router = createBrowserRouter([
                     // Detail route must be nested here so /rep/quotes/:id still resolves.
                     // The :id segment won't collide with "inbound"/"history" because
                     // react-router matches static segments before dynamic ones.
-                    { path: ":id", Component: RepIncomingQuotePage },
+                    // P0: old triage view deleted — redirect to the canonical flow.
+                    { path: ":id", Component: RepQuoteIdRedirect },
                   ],
                 },
                 // Card 11 (Desi Lock D-2): customer list shell — list only,
@@ -413,11 +425,15 @@ export const router = createBrowserRouter([
             },
           ]),
           { path: "upgrade", Component: PaywallPage },
-          // ── Quote-build flow — CC shell for distributor_admin, bare Outlet for others ──
-          // CCQuoteFlowShell gates on role: distributor_admin gets CCLayout (sidebar +
-          // search bar); every other role (chef, rep, guest, buyer) gets Outlet only,
-          // preserving existing shell-less behaviour. All four quote-flow steps are
-          // wrapped so the manager never loses navigation mid-flow.
+          // ── Quote-build flow — persistent, role-owned sidebar on every step ──
+          // CCQuoteFlowShell role-branches to each role's OWN existing shell:
+          // RepLayout for rep, CCLayout for distributor_admin. Both roles get NO
+          // chrome from RootLayout (see RootLayout.tsx's AppSidebar condition),
+          // so without this the quote flow (incl. /map-ingredients) rendered with
+          // no sidebar at all for them — see CCQuoteFlowShell.tsx for the fix
+          // history. Every other role is unchanged: chrome comes from RootLayout's
+          // own role-aware chrome (ChefTopbar for chef/group_admin/buyer, AppSidebar
+          // for quoteme_admin), not from a second shell layer here.
           {
             Component: CCQuoteFlowShell,
             children: [

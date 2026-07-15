@@ -1,14 +1,40 @@
-// CCQuoteFlowShell — role-aware shell wrapper for the quote-build flow.
+// CCQuoteFlowShell -- role-routed shell wrapper for the quote-build flow.
 //
-// Problem: /start-new-quote (and the downstream flow pages) are top-level
-// routes outside CCLayout. When a distributor_admin navigates there from the
-// Command Center, the CC sidebar/shell disappears.
+// History: this component used to special-case distributor_admin, wrapping the
+// quote-build routes (/start-new-quote, /map-ingredients, /quote-builder,
+// /export-finalize) in the full CCLayout (sidebar + sticky search bar) while
+// every other role (chef, rep, guest, quoteme_admin, buyer) got a bare
+// <Outlet/>. That produced two genuinely different quote-flow experiences --
+// e.g. two different "map-ingredients" designs depending on who was looking --
+// so a prior fix flattened this to a pure pass-through Outlet for every role.
 //
-// Fix: wrap the quote-flow routes in this pathless layout route. For
-// distributor_admin users it renders the full CCLayout (sidebar + search bar)
-// around the Outlet. For every other role (chef, rep, guest, quoteme_admin,
-// buyer) it renders Outlet directly — identical to the previous shell-less
-// behaviour, so no existing flow is broken.
+// That flattening over-corrected: RootLayout deliberately never renders
+// AppSidebar for rep or distributor_admin (see RootLayout.tsx's AppSidebar
+// condition) because those two roles carry their OWN dedicated sidebar shells
+// elsewhere (RepLayout for /rep/*, CCLayout for /distributor-admin/command-
+// center/* + satellite pages). With CCQuoteFlowShell as a bare Outlet, rep and
+// distributor_admin users landed on the quote-build flow with NO sidebar at
+// all -- the dashboard-always-one-click-away rule broke specifically on
+// /map-ingredients and its siblings (Moose, sidebar-consolidation audit).
+//
+// Fix (persistent-sidebar-quoting-flow): role-branch to each role's OWN
+// existing shell -- not one shell for everyone, which is what caused the
+// original divergence bug this component was built to close:
+// * rep              -> RepLayout (RepNewspaperSidebar, collapsible)
+// * distributor_admin -> CCLayout (ManagerSidebar, collapsible)
+// * everyone else     -> bare <Outlet/>, unchanged. Chef/group_admin/buyer
+//   get ChefTopbar and quoteme_admin gets AppSidebar independently, both via
+//   RootLayout -- this component must not add a second chrome layer for them.
+//
+// Why this doesn't reintroduce the old bug: the old bug was ONE role
+// (distributor_admin) getting CCLayout while every other role got nothing --
+// a single shell picked for the whole flow. This is each role getting its OWN
+// pre-existing shell (or none, where RootLayout already supplies one) --
+// no role is left divergent from how it's chromed everywhere else in the app.
+//
+// CCLayout's hard role guard (see CCLayout.tsx "B-42": non-distributor_admin
+// roles get redirected out of the Command Center) is a non-issue here because
+// CCLayout is only reached when role IS distributor_admin.
 //
 // Usage in routes.tsx:
 //   {
@@ -20,35 +46,46 @@
 //       { path: "export-finalize", Component: ExportFinalizePage },
 //     ],
 //   }
-//
-// Design notes:
-// • Imports CCLayout (not a re-implementation) so sidebar state, counts, and
-//   search bar are identical to the rest of the CC shell.
-// • Uses useAuth() — same hook used by every other role gate in RootLayout.
-// • No gradient colors. No AppSidebar (that's the old shell for non-CC users).
 
 import { Outlet } from 'react-router';
 import { useAuth } from '../../../contexts/AuthContext';
+import { RepLayout } from '../../rep/RepLayout';
 import { CCLayout } from './CCLayout';
 
 export function CCQuoteFlowShell() {
   const { user } = useAuth();
 
-  if (user?.role === 'distributor_admin') {
-    // Render the full CC shell (sidebar + search bar) with the page as Outlet.
+  if (shouldUseRepShellForQuoteFlow(user?.role)) {
+    // RepLayout renders its own <Outlet/> when not given children, so the
+    // matched quote-flow page (StartNewQuotePage/MapIngredientsPage/etc.)
+    // renders inside it exactly as it would under /rep/*.
+    return <RepLayout />;
+  }
+
+  if (shouldUseCCShellForQuoteFlow(user?.role)) {
     return <CCLayout />;
   }
 
-  // All other roles: no CC shell — Outlet only, preserving existing behaviour.
+  // Unchanged for every other role: no CCLayout/RepLayout injection here.
   return <Outlet />;
 }
 
-// ── Pure helper (exported for unit tests) ────────────────────────────────────
+// -- Pure helpers (exported for unit tests) ----------------------------------
 
 /**
- * Returns true when the CC shell should wrap the quote-build flow.
- * Extracted as a pure function so tests don't need jsdom / router context.
+ * Returns true when the CC shell (ManagerSidebar) should wrap the quote-build
+ * flow -- true ONLY for distributor_admin, whose only other sidebar-bearing
+ * shell in the app is CCLayout.
  */
 export function shouldUseCCShellForQuoteFlow(role: string | undefined): boolean {
   return role === 'distributor_admin';
+}
+
+/**
+ * Returns true when the rep shell (RepNewspaperSidebar) should wrap the
+ * quote-build flow -- true ONLY for rep, whose only other sidebar-bearing
+ * shell in the app is RepLayout.
+ */
+export function shouldUseRepShellForQuoteFlow(role: string | undefined): boolean {
+  return role === 'rep';
 }

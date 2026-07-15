@@ -24,6 +24,27 @@ import { Link2 } from 'lucide-react';
 import { getCommandCenterUnassigned, getCommandCenterInbound, getDistributorHome } from '../../../services/api';
 import { canAccessCCInbound, REP_INBOUND_REDIRECT } from '../../../utils/ccInboundAccess';
 
+// ── Role label ──────────────────────────────────────────────────────────────
+// Was hardcoded to the literal "Sales lead" regardless of who was signed in.
+// The User model (src/app/services/api.ts) has no job-title field, so the
+// truthful, real value we can show is the authenticated user's actual role,
+// human-labeled — same ROLE_LABEL pattern already used in
+// pages/admin/QMAdminUsers.tsx and pages/admin/QMAdminUserDetail.tsx.
+const ROLE_LABEL: Record<string, string> = {
+  distributor_admin: 'Distributor Admin',
+  quoteme_admin: 'QM Admin',
+  rep: 'Rep',
+  chef: 'Chef',
+  buyer: 'Buyer',
+  group_admin: 'Group Admin',
+  brand: 'Brand',
+};
+
+function roleLabel(role: string | undefined): string {
+  if (!role) return 'Manager';
+  return ROLE_LABEL[role] ?? role;
+}
+
 // ── Sidebar context ───────────────────────────────────────────────────────────
 
 interface CCLayoutContextValue {
@@ -53,9 +74,11 @@ function activeTabFromPath(pathname: string): CCActiveTab {
 
 // ── CCLayout ──────────────────────────────────────────────────────────────────
 
-// P5: Build the cold-landing URL for copy-link. Uses quoteme.food as the
-// production host (no VITE_ env var exists for the app host).
-const COLD_LANDING_HOST = 'https://quoteme.food';
+// P5: Build the cold-landing URL for copy-link. The standing page lives on the
+// `prod.quoteme.food` host — the bare apex `quoteme.food` does NOT serve /d/:slug
+// and 404s, which is what the emitted copy-links were doing. (No VITE_ env var
+// exists for the app host, so this is a constant.)
+const COLD_LANDING_HOST = 'https://prod.quoteme.food';
 
 function buildMenuDropUrl(slug: string | null | undefined): string | null {
   if (!slug) return null;
@@ -120,7 +143,7 @@ export function CCLayout() {
 
   const manager: CCManagerInfo = {
     name: user ? `${user.first_name ?? ''} ${user.last_name ?? ''}`.trim() || 'Manager' : 'Manager',
-    role: 'Sales lead',
+    role: roleLabel(user?.role),
     company: user?.distributor?.name ?? user?.distributor_name ?? 'Your company',
     region: '',
     today: new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }),

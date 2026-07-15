@@ -9,8 +9,9 @@ import { useUser } from '../contexts/UserContext';
 import { isDemoMode } from '../utils/demoMode';
 import { toTitleCase, formatProductName } from '../utils/format';
 import { categoryLabel } from '../utils/categoryLabel';
-import { MapComponentDrawer } from '../components/MapComponentDrawer';
+import { MatchDrawer } from '../components/MatchDrawer';
 import { QuoteReviewBar } from '../components/QuoteReviewBar';
+import { Drawer, DrawerContent } from '../components/ui/drawer';
 import {
   createMenu,
   getMenuStatus,
@@ -479,102 +480,12 @@ export function MapIngredientsPage() {
     setMapDrawerOpen(true);
   };
 
-  const handleApplyMapping = (componentName: string, skuIds: string[]) => {
-    if (skuIds.length > 0) {
-      setMappedComponents(prev => ({ ...prev, [componentName]: skuIds }));
-    }
-  };
-
-  const updateDishProduct = (componentName: string, candidateProduct: { id: string; item_number: string; brand: string; product: string; pack_size: string; category: string }) => {
-    setDishes(prev => {
-      const updated = prev.map(dish => {
-        if (dish.componentLines[componentName]) {
-          const updatedLine = { ...dish.componentLines[componentName], product: candidateProduct };
-          return {
-            ...dish,
-            componentLines: { ...dish.componentLines, [componentName]: updatedLine },
-          };
-        }
-        return dish;
-      });
-      // Keep selectedDish in sync
-      if (selectedDish) {
-        const refreshed = updated.find(d => d.id === selectedDish.id);
-        if (refreshed) setSelectedDish(refreshed);
-      }
-      return updated;
-    });
-  };
-
-  const handleReplaceMatch = (componentName: string, productId: string, product?: { id: string; item_number: string; brand: string; product: string; pack_size: string; category: string }) => {
-    // Look up the line fresh from current dishes state to avoid stale closures
-    let line: QuoteLine | undefined;
-    for (const dish of dishes) {
-      if (dish.componentLines[componentName]) {
-        line = dish.componentLines[componentName];
-        break;
-      }
-    }
-    const allCandidates = line?.alignment_candidates || [];
-    const candidate = allCandidates.find(c => c.product.id === productId);
-    const candidateProduct = candidate?.product || product;
-    if (candidateProduct) {
-      updateDishProduct(componentName, candidateProduct);
-    }
-    setMappedComponents(prev => ({ ...prev, [componentName]: [productId] }));
-
-    // Persist to backend so downstream pages see the change
-    if (quoteId && line) {
-      const lineUpdate: any = { id: line.id };
-      if (candidate) {
-        lineUpdate.alignment_selected = candidate.position;
-      } else {
-        lineUpdate.product_id = productId;
-      }
-      persistQuote(quoteId, { lines: [lineUpdate] }).catch(() => {
-        setError('Failed to save match. Please try again.');
-      });
-    }
-  };
-
-  const handleAddToQuote = (componentName: string, productId: string, product?: { id: string; item_number: string; brand: string; product: string; pack_size: string; category: string }) => {
-    // Look up the line fresh from current dishes state to avoid stale closures
-    let line: QuoteLine | undefined;
-    for (const dish of dishes) {
-      if (dish.componentLines[componentName]) {
-        line = dish.componentLines[componentName];
-        break;
-      }
-    }
-    const allCandidates = line?.alignment_candidates || [];
-    const candidate = allCandidates.find(c => c.product.id === productId);
-    const candidateProduct = candidate?.product || product;
-    if (candidateProduct) {
-      // Update the component line so the main page shows the match
-      updateDishProduct(componentName, candidateProduct);
-      setAdditions(prev => [...prev, {
-        id: `atq-${Date.now()}-${productId}`,
-        componentName,
-        sourceDish: selectedDish?.name || 'Unknown Dish',
-        product: candidateProduct,
-        type: 'add_to_quote' as const,
-      }]);
-    }
-    setMappedComponents(prev => ({ ...prev, [componentName]: [...(prev[componentName] || []), productId] }));
-
-    // Persist to backend so downstream pages see the change
-    if (quoteId && line) {
-      const lineUpdate: any = { id: line.id };
-      if (candidate) {
-        lineUpdate.alignment_selected = candidate.position;
-      } else {
-        lineUpdate.product_id = productId;
-      }
-      persistQuote(quoteId, { lines: [lineUpdate] }).catch(() => {
-        setError('Failed to save match. Please try again.');
-      });
-    }
-  };
+  // NOTE: the legacy handleApplyMapping/updateDishProduct/handleReplaceMatch/
+  // handleAddToQuote client-side-mutation handlers were removed when
+  // MapComponentDrawer (single-select) was swapped for MatchDrawer
+  // (multi-select "Your Call"). MatchDrawer submits directly to the BE
+  // (submitYourCallSelection) and the result is reflected via a full
+  // handleMatchesUpdated() refetch instead of local optimistic patching.
 
   const toggleCategory = (id: string) => {
     setExpandedCategories(prev =>
@@ -1041,105 +952,105 @@ export function MapIngredientsPage() {
         </div>
       </div>
 
-      {/* Match Ingredient Drawer */}
-      <MapComponentDrawer
+      {/* Match Ingredient Drawer — multi-select "Your Call" redesign (checkbox-only:
+          first pick replaces the current match, the rest add alongside it). */}
+      <MatchDrawer
         open={mapDrawerOpen}
         onOpenChange={setMapDrawerOpen}
-        componentName={selectedComponent}
-        onApplyMapping={handleApplyMapping}
+        ingredientName={selectedComponent}
+        currentProduct={selectedLine?.product || null}
         candidates={selectedLine?.alignment_candidates || []}
         onFindMoreMatches={quoteId && selectedLine && (selectedLine?.alignment_candidates?.length ?? 0) > 0 ? async () => {
           const res = await getMoreMatches(quoteId, selectedLine.id);
           return res.data?.candidates || [];
         } : undefined}
         quoteId={quoteId || undefined}
-        onManualSelect={(componentName, product) => {
-          setMappedComponents(prev => ({ ...prev, [componentName]: [product.id] }));
+        quoteLineId={selectedLine?.id || null}
+        dishComponentId={selectedLine?.component?.id || null}
+        canonicalKey={null}
+        onSubmitted={(pickedProductIds) => {
+          setMappedComponents(prev => ({ ...prev, [selectedComponent]: pickedProductIds }));
+          handleMatchesUpdated();
         }}
-        onReplaceMatch={handleReplaceMatch}
-        onAddToQuote={handleAddToQuote}
-        isUnmatched={!selectedLine?.product && (selectedLine?.alignment_candidates?.length ?? 0) === 0}
       />
 
-      {/* Mobile Dish List Drawer */}
-      {isDishListDrawerOpen && (
-        <div className="fixed inset-0 z-50 flex justify-end">
-          <div className="fixed inset-0 bg-black/20" onClick={() => setIsDishListDrawerOpen(false)} />
-          <div className="relative w-full max-w-xs bg-white h-full shadow-xl flex flex-col animate-in slide-in-from-right duration-300">
-            <div className="flex items-center justify-between p-4 border-b border-gray-100">
-              <h2 className="text-lg font-semibold text-[#2A2A2A]">Select Dish</h2>
-              <button onClick={() => setIsDishListDrawerOpen(false)} className="p-2 hover:bg-gray-100 rounded-full">
-                <X className="w-5 h-5 text-gray-500" />
-              </button>
-            </div>
-            <div className="flex-1 overflow-y-auto">
-              {dishes.map(dish => (
-                <button
-                  key={dish.id}
-                  onClick={() => { setSelectedDish(dish); setIsDishListDrawerOpen(false); }}
-                  className={`w-full p-4 text-left border-b border-gray-100 hover:bg-gray-50 ${selectedDish?.id === dish.id ? 'bg-[#A5CFDD]/10 border-l-4 border-l-[#A5CFDD]' : ''}`}
-                >
-                  <p className="text-sm font-medium text-[#2A2A2A]">{dish.name}</p>
-                  <p className="text-xs text-gray-500 mt-1">{dish.components.length} ingredients</p>
-                </button>
-              ))}
-            </div>
-            <div className="p-4 border-t border-gray-100 bg-gray-50">
-              <Button onClick={() => setIsAddDishDrawerOpen(true)} className="w-full bg-[#7FAEC2] hover:bg-[#6A9AB0] text-white">
-                <Plus className="w-4 h-4 mr-2" /> Manually Add A Dish
-              </Button>
-            </div>
+      {/* Mobile Dish List Drawer — canonical vaul-based primitive (was a
+          hand-rolled fixed-inset overlay; structural alignment only, same
+          inner markup/behavior). */}
+      <Drawer open={isDishListDrawerOpen} onOpenChange={setIsDishListDrawerOpen} direction="right">
+        <DrawerContent className="w-full max-w-xs h-full flex flex-col">
+          <div className="flex items-center justify-between p-4 border-b border-gray-100">
+            <h2 className="text-lg font-semibold text-[#2A2A2A]">Select Dish</h2>
+            <button onClick={() => setIsDishListDrawerOpen(false)} className="p-2 hover:bg-gray-100 rounded-full">
+              <X className="w-5 h-5 text-gray-500" />
+            </button>
           </div>
-        </div>
-      )}
-
-      {/* Add Dish Drawer */}
-      {isAddDishDrawerOpen && (
-        <div className="fixed inset-0 z-50 flex justify-end">
-          <div className="fixed inset-0 bg-black/20" onClick={() => setIsAddDishDrawerOpen(false)} />
-          <div className="relative w-full max-w-md bg-white h-full shadow-xl flex flex-col animate-in slide-in-from-right duration-300">
-            <div className="flex items-center justify-between p-4 border-b border-gray-100">
-              <h2 className="text-lg font-semibold text-[#2A2A2A]">Manually Add Dish</h2>
-              <button onClick={() => setIsAddDishDrawerOpen(false)} className="p-2 hover:bg-gray-100 rounded-full">
-                <X className="w-5 h-5 text-gray-500" />
-              </button>
-            </div>
-            <div className="flex-1 overflow-y-auto p-6 space-y-6">
-              <div className="space-y-2">
-                <Label htmlFor="dish-name">Dish Name (Optional)</Label>
-                <Input
-                  id="dish-name"
-                  placeholder="e.g. Spaghetti Carbonara"
-                  value={newDishName}
-                  onChange={(e) => setNewDishName(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="dish-components">List Ingredients</Label>
-                <p className="text-xs text-gray-500">Enter each ingredient on a new line.</p>
-                <Textarea
-                  id="dish-components"
-                  placeholder={"Spaghetti\nPancetta\nEggs\nParmesan cheese\nBlack pepper"}
-                  className="min-h-[200px]"
-                  value={newDishComponents}
-                  onChange={(e) => setNewDishComponents(e.target.value)}
-                />
-              </div>
-            </div>
-            <div className="p-4 border-t border-gray-100 bg-gray-50">
-              <Button
-                onClick={handleAlignWithCatalog}
-                className="w-full bg-[#7FAEC2] hover:bg-[#6A9AB0] text-white"
-                disabled={!newDishComponents.trim() || addDishLoading}
+          <div className="flex-1 overflow-y-auto">
+            {dishes.map(dish => (
+              <button
+                key={dish.id}
+                onClick={() => { setSelectedDish(dish); setIsDishListDrawerOpen(false); }}
+                className={`w-full p-4 text-left border-b border-gray-100 hover:bg-gray-50 ${selectedDish?.id === dish.id ? 'bg-[#A5CFDD]/10 border-l-4 border-l-[#A5CFDD]' : ''}`}
               >
-                {addDishLoading ? (
-                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Matching…</>
-                ) : 'Match With Catalog'}
-              </Button>
+                <p className="text-sm font-medium text-[#2A2A2A]">{dish.name}</p>
+                <p className="text-xs text-gray-500 mt-1">{dish.components.length} ingredients</p>
+              </button>
+            ))}
+          </div>
+          <div className="p-4 border-t border-gray-100 bg-gray-50">
+            <Button onClick={() => setIsAddDishDrawerOpen(true)} className="w-full bg-[#7FAEC2] hover:bg-[#6A9AB0] text-white">
+              <Plus className="w-4 h-4 mr-2" /> Manually Add A Dish
+            </Button>
+          </div>
+        </DrawerContent>
+      </Drawer>
+
+      {/* Add Dish Drawer — canonical vaul-based primitive (was a hand-rolled
+          fixed-inset overlay; structural alignment only, same inner
+          markup/behavior). */}
+      <Drawer open={isAddDishDrawerOpen} onOpenChange={setIsAddDishDrawerOpen} direction="right">
+        <DrawerContent className="w-full max-w-md h-full flex flex-col">
+          <div className="flex items-center justify-between p-4 border-b border-gray-100">
+            <h2 className="text-lg font-semibold text-[#2A2A2A]">Manually Add Dish</h2>
+            <button onClick={() => setIsAddDishDrawerOpen(false)} className="p-2 hover:bg-gray-100 rounded-full">
+              <X className="w-5 h-5 text-gray-500" />
+            </button>
+          </div>
+          <div className="flex-1 overflow-y-auto p-6 space-y-6">
+            <div className="space-y-2">
+              <Label htmlFor="dish-name">Dish Name (Optional)</Label>
+              <Input
+                id="dish-name"
+                placeholder="e.g. Spaghetti Carbonara"
+                value={newDishName}
+                onChange={(e) => setNewDishName(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="dish-components">List Ingredients</Label>
+              <p className="text-xs text-gray-500">Enter each ingredient on a new line.</p>
+              <Textarea
+                id="dish-components"
+                placeholder={"Spaghetti\nPancetta\nEggs\nParmesan cheese\nBlack pepper"}
+                className="min-h-[200px]"
+                value={newDishComponents}
+                onChange={(e) => setNewDishComponents(e.target.value)}
+              />
             </div>
           </div>
-        </div>
-      )}
+          <div className="p-4 border-t border-gray-100 bg-gray-50">
+            <Button
+              onClick={handleAlignWithCatalog}
+              className="w-full bg-[#7FAEC2] hover:bg-[#6A9AB0] text-white"
+              disabled={!newDishComponents.trim() || addDishLoading}
+            >
+              {addDishLoading ? (
+                <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Matching…</>
+              ) : 'Match With Catalog'}
+            </Button>
+          </div>
+        </DrawerContent>
+      </Drawer>
 
       {/* Floating Adjust Pricing button — bottom-right pill (right-justified
           per Moose's 100km Foods demo feedback: the old bottom-center

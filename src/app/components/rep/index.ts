@@ -12,20 +12,14 @@ export type {
 export { RepMatchStateBadge } from './RepMatchStateBadge';
 export type { RepMatchStateBadgeProps, RepMatchState } from './RepMatchStateBadge';
 
-export { LineCoverageDot, CoverageDot } from './CoverageDots';
-export type { LineCoverageDotProps, CoverageDotProps, CoverageStrength } from './CoverageDots';
-
-export { QuoteCoverageLabelRep } from './QuoteCoverageLabelRep';
-export type { QuoteCoverageLabelRepProps } from './QuoteCoverageLabelRep';
-
 export { CatalogConfirmBanner } from './CatalogConfirmBanner';
 export type {
   CatalogConfirmBannerProps,
   CatalogConfirmBannerVariant,
 } from './CatalogConfirmBanner';
 
-export { ItemsToConfirm } from './ItemsToConfirm';
-export type { ItemsToConfirmProps, ItemsToConfirmMode } from './ItemsToConfirm';
-
-export { RepCtaStrip } from './RepCtaStrip';
-export type { RepCtaStripProps, RepCtaFlowState } from './RepCtaStrip';
+// P0: LineCoverageDot/CoverageDot (CoverageDots.tsx), QuoteCoverageLabelRep,
+// ItemsToConfirm, and RepCtaStrip were exported here only for the now-deleted
+// old quote-triage view (RepIncomingQuotePage + its RepPricingOnlyView /
+// RepReviewThreePanelDesktop / RepReviewMobileFallback sub-views). No other
+// consumer imported them, so the files were removed along with the view.

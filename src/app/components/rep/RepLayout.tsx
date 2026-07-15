@@ -87,8 +87,10 @@ export function RepLayout({ children }: RepLayoutProps = {}) {
   const nav = (dest: string, opts?: { quoteId?: string }) => {
     if (dest === 'rep-triage' || dest === 'rep-quotes-inbound') navigate('/rep/quotes/inbound');
     else if (dest === 'rep-quotes-history') navigate('/rep/quotes/history');
-    else if (dest === 'rep-incoming' && opts?.quoteId) navigate(`/rep/quotes/${opts.quoteId}`);
-    else if (dest === 'rep-pricing' && opts?.quoteId) navigate(`/rep/quotes/${opts.quoteId}?mode=pricing`);
+    // P0: old triage view (/rep/quotes/:id) deleted — route into the canonical
+    // quote-build flow instead (MapIngredientsPage loads the existing quote).
+    else if (dest === 'rep-incoming' && opts?.quoteId) navigate('/map-ingredients', { state: { quoteId: opts.quoteId } });
+    else if (dest === 'rep-pricing' && opts?.quoteId) navigate('/map-ingredients', { state: { quoteId: opts.quoteId } });
     else if (dest === 'rep-catalog') navigate('/distributor-admin/catalog');
     else if (dest === 'rep-customers') navigate('/rep/customers');
     else if (dest === 'rep-profile') navigate('/rep/profile');
