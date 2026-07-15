@@ -80,7 +80,7 @@ function DrillDownPanel({ row }: DrillDownPanelProps) {
     setError(null);
     getGapFillerNeedsPickQuotes(row.drill_down_token).then((res) => {
       if (cancelled) return;
-      if (res.data) setQuotes(res.data);
+      if (res.data) setQuotes(res.data.quotes);
       else setError(res.error || 'Failed to load source quotes');
       setLoading(false);
     });

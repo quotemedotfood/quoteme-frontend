@@ -13,6 +13,24 @@ import { formatCurrency } from '../utils/formatCurrency';
 import { ManagerSidebar } from '../components/distributor-admin/command-center/ManagerSidebar';
 import type { CCSidebarMode, CCManagerInfo } from '../components/distributor-admin/command-center/ManagerSidebar';
 
+// Same ROLE_LABEL/roleLabel pattern used in CCLayout.tsx (and
+// pages/admin/QMAdminUsers.tsx / QMAdminUserDetail.tsx) — kills the
+// hardcoded "Sales lead" title in favor of the real authenticated role.
+const ROLE_LABEL: Record<string, string> = {
+  distributor_admin: 'Distributor Admin',
+  quoteme_admin: 'QM Admin',
+  rep: 'Rep',
+  chef: 'Chef',
+  buyer: 'Buyer',
+  group_admin: 'Group Admin',
+  brand: 'Brand',
+};
+
+function roleLabel(role: string | undefined): string {
+  if (!role) return 'Manager';
+  return ROLE_LABEL[role] ?? role;
+}
+
 export function SettingsPage() {
   const { profile, updateProfile } = useUser();
   const { user, logout, refreshUser } = useAuth();
@@ -448,7 +466,7 @@ export function SettingsPage() {
   // Build manager info for distributor_admin sidebar shell
   const ccManager: CCManagerInfo = {
     name: user ? `${user.first_name ?? ''} ${user.last_name ?? ''}`.trim() || 'Manager' : 'Manager',
-    role: 'Sales lead',
+    role: roleLabel(user?.role),
     company: user?.distributor?.name ?? user?.distributor_name ?? 'Your company',
     region: '',
     today: new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }),

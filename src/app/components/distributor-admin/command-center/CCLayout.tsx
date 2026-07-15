@@ -74,9 +74,11 @@ function activeTabFromPath(pathname: string): CCActiveTab {
 
 // ── CCLayout ──────────────────────────────────────────────────────────────────
 
-// P5: Build the cold-landing URL for copy-link. Uses quoteme.food as the
-// production host (no VITE_ env var exists for the app host).
-const COLD_LANDING_HOST = 'https://quoteme.food';
+// P5: Build the cold-landing URL for copy-link. The standing page lives on the
+// `prod.quoteme.food` host — the bare apex `quoteme.food` does NOT serve /d/:slug
+// and 404s, which is what the emitted copy-links were doing. (No VITE_ env var
+// exists for the app host, so this is a constant.)
+const COLD_LANDING_HOST = 'https://prod.quoteme.food';
 
 function buildMenuDropUrl(slug: string | null | undefined): string | null {
   if (!slug) return null;

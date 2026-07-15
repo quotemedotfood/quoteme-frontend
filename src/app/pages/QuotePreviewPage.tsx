@@ -1,4 +1,4 @@
-import { useParams } from 'react-router';
+import { useParams, useSearchParams } from 'react-router';
 import { useState, useEffect } from 'react';
 import { getQuotePreview } from '../services/api';
 import type { QuotePreviewResponse } from '../services/api';
@@ -18,14 +18,23 @@ function toTitleCase(str: string): string {
 
 export function QuotePreviewPage() {
   const { id } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
+  const token = searchParams.get('token');
   const [quote, setQuote] = useState<QuotePreviewResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
+    if (!token) {
+      // No signed token in the URL — the backend endpoint 404s without one,
+      // so short-circuit instead of firing a doomed request.
+      setError('This quote could not be loaded.');
+      setLoading(false);
+      return;
+    }
     setLoading(true);
-    getQuotePreview(id).then((res) => {
+    getQuotePreview(id, token).then((res) => {
       if (res.error) {
         setError(res.error);
       } else if (res.data) {
@@ -33,7 +42,7 @@ export function QuotePreviewPage() {
       }
       setLoading(false);
     });
-  }, [id]);
+  }, [id, token]);
 
   if (loading) {
     return (
