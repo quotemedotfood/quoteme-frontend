@@ -1,27 +1,31 @@
 // CCQuoteFlowShell.test.ts
-// Unit tests for the CC shell gating logic on the quote-build flow.
+// Unit tests for the shell-gating logic on the quote-build flow.
 //
-// Quoting-flow audit fix: CCQuoteFlowShell used to wrap the quote-build
-// routes in the full CCLayout for distributor_admin only, leaving every other
-// role (chef, rep, guest, quoteme_admin, buyer) with a bare Outlet -- two
-// genuinely different quote-flow "shells" depending on role. That divergence
-// is gone: shouldUseCCShellForQuoteFlow now always returns false, and
-// CCQuoteFlowShell is a pure pass-through Outlet for every role.
+// Sidebar-consolidation fix (fix/persistent-sidebar-quoting-flow): a prior fix
+// flattened CCQuoteFlowShell to a pure pass-through Outlet for every role, to
+// close a divergence where distributor_admin alone got CCLayout. That
+// flattening over-corrected: rep and distributor_admin get NO chrome from
+// RootLayout (they carry their own dedicated shells elsewhere), so the bare
+// Outlet left the quote-build flow (incl. /map-ingredients) with no sidebar at
+// all for those two roles. The fix role-branches to each role's OWN existing
+// shell -- RepLayout for rep, CCLayout for distributor_admin -- leaving every
+// other role's chrome (RootLayout's ChefTopbar/AppSidebar, or none) untouched.
 //
-// Tests use the pure helper exported from CCQuoteFlowShell so they run without
-// jsdom or @testing-library/react -- same pattern as CatalogManagePage.test.ts.
+// Tests use the pure helpers exported from CCQuoteFlowShell so they run
+// without jsdom or @testing-library/react -- same pattern as
+// CatalogManagePage.test.ts.
 
 import { describe, it, expect } from 'vitest';
-import { shouldUseCCShellForQuoteFlow } from './CCQuoteFlowShell';
+import { shouldUseCCShellForQuoteFlow, shouldUseRepShellForQuoteFlow } from './CCQuoteFlowShell';
 
-// -- CC shell gating is consistently off for every role ----------------------
+// -- CC shell (ManagerSidebar) gating: distributor_admin only ----------------
 
-describe('shouldUseCCShellForQuoteFlow -- CC shell no longer wraps the quote flow for any role', () => {
-  it('returns false for distributor_admin -- CCLayout no longer special-cased here', () => {
-    expect(shouldUseCCShellForQuoteFlow('distributor_admin')).toBe(false);
+describe('shouldUseCCShellForQuoteFlow -- CCLayout wraps the quote flow for distributor_admin only', () => {
+  it('returns true for distributor_admin -- their only other shell in the app is CCLayout', () => {
+    expect(shouldUseCCShellForQuoteFlow('distributor_admin')).toBe(true);
   });
 
-  it('returns false for chef -- shell-less Outlet preserves existing chef UX', () => {
+  it('returns false for chef -- chef chrome comes from RootLayout (ChefTopbar), not CCLayout', () => {
     expect(shouldUseCCShellForQuoteFlow('chef')).toBe(false);
   });
 
@@ -29,7 +33,7 @@ describe('shouldUseCCShellForQuoteFlow -- CC shell no longer wraps the quote flo
     expect(shouldUseCCShellForQuoteFlow('rep')).toBe(false);
   });
 
-  it('returns false for quoteme_admin -- QM admin has its own shell', () => {
+  it('returns false for quoteme_admin -- QM admin has its own shell (AppSidebar via RootLayout)', () => {
     expect(shouldUseCCShellForQuoteFlow('quoteme_admin')).toBe(false);
   });
 
@@ -43,6 +47,26 @@ describe('shouldUseCCShellForQuoteFlow -- CC shell no longer wraps the quote flo
 
   it('returns false for group_admin -- chef-side role, no CC sidebar', () => {
     expect(shouldUseCCShellForQuoteFlow('group_admin')).toBe(false);
+  });
+});
+
+// -- Rep shell (RepNewspaperSidebar) gating: rep only -------------------------
+
+describe('shouldUseRepShellForQuoteFlow -- RepLayout wraps the quote flow for rep only', () => {
+  it('returns true for rep -- their only other shell in the app is RepLayout', () => {
+    expect(shouldUseRepShellForQuoteFlow('rep')).toBe(true);
+  });
+
+  it('returns false for distributor_admin -- distributor_admin gets CCLayout, not RepLayout', () => {
+    expect(shouldUseRepShellForQuoteFlow('distributor_admin')).toBe(false);
+  });
+
+  it('returns false for chef, quoteme_admin, buyer, group_admin, and guest', () => {
+    expect(shouldUseRepShellForQuoteFlow('chef')).toBe(false);
+    expect(shouldUseRepShellForQuoteFlow('quoteme_admin')).toBe(false);
+    expect(shouldUseRepShellForQuoteFlow('buyer')).toBe(false);
+    expect(shouldUseRepShellForQuoteFlow('group_admin')).toBe(false);
+    expect(shouldUseRepShellForQuoteFlow(undefined)).toBe(false);
   });
 });
 
