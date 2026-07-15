@@ -210,7 +210,7 @@ function AssignRow({
                 lineHeight: 1.3,
               }}
             >
-              {row.restaurant || '—'}
+              {row.restaurant || '-'}
             </div>
             <div
               style={{
@@ -270,8 +270,8 @@ function AssignRow({
 
   // ── Unassigned row ──
   // B-107: row.city can be null from the BE even though the type says string.
-  // Template literals coerce null → "null"; guard with ?? to show "—" instead.
-  const safeCity = (row.city as string | null) ?? '—';
+  // Template literals coerce null → "null"; guard with ?? to show "-" instead.
+  const safeCity = (row.city as string | null) ?? '-';
   const metaLine =
     row.kind === 'quote'
       ? safeCity
@@ -314,7 +314,7 @@ function AssignRow({
                   lineHeight: 1.3,
                 }}
               >
-                {row.restaurant || '—'}
+                {row.restaurant || '-'}
               </span>
               {contextLabel && (
                 <span
@@ -490,8 +490,8 @@ export function CCAssignPage() {
     <div>
       <CCSectionHead
         eyebrow="ASSIGNMENTS"
-        title="Unassigned — pick an owner."
-        sub="Inbound interest and quotes nobody's holding yet. Hand each one to a rep. Loads are shown so you can spread the work — never a ranking."
+        title="Unassigned: pick an owner."
+        sub="Inbound interest and quotes nobody's holding yet. Hand each one to a rep. Loads are shown so you can spread the work, never a ranking."
       />
 
       <div style={{ marginTop: 24 }}>
@@ -516,7 +516,7 @@ export function CCAssignPage() {
             WAITING ON YOU
           </span>
           <span style={{ ...sans, ...tabular, fontSize: 11, color: C.gray400 }}>
-            {loading ? '—' : items.length}
+            {loading ? '-' : items.length}
           </span>
         </div>
 

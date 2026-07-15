@@ -230,7 +230,7 @@ export function QMAdminSignups() {
                       </span>
                     </TableCell>
                     <TableCell className="text-sm">
-                      {u.distributor_name || '—'}
+                      {u.distributor_name || '-'}
                       {u.distributor_name && !u.claimed_distributor_id && (
                         <span className="ml-2 inline-block px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-100 text-blue-700">
                           New Distributor Request

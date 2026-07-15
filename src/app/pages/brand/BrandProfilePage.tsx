@@ -27,7 +27,7 @@ export function BrandProfilePage() {
       <div className="mb-4 px-4 py-3 rounded-md flex items-center gap-2.5" style={{ background: 'var(--qm-warm-paper)', border: '1px solid var(--qm-soft-line)' }}>
         <NpIcon name="eye" size={14} color="var(--qm-gray-500)" />
         <span className="text-[11.5px] ink-soft">
-          This is your public profile — how distributors and the network see you. Edit details in{' '}
+          This is your public profile: how distributors and the network see you. Edit details in{' '}
           <button
             onClick={() => navigate('/brand/settings')}
             className="underline ink"
@@ -56,7 +56,7 @@ export function BrandProfilePage() {
           </div>
           <div className="doc-divider py-2.5 flex items-baseline justify-between gap-3">
             <span className="qm-eyebrow" style={{ fontSize: 9 }}>EMAIL</span>
-            <span className="text-[13px] ink leading-snug">{user?.email ?? '—'}</span>
+            <span className="text-[13px] ink leading-snug">{user?.email ?? '-'}</span>
           </div>
         </ProfileSection>
       )}
@@ -66,7 +66,7 @@ export function BrandProfilePage() {
         <NpIcon name="info" size={14} color="var(--accent)" style={{ marginTop: 1 }} />
         <div className="ink-soft leading-relaxed" style={{ fontSize: 12, maxWidth: 460 }}>
           <b className="ink">Prices are never shown here.</b> Your products show names and pack specs only.
-          Pricing lives inside a distributor's catalog — never on your profile.
+          Pricing lives inside a distributor's catalog, never on your profile.
         </div>
       </div>
     </div>

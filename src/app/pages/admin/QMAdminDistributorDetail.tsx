@@ -714,8 +714,8 @@ export function QMAdminDistributorDetailPage() {
                   <TableRow key={r.id} className="hover:bg-gray-50">
                     <TableCell className="font-medium">{r.name}</TableCell>
                     <TableCell className="text-sm text-gray-500">{r.email}</TableCell>
-                    <TableCell className="text-sm text-gray-500">{r.phone || '—'}</TableCell>
-                    <TableCell className="text-sm text-gray-500">{r.territory || '—'}</TableCell>
+                    <TableCell className="text-sm text-gray-500">{r.phone || '-'}</TableCell>
+                    <TableCell className="text-sm text-gray-500">{r.territory || '-'}</TableCell>
                     <TableCell>
                       <span className={`text-xs px-2 py-0.5 rounded ${r.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
                         {r.is_active ? 'Active' : 'Inactive'}
@@ -760,8 +760,8 @@ export function QMAdminDistributorDetailPage() {
                 {(dist.restaurants || []).map((r) => (
                   <TableRow key={r.id} className="hover:bg-gray-50">
                     <TableCell className="font-medium">{r.name}</TableCell>
-                    <TableCell className="text-sm text-gray-500">{r.city || '—'}</TableCell>
-                    <TableCell className="text-sm text-gray-500">{r.state || '—'}</TableCell>
+                    <TableCell className="text-sm text-gray-500">{r.city || '-'}</TableCell>
+                    <TableCell className="text-sm text-gray-500">{r.state || '-'}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -790,11 +790,11 @@ export function QMAdminDistributorDetailPage() {
               <TableBody>
                 {(dist.catalogs || []).map((c) => (
                   <TableRow key={c.id} className="hover:bg-gray-50">
-                    <TableCell className="text-sm text-gray-500">{c.uploaded_at ? new Date(c.uploaded_at).toLocaleDateString() : '—'}</TableCell>
-                    <TableCell className="font-medium">{c.original_filename || '—'}</TableCell>
-                    <TableCell className="text-sm text-gray-500">{c.uploaded_by || '—'}</TableCell>
-                    <TableCell className="text-sm text-gray-500">{c.product_count?.toLocaleString() ?? '—'}</TableCell>
-                    <TableCell className="text-sm text-gray-500">{c.pct_uncategorized != null ? `${c.pct_uncategorized}%` : '—'}</TableCell>
+                    <TableCell className="text-sm text-gray-500">{c.uploaded_at ? new Date(c.uploaded_at).toLocaleDateString() : '-'}</TableCell>
+                    <TableCell className="font-medium">{c.original_filename || '-'}</TableCell>
+                    <TableCell className="text-sm text-gray-500">{c.uploaded_by || '-'}</TableCell>
+                    <TableCell className="text-sm text-gray-500">{c.product_count?.toLocaleString() ?? '-'}</TableCell>
+                    <TableCell className="text-sm text-gray-500">{c.pct_uncategorized != null ? `${c.pct_uncategorized}%` : '-'}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

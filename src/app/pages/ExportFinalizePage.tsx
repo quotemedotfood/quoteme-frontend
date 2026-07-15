@@ -224,7 +224,7 @@ export function ExportFinalizePage() {
         csvParts.push('');
         csvParts.push('Items Not in Distributor Catalog');
         if (produceNames.length > 0) {
-          csvParts.push(escCsv(`Fresh produce — source externally (${produceNames.join(', ')})`));
+          csvParts.push(escCsv(`Fresh produce: source externally (${produceNames.join(', ')})`));
         }
         for (const line of otherUnmatched) {
           csvParts.push(escCsv(line.component?.name || 'Unknown'));
@@ -420,7 +420,7 @@ export function ExportFinalizePage() {
     if (!quoteId) return;
     const phone = contactPhone;
     if (!phone) {
-      setSendError('No phone number — enter one or add a contact.');
+      setSendError('No phone number: enter one or add a contact.');
       return;
     }
     setSendingSms(true);
@@ -533,7 +533,7 @@ export function ExportFinalizePage() {
                 className="text-[#4A90D9] hover:text-[#3a7bc8] underline underline-offset-2 cursor-pointer"
                 data-testid="menu-review-link"
               >
-                Menu: unreviewed — review now
+                Menu: unreviewed, review now
               </button>
             )}
             <span className="text-gray-300">|</span>
@@ -580,7 +580,7 @@ export function ExportFinalizePage() {
                       Recipient
                     </label>
                     <div className="text-sm text-gray-500 bg-amber-50 px-4 py-3 rounded-md border border-amber-200">
-                      Open Quote — enter recipient details in the Send to Customer section below, or export the quote to yourself.
+                      Open Quote: enter recipient details in the Send to Customer section below, or export the quote to yourself.
                     </div>
                   </div>
                 ) : (
@@ -611,7 +611,7 @@ export function ExportFinalizePage() {
                       </div>
                     ) : (
                       <div className="text-sm text-gray-400 italic bg-gray-50 px-4 py-3 rounded-md border border-dashed border-gray-200">
-                        {contacts.length === 0 ? 'No contacts on file — add contacts from the Customers page' : 'No contacts selected'}
+                        {contacts.length === 0 ? 'No contacts on file, add contacts from the Customers page' : 'No contacts selected'}
                       </div>
                     )}
                   </div>
@@ -620,7 +620,7 @@ export function ExportFinalizePage() {
                 <div className="pt-4 border-t border-gray-200 space-y-3">
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-gray-600">Total Products:</span>
-                    <span className="text-sm text-[#2A2A2A] font-medium">{quoteData ? partitionLines(quoteData.lines || []).matched.length : '—'}</span>
+                    <span className="text-sm text-[#2A2A2A] font-medium">{quoteData ? partitionLines(quoteData.lines || []).matched.length : '-'}</span>
                   </div>
                 </div>
               </div>
@@ -757,7 +757,7 @@ export function ExportFinalizePage() {
                               <p className="text-xs text-gray-400">{categoryLabel(line.category || '')}</p>
                             </div>
                             <div className="text-right ml-3 shrink-0">
-                              <p className="text-sm font-semibold text-[#2A2A2A]">{line.unit_price || '—'}</p>
+                              <p className="text-sm font-semibold text-[#2A2A2A]">{line.unit_price || '-'}</p>
                               <p className="text-xs text-gray-400">×{line.quantity}</p>
                             </div>
                           </div>
@@ -769,7 +769,7 @@ export function ExportFinalizePage() {
                           {produceNames.length > 0 && (
                             <div className="bg-amber-50 rounded-lg p-3 border border-amber-100 mb-2">
                               <p className="text-xs text-amber-700">
-                                Fresh produce not carried by this distributor — source externally ({produceNames.join(', ')})
+                                Fresh produce not carried by this distributor: source externally ({produceNames.join(', ')})
                               </p>
                             </div>
                           )}
@@ -811,7 +811,7 @@ export function ExportFinalizePage() {
                       )}
                       <div>
                         <span className="text-gray-400">Quote #: </span>
-                        <span className="font-semibold text-gray-700">{quoteId ? quoteId.split('-')[0].toUpperCase() : '—'}</span>
+                        <span className="font-semibold text-gray-700">{quoteId ? quoteId.split('-')[0].toUpperCase() : '-'}</span>
                       </div>
                       <div>
                         <span className="text-gray-400">Quote Date: </span>
@@ -841,11 +841,11 @@ export function ExportFinalizePage() {
                                 className="grid grid-cols-6 gap-0 text-[0.5rem] border-t border-gray-100"
                                 style={{ backgroundColor: i % 2 === 1 ? '#F9FAFB' : 'white' }}
                               >
-                                <div className="px-1.5 py-0.5 truncate text-gray-600">{categoryLabel(line.category || '') || '—'}</div>
-                                <div className="px-1.5 py-0.5 truncate text-gray-600">{line.product?.item_number || '—'}</div>
-                                <div className="px-1.5 py-0.5 truncate text-gray-600">{toTitleCase(line.product?.brand || '') || '—'}</div>
-                                <div className="px-1.5 py-0.5 truncate text-gray-600 col-span-2">{toTitleCase(line.product?.product || '') || '—'}</div>
-                                <div className="px-1.5 py-0.5 text-right text-gray-600">{line.unit_price || '—'}</div>
+                                <div className="px-1.5 py-0.5 truncate text-gray-600">{categoryLabel(line.category || '') || '-'}</div>
+                                <div className="px-1.5 py-0.5 truncate text-gray-600">{line.product?.item_number || '-'}</div>
+                                <div className="px-1.5 py-0.5 truncate text-gray-600">{toTitleCase(line.product?.brand || '') || '-'}</div>
+                                <div className="px-1.5 py-0.5 truncate text-gray-600 col-span-2">{toTitleCase(line.product?.product || '') || '-'}</div>
+                                <div className="px-1.5 py-0.5 text-right text-gray-600">{line.unit_price || '-'}</div>
                               </div>
                             ))}
                             {remaining > 0 && (

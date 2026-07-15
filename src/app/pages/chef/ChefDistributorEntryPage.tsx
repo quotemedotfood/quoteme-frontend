@@ -295,7 +295,7 @@ function UploadPanel({ onDone }: UploadPanelProps) {
     <div className="mt-5">
       <div className={eyebrowClass} style={{ fontSize: 10, textTransform: 'none' }}>Upload</div>
       <p className="text-[11.5px] text-[#4F4F4F] leading-relaxed mt-1.5" style={{ maxWidth: 560 }}>
-        We'll parse it and match the items against your menu. Photos of an order guide work too —
+        We'll parse it and match the items against your menu. Photos of an order guide work too,
         most reps' price lists are just a printed PDF anyway.
       </p>
 
@@ -475,7 +475,7 @@ function RequestPanel({ restaurantName }: RequestPanelProps) {
   const { user } = useUser();
 
   const defaultNote =
-    `Hi — building out our menu at ${restaurantName || 'our restaurant'} and would love to see your latest price list. Happy to send over what we're looking at.`;
+    `Hi, building out our menu at ${restaurantName || 'our restaurant'} and would love to see your latest price list. Happy to send over what we're looking at.`;
 
   const [distName, setDistName] = useState('');
   const [repName, setRepName] = useState('');
@@ -588,7 +588,7 @@ function RequestPanel({ restaurantName }: RequestPanelProps) {
           className={inputClass}
         />
         <p className="text-[10.5px] text-[#9E9E9E] italic leading-snug mt-1" style={serifStyle}>
-          Either works — we'll route it to the right place.
+          Either works, we'll route it to the right place.
         </p>
       </div>
 
@@ -605,7 +605,7 @@ function RequestPanel({ restaurantName }: RequestPanelProps) {
           className={textareaClass}
         />
         <p className="text-[10.5px] text-[#9E9E9E] leading-snug mt-1" style={serifStyle}>
-          Pre-filled — edit anything that doesn't sound like you.
+          Pre-filled: edit anything that doesn't sound like you.
         </p>
       </div>
 

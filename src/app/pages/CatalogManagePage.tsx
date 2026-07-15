@@ -630,8 +630,8 @@ export function CatalogManagePage() {
                       />
                     </td>
                     <td className="px-4 py-3 text-[#2A2A2A] font-medium">{product.product_name}</td>
-                    <td className="px-4 py-3 text-gray-500">{product.brand || '—'}</td>
-                    <td className="px-4 py-3 text-gray-500">{product.pack_size || '—'}</td>
+                    <td className="px-4 py-3 text-gray-500">{product.brand || '-'}</td>
+                    <td className="px-4 py-3 text-gray-500">{product.pack_size || '-'}</td>
                     <td className="px-4 py-3">
                       {editingId === product.id ? (
                         <div className="flex items-center gap-2">

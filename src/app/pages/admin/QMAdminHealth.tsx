@@ -65,7 +65,7 @@ function HistoryDots({ history }: { history: HealthHistoryEntry[] }) {
         <div
           key={i}
           className={`w-1.5 h-3 rounded-sm ${DOT_COLOR[entry.status]} cursor-default`}
-          title={`${entry.status.toUpperCase()} — ${entry.message}\n${new Date(entry.checked_at).toLocaleString()}`}
+          title={`${entry.status.toUpperCase()}: ${entry.message}\n${new Date(entry.checked_at).toLocaleString()}`}
         />
       ))}
     </div>

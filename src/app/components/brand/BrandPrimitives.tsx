@@ -306,7 +306,7 @@ export function NoPricingFooter({ desktop = false }: { desktop?: boolean }) {
     <div className="mt-8 flex items-start gap-3" style={{ borderTop: '1px solid var(--qm-soft-line)', paddingTop: 14 }}>
       <NpIcon name="shield" size={15} color="var(--accent)" style={{ marginTop: 1 }} />
       <div className="ink-soft leading-relaxed" style={{ fontSize: desktop ? 12 : 11.5, maxWidth: 460 }}>
-        <b className="ink">Prices are never shown here.</b> A distributor's catalog and pricing stay private —
+        <b className="ink">Prices are never shown here.</b> A distributor's catalog and pricing stay private:
         they appear only inside a quote a chef has asked for. Nothing on this page reflects what anything costs.
       </div>
     </div>

@@ -288,7 +288,7 @@ function DeskRow({ q, onClick, onEdit, onRepClick }: { q: CCQuoteRow; onClick: (
 
       {/* TOTAL */}
       <div style={{ ...sans, ...tabular, fontSize: 12.5, color: C.gray700 }}>
-        {q.total != null ? money(q.total) : '—'}
+        {q.total != null ? money(q.total) : '-'}
       </div>
 
       {/* STATUS */}
@@ -496,7 +496,7 @@ export function CCQuotesPage() {
       <CCSectionHead
         eyebrow="REP ACTIVITY"
         title="Every quote across the team."
-        sub="What each rep has out, and where it landed. Tap a row to read the quote — you see everything, editing stays with the rep."
+        sub="What each rep has out, and where it landed. Tap a row to read the quote: you see everything, editing stays with the rep."
       />
 
       <div style={{ marginTop: 16 }}>

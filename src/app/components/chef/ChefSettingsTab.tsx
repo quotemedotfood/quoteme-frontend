@@ -68,7 +68,7 @@ import { shouldShowSubscribeCta, quotaDisplayText, billingPlanLabel } from '../.
 function openAddPaymentMailto(chefIdentifier: string) {
   const subject = encodeURIComponent('QuoteMe subscription request');
   const body = encodeURIComponent(
-    `I'd like to subscribe to QuoteMe at $20/month. — ${chefIdentifier}`
+    `I'd like to subscribe to QuoteMe at $20/month. - ${chefIdentifier}`
   );
   window.location.href = `mailto:justinl@quoteme.food?subject=${subject}&body=${body}`;
 }
@@ -212,7 +212,7 @@ function EditYouDrawer({
                 className="border border-[var(--border)] rounded-md px-3 py-2 text-[13.5px] ink-faint bg-transparent cursor-not-allowed select-none"
                 title="Phone updates require contacting support. Chef v4 pre-work."
               >
-                —
+                -
               </div>
               <p className="text-[11px] ink-faint leading-snug">
                 To update your phone number, email{' '}
@@ -798,8 +798,8 @@ export function ChefSettingsTab({ state = 'with-data', nav = noopNav }: ChefSett
   const chefFirst = user?.first_name ?? '';
   const chefLast = user?.last_name ?? '';
   const chefEmail = user?.email ?? '';
-  const chefFullName = [chefFirst, chefLast].filter(Boolean).join(' ') || '—';
-  const restaurantDisplay = restaurant?.name ?? '—';
+  const chefFullName = [chefFirst, chefLast].filter(Boolean).join(' ') || '-';
+  const restaurantDisplay = restaurant?.name ?? '-';
 
   // Formatted address for display — combine non-null parts
   const addressParts = [
@@ -869,17 +869,17 @@ export function ChefSettingsTab({ state = 'with-data', nav = noopNav }: ChefSett
         <SettingsSection title="YOU">
           <SettingRow
             label="Name"
-            value={empty ? '—' : chefFullName}
+            value={empty ? '-' : chefFullName}
             onEdit={() => setEditYouOpen(true)}
           />
           <SettingRow
             label="Email"
-            value={empty ? '—' : (chefEmail || '—')}
+            value={empty ? '-' : (chefEmail || '-')}
             onEdit={() => setEditYouOpen(true)}
           />
           <SettingRow
             label="Phone"
-            value={empty ? 'Add a number' : '—'}
+            value={empty ? 'Add a number' : '-'}
             placeholder={empty || true}
             editDisabled
             editTooltip="Phone updates for chefs coming in a future release."
@@ -952,18 +952,18 @@ export function ChefSettingsTab({ state = 'with-data', nav = noopNav }: ChefSett
           </div>
           <SettingRow
             label="Name"
-            value={empty ? '—' : restaurantDisplay}
+            value={empty ? '-' : restaurantDisplay}
             onEdit={() => setEditRestaurantOpen(true)}
           />
           <SettingRow
             label="Address"
-            value={empty ? 'Add address' : (addressDisplay ?? '—')}
+            value={empty ? 'Add address' : (addressDisplay ?? '-')}
             placeholder={empty || !addressDisplay}
             onEdit={() => setEditRestaurantOpen(true)}
           />
           <SettingRow
             label="Phone"
-            value={empty ? 'Add a number' : (restaurant?.phone ?? '—')}
+            value={empty ? 'Add a number' : (restaurant?.phone ?? '-')}
             placeholder={empty || !restaurant?.phone}
             onEdit={() => setEditRestaurantOpen(true)}
           />
@@ -1102,7 +1102,7 @@ export function ChefSettingsTab({ state = 'with-data', nav = noopNav }: ChefSett
                 <div className="serif text-[15px] font-medium ink">
                   {empty
                     ? 'Free'
-                    : billingPlanLabel(billingData) ?? '—'}
+                    : billingPlanLabel(billingData) ?? '-'}
                 </div>
                 <span
                   className="qm-pill"
@@ -1120,7 +1120,7 @@ export function ChefSettingsTab({ state = 'with-data', nav = noopNav }: ChefSett
                 <QuoteCountPill>
                   {empty
                     ? '0 of 5 quotes used · 5 left'
-                    : quotaDisplayText(billingData) || '— of 5 quotes used'}
+                    : quotaDisplayText(billingData) || '- of 5 quotes used'}
                 </QuoteCountPill>
               </div>
             </div>
@@ -1160,7 +1160,7 @@ export function ChefSettingsTab({ state = 'with-data', nav = noopNav }: ChefSett
           className="mt-7 pt-4 flex items-center justify-between"
           style={{ borderTop: '1px solid var(--border)' }}
         >
-          <div className="text-[11.5px] ink-faint">Signed in as {chefEmail || '—'}</div>
+          <div className="text-[11.5px] ink-faint">Signed in as {chefEmail || '-'}</div>
           <button className="text-[11.5px] ink-soft underline" onClick={handleSignOut}>
             Sign out
           </button>
@@ -1236,8 +1236,8 @@ export function ChefSettingsTabDesktop({
   const chefFirst = user?.first_name ?? '';
   const chefLast = user?.last_name ?? '';
   const chefEmail = user?.email ?? '';
-  const chefFullName = [chefFirst, chefLast].filter(Boolean).join(' ') || '—';
-  const restaurantDisplay = restaurant?.name ?? '—';
+  const chefFullName = [chefFirst, chefLast].filter(Boolean).join(' ') || '-';
+  const restaurantDisplay = restaurant?.name ?? '-';
 
   // Formatted address for display
   const addressParts = [
@@ -1314,17 +1314,17 @@ export function ChefSettingsTabDesktop({
             <div className="grid grid-cols-[120px_1fr_auto] items-baseline gap-x-4">
               <DesktopSettingRow
                 label="Name"
-                value={empty ? '—' : chefFullName}
+                value={empty ? '-' : chefFullName}
                 onEdit={() => setEditYouOpen(true)}
               />
               <DesktopSettingRow
                 label="Email"
-                value={empty ? '—' : (chefEmail || '—')}
+                value={empty ? '-' : (chefEmail || '-')}
                 onEdit={() => setEditYouOpen(true)}
               />
               <DesktopSettingRow
                 label="Phone"
-                value={empty ? 'Add a number' : '—'}
+                value={empty ? 'Add a number' : '-'}
                 placeholder={empty || true}
                 editDisabled
                 editTooltip="Phone updates for chefs coming in a future release."
@@ -1406,18 +1406,18 @@ export function ChefSettingsTabDesktop({
             <div className="grid grid-cols-[120px_1fr_auto] items-baseline gap-x-4">
               <DesktopSettingRow
                 label="Name"
-                value={empty ? '—' : restaurantDisplay}
+                value={empty ? '-' : restaurantDisplay}
                 onEdit={() => setEditRestaurantOpen(true)}
               />
               <DesktopSettingRow
                 label="Address"
-                value={empty ? 'Add address' : (addressDisplay ?? '—')}
+                value={empty ? 'Add address' : (addressDisplay ?? '-')}
                 placeholder={empty || !addressDisplay}
                 onEdit={() => setEditRestaurantOpen(true)}
               />
               <DesktopSettingRow
                 label="Phone"
-                value={empty ? 'Add a number' : (restaurant?.phone ?? '—')}
+                value={empty ? 'Add a number' : (restaurant?.phone ?? '-')}
                 placeholder={empty || !restaurant?.phone}
                 onEdit={() => setEditRestaurantOpen(true)}
               />
@@ -1600,7 +1600,7 @@ export function ChefSettingsTabDesktop({
                   <div className="serif text-[18px] font-medium ink">
                     {empty
                       ? 'Free'
-                      : billingPlanLabel(billingData) ?? '—'}
+                      : billingPlanLabel(billingData) ?? '-'}
                   </div>
                   <span
                     className="qm-pill"
@@ -1618,7 +1618,7 @@ export function ChefSettingsTabDesktop({
                   <QuoteCountPill>
                     {empty
                       ? '0 of 5 quotes used · 5 left'
-                      : quotaDisplayText(billingData) || '— of 5 quotes used'}
+                      : quotaDisplayText(billingData) || '- of 5 quotes used'}
                   </QuoteCountPill>
                 </div>
               </div>
@@ -1659,7 +1659,7 @@ export function ChefSettingsTabDesktop({
             className="mt-10 pt-5 flex items-center justify-between"
             style={{ borderTop: '1px solid var(--border)' }}
           >
-            <div className="text-[12px] ink-faint">Signed in as {chefEmail || '—'}</div>
+            <div className="text-[12px] ink-faint">Signed in as {chefEmail || '-'}</div>
             <button className="text-[12px] ink-soft underline" onClick={handleSignOut}>
               Sign out
             </button>

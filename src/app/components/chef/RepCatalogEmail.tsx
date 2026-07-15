@@ -172,7 +172,7 @@ export function RepCatalogEmail({ desktop = false }: RepCatalogEmailProps) {
             margin: 0,
           }}
         >
-          {SECURE.repFirst} —
+          {SECURE.repFirst},
         </p>
 
         {/* Body copy */}
@@ -187,7 +187,7 @@ export function RepCatalogEmail({ desktop = false }: RepCatalogEmailProps) {
           }}
         >
           {SECURE.chefFull} over at {SECURE.restaurant} is pricing a menu and needs your current{' '}
-          {SECURE.distributorFull} price list. Don't dig it up yourself — pass this to whoever
+          {SECURE.distributorFull} price list. Don't dig it up yourself, pass this to whoever
           keeps your catalog up to date. They drop the file, and {SECURE.chefFirst} is quoting
           against it within the hour.
         </p>
@@ -278,7 +278,7 @@ export function RepCatalogEmail({ desktop = false }: RepCatalogEmailProps) {
             }}
           >
             Forward this email, or copy the link to text it over. It works no matter who opens
-            it — no QuoteMe account needed.
+            it: no QuoteMe account needed.
           </p>
         </div>
 
@@ -316,7 +316,7 @@ export function RepCatalogEmail({ desktop = false }: RepCatalogEmailProps) {
             marginTop: desktop ? 22 : 18,
           }}
         >
-          The link is good for 7 days. {SECURE.chefFirst} sees these prices only — they're
+          The link is good for 7 days. {SECURE.chefFirst} sees these prices only: they're
           never shared with other distributors.
         </p>
 
@@ -330,7 +330,7 @@ export function RepCatalogEmail({ desktop = false }: RepCatalogEmailProps) {
             marginTop: desktop ? 16 : 13,
           }}
         >
-          — QuoteMe
+          - QuoteMe
         </p>
       </div>
 

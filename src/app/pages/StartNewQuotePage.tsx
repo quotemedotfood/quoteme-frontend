@@ -543,7 +543,7 @@ export function StartNewQuotePage() {
         if (isServiceBusyError(err)) {
           setExtractError('Our menu analysis service is temporarily busy. Please try again in a few seconds.');
         } else if (err.includes('pdf_too_large')) {
-          setExtractError("This menu is too large to process at once. Try uploading just the section you need — dinner entrees, cocktail list, or appetizers.");
+          setExtractError("This menu is too large to process at once. Try uploading just the section you need: dinner entrees, cocktail list, or appetizers.");
         } else if (err.includes('url_fetch_failed')) {
           setExtractError("We couldn't fetch that URL. Check the link or try uploading the PDF directly.");
         } else if (err.includes('url_unsupported_type')) {
@@ -1010,7 +1010,7 @@ export function StartNewQuotePage() {
         <p className="text-lg font-medium text-[#2A2A2A]" style={{ fontFamily: "'DM Sans', sans-serif" }}>
           {['Reading menu...', 'Extracting ingredients...', 'Matching to catalog...', 'Building your quote...', 'Almost there...', 'So close...'][loadingPhase]}
         </p>
-        <p className="text-sm text-gray-400 mt-2">This usually takes 15–60 seconds</p>
+        <p className="text-sm text-gray-400 mt-2">This usually takes 15 to 60 seconds</p>
       </div>
     );
   }
@@ -1076,7 +1076,7 @@ export function StartNewQuotePage() {
             {liquorDemo ? 'Start New Beverage Quote' : 'Start New Quote'}
           </h1>
           <p className="text-gray-600" style={{ fontFamily: "'DM Sans', sans-serif" }}>
-            {liquorDemo ? 'Paste a drink menu, upload a photo, or type your list.' : 'Paste a menu, cocktail list, or food concept — anything a chef or operator would hand a rep.'}
+            {liquorDemo ? 'Paste a drink menu, upload a photo, or type your list.' : 'Paste a menu, cocktail list, or food concept: anything a chef or operator would hand a rep.'}
           </p>
 
           {/* Five-step guide — demo flow */}
@@ -1144,7 +1144,7 @@ export function StartNewQuotePage() {
         <div className={`bg-white rounded-xl p-6 mb-6 shadow-sm border border-gray-100 ${draftLimitReached ? 'opacity-40 pointer-events-none' : ''}`}>
           <h2 className="text-lg font-semibold text-[#2A2A2A] mb-1">Menu</h2>
           <p className="text-xs text-gray-500 mb-4">
-            Upload the restaurant's menu — dishes and drinks, not a product catalog or price list.
+            Upload the restaurant's menu: dishes and drinks, not a product catalog or price list.
             Uploading a catalog instead? Use the Catalog section below.
           </p>
           <input
@@ -1839,7 +1839,7 @@ export function StartNewQuotePage() {
             </div>
             <div className="p-6">
               <p className="text-sm text-gray-500 mb-4">
-                Review these categories — classification was uncertain.
+                Review these categories: classification was uncertain.
               </p>
               <CategoryReviewPanel
                 catalogId={catalogUploadResult.catalogId}

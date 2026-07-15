@@ -133,7 +133,7 @@ export function RequestCatalogCallout({
         }}
       >
         We'll send {repFirst} a link he can pass to whoever keeps {distributorName}'s catalog
-        current. You'll hear from us once it's loaded — nothing to chase in the meantime.
+        current. You'll hear from us once it's loaded, nothing to chase in the meantime.
       </div>
     </div>
   );

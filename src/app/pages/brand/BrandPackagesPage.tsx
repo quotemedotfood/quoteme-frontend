@@ -176,7 +176,7 @@ function PackageDetailView({ id }: { id: string }) {
             <NpIcon name="send" size={16} color="#fff" />
             {sending ? 'Sending…' : `Notify ${selectedDistName ?? 'a distributor'}`}
           </button>
-          <div className="mt-2 text-[11px] ink-faint">One distributor per package — each stays its own thread.</div>
+          <div className="mt-2 text-[11px] ink-faint">One distributor per package, each stays its own thread.</div>
         </div>
       )}
     </div>
@@ -280,7 +280,7 @@ function PackageListView() {
               {catalogProducts.length > 0 && (
                 <div className="mb-3">
                   <label className="qm-eyebrow block mb-2" style={{ fontSize: 9 }}>
-                    PRODUCTS FROM CATALOG — {selectedProducts.length} selected
+                    PRODUCTS FROM CATALOG: {selectedProducts.length} selected
                   </label>
                   <div style={{ maxHeight: 200, overflowY: 'auto', border: '1px solid var(--qm-soft-line)', borderRadius: 6 }}>
                     {catalogProducts.map((p, i) => {

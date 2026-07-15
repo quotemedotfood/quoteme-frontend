@@ -292,7 +292,7 @@ export function ExclusionRulesPanel() {
       {['produce', 'dairy'].filter(c => !categoriesWithRules.includes(c)).map(cat => (
         <div key={cat} className="border border-dashed border-gray-300 rounded-lg px-4 py-3">
           <div className="flex items-center justify-between">
-            <span className="text-sm text-gray-500 capitalize">{cat} — no rules yet</span>
+            <span className="text-sm text-gray-500 capitalize">{cat}: no rules yet</span>
             {addingTo !== cat && (
               <button
                 onClick={() => { setAddingTo(cat); setNewWord(''); setNewToCategory('dry_goods'); }}

@@ -179,7 +179,7 @@ export function QMAdminConferenceCommand() {
         <div className="bg-gradient-to-r from-[#1e3a5f] to-[#2d5a8e] text-white px-4 md:px-6 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-            <span className="text-sm font-medium">SENA 2026 — Live</span>
+            <span className="text-sm font-medium">SENA 2026: Live</span>
             <span className="text-xs text-white/70 hidden sm:inline">
               {todayCount} leads captured today
             </span>
@@ -714,7 +714,7 @@ function LeadDetailPanel({
         )}
         {lead.email_sent_at && (
           <p className="text-[10px] text-green-600 mt-1 text-center">
-            Sent {lead.email_send_count}x — last {formatRelativeTime(lead.email_sent_at)}
+            Sent {lead.email_send_count}x, last {formatRelativeTime(lead.email_sent_at)}
           </p>
         )}
       </div>

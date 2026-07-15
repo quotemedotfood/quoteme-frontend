@@ -164,7 +164,7 @@ export function BrandCapturePage() {
           {selectedCount > 0 && (
             <div className="mt-4 px-4 py-4 rounded-md" style={{ background: 'var(--qm-warm-paper)', border: '1px solid var(--qm-soft-line)' }}>
               <div className="qm-eyebrow mb-3" style={{ fontSize: 10 }}>
-                CREATE PACKAGE — {selectedCount} product{selectedCount !== 1 ? 's' : ''} selected
+                CREATE PACKAGE: {selectedCount} product{selectedCount !== 1 ? 's' : ''} selected
               </div>
               <div className="flex gap-2">
                 <input
@@ -203,7 +203,7 @@ export function BrandCapturePage() {
         What menu are you working from?
       </h1>
       <p className="ink-soft mt-2 leading-relaxed" style={{ fontSize: 14, maxWidth: 460 }}>
-        Paste or drop a menu. We'll match it against your catalog to find which of your products fit —{' '}
+        Paste or drop a menu. We'll match it against your catalog to find which of your products fit,{' '}
         <b className="ink">only your line, nothing else</b>.
       </p>
 
@@ -238,7 +238,7 @@ export function BrandCapturePage() {
             <textarea
               className="qm-textarea mt-3"
               style={{ minHeight: 120, fontSize: 14 }}
-              placeholder="Paste the menu here — dishes, a spec sheet, an email…"
+              placeholder="Paste the menu here: dishes, a spec sheet, an email…"
               value={rawText}
               onChange={(e) => setRawText(e.target.value)}
               disabled={loading}
@@ -263,7 +263,7 @@ export function BrandCapturePage() {
             <div className="mt-2 text-[13px] ink leading-snug">
               {tab === 'photo' ? 'Take a photo of the menu' : 'Drop a PDF, doc, or image'}
             </div>
-            <div className="text-[11.5px] ink-faint mt-1">Coming soon — paste a menu in the meantime.</div>
+            <div className="text-[11.5px] ink-faint mt-1">Coming soon. Paste a menu in the meantime.</div>
           </div>
         )}
       </div>

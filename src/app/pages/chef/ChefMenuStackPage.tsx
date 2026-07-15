@@ -118,7 +118,7 @@ const DEMO_ROWS: StackRow[] = [
   ]},
   // Meat & Charcuterie
   { cat: 'Meat & Charcuterie', chefItem: 'Pork Shoulder', qty: 1, offerings: [
-    { name: 'Berkshire pork shoulder, skin-on',         pack: '8–10 lb avg',  price: 78.50 },
+    { name: 'Berkshire pork shoulder, skin-on',         pack: '8-10 lb avg',  price: 78.50 },
     null, null, null,
   ]},
   { cat: 'Meat & Charcuterie', chefItem: 'Beef Cheeks', qty: 1, offerings: [
@@ -131,7 +131,7 @@ const DEMO_ROWS: StackRow[] = [
   ]},
   // Seafood
   { cat: 'Seafood', chefItem: 'Branzino', qty: 12, offerings: [
-    { name: 'Branzino, whole dressed, Mediterranean',   pack: '1–1.5 lb avg', price: 14.25 },
+    { name: 'Branzino, whole dressed, Mediterranean',   pack: '1-1.5 lb avg', price: 14.25 },
     null,
     { name: 'Branzino, whole, Croatian farmed',         pack: '1.2 lb avg',   price: 13.40 },
     null,
@@ -286,7 +286,7 @@ function StackEmptyState({ menuId, onNavigateBack }: StackEmptyStateProps) {
             {
               n: '1',
               head: 'Find Your Distributors',
-              body: 'Go to Distributors and find the reps you already work with — or browse who services your area.',
+              body: 'Go to Distributors and find the reps you already work with, or browse who services your area.',
             },
             {
               n: '2',
@@ -391,7 +391,7 @@ function StackEmptyState({ menuId, onNavigateBack }: StackEmptyStateProps) {
       >
         <span style={{ color: C.accent, flexShrink: 0, marginTop: 1 }}>ⓘ</span>
         <div>
-          You can have multiple distributors in your stack — some chefs split their menu
+          You can have multiple distributors in your stack, some chefs split their menu
           across a broadliner, a dairy house, and a local produce rep. Stack is your
           operational view, not a marketplace ranking.
         </div>
@@ -478,7 +478,7 @@ export function ChefMenuStackPage() {
         <p style={{ marginTop: 8, fontSize: 13.5, color: C.gray500, lineHeight: 1.6, maxWidth: 580 }}>
           This menu priced against the distributors you source from. Pick one to build a
           single order guide, or several to split the menu across your stack. Items not on
-          a catalog show as "—" so coverage gaps stay visible.
+          a catalog show as "-" so coverage gaps stay visible.
         </p>
       </div>
 
@@ -647,7 +647,7 @@ export function ChefMenuStackPage() {
                                   cursor: 'pointer',
                                   padding: 0,
                                 }}
-                                title={`${o.name} · ${o.pack} — open details`}
+                                title={`${o.name} · ${o.pack}, open details`}
                               >
                                 <div style={{ fontSize: 12, color: C.charcoal, lineHeight: 1.4, minHeight: 30 }}>
                                   {truncName(o.name, 36)}
@@ -683,7 +683,7 @@ export function ChefMenuStackPage() {
                             ) : (
                               // Not on catalog — bare em-dash, no border (Desi spec para 3)
                               <div style={{ textAlign: 'right' }}>
-                                <span style={{ fontSize: 14, color: C.gray400 }}>—</span>
+                                <span style={{ fontSize: 14, color: C.gray400 }}>-</span>
                               </div>
                             )}
                           </td>
@@ -805,7 +805,7 @@ export function ChefMenuStackPage() {
                   ? `The remaining ${pickedCols[0].of - pickedCols[0].matched} stay open for your rep to source elsewhere.`
                   : 'Full coverage.'}
                 {pickedCols[0].status === 'unaffiliated' && (
-                  <> {pickedCols[0].short} doesn't have a rep on QuoteMe yet — prices won't reflect rep-negotiated rates until they connect.</>
+                  <> {pickedCols[0].short} doesn't have a rep on QuoteMe yet, prices won't reflect rep-negotiated rates until they connect.</>
                 )}
               </div>
             </>
@@ -877,7 +877,7 @@ export function ChefMenuStackPage() {
         <div>
           Prices come from each distributor's current catalog. Coverage gaps reflect what
           they carry, not what's available in the region. Quoting against one distributor
-          doesn't lock you in — you can re-price your stack any time the menu changes.
+          doesn't lock you in, you can re-price your stack any time the menu changes.
         </div>
       </div>
 

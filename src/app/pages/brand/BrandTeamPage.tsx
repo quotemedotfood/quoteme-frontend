@@ -7,7 +7,7 @@ import {
 } from "../../services/api";
 
 function formatDate(iso: string | null): string {
-  if (!iso) return "—";
+  if (!iso) return "-";
   return new Date(iso).toLocaleDateString("en-US", {
     year: "numeric",
     month: "short",
@@ -312,7 +312,7 @@ export function BrandTeamPage() {
           }}
         >
           <div style={{ fontSize: 36, marginBottom: 12 }}>👥</div>
-          No teammates yet — invite someone to help manage your brand.
+          No teammates yet. Invite someone to help manage your brand.
         </div>
       )}
 

@@ -111,7 +111,6 @@ export function MatchDrawer({
   const [extraAlternates, setExtraAlternates] = useState<AlignmentCandidateResponse[]>([]);
   const [loadingMore, setLoadingMore] = useState(false);
 
-  const [showSearch, setShowSearch] = useState(false);
   const [query, setQuery] = useState('');
   const [searchResults, setSearchResults] = useState<CatalogSearchProduct[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
@@ -130,20 +129,22 @@ export function MatchDrawer({
     return () => document.removeEventListener('keydown', onKey);
   }, [open, onOpenChange]);
 
-  // Reset local state whenever the drawer is opened for a (possibly new) ingredient.
+  // Reset local state whenever the drawer is opened for a (possibly new)
+  // ingredient, and auto-seed the catalog search with the component name so
+  // results show immediately without a manual "search" step.
   useEffect(() => {
     if (!open) return;
     setPicks([]);
     setNotes('');
     setExtraAlternates([]);
-    setShowSearch(false);
-    setQuery('');
+    setQuery(ingredientName || '');
     setSearchResults([]);
     setSubmitError(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, ingredientName]);
 
-  // Manual catalog search — debounced, only queries when non-empty (per spec).
+  // Catalog search — auto-fires on open (seeded above) and re-fires whenever
+  // the query is edited. Debounced, only queries when non-empty.
   useEffect(() => {
     if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
     if (query.trim().length < 2) {
@@ -194,7 +195,10 @@ export function MatchDrawer({
 
   const isReplace = (id: string) => picks[0] === id;
   const isAdded = (id: string) => picks.includes(id) && picks[0] !== id;
-  const addCount = Math.max(0, picks.length - 1);
+  // Footer "+ Add N to Quote" count tracks the full live selection —
+  // bound directly to picks.length, not picks.length - 1, so it always
+  // matches how many alternates are currently checked.
+  const addCount = picks.length;
   const canReplace = picks.length > 0;
   const addLabel = addCount > 0 ? `Add ${addCount} to Quote` : 'Add to Quote';
 
@@ -225,7 +229,11 @@ export function MatchDrawer({
     });
     setSubmitting(false);
     if (res.error) {
-      setSubmitError(res.error);
+      // 401/403 from the your_call_selection endpoint means the session
+      // isn't a valid rep session (expired, guest-only, or missing token) —
+      // show plain copy instead of the raw BE/auth passthrough message.
+      const isAuthFailure = res.status === 401 || res.status === 403;
+      setSubmitError(isAuthFailure ? 'This needs a rep login.' : res.error);
       return;
     }
     onOpenChange(false);
@@ -314,7 +322,7 @@ export function MatchDrawer({
                 className="text-[11px] font-bold uppercase mb-[9px]"
                 style={{ letterSpacing: '.06em', color: 'var(--qm-gray-700)' }}
               >
-                Alternate Products ({allAlternates.length}) &middot; check any &mdash; the first replaces your pick, the rest add alongside it
+                Alternate Products ({allAlternates.length}) &middot; check any: the first replaces your pick, the rest add alongside it
               </div>
               {allAlternates.map((candidate) => {
                 const id = candidate.product.id;
@@ -400,85 +408,83 @@ export function MatchDrawer({
             </button>
           )}
 
-          {/* Search Catalog Manually — same checkbox/pick semantics as alternates */}
+          {/* Catalog Search — auto-runs on open (seeded with the component
+              name); same checkbox/pick semantics as alternates. Query stays
+              editable so the chef/rep can refine and re-search. */}
           <div className="mb-2">
-            <button
-              type="button"
-              onClick={() => setShowSearch(s => !s)}
-              className="text-[13px] font-semibold mb-2 bg-transparent border-none cursor-pointer p-0"
-              style={{ color: 'var(--qm-charcoal)' }}
+            <div
+              className="text-[11px] font-bold uppercase mb-[9px]"
+              style={{ letterSpacing: '.06em', color: 'var(--qm-gray-700)' }}
             >
-              {showSearch ? 'Hide Catalog Search' : 'Search Catalog Manually'}
-            </button>
+              Catalog Search
+            </div>
 
-            {showSearch && (
-              <div className="relative mt-1">
-                <div className="relative">
-                  <Search className="absolute left-[11px] top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'var(--qm-gray-400)' }} />
-                  <input
-                    type="text"
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    placeholder="Search catalog by name, brand, or item #..."
-                    className="w-full pl-[34px] pr-3 py-[10px] rounded-[8px] text-[13.5px] outline-none"
-                    style={{ border: '1.5px solid var(--md-orange)', fontFamily: 'var(--qm-sans)', color: 'var(--qm-charcoal)' }}
-                  />
-                  {searchLoading && (
-                    <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin" style={{ color: 'var(--qm-gray-400)' }} />
-                  )}
-                </div>
-
-                {query.trim().length > 0 && (
-                  <div
-                    className="qm-match-drawer-scroll mt-[6px] max-h-[220px] overflow-y-auto rounded-[8px]"
-                    style={{ border: '1px solid var(--qm-soft-line)' }}
-                  >
-                    {searchResults.length === 0 && !searchLoading && (
-                      <p className="text-[13px] italic px-3 py-3" style={{ color: 'var(--qm-gray-500)' }}>
-                        No products found
-                      </p>
-                    )}
-                    {searchResults.map((product, idx) => {
-                      const on = picks.includes(product.id);
-                      const replace = isReplace(product.id);
-                      const added = isAdded(product.id);
-                      return (
-                        <div
-                          key={product.id}
-                          role="button"
-                          tabIndex={0}
-                          onClick={() => toggle(product.id)}
-                          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(product.id); } }}
-                          className="flex items-start gap-[10px] px-3 py-[10px] cursor-pointer transition-colors"
-                          style={{
-                            borderBottom: idx === searchResults.length - 1 ? 'none' : '1px solid var(--md-panel-line)',
-                            background: replace ? '#FDF6EF' : added ? 'var(--md-blue-bg)' : 'transparent',
-                          }}
-                        >
-                          <span
-                            className="w-[17px] h-[17px] rounded-[5px] flex items-center justify-center shrink-0 mt-[1px]"
-                            style={{
-                              border: `1.5px solid ${on ? 'var(--qm-charcoal)' : 'var(--qm-gray-400)'}`,
-                              background: on ? 'var(--qm-charcoal)' : '#fff',
-                            }}
-                          >
-                            {on && <Check className="w-3 h-3 text-white" />}
-                          </span>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-[13px] font-medium leading-[1.3]" style={{ color: 'var(--qm-charcoal)' }}>
-                              {formatProductName(product.product, product.brand)}
-                            </p>
-                            <p className="text-[11px] mt-[2px]" style={{ color: 'var(--qm-gray-500)' }}>
-                              Item #{product.item_number} &middot; {toTitleCase(product.pack_size)} &middot; {categoryLabel(product.category)}
-                            </p>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+            <div className="relative mt-1">
+              <div className="relative">
+                <Search className="absolute left-[11px] top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'var(--qm-gray-400)' }} />
+                <input
+                  type="text"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Search catalog by name, brand, or item #..."
+                  className="w-full pl-[34px] pr-3 py-[10px] rounded-[8px] text-[13.5px] outline-none"
+                  style={{ border: '1.5px solid var(--md-orange)', fontFamily: 'var(--qm-sans)', color: 'var(--qm-charcoal)' }}
+                />
+                {searchLoading && (
+                  <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin" style={{ color: 'var(--qm-gray-400)' }} />
                 )}
               </div>
-            )}
+
+              {query.trim().length > 0 && (
+                <div
+                  className="qm-match-drawer-scroll mt-[6px] max-h-[220px] overflow-y-auto rounded-[8px]"
+                  style={{ border: '1px solid var(--qm-soft-line)' }}
+                >
+                  {searchResults.length === 0 && !searchLoading && (
+                    <p className="text-[13px] italic px-3 py-3" style={{ color: 'var(--qm-gray-500)' }}>
+                      No products found
+                    </p>
+                  )}
+                  {searchResults.map((product, idx) => {
+                    const on = picks.includes(product.id);
+                    const replace = isReplace(product.id);
+                    const added = isAdded(product.id);
+                    return (
+                      <div
+                        key={product.id}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => toggle(product.id)}
+                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(product.id); } }}
+                        className="flex items-start gap-[10px] px-3 py-[10px] cursor-pointer transition-colors"
+                        style={{
+                          borderBottom: idx === searchResults.length - 1 ? 'none' : '1px solid var(--md-panel-line)',
+                          background: replace ? '#FDF6EF' : added ? 'var(--md-blue-bg)' : 'transparent',
+                        }}
+                      >
+                        <span
+                          className="w-[17px] h-[17px] rounded-[5px] flex items-center justify-center shrink-0 mt-[1px]"
+                          style={{
+                            border: `1.5px solid ${on ? 'var(--qm-charcoal)' : 'var(--qm-gray-400)'}`,
+                            background: on ? 'var(--qm-charcoal)' : '#fff',
+                          }}
+                        >
+                          {on && <Check className="w-3 h-3 text-white" />}
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[13px] font-medium leading-[1.3]" style={{ color: 'var(--qm-charcoal)' }}>
+                            {formatProductName(product.product, product.brand)}
+                          </p>
+                          <p className="text-[11px] mt-[2px]" style={{ color: 'var(--qm-gray-500)' }}>
+                            Item #{product.item_number} &middot; {toTitleCase(product.pack_size)} &middot; {categoryLabel(product.category)}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Notes */}
@@ -581,7 +587,7 @@ function VoiceNoteButton({ onTranscript }: { onTranscript: (text: string) => voi
     // STUB — no real STT wired here (see comment above). Fixed delay simulates
     // async transcription latency, then a placeholder lands in Notes.
     setTimeout(() => {
-      onTranscript('[Voice note recorded — transcription pending]');
+      onTranscript('[Voice note recorded, transcription pending]');
       setState('idle');
       setSeconds(0);
     }, 1400);

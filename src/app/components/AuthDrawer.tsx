@@ -329,7 +329,7 @@ export function AuthDrawer({ isOpen, onClose, defaultMode = 'login', onSuccess }
                   </div>
                 )}
                 <p className="text-xs text-gray-400 mt-1">
-                  {selectedDistributor ? 'Matched to existing distributor' : distributorQuery.length > 0 ? 'New distributor — will be created on signup' : ''}
+                  {selectedDistributor ? 'Matched to existing distributor' : distributorQuery.length > 0 ? 'New distributor: will be created on signup' : ''}
                 </p>
               </div>
 

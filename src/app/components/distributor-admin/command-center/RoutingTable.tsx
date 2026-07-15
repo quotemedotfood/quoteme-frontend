@@ -10,7 +10,7 @@
 //   canForward=true + unassigned  → <select> rep list; calls onForward(row, repId) on change.
 //   canForward=true + assigned    → disabled <select> pre-selected to the rep (same outline,
 //                                   non-actionable; reassigning is blocked BE-side 409).
-//   canForward=false              → plain text (assigned rep name or "—")
+//   canForward=false              → plain text (assigned rep name or "-")
 //
 // Sortable headers: Location · Source · Date · Items · Forward To (toggle asc/desc).
 //
@@ -130,7 +130,7 @@ function sourceColors(source: string | null): { bg: string; color: string; borde
 }
 
 function InlineSourceBadge({ label, source }: { label: string | null; source?: string | null }) {
-  if (!label) return <span style={{ ...sans, fontSize: 11, color: C.gray400 }}>—</span>;
+  if (!label) return <span style={{ ...sans, fontSize: 11, color: C.gray400 }}>-</span>;
   // P2: color by rendered label so identical labels always get identical chips.
   // Fall back to raw source only when label is absent (already guarded above).
   const { bg, color, border } = sourceColors(label ?? source ?? '');
@@ -318,7 +318,7 @@ function ForwardCell({ row, reps, canForward, onForward, errorByRowId }: Forward
     // Rep view — plain text
     return (
       <span style={{ ...sans, fontSize: 12.5, color: C.gray700 }}>
-        {row.assigned_rep?.name ?? '—'}
+        {row.assigned_rep?.name ?? '-'}
       </span>
     );
   }
@@ -537,7 +537,7 @@ function DesktopRow({
 }) {
   const navigate = useNavigate();
   const location = useLocation();
-  const locationPrimary = row.restaurant_name || row.contact_name || '—';
+  const locationPrimary = row.restaurant_name || row.contact_name || '-';
   const locationSub = row.contact_name && row.restaurant_name ? row.contact_name : null;
 
   return (
@@ -626,7 +626,7 @@ function DesktopRow({
       >
         {row.kind === 'quote' && typeof row.items === 'number' && row.items > 0
           ? `${row.items} items`
-          : formatColdLandingArtifact(row.source, stripSeedPrefix(row.artifact?.name)) || '—'}
+          : formatColdLandingArtifact(row.source, stripSeedPrefix(row.artifact?.name)) || '-'}
       </div>
 
       {/* Forward To */}
@@ -743,7 +743,7 @@ function MobileCard({
 }) {
   const navigate = useNavigate();
   const location = useLocation();
-  const locationPrimary = row.restaurant_name || row.contact_name || '—';
+  const locationPrimary = row.restaurant_name || row.contact_name || '-';
 
   return (
     <div

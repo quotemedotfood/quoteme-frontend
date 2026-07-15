@@ -48,7 +48,7 @@ function eyebrow(size = 10): React.CSSProperties {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function formatDate(iso?: string | null): string {
-  if (!iso) return '—';
+  if (!iso) return '-';
   const d = new Date(iso);
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
@@ -57,7 +57,7 @@ function locationStr(c?: string, s?: string): string {
   if (c && s) return `${c}, ${s}`;
   if (c) return c;
   if (s) return s;
-  return '—';
+  return '-';
 }
 
 // ─── Empty state ──────────────────────────────────────────────────────────────
