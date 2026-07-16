@@ -12,6 +12,7 @@ import {
 } from '../../components/ui/table';
 import { getAdminUsers, AdminUser } from '../../services/adminApi';
 import { impersonateChef } from '../../services/api';
+import { userStatusPill } from '../../utils/userDisplayStatus';
 
 type SortField = 'name' | 'email' | 'status' | 'last_login_at' | 'created_at';
 type SortDir = 'asc' | 'desc';
@@ -136,16 +137,13 @@ export function QMAdminChefs() {
     setShowReasonFor(null);
   }
 
-  const statusBadge = (status: string) => {
-    const styles =
-      status === 'active'
-        ? 'bg-green-100 text-green-700'
-        : status === 'inactive'
-        ? 'bg-yellow-100 text-yellow-700'
-        : 'bg-gray-100 text-gray-500';
+  // Feature 2 Slice 1: honest status pill. See userStatusPill for why a
+  // never-logged-in chef renders "Invite sent" instead of "Active".
+  const statusBadge = (chef: AdminUser) => {
+    const { label, className } = userStatusPill(chef);
     return (
-      <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${styles}`}>
-        {status}
+      <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${className}`}>
+        {label}
       </span>
     );
   };
@@ -264,7 +262,7 @@ export function QMAdminChefs() {
                       {chef.first_name} {chef.last_name}
                     </TableCell>
                     <TableCell className="text-sm text-[#4F4F4F]">{chef.email}</TableCell>
-                    <TableCell>{statusBadge(chef.status)}</TableCell>
+                    <TableCell>{statusBadge(chef)}</TableCell>
                     <TableCell className="text-sm text-gray-500">
                       {formatRelativeTime(chef.last_login_at)}
                     </TableCell>

@@ -21,6 +21,7 @@ import {
   AdminUser,
   AdminDistributor,
 } from '../../services/adminApi';
+import { userStatusPill } from '../../utils/userDisplayStatus';
 
 type SortField = 'name' | 'email' | 'status' | 'last_login_at' | 'created_at';
 type SortDir = 'asc' | 'desc';
@@ -240,18 +241,18 @@ export function QMAdminUsers() {
     loadUsers();
   }
 
-  const statusBadge = (status: string) => {
-    const styles =
-      status === 'active'
-        ? 'bg-green-100 text-green-700'
-        : status === 'inactive'
-        ? 'bg-yellow-100 text-yellow-700'
-        : status === 'archived'
-        ? 'bg-gray-100 text-gray-500'
-        : 'bg-gray-100 text-gray-600';
+  // Feature 2 Slice 1: honest status pill. A freshly created/invited user has
+  // status "active" set immediately by the backend (see
+  // Api::V1::Admin::UsersController#create), but hasn't actually accepted or
+  // logged in yet — showing "Active" next to "Last Login: Never" read as
+  // contradictory/misleading. userStatusPill overrides that one case with
+  // "Invite sent" using the backend-derived display_status; every other raw
+  // status (inactive/suspended/archived) renders unchanged.
+  const statusBadge = (u: AdminUser) => {
+    const { label, className } = userStatusPill(u);
     return (
-      <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${styles}`}>
-        {status}
+      <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${className}`}>
+        {label}
       </span>
     );
   };
@@ -464,7 +465,7 @@ export function QMAdminUsers() {
                     </TableCell>
                     <TableCell className="text-sm text-[#4F4F4F]">{u.email}</TableCell>
                     <TableCell>{roleBadge(u.role)}</TableCell>
-                    <TableCell>{statusBadge(u.status)}</TableCell>
+                    <TableCell>{statusBadge(u)}</TableCell>
                     <TableCell className="text-sm text-gray-500">
                       {formatRelativeTime(u.last_login_at)}
                     </TableCell>

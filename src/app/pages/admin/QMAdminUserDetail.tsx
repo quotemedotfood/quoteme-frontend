@@ -8,6 +8,7 @@ import {
   AdminUser,
 } from '../../services/adminApi';
 import { Button } from '../../components/ui/button';
+import { userStatusPill } from '../../utils/userDisplayStatus';
 
 const ROLE_BADGE: Record<string, string> = {
   quoteme_admin: 'bg-purple-100 text-purple-700',
@@ -107,14 +108,10 @@ export function QMAdminUserDetailPage() {
   const roleCls = ROLE_BADGE[user.role] || 'bg-gray-100 text-gray-600';
   const roleLabel = ROLE_LABEL[user.role] || user.role;
 
-  const statusCls =
-    user.status === 'active'
-      ? 'bg-green-100 text-green-700'
-      : user.status === 'inactive'
-      ? 'bg-yellow-100 text-yellow-700'
-      : user.status === 'archived'
-      ? 'bg-gray-100 text-gray-500'
-      : 'bg-gray-100 text-gray-600';
+  // Feature 2 Slice 1: honest status pill (see userStatusPill for why). A
+  // never-logged-in "active" user renders as "Invite sent" instead of
+  // "Active", so it no longer contradicts the "Last Login: Never" row below.
+  const statusPill = userStatusPill(user);
 
   return (
     <div className="p-6 md:p-10 max-w-3xl">
@@ -147,8 +144,8 @@ export function QMAdminUserDetailPage() {
         </div>
         <div className="px-5 py-4 flex items-center justify-between">
           <span className="text-sm font-medium text-[#4F4F4F]">Status</span>
-          <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${statusCls}`}>
-            {user.status}
+          <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${statusPill.className}`}>
+            {statusPill.label}
           </span>
         </div>
         {user.distributor_name && (

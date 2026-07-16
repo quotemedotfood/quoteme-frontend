@@ -11,6 +11,7 @@ import {
   TableCell,
 } from '../../components/ui/table';
 import { getAdminUsers, updateAdminUser, AdminUser } from '../../services/adminApi';
+import { userStatusPill } from '../../utils/userDisplayStatus';
 
 type SortField = 'name' | 'email' | 'role' | 'status' | 'created_at';
 type SortDir = 'asc' | 'desc';
@@ -246,16 +247,13 @@ export function QMAdminSignups() {
                       )}
                     </TableCell>
                     <TableCell>
+                      {/* Feature 2 Slice 1: honest status pill. See userStatusPill
+                          for why a never-logged-in signup renders "Invite sent"
+                          instead of "Active". */}
                       <span
-                        className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${
-                          u.status === 'active'
-                            ? 'bg-green-100 text-green-700'
-                            : u.status === 'suspended'
-                            ? 'bg-red-100 text-red-700'
-                            : 'bg-gray-100 text-gray-600'
-                        }`}
+                        className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${userStatusPill(u).className}`}
                       >
-                        {u.status}
+                        {userStatusPill(u).label}
                       </span>
                     </TableCell>
                     <TableCell className="text-sm text-gray-500">{formatRelativeTime((u as any).last_login_at)}</TableCell>
