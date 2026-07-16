@@ -140,11 +140,14 @@ export function QMAdminChefs() {
   // Feature 2 Slice 1: honest status pill. See userStatusPill for why a
   // never-logged-in chef renders "Invite sent" instead of "Active".
   const statusBadge = (chef: AdminUser) => {
-    const { label, className } = userStatusPill(chef);
+    const { label, className, lastSignInLabel } = userStatusPill(chef);
     return (
-      <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${className}`}>
-        {label}
-      </span>
+      <div className="flex flex-col gap-0.5">
+        <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${className} w-fit`}>
+          {label}
+        </span>
+        {lastSignInLabel && <span className="text-[10px] text-gray-400">{lastSignInLabel}</span>}
+      </div>
     );
   };
 

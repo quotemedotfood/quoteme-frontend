@@ -144,9 +144,14 @@ export function QMAdminUserDetailPage() {
         </div>
         <div className="px-5 py-4 flex items-center justify-between">
           <span className="text-sm font-medium text-[#4F4F4F]">Status</span>
-          <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${statusPill.className}`}>
-            {statusPill.label}
-          </span>
+          <div className="flex flex-col items-end gap-0.5">
+            <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${statusPill.className}`}>
+              {statusPill.label}
+            </span>
+            {statusPill.lastSignInLabel && (
+              <span className="text-xs text-gray-400">{statusPill.lastSignInLabel}</span>
+            )}
+          </div>
         </div>
         {user.distributor_name && (
           <div className="px-5 py-4 flex items-center justify-between">

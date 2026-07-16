@@ -249,11 +249,14 @@ export function QMAdminUsers() {
   // "Invite sent" using the backend-derived display_status; every other raw
   // status (inactive/suspended/archived) renders unchanged.
   const statusBadge = (u: AdminUser) => {
-    const { label, className } = userStatusPill(u);
+    const { label, className, lastSignInLabel } = userStatusPill(u);
     return (
-      <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${className}`}>
-        {label}
-      </span>
+      <div className="flex flex-col gap-0.5">
+        <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${className} w-fit`}>
+          {label}
+        </span>
+        {lastSignInLabel && <span className="text-[10px] text-gray-400">{lastSignInLabel}</span>}
+      </div>
     );
   };
 

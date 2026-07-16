@@ -249,12 +249,23 @@ export function QMAdminSignups() {
                     <TableCell>
                       {/* Feature 2 Slice 1: honest status pill. See userStatusPill
                           for why a never-logged-in signup renders "Invite sent"
-                          instead of "Active". */}
-                      <span
-                        className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${userStatusPill(u).className}`}
-                      >
-                        {userStatusPill(u).label}
-                      </span>
+                          instead of "Active". Slice 2 pairs a genuinely active
+                          pill with a truthful last-sign-in date. */}
+                      {(() => {
+                        const pill = userStatusPill(u);
+                        return (
+                          <div className="flex flex-col gap-0.5">
+                            <span
+                              className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${pill.className} w-fit`}
+                            >
+                              {pill.label}
+                            </span>
+                            {pill.lastSignInLabel && (
+                              <span className="text-[10px] text-gray-400">{pill.lastSignInLabel}</span>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </TableCell>
                     <TableCell className="text-sm text-gray-500">{formatRelativeTime((u as any).last_login_at)}</TableCell>
                     <TableCell className="text-sm text-gray-500">{formatDate(u.created_at)}</TableCell>
