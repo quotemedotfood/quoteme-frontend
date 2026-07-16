@@ -11,6 +11,7 @@ import {
   DistributorSearchResult,
 } from '../services/api';
 import { postAuthTarget } from '../utils/captureFlow';
+import { routeByRole } from '../utils/roleRouting';
 import {
   Users,
   ChefHat,
@@ -51,20 +52,6 @@ export function AuthPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { signup, login, isAuthenticated, user } = useAuth();
-
-  const routeByRole = (role?: string) => {
-    switch (role) {
-      case 'quoteme_admin': return '/qm-admin/';
-      case 'distributor_admin': return '/distributor-admin/command-center';
-      case 'buyer': return '/dashboard';
-      case 'group_admin': return '/dashboard';
-      case 'chef': return '/dashboard';
-      case 'rep': return '/rep/quotes/inbound';
-      // ROOT CAUSE FIX: brand users have their own shell — never put them in rep/distributor.
-      case 'brand': return '/brand';
-      default: return '/start-new-quote';
-    }
-  };
 
   useEffect(() => {
     if (isAuthenticated && user) {

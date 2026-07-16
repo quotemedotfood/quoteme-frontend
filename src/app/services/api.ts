@@ -767,11 +767,24 @@ export async function sendPasswordReset(email: string): Promise<ApiResponse<{ me
   }
 }
 
+export interface ResetPasswordResponse {
+  message: string;
+  /** Present once the BE auto-logs the user in after a successful reset
+   * (three-flows-one-door: same session-establish pattern as the invite/
+   * magic-link consume endpoints). Absent on older BE deploys. */
+  jwt?: string;
+  user?: {
+    id: string;
+    email: string;
+    role: string;
+  };
+}
+
 export async function resetPassword(params: {
   reset_password_token: string;
   password: string;
   password_confirmation: string;
-}): Promise<ApiResponse<{ message: string }>> {
+}): Promise<ApiResponse<ResetPasswordResponse>> {
   try {
     const response = await fetchWithRetry(`${API_BASE_URL}/users/password`, {
       method: 'PATCH',
