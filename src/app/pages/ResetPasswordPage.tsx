@@ -5,9 +5,12 @@ import { Input } from '../components/ui/input';
 import { resetPassword } from '../services/api';
 import { Eye, EyeOff, AlertCircle, Check } from 'lucide-react';
 import { PasswordRequirements, passwordMeetsRequirements } from '../components/PasswordRequirements';
+import { useSessionOnUse } from '../hooks/useSessionOnUse';
+import { routeByRole } from '../utils/roleRouting';
 
 export function ResetPasswordPage() {
   const navigate = useNavigate();
+  const establishSessionAndGo = useSessionOnUse();
   const [searchParams] = useSearchParams();
   const token = searchParams.get('reset_password_token') || '';
 
@@ -18,6 +21,7 @@ export function ResetPasswordPage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [autoLoggedIn, setAutoLoggedIn] = useState(false);
 
   const handleSubmit = async () => {
     const newErrors: Record<string, string> = {};
@@ -42,7 +46,23 @@ export function ResetPasswordPage() {
       setErrors({ form: res.error });
     } else {
       setSuccess(true);
-      setTimeout(() => navigate('/auth'), 3000);
+
+      // Three-flows-one-door: a jwt means the BE auto-logged the user in
+      // after this reset. Establish the session and land them on their
+      // normal role-appropriate post-login page (never /auth) instead of
+      // making them sign in again with the password they just set.
+      const jwt = res.data?.jwt;
+      const role = res.data?.user?.role;
+      if (jwt) {
+        setAutoLoggedIn(true);
+        setTimeout(() => {
+          establishSessionAndGo({ jwt, target: routeByRole(role) });
+        }, 1500);
+      } else {
+        // Safe fallback for an older BE response with no jwt: unchanged
+        // pre-fix behavior, bounce to sign in.
+        setTimeout(() => navigate('/auth'), 3000);
+      }
     }
   };
 
@@ -82,7 +102,9 @@ export function ResetPasswordPage() {
             <Check className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
             <div>
               <p className="text-sm font-medium text-green-800">Password reset successfully</p>
-              <p className="text-sm text-green-600 mt-1">Redirecting to sign in...</p>
+              <p className="text-sm text-green-600 mt-1">
+                {autoLoggedIn ? 'Taking you to your dashboard...' : 'Redirecting to sign in...'}
+              </p>
             </div>
           </div>
         )}

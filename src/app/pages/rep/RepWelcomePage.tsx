@@ -13,10 +13,11 @@
 // No gradients. No marketing copy. Sacred Orange = var(--primary).
 
 import { useEffect, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router';
+import { useSearchParams } from 'react-router';
 import { consumeRepMagicLink } from '../../services/api';
 import type { RepMagicLinkConsumeResponse } from '../../services/api';
 import { RepMatchStateBadge } from '../../components/rep/RepMatchStateBadge';
+import { useSessionOnUse } from '../../hooks/useSessionOnUse';
 
 const serif: React.CSSProperties = {
   fontFamily: "'Playfair Display', Georgia, 'Times New Roman', serif",
@@ -56,7 +57,7 @@ function initials(first: string | null | undefined, last: string | null | undefi
 
 export function RepWelcomePage() {
   const [params] = useSearchParams();
-  const navigate = useNavigate();
+  const establishSessionAndGo = useSessionOnUse();
   const token = params.get('token') || '';
 
   const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading');
@@ -136,12 +137,35 @@ export function RepWelcomePage() {
   const distributorName = data!.distributor_name;
   const redirectTo = data!.redirect_to;
 
+  // Same missing-refreshUser gap ChefWelcomePage/RepInviteAcceptPage had:
+  // storing the JWT alone leaves AuthContext.user null until the next /me
+  // roundtrip. useSessionOnUse does store + refresh + (guarded) navigate in
+  // one call so neither CTA below can land the rep on an authenticated view
+  // with a stale/null AuthContext.user - and the guard falls back to a real
+  // view if redirect_to ever points at a one-shot consume route.
+  const sessionUser = {
+    fullName: repFullName,
+    email: data!.user.email,
+    phoneNumber: '',
+    distributorName,
+    plan: 'free' as const,
+    isGuest: false as const,
+  };
+
   const handleOpen = () => {
-    navigate(redirectTo || `/rep/quotes/${q.id}`);
+    establishSessionAndGo({
+      jwt: data!.jwt,
+      target: redirectTo || `/rep/quotes/${q.id}`,
+      user: sessionUser,
+    });
   };
 
   const handleTriage = () => {
-    navigate('/rep/quotes/inbound');
+    establishSessionAndGo({
+      jwt: data!.jwt,
+      target: '/rep/quotes/inbound',
+      user: sessionUser,
+    });
   };
 
   return (
