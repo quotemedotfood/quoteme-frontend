@@ -25,7 +25,7 @@ import {
 } from 'lucide-react';
 import { useGooglePlaces } from '../hooks/useGooglePlaces';
 import { PasswordRequirements, passwordMeetsRequirements } from '../components/PasswordRequirements';
-import { US_STATES } from '../constants/regions';
+import { COUNTRY_OPTIONS, regionsForCountry, DEFAULT_COUNTRY } from '../constants/regions';
 
 // B-144: neutral placeholder — not distributor-biased
 export const LOGIN_EMAIL_PLACEHOLDER = 'you@example.com';
@@ -103,9 +103,8 @@ export function AuthPage() {
   const [selectedDistributor, setSelectedDistributor] =
     useState<DistributorSearchResult | null>(null);
   const [showDistributorDropdown, setShowDistributorDropdown] = useState(false);
-  // Distributor-admin signup: states served (optional).
-  // BE seam: registration service_states param pending — collected here but not
-  // forwarded until the signUp endpoint accepts it.
+  // Distributor-admin signup: country + states served (optional).
+  const [signupCountry, setSignupCountry] = useState(DEFAULT_COUNTRY);
   const [signupServiceStates, setSignupServiceStates] = useState<string[]>([]);
   const [firstName, setFirstName] = useState(inviteFirstName || '');
   const [lastName, setLastName] = useState(inviteLastName || '');
@@ -220,6 +219,9 @@ export function AuthPage() {
     } else {
       signupData.distributor_name = claimedId ? undefined : distributorName;
       signupData.claimed_distributor_id = claimedId;
+      signupData.country = signupCountry;
+      signupData.currency = signupCountry === 'CA' ? 'CAD' : 'USD';
+      signupData.service_states = signupServiceStates;
     }
 
     // P0: pass the guest token so signup runs GuestConversion — claiming the guest's
@@ -759,53 +761,76 @@ export function AuthPage() {
           />
         </div>
 
-        {/* States you serve — distributor-admin signup only */}
-        {/* BE seam: registration service_states param pending — field is collected */}
-        {/* but not forwarded to signUp until the BE endpoint accepts it.          */}
+        {/* Country + states/provinces you serve - distributor-admin signup only */}
         {!isBuyerRole && (
-          <div>
-            <label className="mb-1.5 block text-sm font-medium" style={{ color: '#2A2A2A' }}>
-              States you serve{' '}
-              <span className="font-normal text-gray-400">(optional)</span>
-            </label>
-            <p className="text-xs text-gray-400 mb-2">Add any you want, you can update this later in your settings.</p>
-            {signupServiceStates.length > 0 && (
-              <div className="flex flex-wrap gap-1.5 mb-2">
-                {signupServiceStates.map((s) => (
-                  <span
-                    key={s}
-                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-[#7FAEC2]/15 text-[#4A7A92] border border-[#7FAEC2]/30"
-                  >
-                    {s}
-                    <button
-                      type="button"
-                      onClick={() => setSignupServiceStates((prev) => prev.filter((x) => x !== s))}
-                      className="hover:text-[#2A2A2A] transition-colors"
-                      aria-label={`Remove ${s}`}
-                    >
-                      ×
-                    </button>
-                  </span>
+          <>
+            <div>
+              <label htmlFor="signup-country" className="mb-1.5 block text-sm font-medium" style={{ color: '#2A2A2A' }}>
+                Country
+              </label>
+              <select
+                id="signup-country"
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-[#2A2A2A] bg-white focus:outline-none focus:ring-2 focus:ring-[#7FAEC2]/40"
+                value={signupCountry}
+                onChange={(e) => {
+                  const nextCountry = e.target.value;
+                  setSignupCountry(nextCountry);
+                  // Drop any already-selected service states that aren't valid
+                  // for the new country (a US state can't leak into a CA
+                  // selection and vice versa).
+                  const validRegions = regionsForCountry(nextCountry);
+                  setSignupServiceStates((prev) => prev.filter((s) => validRegions.includes(s)));
+                }}
+              >
+                {COUNTRY_OPTIONS.map((c) => (
+                  <option key={c.value} value={c.value}>{c.label}</option>
                 ))}
-              </div>
-            )}
-            <select
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-[#2A2A2A] bg-white focus:outline-none focus:ring-2 focus:ring-[#7FAEC2]/40"
-              value=""
-              onChange={(e) => {
-                const val = e.target.value;
-                if (val && !signupServiceStates.includes(val)) {
-                  setSignupServiceStates((prev) => [...prev, val].sort());
+              </select>
+            </div>
+            <div>
+              <label className="mb-1.5 block text-sm font-medium" style={{ color: '#2A2A2A' }}>
+                {signupCountry === 'CA' ? 'Provinces you serve' : 'States you serve'}{' '}
+                <span className="font-normal text-gray-400">(optional)</span>
+              </label>
+              <p className="text-xs text-gray-400 mb-2">Add any you want, you can update this later in your settings.</p>
+              {signupServiceStates.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mb-2">
+                  {signupServiceStates.map((s) => (
+                    <span
+                      key={s}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-[#7FAEC2]/15 text-[#4A7A92] border border-[#7FAEC2]/30"
+                    >
+                      {s}
+                      <button
+                        type="button"
+                        onClick={() => setSignupServiceStates((prev) => prev.filter((x) => x !== s))}
+                        className="hover:text-[#2A2A2A] transition-colors"
+                        aria-label={`Remove ${s}`}
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+              <select
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-[#2A2A2A] bg-white focus:outline-none focus:ring-2 focus:ring-[#7FAEC2]/40"
+                value=""
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val && !signupServiceStates.includes(val)) {
+                    setSignupServiceStates((prev) => [...prev, val].sort());
+                  }
+                }}
+              >
+                <option value="">{signupCountry === 'CA' ? 'Add a province...' : 'Add a state...'}</option>
+                {regionsForCountry(signupCountry)
+                  .filter((s) => !signupServiceStates.includes(s))
+                  .map((s) => <option key={s} value={s}>{s}</option>)
                 }
-              }}
-            >
-              <option value="">Add a state…</option>
-              {US_STATES
-                .filter((s) => !signupServiceStates.includes(s))
-                .map((s) => <option key={s} value={s}>{s}</option>)
-              }
-            </select>
-          </div>
+              </select>
+            </div>
+          </>
         )}
 
         {/* Password */}

@@ -79,6 +79,9 @@ export interface SignUpData {
   state?: string;
   location_id?: string;
   brand_name?: string;
+  country?: string;
+  currency?: string;
+  service_states?: string[];
 }
 
 export interface LoginData {
