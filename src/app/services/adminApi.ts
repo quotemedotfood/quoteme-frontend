@@ -61,6 +61,7 @@ export interface AdminUser {
   email: string;
   first_name: string;
   last_name: string;
+  phone: string | null;
   role: string;
   status: string;
   // Feature 2 Slice 1: honest, derived-from-existing-columns status. One of
@@ -271,7 +272,7 @@ export async function getAdminUsers(params?: {
 
 export async function updateAdminUser(
   id: string,
-  data: Partial<Pick<AdminUser, 'status' | 'role'>>
+  data: Partial<Pick<AdminUser, 'status' | 'role' | 'first_name' | 'last_name' | 'phone'>>
 ): Promise<ApiResponse<AdminUser>> {
   return fetchWithAuth(`/api/v1/admin/users/${id}`, {
     method: 'PATCH',

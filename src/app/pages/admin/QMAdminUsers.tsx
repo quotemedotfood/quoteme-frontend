@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router';
-import { Search, ArrowUpDown, ArrowUp, ArrowDown, UserPlus, X } from 'lucide-react';
+import { Search, ArrowUpDown, ArrowUp, ArrowDown, UserPlus, X, Pencil, Check } from 'lucide-react';
 import { Input } from '../../components/ui/input';
 import { Button } from '../../components/ui/button';
 import {
@@ -106,6 +106,14 @@ export function QMAdminUsers() {
 
   // Action loading state
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+
+  // Inline row edit (pencil)
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editFirstName, setEditFirstName] = useState('');
+  const [editLastName, setEditLastName] = useState('');
+  const [editPhone, setEditPhone] = useState('');
+  const [editSaving, setEditSaving] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
 
   async function loadUsers() {
     setLoading(true);
@@ -213,6 +221,45 @@ export function QMAdminUsers() {
       alert(res.error || 'Failed to resend welcome email');
     }
     setActionLoading(null);
+  }
+
+  function startEdit(u: AdminUser) {
+    setEditingId(u.id);
+    setEditFirstName(u.first_name);
+    setEditLastName(u.last_name);
+    setEditPhone(u.phone || '');
+    setEditError(null);
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+    setEditFirstName('');
+    setEditLastName('');
+    setEditPhone('');
+    setEditError(null);
+  }
+
+  async function saveEdit(userId: string) {
+    setEditSaving(true);
+    setEditError(null);
+    const res = await updateAdminUser(userId, {
+      first_name: editFirstName.trim(),
+      last_name: editLastName.trim(),
+      phone: editPhone.trim(),
+    });
+    if (res.data) {
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.id === userId
+            ? { ...u, first_name: res.data!.first_name, last_name: res.data!.last_name, phone: res.data!.phone }
+            : u
+        )
+      );
+      setEditingId(null);
+    } else {
+      setEditError(res.error || 'Failed to save changes');
+    }
+    setEditSaving(false);
   }
 
   async function handleInvite() {
@@ -464,7 +511,40 @@ export function QMAdminUsers() {
                     }}
                   >
                     <TableCell className="font-medium text-[#2A2A2A]">
-                      {u.first_name} {u.last_name}
+                      {editingId === u.id ? (
+                        <div className="flex flex-col gap-1.5" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex gap-1.5">
+                            <Input
+                              value={editFirstName}
+                              onChange={(e) => setEditFirstName(e.target.value)}
+                              placeholder="First name"
+                              className="h-7 text-sm w-24"
+                              autoFocus
+                            />
+                            <Input
+                              value={editLastName}
+                              onChange={(e) => setEditLastName(e.target.value)}
+                              placeholder="Last name"
+                              className="h-7 text-sm w-24"
+                            />
+                          </div>
+                          <Input
+                            value={editPhone}
+                            onChange={(e) => setEditPhone(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') saveEdit(u.id);
+                              if (e.key === 'Escape') cancelEdit();
+                            }}
+                            placeholder="Phone"
+                            className="h-7 text-sm w-full"
+                          />
+                          {editError && <p className="text-xs text-red-500">{editError}</p>}
+                        </div>
+                      ) : (
+                        <>
+                          {u.first_name} {u.last_name}
+                        </>
+                      )}
                     </TableCell>
                     <TableCell className="text-sm text-[#4F4F4F]">{u.email}</TableCell>
                     <TableCell>{roleBadge(u.role)}</TableCell>
@@ -476,83 +556,119 @@ export function QMAdminUsers() {
                       {formatDate(u.created_at)}
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-2">
-                        {u.status === 'active' && (
+                      <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                        {editingId === u.id ? (
                           <>
                             <Button
-                              variant="outline"
+                              variant="ghost"
                               size="sm"
-                              disabled={actionLoading === u.id}
-                              onClick={() => handleStatusChange(u.id, 'inactive')}
-                              className="text-yellow-600 border-yellow-300 hover:bg-yellow-50"
+                              disabled={editSaving}
+                              onClick={() => saveEdit(u.id)}
+                              className="text-xs text-green-600 hover:text-green-700"
                             >
-                              Deactivate
+                              <Check size={14} className="mr-1" />
+                              Save
                             </Button>
                             <Button
-                              variant="outline"
+                              variant="ghost"
                               size="sm"
-                              disabled={actionLoading === u.id}
-                              onClick={() => handleStatusChange(u.id, 'archived')}
-                              className="text-gray-500 border-gray-300 hover:bg-gray-50"
+                              disabled={editSaving}
+                              onClick={cancelEdit}
+                              className="text-xs text-gray-500"
                             >
-                              Archive
+                              <X size={14} className="mr-1" />
+                              Cancel
                             </Button>
                           </>
-                        )}
-                        {u.status === 'inactive' && (
+                        ) : (
                           <>
+                            {u.status === 'active' && (
+                              <>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  disabled={actionLoading === u.id}
+                                  onClick={() => handleStatusChange(u.id, 'inactive')}
+                                  className="text-yellow-600 border-yellow-300 hover:bg-yellow-50"
+                                >
+                                  Deactivate
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  disabled={actionLoading === u.id}
+                                  onClick={() => handleStatusChange(u.id, 'archived')}
+                                  className="text-gray-500 border-gray-300 hover:bg-gray-50"
+                                >
+                                  Archive
+                                </Button>
+                              </>
+                            )}
+                            {u.status === 'inactive' && (
+                              <>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  disabled={actionLoading === u.id}
+                                  onClick={() => handleStatusChange(u.id, 'active')}
+                                  className="text-green-600 border-green-300 hover:bg-green-50"
+                                >
+                                  Activate
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  disabled={actionLoading === u.id}
+                                  onClick={() => handleStatusChange(u.id, 'archived')}
+                                  className="text-gray-500 border-gray-300 hover:bg-gray-50"
+                                >
+                                  Archive
+                                </Button>
+                              </>
+                            )}
+                            {!u.last_login_at && u.status === 'active' && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={actionLoading === u.id}
+                                onClick={() => handleResendInvite(u.id, u.email)}
+                                className="text-blue-600 border-blue-300 hover:bg-blue-50"
+                              >
+                                Resend Invite
+                              </Button>
+                            )}
+                            {u.status === 'active' && RESTAURANT_ROLES.includes(u.role) && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={actionLoading === u.id}
+                                onClick={() => handleResendWelcome(u.id, u.email)}
+                                className="text-teal-600 border-teal-300 hover:bg-teal-50"
+                              >
+                                Resend Welcome
+                              </Button>
+                            )}
+                            {u.status === 'archived' && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={actionLoading === u.id}
+                                onClick={() => handleStatusChange(u.id, 'active')}
+                                className="text-green-600 border-green-300 hover:bg-green-50"
+                              >
+                                Unarchive
+                              </Button>
+                            )}
                             <Button
-                              variant="outline"
+                              variant="ghost"
                               size="sm"
                               disabled={actionLoading === u.id}
-                              onClick={() => handleStatusChange(u.id, 'active')}
-                              className="text-green-600 border-green-300 hover:bg-green-50"
+                              onClick={() => startEdit(u)}
+                              className="text-xs text-[#7FAEC2] hover:text-[#6A9AB0]"
                             >
-                              Activate
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              disabled={actionLoading === u.id}
-                              onClick={() => handleStatusChange(u.id, 'archived')}
-                              className="text-gray-500 border-gray-300 hover:bg-gray-50"
-                            >
-                              Archive
+                              <Pencil size={14} />
                             </Button>
                           </>
-                        )}
-                        {!u.last_login_at && u.status === 'active' && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            disabled={actionLoading === u.id}
-                            onClick={() => handleResendInvite(u.id, u.email)}
-                            className="text-blue-600 border-blue-300 hover:bg-blue-50"
-                          >
-                            Resend Invite
-                          </Button>
-                        )}
-                        {u.status === 'active' && RESTAURANT_ROLES.includes(u.role) && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            disabled={actionLoading === u.id}
-                            onClick={() => handleResendWelcome(u.id, u.email)}
-                            className="text-teal-600 border-teal-300 hover:bg-teal-50"
-                          >
-                            Resend Welcome
-                          </Button>
-                        )}
-                        {u.status === 'archived' && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            disabled={actionLoading === u.id}
-                            onClick={() => handleStatusChange(u.id, 'active')}
-                            className="text-green-600 border-green-300 hover:bg-green-50"
-                          >
-                            Unarchive
-                          </Button>
                         )}
                       </div>
                     </TableCell>
