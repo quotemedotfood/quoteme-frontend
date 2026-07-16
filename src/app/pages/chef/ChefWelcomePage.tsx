@@ -2,8 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { consumeChefMagicLink } from '../../services/api';
 import type { ChefMagicLinkConsumeResponse } from '../../services/api';
-import { useUser } from '../../contexts/UserContext';
-import { useAuth } from '../../contexts/AuthContext';
+import { useEstablishSession } from '../../hooks/useSessionOnUse';
 import { stripSeedPrefix } from '../../utils/format';
 import { formatCurrency } from '../../utils/formatCurrency';
 
@@ -64,8 +63,7 @@ function initials(name: string | null | undefined): string {
 export function ChefWelcomePage() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
-  const { syncWithAuthUser } = useUser();
-  const { refreshUser } = useAuth();
+  const establishSession = useEstablishSession();
 
   const token = params.get('token') || '';
 
@@ -87,19 +85,18 @@ export function ChefWelcomePage() {
       if (cancelled) return;
 
       if (res.data) {
-        // Persist JWT (existing auth pattern) so subsequent /api/v1/chef/*
-        // calls authenticate as this chef.
-        localStorage.setItem('quoteme_token', res.data.jwt);
-        // V2 P0-A/B fix: AuthContext was only validating on app boot, so
-        // newly-stored JWTs from the magic-link flow left user as null
-        // → DashboardRoleRouter fell through to rep dashboard and rep
+        // Persist JWT + populate AuthContext.user + sync UserContext via the
+        // shared session-establish helper (same steps this page always ran
+        // inline). V2 P0-A/B fix: AuthContext was only validating on app
+        // boot, so newly-stored JWTs from the magic-link flow left user as
+        // null → DashboardRoleRouter fell through to rep dashboard and rep
         // sidebar. Forcing a /me roundtrip here populates AuthContext.user
-        // with role: 'chef' before the chef navigates onward.
-        await refreshUser();
-        // Tell UserContext we're an authenticated chef (not guest).
+        // with role: 'chef' before the chef navigates onward (on CTA click,
+        // below - navigation is intentionally NOT part of this call so the
+        // envelope can render immediately without waiting on it).
         const u = res.data.user;
         const fullName = [u.first_name, u.last_name].filter(Boolean).join(' ') || u.email;
-        syncWithAuthUser({
+        await establishSession(res.data.jwt, {
           fullName,
           email: u.email,
           phoneNumber: '',
@@ -117,7 +114,7 @@ export function ChefWelcomePage() {
     })();
 
     return () => { cancelled = true; };
-  }, [token, syncWithAuthUser, refreshUser]);
+  }, [token, establishSession]);
 
   // ── Loading ────────────────────────────────────────────────────────────────
   if (state === 'loading') {

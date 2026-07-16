@@ -6,7 +6,12 @@
 //   1. Read `token` from URL query param.
 //   2. Show set-password form (token validated server-side on submit).
 //   3. POST /api/v1/rep_invitations/:token/consume  { password }
-//   4. On success: store JWT → navigate to redirect_to (typically /rep/welcome).
+//   4. On success: establish the session (store JWT, refresh AuthContext.user,
+//      sync UserContext) via the shared useSessionOnUse hook, then navigate to
+//      the authenticated rep landing view (/rep/quotes/inbound). The BE's
+//      redirect_to is deliberately ignored here - it points at /rep/welcome,
+//      a one-shot magic-link CONSUME page, not a real view; navigating back
+//      into it after this consume can never succeed a second time.
 //   5. Error states: expired, consumed, not_found, role_conflict.
 //
 // Pattern mirrors RepWelcomePage (OUTSIDE RootLayout, pre-auth magic-link).
@@ -17,6 +22,7 @@ import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { consumeRepInvitation } from '../services/api';
 import { PasswordRequirements, passwordMeetsRequirements } from '../components/PasswordRequirements';
+import { useSessionOnUse } from '../hooks/useSessionOnUse';
 
 // ─── Style constants (match RepWelcomePage palette) ──────────────────────────
 const C = {
@@ -107,6 +113,7 @@ function EyeOffIcon() {
 export function RepInviteAcceptPage() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
+  const establishSessionAndGo = useSessionOnUse();
   const token = params.get('token') || '';
 
   const [password, setPassword] = useState('');
@@ -164,11 +171,30 @@ export function RepInviteAcceptPage() {
     setIsSubmitting(false);
 
     if (res.data) {
-      localStorage.setItem('quoteme_token', res.data.jwt);
+      const jwt = res.data.jwt;
+      const u = res.data.user;
+      // Persist the token right away so it survives even if the tab closes
+      // during the success beat below; useSessionOnUse re-sets it (idempotent)
+      // once it also refreshes AuthContext and syncs UserContext.
+      localStorage.setItem('quoteme_token', jwt);
       setSuccess(true);
-      // Navigate to redirect_to from BE (typically /rep/welcome, then to /rep/quotes/inbound)
+      // Brief success flash, then establish the session (refresh AuthContext.user,
+      // sync UserContext) and navigate to the authenticated rep landing view.
+      // We deliberately ignore res.data.redirect_to here (see file header) and
+      // hardcode the real view, exactly as ChefWelcomePage hardcodes its target.
       setTimeout(() => {
-        navigate(res.data!.redirect_to || '/rep/quotes/inbound');
+        establishSessionAndGo({
+          jwt,
+          target: '/rep/quotes/inbound',
+          user: {
+            fullName: [u.first_name, u.last_name].filter(Boolean).join(' ') || u.email,
+            email: u.email,
+            phoneNumber: '',
+            distributorName: u.distributor?.name || '',
+            plan: 'free',
+            isGuest: false,
+          },
+        });
       }, 1200);
     } else {
       setFormError({
