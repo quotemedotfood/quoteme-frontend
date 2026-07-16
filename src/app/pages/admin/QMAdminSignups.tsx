@@ -11,6 +11,7 @@ import {
   TableCell,
 } from '../../components/ui/table';
 import { getAdminUsers, updateAdminUser, AdminUser } from '../../services/adminApi';
+import { userStatusPill } from '../../utils/userDisplayStatus';
 
 type SortField = 'name' | 'email' | 'role' | 'status' | 'created_at';
 type SortDir = 'asc' | 'desc';
@@ -246,17 +247,25 @@ export function QMAdminSignups() {
                       )}
                     </TableCell>
                     <TableCell>
-                      <span
-                        className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${
-                          u.status === 'active'
-                            ? 'bg-green-100 text-green-700'
-                            : u.status === 'suspended'
-                            ? 'bg-red-100 text-red-700'
-                            : 'bg-gray-100 text-gray-600'
-                        }`}
-                      >
-                        {u.status}
-                      </span>
+                      {/* Feature 2 Slice 1: honest status pill. See userStatusPill
+                          for why a never-logged-in signup renders "Invite sent"
+                          instead of "Active". Slice 2 pairs a genuinely active
+                          pill with a truthful last-sign-in date. */}
+                      {(() => {
+                        const pill = userStatusPill(u);
+                        return (
+                          <div className="flex flex-col gap-0.5">
+                            <span
+                              className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${pill.className} w-fit`}
+                            >
+                              {pill.label}
+                            </span>
+                            {pill.lastSignInLabel && (
+                              <span className="text-[10px] text-gray-400">{pill.lastSignInLabel}</span>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </TableCell>
                     <TableCell className="text-sm text-gray-500">{formatRelativeTime((u as any).last_login_at)}</TableCell>
                     <TableCell className="text-sm text-gray-500">{formatDate(u.created_at)}</TableCell>

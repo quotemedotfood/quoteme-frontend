@@ -63,6 +63,11 @@ export interface AdminUser {
   last_name: string;
   role: string;
   status: string;
+  // Feature 2 Slice 1: honest, derived-from-existing-columns status. One of
+  // "invite_sent" | "active" | "archived". See User#display_status (BE) and
+  // userStatusPill (utils/userDisplayStatus.ts) for the full derivation.
+  // Optional so older cached payloads / tests without it still typecheck.
+  display_status?: string;
   distributor_name: string | null;
   claimed_distributor_id: string | null;
   flagged_for_review: boolean;
