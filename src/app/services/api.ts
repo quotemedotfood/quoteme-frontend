@@ -3215,24 +3215,16 @@ export async function repConfirmQuote(id: string): Promise<ApiResponse<QuoteResp
   });
 }
 
-/**
- * repSendQuote — POST /api/v1/rep/quotes/:id/send (Bearer auth)
- *
- * Root 1 CONFIRM→SEND state machine (BE PR #197). Sends an OPEN quote
- * (one with no chef contact) to an explicit recipient email. Returns the
- * updated quote with status "sent". Returns 422 { error } for a missing or
- * invalid email; 401 unauthenticated. Mirrors repConfirmQuote's shape and
- * error handling (fetchWithAuth surfaces non-2xx as { error, status }).
- */
-export async function repSendQuote(
-  id: string,
-  recipientEmail: string,
-): Promise<ApiResponse<QuoteResponse>> {
-  return fetchWithAuth<QuoteResponse>(`/api/v1/rep/quotes/${id}/send`, {
-    method: 'POST',
-    body: JSON.stringify({ recipient_email: recipientEmail }),
-  });
-}
+// BUG #24: repSendQuote (POST /api/v1/rep/quotes/:id/send) used to back the
+// Root 1 CONFIRM->SEND post-confirm affordance on the old rep triage view
+// (RepIncomingQuotePage). That view was deleted (P0, "delete old
+// /rep/quotes/:id triage view" commit) and every rep entry point now routes
+// through the canonical quote-build flow, whose Send button calls sendQuote()
+// against the working /api/v1/quotes/:id/send_quote endpoint instead. This
+// function had zero remaining callers and pointed at a stale/removed rep-only
+// endpoint, so it is deleted rather than left as a dead trap for a future
+// caller to wire up by mistake. See ExportFinalizePage.test.ts and
+// api.sendEndpoint.test.ts for the regression coverage.
 
 // ─── Rep customers ────────────────────────────────────────────────────────────
 
