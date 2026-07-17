@@ -10,6 +10,8 @@ import { isDemoMode } from '../utils/demoMode';
 import { toTitleCase, formatProductName } from '../utils/format';
 import { categoryLabel } from '../utils/categoryLabel';
 import { MatchDrawer } from '../components/MatchDrawer';
+import { RepMemoryBadge } from '../components/RepMemoryBadge';
+import { DistributorMemoryBadge } from '../components/DistributorMemoryBadge';
 import { QuoteReviewBar } from '../components/QuoteReviewBar';
 import { Drawer, DrawerContent } from '../components/ui/drawer';
 import {
@@ -30,6 +32,14 @@ interface AlignmentCandidate {
   position: number;
   tier: string;
   score: number | null;
+  /** True when this candidate is a rep-scoped memory match forced to
+   * position 1 by the engine -- drives the RepMemoryBadge bookmark icon. */
+  rep_memory?: boolean;
+  /** Operational Memory Epic, Lane 2: true when this candidate is a
+   * distributor-scoped ("house pick") memory match forced to position 1.
+   * Only set when rep_memory is falsy for the same candidate. */
+  distributor_memory?: boolean;
+  distributor_name?: string | null;
   product: {
     id: string;
     item_number: string;
@@ -47,6 +57,7 @@ interface QuoteLine {
     id: string;
     name: string;
     source_dish: string;
+    canonical_key?: string | null;
   } | null;
   product: {
     id: string;
@@ -540,6 +551,9 @@ export function MapIngredientsPage() {
         : !bestMatch ? { text: 'Needs Your Pick', cls: 'bg-red-100 text-red-700' }
         : null;
 
+    const bestMatchIsRepMemory = bestCandidate?.rep_memory === true;
+    const bestMatchIsDistributorMemory = !bestMatchIsRepMemory && bestCandidate?.distributor_memory === true;
+
     return (
       <div key={component} className="grid grid-cols-[1fr_1fr_auto] items-center gap-4 py-3 border-b border-gray-100 last:border-b-0">
         {/* Left: ingredient name */}
@@ -549,7 +563,11 @@ export function MapIngredientsPage() {
         <div className="min-w-0">
           {bestMatch ? (
             <div className="text-xs text-gray-500">
-              <p className="font-medium truncate">{formatProductName(bestMatch.product, bestMatch.brand)}</p>
+              <p className="font-medium truncate flex items-center gap-1">
+                <span className="truncate">{formatProductName(bestMatch.product, bestMatch.brand)}</span>
+                {bestMatchIsRepMemory && <RepMemoryBadge />}
+                {bestMatchIsDistributorMemory && <DistributorMemoryBadge distributorName={bestCandidate?.distributor_name} />}
+              </p>
               <p className="text-gray-400 truncate">{bestMatch.item_number} &middot; {bestMatch.pack_size}</p>
               {badge && (
                 <span className={`mt-1 inline-block rounded px-2 py-0.5 text-xs font-medium ${badge.cls}`}>
@@ -967,7 +985,7 @@ export function MapIngredientsPage() {
         quoteId={quoteId || undefined}
         quoteLineId={selectedLine?.id || null}
         dishComponentId={selectedLine?.component?.id || null}
-        canonicalKey={null}
+        canonicalKey={selectedLine?.component?.canonical_key ?? null}
         onSubmitted={(pickedProductIds) => {
           setMappedComponents(prev => ({ ...prev, [selectedComponent]: pickedProductIds }));
           handleMatchesUpdated();
