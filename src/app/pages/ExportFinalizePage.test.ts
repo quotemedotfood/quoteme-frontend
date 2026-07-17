@@ -14,7 +14,11 @@ import {
   SEND_QUOTE_DISABLED_REASON,
   isExportBlockedUnreviewed,
   REVIEW_REQUIRED_REASON,
+  isLineAcknowledged,
+  unacknowledgedUnmatchedLines,
+  getBlockedSendReason,
 } from './ExportFinalizePage';
+import type { QuoteLineResponse } from '../services/api';
 
 describe('B-104 — from-address display string', () => {
   it('shows quotes@quoteme.food (correct domain)', () => {
@@ -162,5 +166,113 @@ describe('B-168 — Extraction review gate mirrors backend send_quote gate exact
     expect(typeof REVIEW_REQUIRED_REASON).toBe('string');
     expect(REVIEW_REQUIRED_REASON.trim().length).toBeGreaterThan(0);
     expect(REVIEW_REQUIRED_REASON.toLowerCase()).toMatch(/review/);
+  });
+});
+
+// ── BUG #21/#23 — unmatched-line acknowledgment completes review, and a
+// blocked send always names WHY ────────────────────────────────────────────
+
+function matchedLine(overrides: Partial<QuoteLineResponse> = {}): QuoteLineResponse {
+  return {
+    id: 'line-matched',
+    position: 1,
+    category: 'Proteins',
+    quantity: 1,
+    unit_price_cents: 1000,
+    unit_price: '$10.00',
+    alignment_selected: 1,
+    availability_status: 'available',
+    chef_note: null,
+    component: { id: 'c1', name: 'Chicken Breast', source_dish: 'Chicken Dish' },
+    product: { id: 'p1', item_number: '1', brand: 'Acme', product: 'Chicken Breast', pack_size: '10lb', category: 'Proteins' },
+    ...overrides,
+  } as QuoteLineResponse;
+}
+
+function unmatchedLine(overrides: Partial<QuoteLineResponse> = {}): QuoteLineResponse {
+  return matchedLine({
+    id: 'line-unmatched',
+    availability_status: 'not_in_catalog',
+    unit_price_cents: null,
+    unit_price: null,
+    product: null as any,
+    rep_handled: false,
+    ...overrides,
+  });
+}
+
+describe('BUG #23 — isLineAcknowledged', () => {
+  it('a matched (available) line is always considered acknowledged', () => {
+    expect(isLineAcknowledged(matchedLine())).toBe(true);
+  });
+
+  it('an unmatched line with rep_handled=false is NOT acknowledged', () => {
+    expect(isLineAcknowledged(unmatchedLine({ rep_handled: false }))).toBe(false);
+  });
+
+  it('an unmatched line with rep_handled=true IS acknowledged', () => {
+    expect(isLineAcknowledged(unmatchedLine({ rep_handled: true }))).toBe(true);
+  });
+
+  it('an unmatched line with rep_handled undefined defaults to NOT acknowledged', () => {
+    expect(isLineAcknowledged(unmatchedLine({ rep_handled: undefined }))).toBe(false);
+  });
+});
+
+describe('BUG #21 — unacknowledgedUnmatchedLines', () => {
+  it('returns [] when there are no unmatched lines', () => {
+    expect(unacknowledgedUnmatchedLines([matchedLine(), matchedLine({ id: 'l2' })])).toEqual([]);
+  });
+
+  it('returns [] once every unmatched line has been acknowledged', () => {
+    const lines = [matchedLine(), unmatchedLine({ id: 'u1', rep_handled: true }), unmatchedLine({ id: 'u2', rep_handled: true })];
+    expect(unacknowledgedUnmatchedLines(lines)).toEqual([]);
+  });
+
+  it('returns the still-unacknowledged unmatched lines only', () => {
+    const acked = unmatchedLine({ id: 'u1', rep_handled: true });
+    const notAcked = unmatchedLine({ id: 'u2', rep_handled: false });
+    const lines = [matchedLine(), acked, notAcked];
+    const result = unacknowledgedUnmatchedLines(lines);
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe('u2');
+  });
+});
+
+describe('BUG #21 — getBlockedSendReason: send is never silently blocked', () => {
+  it('returns null when not blocked', () => {
+    expect(getBlockedSendReason(false, [unmatchedLine({ rep_handled: false })])).toBeNull();
+  });
+
+  it('falls back to the generic REVIEW_REQUIRED_REASON when blocked with no unmatched lines', () => {
+    expect(getBlockedSendReason(true, [matchedLine()])).toBe(REVIEW_REQUIRED_REASON);
+  });
+
+  it('names the exact count of unacknowledged unmatched items when blocked (singular)', () => {
+    const reason = getBlockedSendReason(true, [unmatchedLine({ id: 'u1', rep_handled: false })]);
+    expect(reason).toMatch(/^1 item still needs you to choose Rep will handle or Can't source/);
+  });
+
+  it('names the exact count of unacknowledged unmatched items when blocked (plural)', () => {
+    const lines = [
+      unmatchedLine({ id: 'u1', rep_handled: false }),
+      unmatchedLine({ id: 'u2', rep_handled: false }),
+    ];
+    const reason = getBlockedSendReason(true, lines);
+    expect(reason).toMatch(/^2 items still need you to choose Rep will handle or Can't source/);
+  });
+
+  it('does not count already-acknowledged unmatched lines toward the reason', () => {
+    const lines = [
+      unmatchedLine({ id: 'u1', rep_handled: true }),
+      unmatchedLine({ id: 'u2', rep_handled: false }),
+    ];
+    const reason = getBlockedSendReason(true, lines);
+    expect(reason).toMatch(/^1 item still needs/);
+  });
+
+  it('never returns an empty/falsy reason string while blocked (never silent)', () => {
+    expect(getBlockedSendReason(true, [])).toBeTruthy();
+    expect(getBlockedSendReason(true, [unmatchedLine()])).toBeTruthy();
   });
 });

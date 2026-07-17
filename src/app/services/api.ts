@@ -271,6 +271,10 @@ export interface QuoteLineResponse {
   unit_price: string | null;
   alignment_selected: number;
   availability_status: 'available' | 'not_in_catalog';
+  /** True once a rep has acknowledged an unmatched (not_in_catalog) line via
+   * "Rep will handle" / "Can't source" (see acknowledgeUnmatchedLines). No
+   * effect on matched lines. */
+  rep_handled?: boolean;
   chef_note: string | null;
   component: {
     id: string;
@@ -1307,6 +1311,25 @@ export async function sendQuote(id: string, recipientEmail?: string, note?: stri
     options.body = JSON.stringify(body);
   }
   return fetchWithAuth(`/api/v1/quotes/${id}/send_quote`, options);
+}
+
+/**
+ * BUG #21/#23: acknowledge one or more unmatched (not_in_catalog) lines so
+ * the rep-review gate on send_quote can clear. `reason` drives the copy
+ * shown to the rep and is logged server-side; either value marks the lines
+ * rep_handled: true. Once every unmatched line on the quote is acknowledged,
+ * the backend stamps rep_reviewed_at and the returned quote reflects the
+ * cleared gate.
+ */
+export async function acknowledgeUnmatchedLines(
+  quoteId: string,
+  lineIds: string[],
+  reason: 'rep_will_handle' | 'cant_source'
+): Promise<ApiResponse<QuoteResponse>> {
+  return fetchWithAuth(`/api/v1/quotes/${quoteId}/acknowledge_unmatched`, {
+    method: 'POST',
+    body: JSON.stringify({ line_ids: lineIds, reason }),
+  });
 }
 
 export async function sendQuoteSms(id: string, recipientPhone?: string): Promise<ApiResponse<any>> {
