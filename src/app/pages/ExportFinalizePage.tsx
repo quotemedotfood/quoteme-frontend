@@ -21,7 +21,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '../components/ui/dialog';
-import { getQuote, getGuestQuote, downloadQuotePdf, downloadOrderGuide, sendQuote, sendQuoteSms } from '../services/api';
+import { getQuote, getGuestQuote, downloadQuotePdf, downloadOrderGuide, sendQuote, sendQuoteSms, acknowledgeUnmatchedLines } from '../services/api';
 import { useUser } from '../contexts/UserContext';
 import type { QuoteResponse, QuoteLineResponse } from '../services/api';
 import { isDemoMode, PROD_SIGNUP_URL } from '../utils/demoMode';
@@ -102,6 +102,40 @@ export function isExportBlockedUnreviewed(
   if (repReviewedAt) return false;
   if (state === 'distributor_quote' || state === 'confirmed') return false;
   return true;
+}
+
+/**
+ * BUG #23: an unmatched line has no product, so it can never go through the
+ * alignment "Edit Matches" correction flow. Acknowledging it (Rep will
+ * handle / Can't source) is the only rep-side action available for it. This
+ * mirrors the backend's rep_handled column.
+ */
+export function isLineAcknowledged(line: Pick<QuoteLineResponse, 'availability_status' | 'rep_handled'>): boolean {
+  return line.availability_status !== 'not_in_catalog' || !!line.rep_handled;
+}
+
+/** BUG #21: unmatched lines still waiting on a rep acknowledgment. */
+export function unacknowledgedUnmatchedLines(lines: QuoteLineResponse[]): QuoteLineResponse[] {
+  return lines.filter(l => l.availability_status === 'not_in_catalog' && !l.rep_handled);
+}
+
+/**
+ * BUG #21: the send/order-guide gate must never fail silently. Mirrors the
+ * backend send_quote error copy exactly so the rep sees the same reason in
+ * both places: when N unmatched items are still unacknowledged, name the
+ * count; otherwise fall back to the generic review-required reason.
+ */
+export function getBlockedSendReason(
+  blocked: boolean,
+  lines: QuoteLineResponse[]
+): string | null {
+  if (!blocked) return null;
+  const count = unacknowledgedUnmatchedLines(lines).length;
+  if (count > 0) {
+    return `${count} item${count === 1 ? '' : 's'} still ${count === 1 ? 'needs' : 'need'} you to choose ` +
+      `Rep will handle or Can't source before you can send.`;
+  }
+  return REVIEW_REQUIRED_REASON;
 }
 
 // Mock data for premium onboarding features
@@ -193,6 +227,28 @@ export function ExportFinalizePage() {
     }
 
     return { matched, produceNames: [...new Set(produceNames)], otherUnmatched };
+  }
+
+  // BUG #23: rep-side acknowledgment for unmatched lines ("Rep will handle" /
+  // "Can't source"). This is the missing review action — unmatched lines
+  // have no product and so can never go through Edit Matches / MatchCorrection.
+  const [ackingLineIds, setAckingLineIds] = useState<string[]>([]);
+  const [ackError, setAckError] = useState<string | null>(null);
+
+  async function handleAcknowledgeUnmatched(lineIds: string[], reason: 'rep_will_handle' | 'cant_source') {
+    if (!quoteId || lineIds.length === 0) return;
+    setAckingLineIds(prev => [...prev, ...lineIds]);
+    setAckError(null);
+    try {
+      const res = await acknowledgeUnmatchedLines(quoteId, lineIds, reason);
+      if (res.error) {
+        setAckError(res.error);
+      } else if (res.data) {
+        setQuoteData(res.data);
+      }
+    } finally {
+      setAckingLineIds(prev => prev.filter(id => !lineIds.includes(id)));
+    }
   }
 
   // CSV download
@@ -372,6 +428,11 @@ export function ExportFinalizePage() {
   // Only applies once quote data has loaded (don't pre-block while loading).
   const exportBlockedUnreviewed =
     !!quoteData && isExportBlockedUnreviewed(quoteData.rep_reviewed_at, quoteData.state);
+
+  // BUG #21: never fail silently — name WHY when blocked (unacknowledged
+  // unmatched items vs. the generic review-required reason).
+  const blockedSendReason = getBlockedSendReason(exportBlockedUnreviewed, quoteData?.lines || []);
+  const unacknowledgedUnmatched = quoteData ? unacknowledgedUnmatchedLines(quoteData.lines || []) : [];
 
   // Customer & Contact State (fallback to quote data when available)
   const customerName = effectiveOpenQuote ? 'Open Quote' : (quoteData?.restaurant || 'Loading...');
@@ -625,6 +686,98 @@ export function ExportFinalizePage() {
                 </div>
               </div>
             </div>
+
+            {/* BUG #23: rep-side acknowledgment for unmatched lines — the missing
+                review action. Unmatched lines have no product, so they can never
+                go through Edit Matches / MatchCorrection; this is their only path
+                to being reviewed. Acknowledging every line here clears the
+                send-quote gate (BUG #21). Chef-side "Items your rep will handle"
+                contract is untouched. */}
+            {quoteData && (() => {
+              const allUnmatched = deduplicatedLines(quoteData.lines || [])
+                .filter(l => l.availability_status === 'not_in_catalog');
+              if (allUnmatched.length === 0) return null;
+              const outstanding = allUnmatched.filter(l => !l.rep_handled);
+
+              return (
+                <div className="bg-white rounded-lg p-6 shadow-sm border-2 border-amber-200">
+                  <div className="flex items-center justify-between mb-1">
+                    <h2 className="text-lg text-[#2A2A2A]">Items Needing Your Input</h2>
+                    {outstanding.length > 0 ? (
+                      <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">
+                        {outstanding.length} remaining
+                      </span>
+                    ) : (
+                      <Check className="w-5 h-5 text-green-600" />
+                    )}
+                  </div>
+                  <p className="text-gray-500 text-sm mb-4">
+                    These items were not found in the distributor catalog. Choose how you will handle each one before sending.
+                  </p>
+                  {ackError && (
+                    <div className="text-sm text-red-500 bg-red-50 border border-red-200 rounded-md p-3 mb-3">
+                      {ackError}
+                    </div>
+                  )}
+                  <div className="space-y-2">
+                    {allUnmatched.map(line => {
+                      const acked = !!line.rep_handled;
+                      const busy = ackingLineIds.includes(line.id);
+                      return (
+                        <div
+                          key={line.id}
+                          className={`flex items-center justify-between gap-3 rounded-md border px-3 py-2.5 ${acked ? 'bg-green-50 border-green-100' : 'bg-amber-50/50 border-amber-100'}`}
+                        >
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-medium text-[#2A2A2A] truncate">
+                              {toTitleCase(line.component?.name || 'Unknown')}
+                            </p>
+                            <p className="text-xs text-gray-400">{categoryLabel(line.category || '')}</p>
+                          </div>
+                          {acked ? (
+                            <span className="text-xs text-green-700 flex items-center gap-1 shrink-0" data-testid={`ack-done-${line.id}`}>
+                              <Check className="w-3.5 h-3.5" /> Acknowledged
+                            </span>
+                          ) : (
+                            <div className="flex gap-2 shrink-0">
+                              <button
+                                type="button"
+                                disabled={busy}
+                                onClick={() => handleAcknowledgeUnmatched([line.id], 'rep_will_handle')}
+                                className="text-xs px-2.5 py-1.5 rounded-md border border-[#A5CFDD] text-[#2A5F6F] hover:bg-[#A5CFDD]/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                                data-testid={`ack-rep-will-handle-${line.id}`}
+                              >
+                                Rep will handle
+                              </button>
+                              <button
+                                type="button"
+                                disabled={busy}
+                                onClick={() => handleAcknowledgeUnmatched([line.id], 'cant_source')}
+                                className="text-xs px-2.5 py-1.5 rounded-md border border-gray-300 text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                data-testid={`ack-cant-source-${line.id}`}
+                              >
+                                Can't source
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {outstanding.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => handleAcknowledgeUnmatched(outstanding.map(l => l.id), 'rep_will_handle')}
+                      disabled={ackingLineIds.length > 0}
+                      className="mt-3 text-xs text-[#4A90D9] hover:text-[#3a7bc8] underline underline-offset-2 disabled:opacity-50"
+                      data-testid="ack-all-rep-will-handle"
+                    >
+                      Mark all {outstanding.length} as Rep will handle
+                    </button>
+                  )}
+                </div>
+              );
+            })()}
 
             {/* Premium: Append Onboarding Documents and Links */}
             {/* B-160: PREMIUM is an inline badge beside the heading (not an absolute corner
@@ -1011,7 +1164,7 @@ export function ExportFinalizePage() {
                 <Button
                   className="w-full justify-start bg-[#F2993D] hover:bg-[#E8953A] text-white h-12"
                   disabled={!isFinalized || downloadingOrderGuide || !quoteId || exportBlockedUnreviewed}
-                  title={exportBlockedUnreviewed ? REVIEW_REQUIRED_REASON : (getOrderGuideDisabledReason(isFinalized, quoteId) ?? undefined)}
+                  title={exportBlockedUnreviewed ? (blockedSendReason ?? undefined) : (getOrderGuideDisabledReason(isFinalized, quoteId) ?? undefined)}
                   onClick={handleOrderGuideDownload}
                 >
                   {downloadingOrderGuide ? (
@@ -1021,10 +1174,11 @@ export function ExportFinalizePage() {
                   )}
                   Convert to Order Guide
                 </Button>
-                {/* B-168: Inline reason when blocked on extraction review */}
+                {/* B-168/BUG#21: Inline reason when blocked on extraction review — always
+                    names WHY (unacknowledged unmatched items or the generic reason), never silent. */}
                 {exportBlockedUnreviewed && (
                   <p className="text-xs text-amber-600 mt-1" data-testid="order-guide-review-required">
-                    {REVIEW_REQUIRED_REASON}
+                    {blockedSendReason}
                   </p>
                 )}
                 {/* B-115: Inline error — visible on the main page, not buried in the PDF modal */}
@@ -1141,10 +1295,11 @@ export function ExportFinalizePage() {
       {/* Authenticated mode: Sticky floating Send Quote button */}
       {!isDemoMode() && (
         <div className="fixed bottom-0 left-0 right-0 md:left-64 bg-white border-t border-gray-200 p-4 z-40">
-          {/* B-168: Review gate takes precedence — block + explain before the email hint */}
+          {/* B-168/BUG#21: Review gate takes precedence — block + always explain WHY
+              (never silent) before the email hint */}
           {exportBlockedUnreviewed ? (
             <p className="text-xs text-center text-amber-600 mb-1" data-testid="send-quote-review-required">
-              {REVIEW_REQUIRED_REASON}
+              {blockedSendReason}
             </p>
           ) : (
             /* B-114: Show helper text when button is disabled because no recipient email was entered */
@@ -1159,7 +1314,7 @@ export function ExportFinalizePage() {
             disabled={exportBlockedUnreviewed || isOpenQuoteSendDisabled(effectiveOpenQuote, manualEmail, contactEmail)}
             title={
               exportBlockedUnreviewed
-                ? REVIEW_REQUIRED_REASON
+                ? (blockedSendReason ?? undefined)
                 : (isOpenQuoteSendDisabled(effectiveOpenQuote, manualEmail, contactEmail) ? SEND_QUOTE_DISABLED_REASON : undefined)
             }
             className="w-full md:w-auto md:min-w-[200px] md:mx-auto md:block bg-[#F2993D] hover:bg-[#E8953A] text-white font-medium py-2.5 px-5 rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed"
