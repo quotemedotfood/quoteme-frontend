@@ -19,6 +19,7 @@ import {
 import { toTitleCase, formatProductName } from '../utils/format';
 import { categoryLabel } from '../utils/categoryLabel';
 import { RepMemoryBadge } from './RepMemoryBadge';
+import { DistributorMemoryBadge } from './DistributorMemoryBadge';
 
 // ─── MatchDrawer ──────────────────────────────────────────────────────────
 // Multi-select redesign of MapComponentDrawer (see that file for the legacy
@@ -194,6 +195,8 @@ export function MatchDrawer({
       tier: scored?.tier ?? 'current',
       score: scored?.score ?? null,
       rep_memory: scored?.rep_memory ?? false,
+      distributor_memory: scored?.distributor_memory ?? false,
+      distributor_name: scored?.distributor_name ?? null,
       product: currentProduct,
     };
   }, [currentProduct, candidates]);
@@ -311,6 +314,9 @@ export function MatchDrawer({
                     <h4 className="text-[13.5px] font-semibold leading-[1.3] flex items-center gap-[6px]" style={{ color: 'var(--qm-charcoal)' }}>
                       {formatProductName(currentMatch.product.product, currentMatch.product.brand)}
                       {currentMatch.rep_memory && <RepMemoryBadge />}
+                      {!currentMatch.rep_memory && currentMatch.distributor_memory && (
+                        <DistributorMemoryBadge distributorName={currentMatch.distributor_name} />
+                      )}
                     </h4>
                     <p className="text-[11.5px] mt-[6px]" style={{ color: 'var(--qm-gray-500)' }}>
                       Item #{currentMatch.product.item_number} &middot; {toTitleCase(currentMatch.product.pack_size)} &middot; {categoryLabel(currentMatch.product.category)}
@@ -379,6 +385,9 @@ export function MatchDrawer({
                         <h4 className="text-[13.5px] font-semibold leading-[1.3] flex items-center gap-[6px]" style={{ color: 'var(--qm-charcoal)' }}>
                           {formatProductName(candidate.product.product, candidate.product.brand)}
                           {candidate.rep_memory && <RepMemoryBadge />}
+                          {!candidate.rep_memory && candidate.distributor_memory && (
+                            <DistributorMemoryBadge distributorName={candidate.distributor_name} />
+                          )}
                         </h4>
                         <p className="text-[11.5px] mt-[6px]" style={{ color: 'var(--qm-gray-500)' }}>
                           Item #{candidate.product.item_number} &middot; {toTitleCase(candidate.product.pack_size)} &middot; {categoryLabel(candidate.product.category)}

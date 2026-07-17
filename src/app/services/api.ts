@@ -300,6 +300,16 @@ export interface AlignmentCandidateResponse {
    * quote." bookmark badge (RepMemoryBadge) -- no count/confidence number is
    * sent, the copy is fixed. */
   rep_memory: boolean;
+  /** Operational Memory Epic, Lane 2: true when this candidate is a
+   * distributor-scoped memory match (a "house pick" set by the distributor,
+   * not this rep personally) that the engine forced to position 1. Only
+   * ever true when rep_memory is false for the same candidate -- the engine
+   * surfaces at most one memory tier per component, rep first. Drives the
+   * DistributorMemoryBadge house-icon label. */
+  distributor_memory: boolean;
+  /** The distributor's name, present only when distributor_memory is true;
+   * feeds the "House pick, set by your team at {distributor}." copy. */
+  distributor_name: string | null;
   product: {
     id: string;
     item_number: string;
