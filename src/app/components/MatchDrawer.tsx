@@ -11,11 +11,15 @@ import { X, Check, Search, Plus, Repeat, Mic, Loader2 } from 'lucide-react';
 import {
   searchCatalogProducts,
   submitYourCallSelection,
+  CORRECTION_TYPES,
   type AlignmentCandidateResponse,
   type CatalogSearchProduct,
+  type CorrectionType,
 } from '../services/api';
 import { toTitleCase, formatProductName } from '../utils/format';
 import { categoryLabel } from '../utils/categoryLabel';
+import { RepMemoryBadge } from './RepMemoryBadge';
+import { DistributorMemoryBadge } from './DistributorMemoryBadge';
 
 // ─── MatchDrawer ──────────────────────────────────────────────────────────
 // Multi-select redesign of MapComponentDrawer (see that file for the legacy
@@ -58,6 +62,20 @@ function tierLabel(position: number): string {
   if (position === 1) return 'Best Match';
   return 'Alternate';
 }
+
+// Plain reason picker for "why" this pick was made -- attributed by the
+// promotion/memory system, not part of the memory label itself. No
+// sparkles/confidence-number styling here, just a compact control.
+const CORRECTION_TYPE_LABELS: Record<CorrectionType, string> = {
+  wrong_product: 'Wrong product',
+  wrong_form: 'Wrong form',
+  wrong_pack: 'Wrong pack size',
+  not_carried: 'Not carried',
+  out_of_stock: 'Out of stock',
+  better_fit: 'Better fit',
+  rep_preference: 'Rep preference',
+  distributor_preference: 'Distributor preference',
+};
 
 interface MatchDrawerCurrentProduct {
   id: string;
@@ -108,6 +126,7 @@ export function MatchDrawer({
 }: MatchDrawerProps) {
   const [picks, setPicks] = useState<string[]>([]);
   const [notes, setNotes] = useState('');
+  const [correctionType, setCorrectionType] = useState<CorrectionType>('rep_preference');
   const [extraAlternates, setExtraAlternates] = useState<AlignmentCandidateResponse[]>([]);
   const [loadingMore, setLoadingMore] = useState(false);
 
@@ -136,6 +155,7 @@ export function MatchDrawer({
     if (!open) return;
     setPicks([]);
     setNotes('');
+    setCorrectionType('rep_preference');
     setExtraAlternates([]);
     setQuery(ingredientName || '');
     setSearchResults([]);
@@ -174,6 +194,9 @@ export function MatchDrawer({
       position: scored?.position ?? 1,
       tier: scored?.tier ?? 'current',
       score: scored?.score ?? null,
+      rep_memory: scored?.rep_memory ?? false,
+      distributor_memory: scored?.distributor_memory ?? false,
+      distributor_name: scored?.distributor_name ?? null,
       product: currentProduct,
     };
   }, [currentProduct, candidates]);
@@ -226,6 +249,7 @@ export function MatchDrawer({
       canonical_key: canonicalKey ?? null,
       selections,
       notes: notes.trim() ? notes.trim() : null,
+      correction_type: correctionType,
     });
     setSubmitting(false);
     if (res.error) {
@@ -287,8 +311,12 @@ export function MatchDrawer({
               >
                 <div className="flex items-start gap-[10px]">
                   <div className="flex-1 min-w-0">
-                    <h4 className="text-[13.5px] font-semibold leading-[1.3]" style={{ color: 'var(--qm-charcoal)' }}>
+                    <h4 className="text-[13.5px] font-semibold leading-[1.3] flex items-center gap-[6px]" style={{ color: 'var(--qm-charcoal)' }}>
                       {formatProductName(currentMatch.product.product, currentMatch.product.brand)}
+                      {currentMatch.rep_memory && <RepMemoryBadge />}
+                      {!currentMatch.rep_memory && currentMatch.distributor_memory && (
+                        <DistributorMemoryBadge distributorName={currentMatch.distributor_name} />
+                      )}
                     </h4>
                     <p className="text-[11.5px] mt-[6px]" style={{ color: 'var(--qm-gray-500)' }}>
                       Item #{currentMatch.product.item_number} &middot; {toTitleCase(currentMatch.product.pack_size)} &middot; {categoryLabel(currentMatch.product.category)}
@@ -354,8 +382,12 @@ export function MatchDrawer({
                         {on && <Check className="w-3 h-3 text-white" />}
                       </span>
                       <div className="flex-1 min-w-0">
-                        <h4 className="text-[13.5px] font-semibold leading-[1.3]" style={{ color: 'var(--qm-charcoal)' }}>
+                        <h4 className="text-[13.5px] font-semibold leading-[1.3] flex items-center gap-[6px]" style={{ color: 'var(--qm-charcoal)' }}>
                           {formatProductName(candidate.product.product, candidate.product.brand)}
+                          {candidate.rep_memory && <RepMemoryBadge />}
+                          {!candidate.rep_memory && candidate.distributor_memory && (
+                            <DistributorMemoryBadge distributorName={candidate.distributor_name} />
+                          )}
                         </h4>
                         <p className="text-[11.5px] mt-[6px]" style={{ color: 'var(--qm-gray-500)' }}>
                           Item #{candidate.product.item_number} &middot; {toTitleCase(candidate.product.pack_size)} &middot; {categoryLabel(candidate.product.category)}
@@ -486,6 +518,32 @@ export function MatchDrawer({
               )}
             </div>
           </div>
+
+          {/* Reason (Optional) -- plain picker, not part of the memory label.
+              Shown once there's a replacement pick; defaults to
+              "Rep preference" so it never blocks a one-click submit. */}
+          {canReplace && (
+            <div className="mt-[18px]">
+              <label
+                htmlFor="match-drawer-correction-type"
+                className="text-[12.5px] font-semibold block mb-2"
+                style={{ color: 'var(--qm-charcoal)' }}
+              >
+                Reason for this pick
+              </label>
+              <select
+                id="match-drawer-correction-type"
+                value={correctionType}
+                onChange={(e) => setCorrectionType(e.target.value as CorrectionType)}
+                className="w-full rounded-[8px] px-3 py-[10px] text-[13px] outline-none"
+                style={{ border: '1px solid var(--qm-soft-line)', fontFamily: 'var(--qm-sans)', color: 'var(--qm-charcoal)', background: '#fff' }}
+              >
+                {CORRECTION_TYPES.map((code) => (
+                  <option key={code} value={code}>{CORRECTION_TYPE_LABELS[code]}</option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {/* Notes */}
           <div className="flex items-center justify-between mt-[18px] mb-2">

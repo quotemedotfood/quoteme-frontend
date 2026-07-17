@@ -280,6 +280,7 @@ export interface QuoteLineResponse {
     id: string;
     name: string;
     source_dish: string;
+    canonical_key: string | null;
   } | null;
   product: {
     id: string;
@@ -297,6 +298,22 @@ export interface AlignmentCandidateResponse {
   position: number;
   tier: string;
   score: number | null;
+  /** True when this candidate is a rep-scoped memory match that the engine
+   * forced to position 1 because the same rep chose this exact product for
+   * this ingredient on a prior quote. Drives the "Your choice. 1 previous
+   * quote." bookmark badge (RepMemoryBadge) -- no count/confidence number is
+   * sent, the copy is fixed. */
+  rep_memory: boolean;
+  /** Operational Memory Epic, Lane 2: true when this candidate is a
+   * distributor-scoped memory match (a "house pick" set by the distributor,
+   * not this rep personally) that the engine forced to position 1. Only
+   * ever true when rep_memory is false for the same candidate -- the engine
+   * surfaces at most one memory tier per component, rep first. Drives the
+   * DistributorMemoryBadge house-icon label. */
+  distributor_memory: boolean;
+  /** The distributor's name, present only when distributor_memory is true;
+   * feeds the "House pick, set by your team at {distributor}." copy. */
+  distributor_name: string | null;
   product: {
     id: string;
     item_number: string;
@@ -1527,12 +1544,19 @@ export interface YourCallSelectionEntry {
   rank: number;
 }
 
+export const CORRECTION_TYPES = [
+  'wrong_product', 'wrong_form', 'wrong_pack', 'not_carried',
+  'out_of_stock', 'better_fit', 'rep_preference', 'distributor_preference',
+] as const;
+export type CorrectionType = typeof CORRECTION_TYPES[number];
+
 export interface YourCallSelectionPayload {
   quote_line_id: string;
   dish_component_id?: string | null;
   canonical_key?: string | null;
   selections: YourCallSelectionEntry[];
   notes?: string | null;
+  correction_type?: string;
 }
 
 export interface YourCallSelectionResponse {

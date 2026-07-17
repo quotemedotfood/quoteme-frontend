@@ -2252,3 +2252,62 @@ export async function getGapFillerNeedsPickQuotes(
 ): Promise<ApiResponse<GapFillerDrillDownResponse>> {
   return fetchWithAuth(`/api/v1/admin/gap_filler_needs_pick/${encodeURIComponent(drillDownToken)}/quotes`);
 }
+
+// ─── Operational Memory Epic, Lane 2: QM-admin learnings view ─────────────
+//
+// Read + revert view over every promoted memory row (rep tier + distributor
+// "preferred" tier), full provenance. NEVER shown to distributors -- this
+// lives only under the quoteme_admin-gated /api/v1/admin namespace.
+
+export interface OperationalMemoryLearning {
+  id: string;
+  tier: 'rep' | 'preferred';
+  canonical_key: string;
+  category: string | null;
+  catalog_version: string;
+  policy_version: string;
+  active: boolean;
+  reverted_at: string | null;
+  product: { id: string; name: string; brand: string | null; item_number: string } | null;
+  distributor: { id: string; name: string } | null;
+  rep: { id: string; name: string; email: string } | null;
+  provenance: {
+    promoted_from_operational_event_id: string | null;
+    promoted_from_quote_id: string | null;
+    promoted_by_user_id: string | null;
+    promoted_by: { id: string; name: string; email: string } | null;
+    promoted_at: string | null;
+    correction_type: string | null;
+    quote_id: string | null;
+  };
+}
+
+export interface OperationalMemoryLearningsResponse {
+  learnings: OperationalMemoryLearning[];
+  count: number;
+}
+
+export async function getOperationalMemoryLearnings(params?: {
+  distributor_id?: string;
+  rep_id?: string;
+  tier?: 'rep' | 'preferred';
+  include_reverted?: boolean;
+  limit?: number;
+}): Promise<ApiResponse<OperationalMemoryLearningsResponse>> {
+  const searchParams = new URLSearchParams();
+  if (params?.distributor_id) searchParams.set('distributor_id', params.distributor_id);
+  if (params?.rep_id) searchParams.set('rep_id', params.rep_id);
+  if (params?.tier) searchParams.set('tier', params.tier);
+  if (params?.include_reverted) searchParams.set('include_reverted', 'true');
+  if (params?.limit) searchParams.set('limit', String(params.limit));
+  const qs = searchParams.toString();
+  return fetchWithAuth(`/api/v1/admin/operational_memory_learnings${qs ? `?${qs}` : ''}`);
+}
+
+// Future-only: stops the row from surfacing on any FUTURE alignment run.
+// Never touches operational_events or any already-sent/drafted quote.
+export async function revertOperationalMemoryLearning(
+  id: string
+): Promise<ApiResponse<OperationalMemoryLearning>> {
+  return fetchWithAuth(`/api/v1/admin/operational_memory_learnings/${id}/revert`, { method: 'POST' });
+}
