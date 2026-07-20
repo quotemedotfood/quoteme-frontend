@@ -294,11 +294,12 @@ export interface AlignmentCandidateResponse {
   position: number;
   tier: string;
   score: number | null;
-  /** True when this candidate is a rep-scoped memory match that the engine
-   * forced to position 1 because the same rep chose this exact product for
-   * this ingredient on a prior quote. Drives the "Your choice. 1 previous
-   * quote." bookmark badge (RepMemoryBadge) -- no count/confidence number is
-   * sent, the copy is fixed. */
+  /** True when this candidate is a rep-scoped memory match: either the
+   * engine forced it to position 1 because the same rep genuinely picked
+   * this exact product for this ingredient at least twice before (2-pick
+   * auto-lock), or the rep manually locked it via the ChainToggle control.
+   * Drives the connected/broken chain icon -- no count/confidence number is
+   * ever sent, the control is a plain lock state, not a label. */
   rep_memory: boolean;
   product: {
     id: string;
@@ -1536,6 +1537,32 @@ export async function submitYourCallSelection(
   payload: YourCallSelectionPayload
 ): Promise<ApiResponse<YourCallSelectionResponse>> {
   return fetchWithGuest(`/api/v1/quotes/${quoteId}/your_call_selection`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+// Operational Memory Epic, Lane 1 revision (Ruling 3) -- the manual chain
+// toggle. One call, one action: locked: true immediately promotes a
+// rep-scoped lock for this product (no waiting on the 2-pick auto-lock
+// threshold); locked: false reverts the active lock. No modal/confirmation
+// on either side -- the ChainToggle component calls this directly on click.
+export interface RepMemoryLockPayload {
+  quote_line_id: string;
+  product_id: string;
+  locked: boolean;
+  canonical_key?: string | null;
+}
+
+export interface RepMemoryLockResponse {
+  locked: boolean;
+}
+
+export async function toggleRepMemoryLock(
+  quoteId: string,
+  payload: RepMemoryLockPayload
+): Promise<ApiResponse<RepMemoryLockResponse>> {
+  return fetchWithGuest(`/api/v1/quotes/${quoteId}/rep_memory_lock`, {
     method: 'POST',
     body: JSON.stringify(payload),
   });
