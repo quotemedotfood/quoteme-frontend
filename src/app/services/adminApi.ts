@@ -2262,12 +2262,21 @@ export async function getGapFillerNeedsPickQuotes(
 export interface OperationalMemoryLearning {
   id: string;
   tier: 'rep' | 'preferred';
+  // Operational Memory Epic, Lane 2 revision (Ruling 2): only meaningful for
+  // tier "preferred" -- null for rep-tier rows. A mandate MUST be
+  // attributable -- mandate_reason + mandate_set_by are always present
+  // together when distributor_signal_type is "mandate", both null otherwise.
+  distributor_signal_type: 'mandate' | 'preference' | null;
+  mandate_reason: string | null;
+  mandate_set_by: { id: string; name: string; email: string } | null;
   canonical_key: string;
   category: string | null;
   catalog_version: string;
   policy_version: string;
   active: boolean;
   reverted_at: string | null;
+  // Ruling 4: stale lock (distributor tier reuses Lane 1's stale mechanism).
+  stale_at: string | null;
   product: { id: string; name: string; brand: string | null; item_number: string } | null;
   distributor: { id: string; name: string } | null;
   rep: { id: string; name: string; email: string } | null;
@@ -2291,6 +2300,7 @@ export async function getOperationalMemoryLearnings(params?: {
   distributor_id?: string;
   rep_id?: string;
   tier?: 'rep' | 'preferred';
+  signal_type?: 'mandate' | 'preference';
   include_reverted?: boolean;
   limit?: number;
 }): Promise<ApiResponse<OperationalMemoryLearningsResponse>> {
@@ -2298,6 +2308,7 @@ export async function getOperationalMemoryLearnings(params?: {
   if (params?.distributor_id) searchParams.set('distributor_id', params.distributor_id);
   if (params?.rep_id) searchParams.set('rep_id', params.rep_id);
   if (params?.tier) searchParams.set('tier', params.tier);
+  if (params?.signal_type) searchParams.set('signal_type', params.signal_type);
   if (params?.include_reverted) searchParams.set('include_reverted', 'true');
   if (params?.limit) searchParams.set('limit', String(params.limit));
   const qs = searchParams.toString();

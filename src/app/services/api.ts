@@ -294,22 +294,34 @@ export interface AlignmentCandidateResponse {
   position: number;
   tier: string;
   score: number | null;
-  /** True when this candidate is a rep-scoped memory match that the engine
-   * forced to position 1 because the same rep chose this exact product for
-   * this ingredient on a prior quote. Drives the "Your choice. 1 previous
-   * quote." bookmark badge (RepMemoryBadge) -- no count/confidence number is
-   * sent, the copy is fixed. */
+  /** True when this candidate is a rep-scoped memory match: either the
+   * engine forced it to position 1 because the same rep genuinely picked
+   * this exact product for this ingredient at least twice before (2-pick
+   * auto-lock), or the rep manually locked it via the ChainToggle control.
+   * Drives the connected/broken chain icon -- no count/confidence number is
+   * ever sent, the control is a plain lock state, not a label. */
   rep_memory: boolean;
-  /** Operational Memory Epic, Lane 2: true when this candidate is a
-   * distributor-scoped memory match (a "house pick" set by the distributor,
-   * not this rep personally) that the engine forced to position 1. Only
-   * ever true when rep_memory is false for the same candidate -- the engine
-   * surfaces at most one memory tier per component, rep first. Drives the
-   * DistributorMemoryBadge house-icon label. */
+  /** Operational Memory Epic, Lane 2 revision (Ruling 2): true when this
+   * candidate is a distributor-scoped memory match -- either a MANDATE
+   * (contract/compliance/supplier-transition/directed-replacement, which may
+   * have outranked this rep's own lock to win position 1) or a PREFERENCE
+   * (spiff/house-brand/normal push, which only ever reranks an
+   * already-valid candidate and never outranks a rep lock or rep pick).
+   * distributor_signal_type disambiguates which. Drives the plain
+   * DistributorMemoryLabel text pill -- never a chain lock (the chain
+   * control is rep-lock only). */
   distributor_memory: boolean;
+  /** "mandate" | "preference" | null -- null when distributor_memory is
+   * false. See DistributorMemoryBadge.tsx for how each renders. */
+  distributor_signal_type: 'mandate' | 'preference' | null;
   /** The distributor's name, present only when distributor_memory is true;
-   * feeds the "House pick, set by your team at {distributor}." copy. */
+   * feeds the plain "Current preferred option at {distributor}." hover copy
+   * for a preference. */
   distributor_name: string | null;
+  /** Attribution for a MANDATE only (Ruling 2: "MUST be visible and
+   * attributable, who set it, why") -- always null for a preference. */
+  distributor_mandate_reason: string | null;
+  distributor_mandate_set_by: string | null;
   product: {
     id: string;
     item_number: string;
@@ -1521,9 +1533,15 @@ export interface YourCallSelectionEntry {
   rank: number;
 }
 
+// Operational Memory Epic, Lane 2 revision (Ruling 2): "distributor_mandate"
+// is distinct from "distributor_preference" -- it is the ONLY correction_type
+// that requires mandate_reason (BE 422s without one). A mandate is a
+// contract/compliance/supplier-transition/directed-replacement decision, not
+// a casual preference.
 export const CORRECTION_TYPES = [
   'wrong_product', 'wrong_form', 'wrong_pack', 'not_carried',
   'out_of_stock', 'better_fit', 'rep_preference', 'distributor_preference',
+  'distributor_mandate',
 ] as const;
 export type CorrectionType = typeof CORRECTION_TYPES[number];
 
@@ -1534,6 +1552,10 @@ export interface YourCallSelectionPayload {
   selections: YourCallSelectionEntry[];
   notes?: string | null;
   correction_type?: string;
+  /** Required by the BE when correction_type is "distributor_mandate" --
+   * the "why" half of Ruling 2's "MUST be visible and attributable"
+   * requirement for a mandate. Ignored for every other correction_type. */
+  mandate_reason?: string | null;
 }
 
 export interface YourCallSelectionResponse {
@@ -1546,6 +1568,32 @@ export async function submitYourCallSelection(
   payload: YourCallSelectionPayload
 ): Promise<ApiResponse<YourCallSelectionResponse>> {
   return fetchWithGuest(`/api/v1/quotes/${quoteId}/your_call_selection`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+// Operational Memory Epic, Lane 1 revision (Ruling 3) -- the manual chain
+// toggle. One call, one action: locked: true immediately promotes a
+// rep-scoped lock for this product (no waiting on the 2-pick auto-lock
+// threshold); locked: false reverts the active lock. No modal/confirmation
+// on either side -- the ChainToggle component calls this directly on click.
+export interface RepMemoryLockPayload {
+  quote_line_id: string;
+  product_id: string;
+  locked: boolean;
+  canonical_key?: string | null;
+}
+
+export interface RepMemoryLockResponse {
+  locked: boolean;
+}
+
+export async function toggleRepMemoryLock(
+  quoteId: string,
+  payload: RepMemoryLockPayload
+): Promise<ApiResponse<RepMemoryLockResponse>> {
+  return fetchWithGuest(`/api/v1/quotes/${quoteId}/rep_memory_lock`, {
     method: 'POST',
     body: JSON.stringify(payload),
   });

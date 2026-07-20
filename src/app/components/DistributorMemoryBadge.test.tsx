@@ -1,52 +1,95 @@
 // @vitest-environment jsdom
 //
-// DistributorMemoryBadge.test.tsx — Operational Memory Epic, Lane 2.
+// DistributorMemoryBadge.test.tsx — Operational Memory Epic, Lane 2 revision
+// (Justin's 2026-07-20 matching rulings, Ruling 2: mandate vs preference).
 //
-// The house-pick label is plain, no sparkles/confidence numbers/em-dashes.
-// Distributor name is interpolated but the surrounding copy is fixed.
+// PREFERENCE renders a plain "Distributor focus" label -- no chain lock, no
+// sparkles/confidence numbers/em-dashes. MANDATE renders "Distributor
+// mandate" and MUST carry its attribution (who set it, why) on hover.
 
 import { describe, it, expect, afterEach } from 'vitest';
 import { render, screen, cleanup } from '@testing-library/react';
-import { DistributorMemoryBadge, distributorMemoryLabel } from './DistributorMemoryBadge';
+import {
+  DistributorMemoryLabel,
+  distributorPreferenceLabel,
+  distributorMandateLabel,
+} from './DistributorMemoryBadge';
 
 afterEach(cleanup);
 
-describe('distributorMemoryLabel', () => {
+describe('distributorPreferenceLabel', () => {
   it('includes the distributor name when given', () => {
-    expect(distributorMemoryLabel('Altamira')).toBe('House pick, set by your team at Altamira.');
+    expect(distributorPreferenceLabel('Altamira')).toBe('Current preferred option at Altamira.');
   });
 
   it('falls back to a generic label when no distributor name is given', () => {
-    expect(distributorMemoryLabel(null)).toBe('House pick, set by your team.');
-    expect(distributorMemoryLabel(undefined)).toBe('House pick, set by your team.');
-    expect(distributorMemoryLabel('')).toBe('House pick, set by your team.');
+    expect(distributorPreferenceLabel(null)).toBe('Current preferred option.');
+    expect(distributorPreferenceLabel(undefined)).toBe('Current preferred option.');
+    expect(distributorPreferenceLabel('')).toBe('Current preferred option.');
   });
 
   it('does not contain an em dash or en dash', () => {
-    expect(distributorMemoryLabel('Altamira')).not.toMatch(/[–—]/);
-    expect(distributorMemoryLabel(null)).not.toMatch(/[–—]/);
+    expect(distributorPreferenceLabel('Altamira')).not.toMatch(/[–—]/);
+    expect(distributorPreferenceLabel(null)).not.toMatch(/[–—]/);
   });
 });
 
-describe('DistributorMemoryBadge', () => {
-  it('exposes the distributor-specific accessible name', () => {
-    render(<DistributorMemoryBadge distributorName="Altamira" />);
-
-    const badge = screen.getByLabelText('House pick, set by your team at Altamira.');
-    expect(badge).toBeInTheDocument();
-    expect(badge.getAttribute('title')).toBe('House pick, set by your team at Altamira.');
+describe('distributorMandateLabel', () => {
+  it('includes both who set it and why when both are given', () => {
+    expect(distributorMandateLabel('Jordan Rep', 'supplier transition')).toBe(
+      'Distributor mandate. Set by Jordan Rep: supplier transition.'
+    );
   });
 
-  it('falls back to the generic label when distributorName is not provided', () => {
-    render(<DistributorMemoryBadge />);
-
-    const badge = screen.getByLabelText('House pick, set by your team.');
-    expect(badge).toBeInTheDocument();
+  it('includes only who set it when no reason is given', () => {
+    expect(distributorMandateLabel('Jordan Rep', null)).toBe('Distributor mandate. Set by Jordan Rep.');
   });
 
-  it('renders no other text content (icon-only, no visible label)', () => {
-    render(<DistributorMemoryBadge distributorName="Altamira" />);
-    const badge = screen.getByLabelText('House pick, set by your team at Altamira.');
-    expect(badge.textContent).toBe('');
+  it('includes only the reason when no setter is given', () => {
+    expect(distributorMandateLabel(null, 'supplier transition')).toBe(
+      'Distributor mandate. Reason: supplier transition.'
+    );
+  });
+
+  it('falls back to a bare label when neither is given', () => {
+    expect(distributorMandateLabel(null, null)).toBe('Distributor mandate.');
+  });
+
+  it('does not contain an em dash or en dash', () => {
+    expect(distributorMandateLabel('Jordan Rep', 'supplier transition')).not.toMatch(/[–—]/);
+  });
+});
+
+describe('DistributorMemoryLabel (preference)', () => {
+  it('renders the plain "Distributor focus" text with the distributor name on hover', () => {
+    render(<DistributorMemoryLabel signalType="preference" distributorName="Altamira" />);
+
+    expect(screen.getByText('Distributor focus')).toBeInTheDocument();
+    const badge = screen.getByLabelText('Current preferred option at Altamira.');
+    expect(badge).toBeInTheDocument();
+    expect(badge.getAttribute('title')).toBe('Current preferred option at Altamira.');
+  });
+
+  it('never renders a chain lock or icon for a preference (label only)', () => {
+    render(<DistributorMemoryLabel signalType="preference" distributorName="Altamira" />);
+    const badge = screen.getByText('Distributor focus');
+    expect(badge.querySelector('svg')).toBeNull();
+  });
+});
+
+describe('DistributorMemoryLabel (mandate)', () => {
+  it('renders "Distributor mandate" with attribution (who/why) on hover', () => {
+    render(
+      <DistributorMemoryLabel
+        signalType="mandate"
+        mandateSetBy="Jordan Rep"
+        mandateReason="supplier transition"
+      />
+    );
+
+    expect(screen.getByText('Distributor mandate')).toBeInTheDocument();
+    const badge = screen.getByLabelText('Distributor mandate. Set by Jordan Rep: supplier transition.');
+    expect(badge).toBeInTheDocument();
+    expect(badge.getAttribute('title')).toBe('Distributor mandate. Set by Jordan Rep: supplier transition.');
   });
 });

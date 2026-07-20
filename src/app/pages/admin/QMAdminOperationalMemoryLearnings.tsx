@@ -38,6 +38,7 @@ const CORRECTION_TYPE_LABELS: Record<string, string> = {
   better_fit: 'Better fit',
   rep_preference: 'Rep preference',
   distributor_preference: 'Distributor preference',
+  distributor_mandate: 'Distributor mandate',
 };
 
 function correctionTypeLabel(type: string | null): string {
@@ -67,6 +68,43 @@ function TierBadge({ tier }: { tier: 'rep' | 'preferred' }) {
   );
 }
 
+// Operational Memory Epic, Lane 2 revision (Ruling 2): mandate vs preference,
+// with attribution. Only meaningful for tier "preferred" -- row.tier "rep"
+// always passes signalType: null and renders "-".
+function SignalTypeBadge({
+  signalType,
+  mandateReason,
+  mandateSetBy,
+}: {
+  signalType: 'mandate' | 'preference' | null;
+  mandateReason: string | null;
+  mandateSetBy: { id: string; name: string; email: string } | null;
+}) {
+  if (!signalType) return <span className="text-gray-300">-</span>;
+
+  if (signalType === 'mandate') {
+    const hover = mandateSetBy
+      ? `Set by ${mandateSetBy.name}${mandateReason ? `: ${mandateReason}` : ''}.`
+      : mandateReason || 'Distributor mandate.';
+    return (
+      <Badge
+        variant="outline"
+        className="text-[10px] border-amber-200 text-amber-800 bg-amber-50"
+        title={hover}
+        aria-label={hover}
+      >
+        Mandate
+      </Badge>
+    );
+  }
+
+  return (
+    <Badge variant="outline" className="text-[10px] border-gray-200 text-[#2A2A2A] bg-gray-50">
+      Preference
+    </Badge>
+  );
+}
+
 export function QMAdminOperationalMemoryLearnings() {
   const [rows, setRows] = useState<OperationalMemoryLearning[]>([]);
   const [count, setCount] = useState(0);
@@ -75,6 +113,7 @@ export function QMAdminOperationalMemoryLearnings() {
   const [distributors, setDistributors] = useState<AdminDistributor[]>([]);
   const [distributorFilter, setDistributorFilter] = useState<string>('');
   const [tierFilter, setTierFilter] = useState<'' | 'rep' | 'preferred'>('');
+  const [signalTypeFilter, setSignalTypeFilter] = useState<'' | 'mandate' | 'preference'>('');
   const [includeReverted, setIncludeReverted] = useState(false);
   const [revertingId, setRevertingId] = useState<string | null>(null);
   const [revertError, setRevertError] = useState<string | null>(null);
@@ -85,6 +124,7 @@ export function QMAdminOperationalMemoryLearnings() {
     const res = await getOperationalMemoryLearnings({
       distributor_id: distributorFilter || undefined,
       tier: tierFilter || undefined,
+      signal_type: signalTypeFilter || undefined,
       include_reverted: includeReverted,
     });
     if (res.data) {
@@ -94,7 +134,7 @@ export function QMAdminOperationalMemoryLearnings() {
       setError(res.error || 'Failed to load learnings');
     }
     setLoading(false);
-  }, [distributorFilter, tierFilter, includeReverted]);
+  }, [distributorFilter, tierFilter, signalTypeFilter, includeReverted]);
 
   useEffect(() => {
     load();
@@ -169,6 +209,20 @@ export function QMAdminOperationalMemoryLearnings() {
           </select>
         </div>
 
+        <div className="flex items-center gap-2">
+          <label htmlFor="learnings-signal-filter" className="text-xs text-gray-500">Signal</label>
+          <select
+            id="learnings-signal-filter"
+            value={signalTypeFilter}
+            onChange={(e) => setSignalTypeFilter(e.target.value as '' | 'mandate' | 'preference')}
+            className="border border-gray-200 rounded px-2 py-1.5 text-sm text-[#2A2A2A] bg-white focus:outline-none focus:ring-1 focus:ring-[#7FAEC2]"
+          >
+            <option value="">All signals</option>
+            <option value="mandate">Mandate</option>
+            <option value="preference">Preference</option>
+          </select>
+        </div>
+
         <label className="flex items-center gap-2 text-xs text-gray-500 cursor-pointer">
           <input
             type="checkbox"
@@ -200,6 +254,7 @@ export function QMAdminOperationalMemoryLearnings() {
               <TableHeader>
                 <TableRow className="bg-gray-50">
                   <TableHead>Tier</TableHead>
+                  <TableHead>Signal</TableHead>
                   <TableHead>Component</TableHead>
                   <TableHead>Product</TableHead>
                   <TableHead>Scope</TableHead>
@@ -214,6 +269,13 @@ export function QMAdminOperationalMemoryLearnings() {
                 {rows.map((row) => (
                   <TableRow key={row.id} className="hover:bg-gray-50">
                     <TableCell><TierBadge tier={row.tier} /></TableCell>
+                    <TableCell>
+                      <SignalTypeBadge
+                        signalType={row.distributor_signal_type}
+                        mandateReason={row.mandate_reason}
+                        mandateSetBy={row.mandate_set_by}
+                      />
+                    </TableCell>
                     <TableCell>
                       <span className="font-medium text-[#2A2A2A]">{row.canonical_key}</span>
                     </TableCell>
@@ -249,7 +311,17 @@ export function QMAdminOperationalMemoryLearnings() {
                     </TableCell>
                     <TableCell>
                       {row.active ? (
-                        <Badge variant="outline" className="text-[10px] border-green-200 text-green-700 bg-green-50">Active</Badge>
+                        row.stale_at ? (
+                          <Badge
+                            variant="outline"
+                            className="text-[10px] border-amber-200 text-amber-800 bg-amber-50"
+                            title="This item left the assortment; the engine ran normal matching in its place and quietly told the rep."
+                          >
+                            Stale since {formatDateTime(row.stale_at)}
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-[10px] border-green-200 text-green-700 bg-green-50">Active</Badge>
+                        )
                       ) : (
                         <Badge variant="outline" className="text-[10px] border-gray-200 text-gray-500 bg-gray-50">
                           Reverted {formatDateTime(row.reverted_at)}

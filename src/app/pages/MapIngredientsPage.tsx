@@ -10,8 +10,8 @@ import { isDemoMode } from '../utils/demoMode';
 import { toTitleCase, formatProductName } from '../utils/format';
 import { categoryLabel } from '../utils/categoryLabel';
 import { MatchDrawer } from '../components/MatchDrawer';
-import { RepMemoryBadge } from '../components/RepMemoryBadge';
-import { DistributorMemoryBadge } from '../components/DistributorMemoryBadge';
+import { ChainToggle } from '../components/ChainToggle';
+import { DistributorMemoryLabel } from '../components/DistributorMemoryBadge';
 import { QuoteReviewBar } from '../components/QuoteReviewBar';
 import { Drawer, DrawerContent } from '../components/ui/drawer';
 import {
@@ -23,6 +23,7 @@ import {
   getMoreMatches,
   updateQuote,
   updateGuestQuote,
+  toggleRepMemoryLock,
 } from '../services/api';
 
 // ─── Types (matching backend API responses) ──────────────────────────────────
@@ -32,8 +33,8 @@ interface AlignmentCandidate {
   position: number;
   tier: string;
   score: number | null;
-  /** True when this candidate is a rep-scoped memory match forced to
-   * position 1 by the engine -- drives the RepMemoryBadge bookmark icon. */
+  /** True when this candidate is a rep-scoped memory lock (2-pick auto-lock
+   * or a manual ChainToggle lock) -- drives the connected/broken chain icon. */
   rep_memory?: boolean;
   /** Operational Memory Epic, Lane 2: true when this candidate is a
    * distributor-scoped ("house pick") memory match forced to position 1.
@@ -203,6 +204,14 @@ export function MapIngredientsPage() {
   const [selectedDish, setSelectedDish] = useState<Dish | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadingStatus, setLoadingStatus] = useState('Processing menu…');
+
+  // Operational Memory Epic, Lane 1 revision (Ruling 3): ChainToggle is a
+  // real bidirectional lock, not a read-only bookmark, so its state can
+  // change without a full quote refetch. lockOverrides tracks any product
+  // whose lock has been flipped in this session; falls back to the
+  // server-provided candidate.rep_memory when no override exists yet.
+  const [lockOverrides, setLockOverrides] = useState<Record<string, boolean>>({});
+  const [lockPending, setLockPending] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // ── Tab / drawer state ──
@@ -553,6 +562,25 @@ export function MapIngredientsPage() {
 
     const bestMatchIsRepMemory = bestCandidate?.rep_memory === true;
     const bestMatchIsDistributorMemory = !bestMatchIsRepMemory && bestCandidate?.distributor_memory === true;
+    const bestMatchLocked = bestMatch ? (lockOverrides[bestMatch.id] ?? bestMatchIsRepMemory) : false;
+    const canonicalKey = line?.component?.canonical_key ?? null;
+
+    const handleToggleLock = async () => {
+      if (!quoteId || !line?.id || !bestMatch || lockPending) return;
+      setLockPending(bestMatch.id);
+      const nextLocked = !bestMatchLocked;
+      const res = await toggleRepMemoryLock(quoteId, {
+        quote_line_id: line.id,
+        product_id: bestMatch.id,
+        canonical_key: canonicalKey,
+        locked: nextLocked,
+      });
+      setLockPending(null);
+      if (!res.error) {
+        setLockOverrides(prev => ({ ...prev, [bestMatch.id]: nextLocked }));
+      }
+      // No modal/toast on failure by design -- the chain just stays put.
+    };
 
     return (
       <div key={component} className="grid grid-cols-[1fr_1fr_auto] items-center gap-4 py-3 border-b border-gray-100 last:border-b-0">
@@ -565,8 +593,21 @@ export function MapIngredientsPage() {
             <div className="text-xs text-gray-500">
               <p className="font-medium truncate flex items-center gap-1">
                 <span className="truncate">{formatProductName(bestMatch.product, bestMatch.brand)}</span>
-                {bestMatchIsRepMemory && <RepMemoryBadge />}
-                {bestMatchIsDistributorMemory && <DistributorMemoryBadge distributorName={bestCandidate?.distributor_name} />}
+                {quoteId && line?.id && (
+                  <ChainToggle
+                    locked={bestMatchLocked}
+                    onToggle={handleToggleLock}
+                    disabled={lockPending === bestMatch.id}
+                  />
+                )}
+                {bestMatchIsDistributorMemory && (
+                  <DistributorMemoryLabel
+                    signalType={bestCandidate?.distributor_signal_type === 'mandate' ? 'mandate' : 'preference'}
+                    distributorName={bestCandidate?.distributor_name}
+                    mandateSetBy={bestCandidate?.distributor_mandate_set_by}
+                    mandateReason={bestCandidate?.distributor_mandate_reason}
+                  />
+                )}
               </p>
               <p className="text-gray-400 truncate">{bestMatch.item_number} &middot; {bestMatch.pack_size}</p>
               {badge && (
