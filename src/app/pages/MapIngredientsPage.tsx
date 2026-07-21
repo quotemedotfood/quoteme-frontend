@@ -11,6 +11,7 @@ import { toTitleCase, formatProductName } from '../utils/format';
 import { categoryLabel } from '../utils/categoryLabel';
 import { MatchDrawer } from '../components/MatchDrawer';
 import { ChainToggle } from '../components/ChainToggle';
+import { DistributorMemoryBadge } from '../components/DistributorMemoryBadge';
 import { QuoteReviewBar } from '../components/QuoteReviewBar';
 import { Drawer, DrawerContent } from '../components/ui/drawer';
 import {
@@ -35,6 +36,11 @@ interface AlignmentCandidate {
   /** True when this candidate is a rep-scoped memory lock (2-pick auto-lock
    * or a manual ChainToggle lock) -- drives the connected/broken chain icon. */
   rep_memory?: boolean;
+  /** Operational Memory Epic, Lane 2: true when this candidate is a
+   * distributor-scoped ("house pick") memory match forced to position 1.
+   * Only set when rep_memory is falsy for the same candidate. */
+  distributor_memory?: boolean;
+  distributor_name?: string | null;
   product: {
     id: string;
     item_number: string;
@@ -556,6 +562,7 @@ export function MapIngredientsPage() {
 
     const bestMatchIsRepMemory = bestCandidate?.rep_memory === true;
     const bestMatchLocked = bestMatch ? (lockOverrides[bestMatch.id] ?? bestMatchIsRepMemory) : false;
+    const bestMatchIsDistributorMemory = !bestMatchIsRepMemory && bestCandidate?.distributor_memory === true;
     const canonicalKey = line?.component?.canonical_key ?? null;
 
     const handleToggleLock = async () => {
@@ -593,6 +600,7 @@ export function MapIngredientsPage() {
                     disabled={lockPending === bestMatch.id}
                   />
                 )}
+                {bestMatchIsDistributorMemory && <DistributorMemoryBadge distributorName={bestCandidate?.distributor_name} />}
               </p>
               <p className="text-gray-400 truncate">{bestMatch.item_number} &middot; {bestMatch.pack_size}</p>
               {badge && (

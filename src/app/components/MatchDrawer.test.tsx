@@ -41,6 +41,8 @@ function makeCandidate(overrides: Partial<AlignmentCandidateResponse> & { id: st
     tier: 'alternate',
     score: 0.8,
     rep_memory: false,
+    distributor_memory: false,
+    distributor_name: null,
     product: {
       id: overrides.id,
       item_number: '1000',
@@ -117,6 +119,41 @@ describe('MatchDrawer — chain toggle + reason picker', () => {
     // Clicking the chain must NOT also select this candidate as a pick --
     // the Replace Match button stays disabled (no picks made).
     expect(screen.getByRole('button', { name: /Replace Match/i })).toBeDisabled();
+  });
+
+  // Operational Memory Epic, Lane 2.
+  it('renders the DistributorMemoryBadge (house pick) on a candidate with distributor_memory: true and no rep_memory', () => {
+    const distributorCandidate = makeCandidate({
+      id: 'prod-house',
+      rep_memory: false,
+      distributor_memory: true,
+      distributor_name: 'Altamira',
+      product: { id: 'prod-house', item_number: '3001', brand: 'Acme', product: 'Roma Tomato', pack_size: '25 lb', category: 'produce' },
+    });
+    const plainCandidate = makeCandidate({ id: 'prod-plain2', product: { id: 'prod-plain2', item_number: '3002', brand: 'Acme', product: 'Roma Tomato Alt', pack_size: '25 lb', category: 'produce' } });
+
+    render(
+      <MatchDrawer
+        open={true}
+        onOpenChange={() => {}}
+        ingredientName="tomato"
+        currentProduct={null}
+        candidates={[distributorCandidate, plainCandidate]}
+        quoteId="q-1"
+        quoteLineId="line-1"
+      />
+    );
+
+    const badges = screen.getAllByLabelText('House pick, set by your team at Altamira.');
+    expect(badges).toHaveLength(1);
+
+    const houseRow = screen.getByText('Acme Roma Tomato').closest('[role="button"]');
+    const plainRow = screen.getByText('Acme Roma Tomato Alt').closest('[role="button"]');
+    expect(houseRow?.contains(badges[0])).toBe(true);
+    expect(plainRow?.contains(badges[0])).toBe(false);
+
+    // rep_memory badge never renders alongside distributor_memory.
+    expect(screen.queryAllByLabelText('Your choice. 1 previous quote.')).toHaveLength(0);
   });
 
   it('submits correction_type: "rep_preference" by default when the rep never touches the reason picker', async () => {
