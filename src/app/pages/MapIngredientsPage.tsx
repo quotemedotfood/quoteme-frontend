@@ -561,8 +561,8 @@ export function MapIngredientsPage() {
         : null;
 
     const bestMatchIsRepMemory = bestCandidate?.rep_memory === true;
-    const bestMatchIsDistributorMemory = !bestMatchIsRepMemory && bestCandidate?.distributor_memory === true;
     const bestMatchLocked = bestMatch ? (lockOverrides[bestMatch.id] ?? bestMatchIsRepMemory) : false;
+    const bestMatchIsDistributorMemory = !bestMatchIsRepMemory && bestCandidate?.distributor_memory === true;
     const canonicalKey = line?.component?.canonical_key ?? null;
 
     const handleToggleLock = async () => {
