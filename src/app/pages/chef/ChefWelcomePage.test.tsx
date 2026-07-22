@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 //
-// ChefWelcomePage.test.tsx — regression coverage for BUG #29 (magic-link
+// ChefWelcomePage.test.tsx: regression coverage for BUG #29 (magic-link
 // session isolation).
 //
 // Two things this page (and the shared useEstablishSession helper it calls)
@@ -112,7 +112,7 @@ function renderPage() {
   );
 }
 
-describe('ChefWelcomePage — BUG #29 magic-link session isolation', () => {
+describe('ChefWelcomePage: BUG #29 magic-link session isolation', () => {
   beforeEach(() => {
     localStorage.clear();
     consumeChefMagicLink.mockClear();
