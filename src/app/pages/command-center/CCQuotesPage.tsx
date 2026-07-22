@@ -16,7 +16,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useLocation, useSearchParams } from 'react-router';
-import { User } from 'lucide-react';
+import { User, MessageCircle } from 'lucide-react';
 import {
   CCStatusTag,
   CCSectionHead,
@@ -53,14 +53,14 @@ function RowSkeleton() {
     <div
       style={{
         display: 'grid',
-        gridTemplateColumns: '180px 1fr 78px 170px 64px',
+        gridTemplateColumns: '180px 1fr 24px 78px 170px 64px',
         gap: 12,
         padding: '14px 0',
         borderBottom: `1px solid ${C.softLine}`,
         alignItems: 'center',
       }}
     >
-      {[180, 240, 60, 120, 80].map((w, i) => (
+      {[180, 240, 16, 60, 120, 80].map((w, i) => (
         <div
           key={i}
           style={{
@@ -187,7 +187,7 @@ function DeskRow({ q, onClick, onEdit, onRepClick }: { q: CCQuoteRow; onClick: (
       onMouseLeave={() => setHovered(false)}
       style={{
         display: 'grid',
-        gridTemplateColumns: '180px 1fr 78px 170px 64px',
+        gridTemplateColumns: '180px 1fr 24px 78px 170px 64px',
         gap: 12,
         width: '100%',
         alignItems: 'center',
@@ -284,6 +284,19 @@ function DeskRow({ q, onClick, onEdit, onRepClick }: { q: CCQuoteRow; onClick: (
           {q.id} · {q.city} · {q.items} {q.items === 1 ? 'item' : 'items'}
           {q.requote > 0 ? ` · re-quoted ${q.requote}×` : ''}
         </div>
+      </div>
+
+      {/* Chef question attention signal — not a metric, just a flag that the
+          chef asked something and it hasn't been read yet (BUG #30). The
+          wrapper always renders (empty when there's no question) so the grid
+          column stays aligned across rows regardless of which rows have it. */}
+      <div
+        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+        title={q.has_unanswered_chef_question ? 'Chef asked a question' : undefined}
+      >
+        {q.has_unanswered_chef_question && (
+          <MessageCircle size={15} color={CC_ACK_NAVY} strokeWidth={1.8} />
+        )}
       </div>
 
       {/* TOTAL */}
@@ -392,6 +405,15 @@ function PhoneRow({ q, onClick, onEdit, onRepClick }: { q: CCQuoteRow; onClick: 
           {q.requote > 0 && (
             <span style={{ ...sans, ...tabular, fontSize: 10.5, color: C.gray500 }}>
               re-quoted {q.requote}×
+            </span>
+          )}
+          {/* Chef question attention signal (BUG #30) — same flag as DeskRow. */}
+          {q.has_unanswered_chef_question && (
+            <span
+              title="Chef asked a question"
+              style={{ display: 'inline-flex', alignItems: 'center' }}
+            >
+              <MessageCircle size={13} color={CC_ACK_NAVY} strokeWidth={1.8} />
             </span>
           )}
           {/* Actions inline on mobile row — stop propagation so row click doesn't also fire */}
@@ -601,14 +623,14 @@ export function CCQuotesPage() {
           className="hidden lg:grid"
           style={{
             display: 'grid',
-            gridTemplateColumns: '180px 1fr 78px 170px 64px',
+            gridTemplateColumns: '180px 1fr 24px 78px 170px 64px',
             gap: 12,
             paddingBottom: 8,
           }}
         >
-          {(['REP', 'RESTAURANT', 'TOTAL', 'STATUS', 'ACTIONS'] as const).map((h) => (
+          {(['REP', 'RESTAURANT', '', 'TOTAL', 'STATUS', 'ACTIONS'] as const).map((h, i) => (
             <div
-              key={h}
+              key={h || `col-${i}`}
               style={{
                 ...sans,
                 fontSize: 9,

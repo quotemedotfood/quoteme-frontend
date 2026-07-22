@@ -377,6 +377,29 @@ function QuoteDetailBody({ detail: q }: { detail: CCQuoteDetail }) {
         </div>
       </div>
 
+      {/* Chef question attention signal (BUG #30) — not a metric, just a flag
+          that the chef has an unread question on this quote. Read-only, no
+          orange, consistent with the rest of this surface's doctrine. */}
+      {q.has_unanswered_chef_question && (
+        <div
+          style={{
+            marginTop: 20,
+            padding: '12px 16px',
+            borderRadius: 6,
+            background: 'rgba(165,207,221,0.12)',
+            border: `1px solid rgba(165,207,221,0.4)`,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+          }}
+        >
+          <MessageCircle size={15} color={CC_ACK_NAVY} strokeWidth={1.8} />
+          <span style={{ ...sans, fontSize: 12.5, color: C.charcoal }}>
+            The chef asked a question on this quote and it hasn't been answered yet.
+          </span>
+        </div>
+      )}
+
       {/* Re-quote activity trail */}
       {q.requote > 0 && (
         <div

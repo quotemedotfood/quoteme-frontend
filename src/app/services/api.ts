@@ -260,6 +260,20 @@ export interface QuoteResponse {
    * `chef_recipient_email` prefills that input when present. */
   has_chef_contact?: boolean;
   chef_recipient_email?: string | null;
+  /** BUG #30: a chef's question is persisted (buyer_notes + a tagged
+   * Notification) by Chef::QuotesController#question. chef_questions is that
+   * Notification thread for this quote; has_unanswered_chef_question is the
+   * attention signal (true while any of them is unread) Quote Builder and
+   * Export/Finalize use to surface it to the rep. */
+  chef_questions?: ChefQuestion[];
+  has_unanswered_chef_question?: boolean;
+}
+
+export interface ChefQuestion {
+  id: string;
+  body: string;
+  created_at: string;
+  read: boolean;
 }
 
 export interface QuoteLineResponse {
@@ -2324,6 +2338,9 @@ export interface CCQuoteRow {
   total: number | null; // null when unassigned/unpriced
   requote: number;      // times re-quoted; 0 = never
   wait: number;         // days chef sitting on it
+  /** BUG #30: attention signal (not a metric) — true while the chef has an
+   * unanswered question on this quote. */
+  has_unanswered_chef_question: boolean;
 }
 
 export interface CCQuoteFilters {
@@ -2380,6 +2397,9 @@ export interface CCQuoteDetail {
   wait: number;
   requote_trail: CCRequoteEvent[];
   line_groups: CCLineGroup[];
+  /** BUG #30: attention signal (not a metric) — true while the chef has an
+   * unanswered question on this quote. */
+  has_unanswered_chef_question: boolean;
 }
 
 export async function getCommandCenterQuote(

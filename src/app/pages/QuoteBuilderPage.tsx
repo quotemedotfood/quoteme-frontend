@@ -1,6 +1,6 @@
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
-import { ArrowLeft, Save, Filter, Plus, Minus, Edit, ChevronUp, ChevronDown, ArrowUpDown, ArrowUp, ArrowDown, Loader2, X, Trash2, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Save, Filter, Plus, Minus, Edit, ChevronUp, ChevronDown, ArrowUpDown, ArrowUp, ArrowDown, Loader2, X, Trash2, AlertTriangle, MessageCircle } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router';
 import { useState, useEffect, useCallback } from 'react';
 import { useUser } from '../contexts/UserContext';
@@ -12,7 +12,8 @@ import { getQuote, getGuestQuote, updateQuote, updateGuestQuote, addGuestQuoteLi
 import { CatalogProductSearch } from '../components/CatalogProductSearch';
 import { QuoteReviewBar } from '../components/QuoteReviewBar';
 import { MapComponentDrawer } from '../components/MapComponentDrawer';
-import type { CatalogSearchProduct } from '../services/api';
+import type { CatalogSearchProduct, ChefQuestion } from '../services/api';
+import { latestChefQuestion } from '../utils/chefQuestion';
 import { Label } from '../components/ui/label';
 import {
   Drawer,
@@ -114,6 +115,10 @@ export function QuoteBuilderPage() {
   // compatible until distributor.currency ships on this serializer;
   // formatCurrency() defaults to USD when undefined.
   const [distributorCurrency, setDistributorCurrency] = useState<string | undefined>(undefined);
+  // BUG #30: chef question thread + attention flag, threaded from the same
+  // getQuote/getGuestQuote response used to build `items` below.
+  const [chefQuestions, setChefQuestions] = useState<ChefQuestion[]>([]);
+  const [hasUnansweredChefQuestion, setHasUnansweredChefQuestion] = useState(false);
 
   // ── Attention / match drawer state ──
   const [matchDrawerOpen, setMatchDrawerOpen] = useState(false);
@@ -172,6 +177,8 @@ export function QuoteBuilderPage() {
       setDistributorCurrency(data.distributor?.currency);
       if (data.input_mode) setInputMode(data.input_mode);
       if (data.detected_concept) setDetectedConcept(data.detected_concept);
+      setChefQuestions(data.chef_questions || []);
+      setHasUnansweredChefQuestion(!!data.has_unanswered_chef_question);
       setLoading(false);
     } catch (e: any) {
       setError(e.message || 'Something went wrong');
@@ -515,6 +522,31 @@ export function QuoteBuilderPage() {
             Failed to save: {saveError}
           </div>
         )}
+
+        {/* Chef question banner — attention signal, not a metric. Surfaces the
+            chef's most recent question so the rep knows to reply, per
+            Justin's attention-signal-not-metrics doctrine (BUG #30). */}
+        {chefQuestions.length > 0 && (() => {
+          const question = latestChefQuestion(chefQuestions);
+          if (!question) return null;
+          return (
+            <div
+              className={`w-full rounded-lg px-4 py-3 mb-4 border flex items-start gap-3 ${
+                hasUnansweredChefQuestion
+                  ? 'bg-[#A5CFDD]/10 border-[#A5CFDD]/40'
+                  : 'bg-gray-50 border-gray-200'
+              }`}
+            >
+              <MessageCircle className="w-4 h-4 text-[#7FAEC2] flex-shrink-0 mt-0.5" />
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-[#2A2A2A]">
+                  {hasUnansweredChefQuestion ? 'The chef asked a question' : 'Chef question'}
+                </p>
+                <p className="text-sm text-gray-600 mt-0.5 break-words">{question.body}</p>
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Attention Card */}
         {attentionItems.length > 0 && (
