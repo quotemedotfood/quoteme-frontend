@@ -10,6 +10,7 @@ import { isDemoMode, PROD_SIGNUP_URL } from '../utils/demoMode';
 import { useUser } from '../contexts/UserContext';
 import { categoryLabel } from '../utils/categoryLabel';
 import { formatCurrency } from '../utils/formatCurrency';
+import { useAsyncMutation } from '../hooks/useAsyncMutation';
 
 function toTitleCase(str: string): string {
   if (!str) return '';
@@ -46,10 +47,28 @@ export function QuoteReviewPage() {
   const [sendEmail, setSendEmail] = useState('');
   const [sendPhone, setSendPhone] = useState('');
   const [sendToSelf, setSendToSelf] = useState(false);
-  const [sendingEmail, setSendingEmail] = useState(false);
   const [sendingText, setSendingText] = useState(false);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [sendSuccess, setSendSuccess] = useState<string | null>(null);
+
+  // BUG #32: routed through useAsyncMutation so a successful send ALWAYS
+  // closes the drawer AND sets the success message together, from one
+  // onSuccess callback. Before this fix, success only set sendSuccess and
+  // never called setSendDrawerOpen(false), so the drawer never closed.
+  // Declared here (not down by the other send handlers) because hooks must
+  // run unconditionally before this component's early loading/error returns.
+  const sendEmailMutation = useAsyncMutation(
+    async () => {
+      if (!quoteId || !sendEmail.trim()) return { error: 'Enter a recipient email.' };
+      return sendQuote(quoteId);
+    },
+    {
+      onSuccess: () => {
+        setSendSuccess(`Quote sent to ${sendEmail}`);
+        setSendDrawerOpen(false);
+      },
+    }
+  );
 
   const { quotesRemaining } = useUser();
 
@@ -153,20 +172,7 @@ export function QuoteReviewPage() {
   const categories = ['all', ...new Set(lines.map(l => l.category).filter(Boolean))];
 
   // Send handlers
-  const handleSendEmail = async () => {
-    if (!quoteId || !sendEmail.trim()) return;
-    setSendingEmail(true);
-    setSendSuccess(null);
-    try {
-      const res = await sendQuote(quoteId);
-      if (res.error) throw new Error(res.error);
-      setSendSuccess(`Quote sent to ${sendEmail}`);
-    } catch (e: any) {
-      setSendSuccess(`Error: ${e.message}`);
-    } finally {
-      setSendingEmail(false);
-    }
-  };
+  const handleSendEmail = () => sendEmailMutation.run();
 
   const handleSendText = async () => {
     if (!quoteId || !sendPhone.trim()) return;
@@ -481,14 +487,14 @@ export function QuoteReviewPage() {
 
             {/* Content */}
             <div className="flex-1 p-6 space-y-6">
-              {sendSuccess && (
+              {(sendEmailMutation.error || sendSuccess) && (
                 <div className={`p-3 rounded-lg text-sm flex items-center gap-2 ${
-                  sendSuccess.startsWith('Error')
+                  sendEmailMutation.error || sendSuccess!.startsWith('Error')
                     ? 'bg-red-50 text-red-700 border border-red-200'
                     : 'bg-green-50 text-green-700 border border-green-200'
                 }`}>
                   <Check className="w-4 h-4 flex-shrink-0" />
-                  {sendSuccess}
+                  {sendEmailMutation.error || sendSuccess}
                 </div>
               )}
 
@@ -510,10 +516,10 @@ export function QuoteReviewPage() {
                 </div>
                 <Button
                   onClick={handleSendEmail}
-                  disabled={sendingEmail || !sendEmail.trim()}
+                  disabled={sendEmailMutation.loading || !sendEmail.trim()}
                   className="w-full bg-[#A5CFDD] hover:bg-[#7FAEC2] text-white"
                 >
-                  {sendingEmail ? (
+                  {sendEmailMutation.loading ? (
                     <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Sending...</>
                   ) : (
                     <><Mail className="w-4 h-4 mr-2" /> Send Email</>

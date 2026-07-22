@@ -24,6 +24,7 @@ import {
 import { getQuote, getGuestQuote, downloadQuotePdf, downloadOrderGuide, sendQuote, sendQuoteSms, acknowledgeUnmatchedLines } from '../services/api';
 import { useUser } from '../contexts/UserContext';
 import type { QuoteResponse, QuoteLineResponse } from '../services/api';
+import { useAsyncMutation } from '../hooks/useAsyncMutation';
 import { isDemoMode, PROD_SIGNUP_URL } from '../utils/demoMode';
 import { categoryLabel } from '../utils/categoryLabel';
 
@@ -394,21 +395,18 @@ export function ExportFinalizePage() {
   }, [pdfBlobUrl]);
 
   // Send state
-  const [sendingEmail, setSendingEmail] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
   const [sendingSms, setSendingSms] = useState(false);
   const [smsSent, setSmsSent] = useState(false);
-  const [sendError, setSendError] = useState<string | null>(null);
+  const [smsError, setSmsError] = useState<string | null>(null);
 
-  // Reset email drawer state when it closes so the button label and
-  // in-flight flags don't persist as stale state on reopen.
-  // TODO(Desi): "Send Quote" (sticky footer) and "Email Quote to Chef" (send section)
-  // both open the same email drawer — confirm this is intentional.
+  // Reset email drawer state when it closes so the button label doesn't
+  // persist as stale state on reopen. sendingEmail/sendError are now owned
+  // by useAsyncMutation (see sendEmailMutation below), which already clears
+  // its own error at the start of the next run().
   useEffect(() => {
     if (!showEmailDrawer) {
       setEmailSent(false);
-      setSendingEmail(false);
-      setSendError(null);
     }
   }, [showEmailDrawer]);
 
@@ -453,27 +451,36 @@ export function ExportFinalizePage() {
   // Temporary State for Edit Drawer
   const [tempContactIds, setTempContactIds] = useState<string[]>(selectedContactIds);
 
-  // Send email
-  async function handleSendEmail(): Promise<boolean> {
-    if (!quoteId) return false;
-    setSendingEmail(true);
-    setSendError(null);
-    try {
+  // BUG #31/#32/#33: send email routed through the shared useAsyncMutation
+  // hook so success ALWAYS does resync + close together, in one place, and a
+  // second click while a send is in flight is ignored synchronously.
+  const sendEmailMutation = useAsyncMutation(
+    async () => {
+      if (!quoteId) return { error: 'No quote loaded.' };
       const emailToSend = manualEmail || contactEmail || undefined;
-      const res = await sendQuote(quoteId, emailToSend || undefined, sendNote || undefined);
-      if (res.error) {
-        setSendError(res.error);
-        return false;
-      } else {
+      return sendQuote(quoteId, emailToSend || undefined, sendNote || undefined);
+    },
+    {
+      onSuccess: async () => {
         setEmailSent(true);
         setHasInteracted(true);
         setShowSuccessDrawer(true);
+        // BUG #32/#33: close the email drawer on success, in the same place
+        // the resync happens, instead of leaving it to the call site.
+        setShowEmailDrawer(false);
         incrementQuoteCount();
-        return true;
-      }
-    } finally {
-      setSendingEmail(false);
+        // BUG #31: resync quoteData so the status badge reflects "sent"
+        // instead of staying on the stale pre-send status (e.g. "draft").
+        if (quoteId) {
+          const res = await fetchQuote(quoteId);
+          if (res.data) setQuoteData(res.data as QuoteResponse);
+        }
+      },
     }
+  );
+
+  async function handleSendEmail(): Promise<boolean> {
+    return sendEmailMutation.run();
   }
 
   // Send SMS
@@ -481,15 +488,15 @@ export function ExportFinalizePage() {
     if (!quoteId) return;
     const phone = contactPhone;
     if (!phone) {
-      setSendError('No phone number: enter one or add a contact.');
+      setSmsError('No phone number: enter one or add a contact.');
       return;
     }
     setSendingSms(true);
-    setSendError(null);
+    setSmsError(null);
     try {
       const res = await sendQuoteSms(quoteId, phone);
       if (res.error) {
-        setSendError(res.error);
+        setSmsError(res.error);
       } else {
         setSmsSent(true);
         setHasInteracted(true);
@@ -1200,9 +1207,9 @@ export function ExportFinalizePage() {
                 Emails will be sent via {FROM_DISPLAY_ADDRESS} with your email CC'd
               </p>
 
-              {sendError && (
+              {(sendEmailMutation.error || smsError) && (
                 <div className="text-sm text-red-500 bg-red-50 border border-red-200 rounded-md p-3 mb-3">
-                  {sendError}
+                  {sendEmailMutation.error || smsError}
                 </div>
               )}
 
@@ -1235,16 +1242,12 @@ export function ExportFinalizePage() {
               )}
 
               <div className="space-y-3">
-                <Button
-                  variant="outline"
-                  className="w-full justify-start border-[#A5CFDD] text-[#A5CFDD] h-12"
-                  disabled={!isFinalized}
-                  onClick={() => setShowEmailDrawer(true)}
-                >
-                  <Mail className="w-4 h-4 mr-3" />
-                  Email Quote to Chef
-                </Button>
-
+                {/* BUG #33: this card used to have its own "Email Quote to Chef"
+                    button that opened the same drawer as the sticky "Send Quote"
+                    footer button below (see the TODO this replaced). Consolidated
+                    to a single "Email Quote to Chef" affordance, kept on the
+                    sticky footer since it already carries the full send gating
+                    (extraction review gate, recipient-required gate). */}
                 <Button
                   variant="outline"
                   className="w-full justify-start border-gray-200 text-gray-400 h-12 cursor-not-allowed"
@@ -1266,7 +1269,7 @@ export function ExportFinalizePage() {
                     <Button
                       variant="outline"
                       className="w-full justify-start border-gray-300 text-[#2A2A2A] h-12"
-                      disabled={!isFinalized || sendingEmail}
+                      disabled={!isFinalized || sendEmailMutation.loading}
                       onClick={handleSendEmail}
                     >
                       <Mail className="w-4 h-4 mr-3" />
@@ -1292,7 +1295,12 @@ export function ExportFinalizePage() {
         </div>
       )}
 
-      {/* Authenticated mode: Sticky floating Send Quote button */}
+      {/* Authenticated mode: Sticky floating Email Quote to Chef button.
+          BUG #33: this used to be labeled "Send Quote" and duplicated the
+          "Email Quote to Chef" button that lived in the Send to Customer
+          card above (both opened the same email drawer). Consolidated to
+          this one button, kept here because it already carries the full
+          send gating (extraction review gate + recipient-required gate). */}
       {!isDemoMode() && (
         <div className="fixed bottom-0 left-0 right-0 md:left-64 bg-white border-t border-gray-200 p-4 z-40">
           {/* B-168/BUG#21: Review gate takes precedence — block + always explain WHY
@@ -1319,7 +1327,7 @@ export function ExportFinalizePage() {
             }
             className="w-full md:w-auto md:min-w-[200px] md:mx-auto md:block bg-[#F2993D] hover:bg-[#E8953A] text-white font-medium py-2.5 px-5 rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Send Quote
+            Email Quote to Chef
           </button>
         </div>
       )}
@@ -1491,9 +1499,9 @@ export function ExportFinalizePage() {
                   className="border-gray-300 min-h-[100px]"
                 />
               </div>
-              {sendError && (
+              {sendEmailMutation.error && (
                 <div className="text-sm text-red-500 bg-red-50 border border-red-200 rounded-md p-3">
-                  {sendError}
+                  {sendEmailMutation.error}
                 </div>
               )}
             </div>
@@ -1508,14 +1516,11 @@ export function ExportFinalizePage() {
                   </Button>
                 </DrawerClose>
                 <Button
-                  onClick={async () => {
-                  const ok = await handleSendEmail();
-                  if (ok) setShowEmailDrawer(false);
-                }}
-                  disabled={sendingEmail || (!contactEmail && !manualEmail)}
+                  onClick={() => sendEmailMutation.run()}
+                  disabled={sendEmailMutation.loading || (!contactEmail && !manualEmail)}
                   className="flex-1 bg-[#A5CFDD] hover:bg-[#8db9c9] text-white min-h-[48px]"
                 >
-                  {sendingEmail ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Mail className="w-4 h-4 mr-2" />}
+                  {sendEmailMutation.loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Mail className="w-4 h-4 mr-2" />}
                   {emailSent ? 'Email Sent!' : 'Send Email'}
                 </Button>
               </div>
