@@ -115,7 +115,7 @@ export function BrandCatalogPage() {
           <input
             ref={fileInputRef}
             type="file"
-            accept=".csv,.xls,.xlsx,.pdf"
+            accept=".csv,.xlsx,.pdf"
             onChange={onFileChange}
             style={{ display: 'none' }}
           />

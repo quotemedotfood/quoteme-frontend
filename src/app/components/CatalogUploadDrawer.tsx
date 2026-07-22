@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
   Drawer,
   DrawerClose,
@@ -10,8 +10,11 @@ import {
 } from './ui/drawer';
 import { Button } from './ui/button';
 import { X, Loader2, Upload, FileUp, Check, AlertCircle, CheckCircle2, XCircle } from 'lucide-react';
-import { uploadCatalogFile } from '../services/api';
-import type { CatalogColumnInfo } from '../services/api';
+import { uploadCatalogFile, getClassificationStatus } from '../services/api';
+import type { CatalogColumnInfo, ClassificationStatusResponse } from '../services/api';
+import { useAsyncMutation } from '../hooks/useAsyncMutation';
+import type { AsyncMutationResponse } from '../hooks/useAsyncMutation';
+import type { CatalogUploadResponse } from '../services/api';
 
 interface CatalogUploadDrawerProps {
   open: boolean;
@@ -22,23 +25,23 @@ interface CatalogUploadDrawerProps {
 export function CatalogUploadDrawer({ open, onOpenChange, onUploadComplete }: CatalogUploadDrawerProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
-  const [uploading, setUploading] = useState(false);
   const [uploadResult, setUploadResult] = useState<{ message: string; isError: boolean } | null>(null);
   const [uploadedCatalog, setUploadedCatalog] = useState<{ id: string; item_count: number } | null>(null);
   const [columnInfo, setColumnInfo] = useState<CatalogColumnInfo | null>(null);
+  const [classificationStatus, setClassificationStatus] = useState<ClassificationStatusResponse | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const classificationPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const handleFileSelect = (file: File) => {
     const validTypes = [
       'text/csv',
-      'application/vnd.ms-excel',
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     ];
-    const validExtensions = ['.csv', '.xlsx', '.xls'];
+    const validExtensions = ['.csv', '.xlsx'];
     const ext = '.' + file.name.split('.').pop()?.toLowerCase();
 
     if (!validTypes.includes(file.type) && !validExtensions.includes(ext)) {
-      setUploadResult({ message: 'Please upload a CSV or Excel file (.csv, .xlsx, .xls)', isError: true });
+      setUploadResult({ message: 'Please upload a CSV or Excel file (.csv, .xlsx)', isError: true });
       return;
     }
 
@@ -46,6 +49,8 @@ export function CatalogUploadDrawer({ open, onOpenChange, onUploadComplete }: Ca
     setUploadResult(null);
     setUploadedCatalog(null);
     setColumnInfo(null);
+    stopClassificationPolling();
+    setClassificationStatus(null);
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -64,43 +69,104 @@ export function CatalogUploadDrawer({ open, onOpenChange, onUploadComplete }: Ca
     if (file) handleFileSelect(file);
   };
 
-  const handleUpload = async () => {
-    if (!selectedFile) return;
-
-    setUploading(true);
-    setUploadResult(null);
-
-    const res = await uploadCatalogFile(selectedFile);
-
-    if (res.error) {
-      const errorData = (res as any).data;
-      setColumnInfo(errorData?.column_info || null);
-      setUploadResult({ message: res.error, isError: true });
-    } else if (res.data) {
-      const data = res.data as any;
-      const isZero = data.item_count === 0;
-      setColumnInfo(data.column_info || null);
-      setUploadResult({
-        message: data.message || `${data.item_count} products imported`,
-        isError: isZero,
-      });
-      if (!isZero) {
-        setUploadedCatalog({ id: data.id, item_count: data.item_count });
-      }
+  function stopClassificationPolling() {
+    if (classificationPollRef.current) {
+      clearInterval(classificationPollRef.current);
+      classificationPollRef.current = null;
     }
+  }
 
-    setUploading(false);
+  // Reuses the same live-progress polling pattern as StartNewQuotePage's
+  // startClassificationPolling and CatalogManagePage's classification poll
+  // effect: hit GET /api/v1/catalogs/:id/classification_status on an
+  // interval until status flips to "complete", instead of leaving the drawer
+  // on a blind "Uploading..." spinner while categorization runs server-side.
+  const startClassificationPolling = (catalogId: string, itemCount: number) => {
+    stopClassificationPolling();
+    classificationPollRef.current = setInterval(async () => {
+      const statusRes = await getClassificationStatus(catalogId);
+      if (statusRes.data) {
+        setClassificationStatus(statusRes.data);
+        if (statusRes.data.status === 'complete') {
+          stopClassificationPolling();
+          setUploadedCatalog({ id: catalogId, item_count: itemCount });
+        }
+      }
+    }, 2000);
   };
 
-  const handleClose = () => {
-    if (uploadedCatalog && onUploadComplete) {
-      onUploadComplete(uploadedCatalog.id);
+  // Clean up polling on unmount so a closed/unmounted drawer doesn't keep
+  // hitting the status endpoint.
+  useEffect(() => {
+    return () => stopClassificationPolling();
+  }, []);
+
+  // BUG: post-upload refresh routed through the shared useAsyncMutation hook
+  // so onUploadComplete fires the instant the 200 lands, not on drawer
+  // dismiss (handleClose used to be the only place that called it, so the
+  // parent stayed stale until the user clicked "Done").
+  const uploadMutation = useAsyncMutation(
+    async (file: File): Promise<AsyncMutationResponse<CatalogUploadResponse>> => {
+      const res = await uploadCatalogFile(file);
+      if (res.error) {
+        setColumnInfo(res.data?.column_info || null);
+        setUploadResult({ message: res.error, isError: true });
+      }
+      // ApiResponse<T> (services/api.ts) has no string index signature, so it
+      // is not structurally assignable to AsyncMutationResponse<T> as-is; the
+      // two shapes are compatible at runtime (data?/error? plus extra
+      // fields), so this cast just bridges the declared-type gap rather than
+      // widening what the hook actually receives.
+      return res as AsyncMutationResponse<CatalogUploadResponse>;
+    },
+    {
+      onSuccess: (data) => {
+        if (!data) return;
+        const isZero = data.item_count === 0;
+        setColumnInfo(data.column_info || null);
+        setUploadResult({
+          message: data.message || `${data.item_count} products imported`,
+          isError: isZero,
+        });
+        if (isZero) return;
+
+        // Notify the parent (CatalogManagePage loadCatalog / DistributorHomePage
+        // loadHome / CCTodayPage) right away so it is already refreshed
+        // underneath by the time the user dismisses the "Done" screen.
+        onUploadComplete?.(data.id);
+
+        if (data.classification_status === 'pending') {
+          setClassificationStatus({
+            catalog_id: data.id,
+            status: 'classifying',
+            progress: 0,
+            total: data.classification_total || 0,
+            flagged_count: 0,
+          });
+          startClassificationPolling(data.id, data.item_count);
+        } else {
+          setUploadedCatalog({ id: data.id, item_count: data.item_count });
+        }
+      },
     }
+  );
+
+  const handleUpload = () => {
+    if (!selectedFile) return;
+    setUploadResult(null);
+    uploadMutation.run(selectedFile);
+  };
+
+  const isClassifying = classificationStatus?.status === 'classifying';
+
+  const handleClose = () => {
+    stopClassificationPolling();
     // Reset state
     setSelectedFile(null);
     setUploadResult(null);
     setUploadedCatalog(null);
     setColumnInfo(null);
+    setClassificationStatus(null);
     onOpenChange(false);
   };
 
@@ -148,7 +214,7 @@ export function CatalogUploadDrawer({ open, onOpenChange, onUploadComplete }: Ca
             <input
               ref={fileInputRef}
               type="file"
-              accept=".csv,.xlsx,.xls"
+              accept=".csv,.xlsx"
               className="hidden"
               onChange={(e) => {
                 const file = e.target.files?.[0];
@@ -173,6 +239,8 @@ export function CatalogUploadDrawer({ open, onOpenChange, onUploadComplete }: Ca
                     setUploadResult(null);
                     setUploadedCatalog(null);
                     setColumnInfo(null);
+                    stopClassificationPolling();
+                    setClassificationStatus(null);
                   }}
                 >
                   Choose a different file
@@ -190,7 +258,7 @@ export function CatalogUploadDrawer({ open, onOpenChange, onUploadComplete }: Ca
                   </p>
                 </div>
                 <p className="text-xs text-gray-400">
-                  Supports CSV, XLSX, XLS
+                  Supports CSV, XLSX
                 </p>
               </div>
             )}
@@ -239,7 +307,7 @@ export function CatalogUploadDrawer({ open, onOpenChange, onUploadComplete }: Ca
                   {[
                     { key: 'item_number', label: 'Item Number', required: true },
                     { key: 'product_name', label: 'Product Name', required: true },
-                    { key: 'brand', label: 'Brand', required: true },
+                    { key: 'brand', label: 'Brand', required: false },
                     { key: 'pack_size', label: 'Pack Size', required: false },
                     { key: 'category', label: 'Category', required: false },
                     { key: 'price_cents', label: 'Price', required: false },
@@ -287,7 +355,7 @@ export function CatalogUploadDrawer({ open, onOpenChange, onUploadComplete }: Ca
                   {[
                     { field: 'Item Number', desc: 'SKU or product code', required: true },
                     { field: 'Product Name', desc: 'Product description', required: true },
-                    { field: 'Brand', desc: 'Manufacturer or brand name', required: true },
+                    { field: 'Brand', desc: 'Manufacturer or brand name', required: false },
                     { field: 'Pack Size', desc: 'e.g. 6/10#, 4/1 GAL', required: false },
                     { field: 'Category', desc: 'Product category', required: false },
                     { field: 'Price', desc: 'Unit price', required: false },
@@ -325,13 +393,18 @@ export function CatalogUploadDrawer({ open, onOpenChange, onUploadComplete }: Ca
           ) : (
             <Button
               onClick={handleUpload}
-              disabled={!selectedFile || uploading}
+              disabled={!selectedFile || uploadMutation.loading || isClassifying}
               className="w-full bg-[#F2993D] hover:bg-[#E08A2E] text-white disabled:bg-gray-200 disabled:text-gray-400"
             >
-              {uploading ? (
+              {uploadMutation.loading ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                   Uploading...
+                </>
+              ) : isClassifying ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Classifying {classificationStatus?.progress ?? 0}/{classificationStatus?.total ?? 0}
                 </>
               ) : (
                 <>
