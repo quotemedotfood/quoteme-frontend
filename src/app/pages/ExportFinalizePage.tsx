@@ -26,6 +26,7 @@ import { useUser } from '../contexts/UserContext';
 import type { QuoteResponse, QuoteLineResponse } from '../services/api';
 import { useAsyncMutation } from '../hooks/useAsyncMutation';
 import { isDemoMode, PROD_SIGNUP_URL } from '../utils/demoMode';
+import { latestChefQuestion } from '../utils/chefQuestion';
 import { categoryLabel } from '../utils/categoryLabel';
 
 
@@ -608,6 +609,32 @@ export function ExportFinalizePage() {
             <span>Status: {(quoteData as any).quote_status_label || quoteData.status}</span>
           </div>
         )}
+
+        {/* Chef question banner — attention signal, not a metric. Surfaces the
+            chef's most recent question so the rep knows to reply before
+            sending, per Justin's attention-signal-not-metrics doctrine
+            (BUG #30). */}
+        {quoteData && quoteData.chef_questions && quoteData.chef_questions.length > 0 && (() => {
+          const question = latestChefQuestion(quoteData.chef_questions);
+          if (!question) return null;
+          return (
+            <div
+              className={`w-full rounded-lg px-4 py-3 mb-6 border flex items-start gap-3 ${
+                quoteData.has_unanswered_chef_question
+                  ? 'bg-[#A5CFDD]/10 border-[#A5CFDD]/40'
+                  : 'bg-gray-50 border-gray-200'
+              }`}
+            >
+              <MessageSquare className="w-4 h-4 text-[#7FAEC2] flex-shrink-0 mt-0.5" />
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-[#2A2A2A]">
+                  {quoteData.has_unanswered_chef_question ? 'The chef asked a question' : 'Chef question'}
+                </p>
+                <p className="text-sm text-gray-600 mt-0.5 break-words">{question.body}</p>
+              </div>
+            </div>
+          );
+        })()}
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Left Column */}
