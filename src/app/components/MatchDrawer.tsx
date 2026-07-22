@@ -11,6 +11,7 @@ import { X, Check, Search, Plus, Repeat, Mic, Loader2 } from 'lucide-react';
 import {
   searchCatalogProducts,
   submitYourCallSelection,
+  toggleRepMemoryLock,
   CORRECTION_TYPES,
   type AlignmentCandidateResponse,
   type CatalogSearchProduct,
@@ -18,7 +19,7 @@ import {
 } from '../services/api';
 import { toTitleCase, formatProductName } from '../utils/format';
 import { categoryLabel } from '../utils/categoryLabel';
-import { RepMemoryBadge } from './RepMemoryBadge';
+import { ChainToggle } from './ChainToggle';
 import { DistributorMemoryBadge } from './DistributorMemoryBadge';
 
 // ─── MatchDrawer ──────────────────────────────────────────────────────────
@@ -138,6 +139,35 @@ export function MatchDrawer({
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
+  // Operational Memory Epic, Lane 1 revision (Ruling 3): the ChainToggle is a
+  // real bidirectional lock, not a read-only label, so its state can change
+  // without a full quote refetch. lockOverrides tracks any product whose
+  // lock state has been flipped in THIS drawer session; falls back to the
+  // server-provided candidate.rep_memory when no override exists yet.
+  const [lockOverrides, setLockOverrides] = useState<Record<string, boolean>>({});
+  const [lockPending, setLockPending] = useState<string | null>(null);
+
+  const isLocked = (productId: string, serverValue: boolean) =>
+    lockOverrides[productId] ?? serverValue;
+
+  const handleToggleLock = async (productId: string, currentlyLocked: boolean) => {
+    if (!quoteId || !quoteLineId || lockPending) return;
+    setLockPending(productId);
+    const nextLocked = !currentlyLocked;
+    const res = await toggleRepMemoryLock(quoteId, {
+      quote_line_id: quoteLineId,
+      product_id: productId,
+      canonical_key: canonicalKey ?? null,
+      locked: nextLocked,
+    });
+    setLockPending(null);
+    if (!res.error) {
+      setLockOverrides(prev => ({ ...prev, [productId]: nextLocked }));
+    }
+    // Errors are swallowed quietly here by design -- no modal, no toast.
+    // The chain simply stays in its prior state if the call failed.
+  };
+
   // BUG #26 precedent (MapComponentDrawer) — vaul's right-direction drawer
   // doesn't reliably fire onOpenChange on Esc/backdrop for horizontal
   // drawers. Guarantee an Escape route independent of vaul's detection.
@@ -160,6 +190,7 @@ export function MatchDrawer({
     setQuery(ingredientName || '');
     setSearchResults([]);
     setSubmitError(null);
+    setLockOverrides({});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, ingredientName]);
 
@@ -313,7 +344,13 @@ export function MatchDrawer({
                   <div className="flex-1 min-w-0">
                     <h4 className="text-[13.5px] font-semibold leading-[1.3] flex items-center gap-[6px]" style={{ color: 'var(--qm-charcoal)' }}>
                       {formatProductName(currentMatch.product.product, currentMatch.product.brand)}
-                      {currentMatch.rep_memory && <RepMemoryBadge />}
+                      {quoteId && quoteLineId && (
+                        <ChainToggle
+                          locked={isLocked(currentMatch.product.id, currentMatch.rep_memory)}
+                          onToggle={() => handleToggleLock(currentMatch.product.id, isLocked(currentMatch.product.id, currentMatch.rep_memory))}
+                          disabled={lockPending === currentMatch.product.id}
+                        />
+                      )}
                       {!currentMatch.rep_memory && currentMatch.distributor_memory && (
                         <DistributorMemoryBadge distributorName={currentMatch.distributor_name} />
                       )}
@@ -384,7 +421,13 @@ export function MatchDrawer({
                       <div className="flex-1 min-w-0">
                         <h4 className="text-[13.5px] font-semibold leading-[1.3] flex items-center gap-[6px]" style={{ color: 'var(--qm-charcoal)' }}>
                           {formatProductName(candidate.product.product, candidate.product.brand)}
-                          {candidate.rep_memory && <RepMemoryBadge />}
+                          {quoteId && quoteLineId && (
+                            <ChainToggle
+                              locked={isLocked(candidate.product.id, candidate.rep_memory)}
+                              onToggle={() => handleToggleLock(candidate.product.id, isLocked(candidate.product.id, candidate.rep_memory))}
+                              disabled={lockPending === candidate.product.id}
+                            />
+                          )}
                           {!candidate.rep_memory && candidate.distributor_memory && (
                             <DistributorMemoryBadge distributorName={candidate.distributor_name} />
                           )}

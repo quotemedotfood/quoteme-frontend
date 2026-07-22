@@ -32,6 +32,29 @@ import { useUser } from '../contexts/UserContext';
  * consume route as the navigation target. */
 const SAFE_DEFAULT_TARGET = '/rep/quotes/inbound';
 
+/**
+ * BUG #29 (magic-link session isolation): localStorage keys that belong to
+ * a DIFFERENT identity than the one about to be established here - a prior
+ * QM-admin session, an in-flight impersonation, or an anonymous guest.
+ * Establishing a new session (chef magic link, rep magic link, rep invite
+ * accept) MUST clear every one of these first, or a stale key survives
+ * underneath the new `quoteme_token` and gets picked up by anything that
+ * reads it (ImpersonationBanner in particular), hijacking the UI with the
+ * PRIOR admin/impersonation identity instead of the session that was just
+ * established.
+ *
+ * `quoteme_token` itself is intentionally NOT in this list: it is the
+ * current session's own key and is overwritten (not cleared) immediately
+ * below with the freshly-issued JWT.
+ */
+const PRIOR_SESSION_KEYS_TO_CLEAR = [
+  'quoteme_admin_token', // real admin JWT, stashed client-side during impersonation
+  'quoteme_impersonating', // legacy (non-chef) impersonation display name
+  'quoteme_chef_impersonating', // chef impersonation display name
+  'quoteme_chef_impersonation_event_id', // chef impersonation audit event id
+  'quoteme_guest_token', // anonymous guest session
+] as const;
+
 /** Identity shape accepted by UserContext.syncWithAuthUser. Callers map
  * their own consume-response `user` payload into this shape before calling
  * the hook (mirrors what ChefWelcomePage already did inline). */
@@ -74,6 +97,14 @@ export function useEstablishSession() {
 
   return useCallback(
     async (jwt: string, user?: SessionSyncUser) => {
+      // Clear every prior-identity key BEFORE writing the new session's
+      // token. Order matters: if this ran after setItem('quoteme_token', ...)
+      // a stale quoteme_admin_token etc. would still exist underneath the
+      // new token for one tick, which is exactly the hijack window BUG #29
+      // exploited.
+      for (const key of PRIOR_SESSION_KEYS_TO_CLEAR) {
+        localStorage.removeItem(key);
+      }
       localStorage.setItem('quoteme_token', jwt);
       await refreshUser();
       if (user) syncWithAuthUser(user);
