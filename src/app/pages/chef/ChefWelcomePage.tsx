@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { consumeChefMagicLink } from '../../services/api';
 import type { ChefMagicLinkConsumeResponse } from '../../services/api';
@@ -72,6 +72,30 @@ export function ChefWelcomePage() {
   const [errorCode, setErrorCode] = useState<string>('');
   const [errorMsg, setErrorMsg] = useState<string>('');
 
+  // BUG #29: guards against a second consume call for the same token. A
+  // single-use token that consume() has already burned MUST NOT be handed
+  // to the backend again: a second network call for the same token always
+  // comes back "already_used" even though the FIRST call actually
+  // succeeded, which is exactly the wrongful lockout this bug report
+  // describes. The `cancelled` flag alone doesn't prevent this: React 18
+  // StrictMode double-invokes effects in dev (mount, cleanup, mount), and a
+  // naive "bail out of the whole effect if already fired" guard would
+  // discard the FIRST (real) in-flight request when that cleanup runs,
+  // leaving the page stuck in loading forever.
+  //
+  // Instead, this ref caches the in-flight PROMISE per token, not just a
+  // "did we fire" boolean. The first effect invocation creates the request;
+  // any subsequent invocation for the same token (StrictMode's remount, or
+  // this effect re-running because `establishSession` was recreated) reuses
+  // that same promise instead of calling consumeChefMagicLink again. Only
+  // one network call ever reaches the backend per token, and whichever
+  // effect invocation is still mounted when it resolves processes the
+  // result normally.
+  const inFlightRef = useRef<{
+    token: string;
+    promise: ReturnType<typeof consumeChefMagicLink>;
+  } | null>(null);
+
   useEffect(() => {
     if (!token) {
       setState('error');
@@ -79,9 +103,14 @@ export function ChefWelcomePage() {
       return;
     }
 
+    if (!inFlightRef.current || inFlightRef.current.token !== token) {
+      inFlightRef.current = { token, promise: consumeChefMagicLink(token) };
+    }
+    const { promise } = inFlightRef.current;
+
     let cancelled = false;
     (async () => {
-      const res = await consumeChefMagicLink(token);
+      const res = await promise;
       if (cancelled) return;
 
       if (res.data) {
@@ -459,6 +488,17 @@ function errorCopy(code: string, message?: string): { title: string; body: strin
     return {
       title: "We couldn't open the quote.",
       body: message || 'An account already exists at this email under a different role. Reach out to your rep and we\'ll sort it out.',
+    };
+  }
+  // already_used: the token genuinely was already consumed (a real repeat
+  // open, not the double-fire this page's own consume guard now prevents).
+  // BUG #29: this is the ONE case where the honest answer is "this really
+  // is spent"; fixed copy, deliberately ignoring the BE `message` field so
+  // this always reads exactly the same regardless of BE wording drift.
+  if (code === 'already_used') {
+    return {
+      title: 'This link has already been used.',
+      body: 'Contact your rep for a new one.',
     };
   }
   // invalid_token + fallthrough
