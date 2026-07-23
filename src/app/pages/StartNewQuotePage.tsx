@@ -619,7 +619,7 @@ export function StartNewQuotePage() {
 
   const handleCatalogFileSelect = async (file: File) => {
     const ext = file.name.toLowerCase();
-    if (!ext.endsWith('.csv') && !ext.endsWith('.xlsx') && !ext.endsWith('.xls')) {
+    if (!ext.endsWith('.csv') && !ext.endsWith('.xlsx')) {
       setCatalogUploadResult({ message: 'Unsupported file type. Please upload a CSV or Excel file.', isError: true });
       return;
     }
@@ -1727,7 +1727,7 @@ export function StartNewQuotePage() {
             <input
               ref={catalogFileInputRef}
               type="file"
-              accept=".csv,.xlsx,.xls"
+              accept=".csv,.xlsx"
               className="hidden"
               onChange={(e) => { const file = e.target.files?.[0]; if (file) handleCatalogFileSelect(file); e.target.value = ''; }}
             />
@@ -1749,7 +1749,7 @@ export function StartNewQuotePage() {
                 <>
                   <Upload className="w-6 h-6 text-[#A5CFDD] mx-auto mb-2" />
                   <p className="text-sm text-gray-600">Drag a file here or click to browse</p>
-                  <p className="text-xs text-gray-400 mt-1">CSV or Excel (.csv, .xlsx, .xls)</p>
+                  <p className="text-xs text-gray-400 mt-1">CSV or Excel (.csv, .xlsx)</p>
                 </>
               )}
             </div>

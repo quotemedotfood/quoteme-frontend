@@ -363,7 +363,7 @@ function UploadPanel({ onDone }: UploadPanelProps) {
       <input
         ref={fileInputRef}
         type="file"
-        accept=".pdf,.csv,.xlsx,.xls,image/*"
+        accept=".pdf,.csv,.xlsx,image/*"
         className="hidden"
         onChange={handleFileChange}
       />
