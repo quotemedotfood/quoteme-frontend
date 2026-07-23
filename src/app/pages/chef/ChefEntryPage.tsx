@@ -356,7 +356,7 @@ export function ChefEntryPage() {
           <input
             ref={fileInputRef}
             type="file"
-            accept=".pdf,.csv,.txt,.xlsx,.xls,image/*"
+            accept=".pdf,.csv,.txt,.xlsx,image/*"
             className="hidden"
             onChange={handleFileChange}
           />
