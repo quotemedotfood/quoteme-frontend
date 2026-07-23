@@ -156,3 +156,74 @@ describe('ChefWelcomePage: BUG #29 magic-link session isolation', () => {
     expect(consumeChefMagicLink).toHaveBeenCalledWith('magic-token-abc');
   });
 });
+
+describe('ChefWelcomePage: BUG #39 error-copy branches', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    consumeChefMagicLink.mockClear();
+    getCurrentUser.mockClear();
+  });
+
+  it('expired: still renders the dedicated expired-link screen, unaffected by the account_conflict/already_used rewrite', async () => {
+    consumeChefMagicLink.mockResolvedValueOnce({
+      error: 'expired',
+      error_code: 'expired',
+      message: 'This link has expired. Ask your rep to resend.',
+      data: undefined,
+    });
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText("This link's been around the block.")).toBeInTheDocument();
+    });
+    expect(
+      screen.getByText('Quote links expire after 30 days. Your rep can send a fresh one in a moment.'),
+    ).toBeInTheDocument();
+  });
+
+  it('account_conflict: renders the BE message when present', async () => {
+    consumeChefMagicLink.mockResolvedValueOnce({
+      error: 'account_conflict',
+      error_code: 'account_conflict',
+      message: 'This link can\'t sign you in right now. Please contact your rep for help.',
+      data: undefined,
+    });
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText("This link can't sign you in right now. Please contact your rep for help.")).toBeInTheDocument();
+    });
+  });
+
+  it('account_conflict: falls back to the exact BE fallback copy when no message is sent', async () => {
+    consumeChefMagicLink.mockResolvedValueOnce({
+      error: 'account_conflict',
+      error_code: 'account_conflict',
+      data: undefined,
+    });
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText("This link can't sign you in right now. Please contact your rep for help.")).toBeInTheDocument();
+    });
+  });
+
+  it('already_used: no longer renders the old already_used copy, falls back to the generic invalid-link message', async () => {
+    consumeChefMagicLink.mockResolvedValueOnce({
+      error: 'already_used',
+      error_code: 'already_used',
+      data: undefined,
+    });
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText("We couldn't open that link.")).toBeInTheDocument();
+    });
+    expect(screen.queryByText('This link has already been used.')).not.toBeInTheDocument();
+    expect(screen.queryByText('Contact your rep for a new one.')).not.toBeInTheDocument();
+  });
+});

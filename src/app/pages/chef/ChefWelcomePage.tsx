@@ -136,8 +136,14 @@ export function ChefWelcomePage() {
         setData(res.data);
         setState('ready');
       } else {
+        // BUG #39: `error`/`error_code` are the machine code (e.g.
+        // 'expired', 'account_conflict'); `message` is the BE's
+        // human-readable copy for that code, when it sends one. These are
+        // no longer the same value - previously this fell back to
+        // `res.error` (the code itself), which meant errorCopy() would
+        // render the raw code string as if it were a message.
         setErrorCode(res.error_code || res.error || 'invalid_token');
-        setErrorMsg(typeof res.error === 'string' ? res.error : '');
+        setErrorMsg(res.message || '');
         setState('error');
       }
     })();
@@ -456,10 +462,14 @@ function PageShell({ children, topRight }: { children: React.ReactNode; topRight
 }
 
 // ─── ErrorPanel ────────────────────────────────────────────────────────────
-// Three known error codes from the consume endpoint:
-//   invalid_token  (401) — bad / missing / unknown
-//   expired        (410) — > 30 days from generation
-//   role_conflict  (422) — email already has a non-chef account
+// Known error codes from the consume endpoint:
+//   invalid_token    (401): bad / missing / unknown
+//   expired          (410): token past its TTL (rendered via the dedicated
+//                           ExpiredLinkScreen above, not this panel)
+//   role_conflict    (422): email already has a non-chef account
+//   account_conflict (422): BUG #39, the chef magic-link TTL rewrite's
+//                           replacement error code for cases where the
+//                           backend can't sign the chef in automatically
 function ErrorPanel({ code, message }: { code: string; message?: string }) {
   const copy = errorCopy(code, message);
   return (
@@ -478,10 +488,15 @@ function ErrorPanel({ code, message }: { code: string; message?: string }) {
 }
 
 function errorCopy(code: string, message?: string): { title: string; body: string } {
+  // expired: functionally unreachable through this panel today - the
+  // state === 'error' && errorCode === 'expired' check above renders the
+  // dedicated ExpiredLinkScreen (c145) before ErrorPanel ever mounts. Kept
+  // here, with fallback text matching the backend's exact wording, as a
+  // defensive case should that routing ever change.
   if (code === 'expired') {
     return {
       title: 'This link has expired.',
-      body: message || 'Ask your rep to send the quote again, they can re-issue a fresh link in a moment.',
+      body: message || 'This link has expired. Ask your rep to resend.',
     };
   }
   if (code === 'role_conflict') {
@@ -490,18 +505,21 @@ function errorCopy(code: string, message?: string): { title: string; body: strin
       body: message || 'An account already exists at this email under a different role. Reach out to your rep and we\'ll sort it out.',
     };
   }
-  // already_used: the token genuinely was already consumed (a real repeat
-  // open, not the double-fire this page's own consume guard now prevents).
-  // BUG #29: this is the ONE case where the honest answer is "this really
-  // is spent"; fixed copy, deliberately ignoring the BE `message` field so
-  // this always reads exactly the same regardless of BE wording drift.
-  if (code === 'already_used') {
+  // account_conflict (422): BUG #39 - the chef magic-link TTL rewrite
+  // removed the old already_used code and, alongside expired, added this
+  // one for cases where the backend can't sign the chef in automatically
+  // (e.g. an account conflict it can't resolve on its own). Honest copy,
+  // backend message preferred, fallback matches the backend's wording
+  // exactly.
+  if (code === 'account_conflict') {
     return {
-      title: 'This link has already been used.',
-      body: 'Contact your rep for a new one.',
+      title: "We couldn't sign you in.",
+      body: message || "This link can't sign you in right now. Please contact your rep for help.",
     };
   }
-  // invalid_token + fallthrough
+  // invalid_token + fallthrough. Also catches the now-removed already_used:
+  // the backend's chef magic-link TTL rewrite no longer returns that code,
+  // so any occurrence here is unrecognized and gets the generic message.
   return {
     title: "We couldn't open that link.",
     body: 'It may have been copied incomplete, or the link may have already been replaced by a newer one. Ask your rep to resend.',
