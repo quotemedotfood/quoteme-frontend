@@ -228,7 +228,7 @@ function CatalogDropZoneV45({ desktop = false, onSend, ctx, uploadError }: Catal
       <input
         ref={fileInputRef}
         type="file"
-        accept=".pdf,.csv,.xlsx,.xls,.jpg,.jpeg,.png,.webp"
+        accept=".pdf,.csv,.xlsx,.jpg,.jpeg,.png,.webp"
         style={{ display: 'none' }}
         onChange={handleFileInputChange}
       />
