@@ -29,7 +29,6 @@ import { useCallback, useRef, useState } from 'react';
 export interface AsyncMutationResponse<T> {
   data?: T;
   error?: string;
-  [key: string]: unknown;
 }
 
 export interface UseAsyncMutationOptions<T> {
