@@ -36,7 +36,7 @@ const { getQuote, sendQuote } = vi.hoisted(() => {
 
   return {
     getQuote: vi.fn(async () => ({ data: { ...baseQuote } })),
-    sendQuote: vi.fn(async () => ({ data: { ...baseQuote } })),
+    sendQuote: vi.fn(async (): Promise<{ data?: typeof baseQuote; error?: string }> => ({ data: { ...baseQuote } })),
   };
 });
 
