@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useLocation } from 'react-router';
 import { exitImpersonation } from '../services/api';
+import { PRIOR_IDENTITY_CLEARED_EVENT } from '../hooks/useSessionOnUse';
 
 // ------------------------------------------------------------------ helpers
 
@@ -101,6 +102,13 @@ function LegacyImpersonationBanner({ displayName }: { displayName: string }) {
  * the banner reflect whatever session is actually live right now -
  * including immediately after useEstablishSession clears the stale
  * impersonation keys and navigates the chef onward.
+ *
+ * #29-residue: a FAILED chef-link open never navigates anywhere (the error
+ * screen renders at the same /chef/welcome route), so route-change alone
+ * never re-triggers this derivation for that case, and a stale banner
+ * mounted before the clear would keep showing the prior identity. Listening
+ * for PRIOR_IDENTITY_CLEARED_EVENT (dispatched by clearPriorIdentityKeys)
+ * closes that gap without depending on a navigation happening at all.
  */
 export function ImpersonationBanner() {
   const [chefName, setChefName] = useState<string | null>(null);
@@ -108,8 +116,13 @@ export function ImpersonationBanner() {
   const location = useLocation();
 
   useEffect(() => {
-    setChefName(localStorage.getItem('quoteme_chef_impersonating'));
-    setLegacyName(localStorage.getItem('quoteme_impersonating'));
+    function deriveFromStorage() {
+      setChefName(localStorage.getItem('quoteme_chef_impersonating'));
+      setLegacyName(localStorage.getItem('quoteme_impersonating'));
+    }
+    deriveFromStorage();
+    window.addEventListener(PRIOR_IDENTITY_CLEARED_EVENT, deriveFromStorage);
+    return () => window.removeEventListener(PRIOR_IDENTITY_CLEARED_EVENT, deriveFromStorage);
   }, [location.pathname]);
 
   if (chefName) return <ChefImpersonationBanner chefName={chefName} />;
