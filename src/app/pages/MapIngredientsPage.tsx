@@ -41,6 +41,12 @@ interface AlignmentCandidate {
    * Only set when rep_memory is falsy for the same candidate. */
   distributor_memory?: boolean;
   distributor_name?: string | null;
+  /** Operational Memory Epic, Lane 2 revision (Ruling 2): disambiguates a
+   * distributor_memory candidate into "preference" (presentation only) or
+   * "mandate" (attributable, must show who/why). null/legacy => preference. */
+  distributor_signal_type?: 'preference' | 'mandate' | null;
+  distributor_mandate_reason?: string | null;
+  distributor_mandate_set_by?: string | null;
   product: {
     id: string;
     item_number: string;
@@ -600,7 +606,14 @@ export function MapIngredientsPage() {
                     disabled={lockPending === bestMatch.id}
                   />
                 )}
-                {bestMatchIsDistributorMemory && <DistributorMemoryBadge distributorName={bestCandidate?.distributor_name} />}
+                {bestMatchIsDistributorMemory && (
+                  <DistributorMemoryBadge
+                    distributorName={bestCandidate?.distributor_name}
+                    signalType={bestCandidate?.distributor_signal_type}
+                    mandateReason={bestCandidate?.distributor_mandate_reason}
+                    mandateSetBy={bestCandidate?.distributor_mandate_set_by}
+                  />
+                )}
               </p>
               <p className="text-gray-400 truncate">{bestMatch.item_number} &middot; {bestMatch.pack_size}</p>
               {badge && (

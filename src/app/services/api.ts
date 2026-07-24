@@ -329,6 +329,18 @@ export interface AlignmentCandidateResponse {
   /** The distributor's name, present only when distributor_memory is true;
    * feeds the "House pick, set by your team at {distributor}." copy. */
   distributor_name: string | null;
+  /** Operational Memory Epic, Lane 2 revision (Ruling 2): disambiguates a
+   * distributor_memory candidate into a PREFERENCE (presentation only) or
+   * a MANDATE (a hard distributor requirement that MUST be visible and
+   * attributable). null/undefined for legacy rows -- treat as preference. */
+  distributor_signal_type?: 'preference' | 'mandate' | null;
+  /** Present only when distributor_signal_type is "mandate" -- the reason
+   * the distributor gave when setting the mandate (contract, compliance,
+   * supplier transition, etc). */
+  distributor_mandate_reason?: string | null;
+  /** Present only when distributor_signal_type is "mandate" -- the full
+   * name of the person (rep or QM-admin) who set the mandate. */
+  distributor_mandate_set_by?: string | null;
   product: {
     id: string;
     item_number: string;

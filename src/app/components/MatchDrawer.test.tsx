@@ -156,6 +156,68 @@ describe('MatchDrawer — chain toggle + reason picker', () => {
     expect(screen.queryAllByLabelText('Your choice. 1 previous quote.')).toHaveLength(0);
   });
 
+  // Operational Memory Epic, Lane 2 revision (Ruling 2).
+  it('renders the distinct Distributor Mandate label with set-by + reason attribution, wired end to end from the candidate', () => {
+    const mandateCandidate = makeCandidate({
+      id: 'prod-mandate',
+      rep_memory: false,
+      distributor_memory: true,
+      distributor_name: 'Altamira',
+      distributor_signal_type: 'mandate',
+      distributor_mandate_reason: 'Contract requirement',
+      distributor_mandate_set_by: 'Jamie Rivera',
+      product: { id: 'prod-mandate', item_number: '4001', brand: 'Acme', product: 'Basil', pack_size: '5 lb', category: 'produce' },
+    });
+
+    render(
+      <MatchDrawer
+        open={true}
+        onOpenChange={() => {}}
+        ingredientName="basil"
+        currentProduct={null}
+        candidates={[mandateCandidate]}
+        quoteId="q-1"
+        quoteLineId="line-1"
+      />
+    );
+
+    expect(screen.getByText('Distributor Mandate')).toBeInTheDocument();
+    expect(
+      screen.getByLabelText(
+        'Distributor mandate at Altamira, set by Jamie Rivera. Reason: Contract requirement.'
+      )
+    ).toBeInTheDocument();
+  });
+
+  // Preference candidates (the default, and legacy rows with no
+  // distributor_signal_type at all) render "Distributor Focus" -- no
+  // mandate attribution shown.
+  it('renders "Distributor Focus" (not Mandate) for a preference candidate, with no mandate attribution', () => {
+    const preferenceCandidate = makeCandidate({
+      id: 'prod-pref',
+      rep_memory: false,
+      distributor_memory: true,
+      distributor_name: 'Altamira',
+      distributor_signal_type: 'preference',
+      product: { id: 'prod-pref', item_number: '4002', brand: 'Acme', product: 'Oregano', pack_size: '5 lb', category: 'produce' },
+    });
+
+    render(
+      <MatchDrawer
+        open={true}
+        onOpenChange={() => {}}
+        ingredientName="oregano"
+        currentProduct={null}
+        candidates={[preferenceCandidate]}
+        quoteId="q-1"
+        quoteLineId="line-1"
+      />
+    );
+
+    expect(screen.getByText('Distributor Focus')).toBeInTheDocument();
+    expect(screen.queryByText('Distributor Mandate')).not.toBeInTheDocument();
+  });
+
   it('submits correction_type: "rep_preference" by default when the rep never touches the reason picker', async () => {
     const candidate = makeCandidate({ id: 'prod-a' });
 

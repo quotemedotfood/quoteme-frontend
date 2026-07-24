@@ -2262,6 +2262,14 @@ export async function getGapFillerNeedsPickQuotes(
 export interface OperationalMemoryLearning {
   id: string;
   tier: 'rep' | 'preferred';
+  /** Only meaningful for tier "preferred" -- null for rep-tier rows.
+   * Ruling 2: disambiguates a distributor-tier row into a PREFERENCE
+   * (presentation only) or a MANDATE (must be visible + attributable). */
+  distributor_signal_type?: 'preference' | 'mandate' | null;
+  /** Present only when distributor_signal_type is "mandate". */
+  mandate_reason?: string | null;
+  /** Present only when distributor_signal_type is "mandate" -- who set it. */
+  mandate_set_by?: { id: string; name: string; email: string } | null;
   canonical_key: string;
   category: string | null;
   catalog_version: string;
