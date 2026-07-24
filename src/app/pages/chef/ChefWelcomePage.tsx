@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { consumeChefMagicLink } from '../../services/api';
 import type { ChefMagicLinkConsumeResponse } from '../../services/api';
-import { useEstablishSession } from '../../hooks/useSessionOnUse';
+import { useEstablishSession, clearPriorIdentityKeys } from '../../hooks/useSessionOnUse';
 import { stripSeedPrefix } from '../../utils/format';
 import { formatCurrency } from '../../utils/formatCurrency';
 
@@ -97,6 +97,20 @@ export function ChefWelcomePage() {
   } | null>(null);
 
   useEffect(() => {
+    // #29-residue: clear every prior-identity key (QM-admin token,
+    // chef/legacy impersonation display names + audit event id, guest
+    // token) at the VERY START of the open attempt, before the network call
+    // even fires. BUG #29's fix only cleared these on a SUCCESSFUL consume
+    // (inside useEstablishSession, below), so an ERRORED consume (an
+    // already-burned single-use token, any 4xx) skipped establishSession
+    // entirely and left a stale identity's keys in place - ImpersonationBanner
+    // would then render a PRIOR admin/impersonation identity's banner
+    // straight through the error screen. Clearing here, unconditionally,
+    // covers both outcomes by construction: a failed open never restores a
+    // prior identity, and a successful one still clears them a second time
+    // (idempotent) inside establishSession as it always has.
+    clearPriorIdentityKeys();
+
     if (!token) {
       setState('error');
       setErrorCode('invalid_token');

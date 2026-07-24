@@ -17,12 +17,25 @@
 //      already-spent single-use token came back "already_used" even though
 //      the FIRST call had already succeeded - a wrongful lockout.
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, cleanup } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router';
 import { AuthProvider } from '../../contexts/AuthContext';
 import { UserProvider } from '../../contexts/UserContext';
+import type { ChefMagicLinkConsumeResponse } from '../../services/api';
+
+// Broader than the success-only shape the hoisted mock factory below
+// infers by default: #29-residue's new tests need to mockResolvedValueOnce
+// an ERROR response (data undefined, error/error_code set instead), which
+// consumeChefMagicLink's real return type (ApiResponse<T>, not exported)
+// already allows.
+type ConsumeChefMagicLinkResult = {
+  data?: ChefMagicLinkConsumeResponse;
+  error?: string;
+  error_code?: string;
+  token?: string;
+};
 
 // vi.mock factories are hoisted above imports, so any values they reference
 // must go through vi.hoisted rather than plain top-level consts.
@@ -40,7 +53,7 @@ const { mockJwt, consumeChefMagicLink, getCurrentUser } = vi.hoisted(() => {
 
   return {
     mockJwt,
-    consumeChefMagicLink: vi.fn(async () => ({
+    consumeChefMagicLink: vi.fn<() => Promise<ConsumeChefMagicLinkResult>>(async () => ({
       data: {
         jwt: mockJwt,
         user: {
@@ -119,6 +132,10 @@ describe('ChefWelcomePage: BUG #29 magic-link session isolation', () => {
     getCurrentUser.mockClear();
   });
 
+  afterEach(() => {
+    cleanup();
+  });
+
   it('clears every prior-identity session key before writing the chef token', async () => {
     // Simulate a QM admin having impersonated a chef (or a stale guest
     // session) in this browser BEFORE the new chef opens their own magic
@@ -154,5 +171,83 @@ describe('ChefWelcomePage: BUG #29 magic-link session isolation', () => {
     // test environment; without the ref guard this would be 2.
     expect(consumeChefMagicLink).toHaveBeenCalledTimes(1);
     expect(consumeChefMagicLink).toHaveBeenCalledWith('magic-token-abc');
+  });
+});
+
+// #29-residue: BUG #29's fix only cleared prior-identity keys on a
+// SUCCESSFUL consume (inside useEstablishSession, which a failed consume
+// never reaches). A failed open (an already-burned single-use token, any
+// 4xx from the consume endpoint) left those stale keys in place, and the
+// error screen would still render a PRIOR admin/impersonation identity's
+// ImpersonationBanner right alongside "We couldn't open that link." This
+// block covers the clear-on-attempt fix: prior-identity keys must be gone
+// whether the open SUCCEEDS or ERRORS.
+describe('ChefWelcomePage: #29-residue clear stale identity on error', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    consumeChefMagicLink.mockClear();
+    getCurrentUser.mockClear();
+  });
+
+  afterEach(() => {
+    cleanup();
+  });
+
+  it('clears every prior-identity key when the consume call errors', async () => {
+    consumeChefMagicLink.mockResolvedValueOnce({
+      error: 'invalid_token',
+      error_code: 'invalid_token',
+      data: undefined,
+    });
+
+    localStorage.setItem('quoteme_admin_token', 'stale.admin.jwt');
+    localStorage.setItem('quoteme_impersonating', 'Some Other User');
+    localStorage.setItem('quoteme_chef_impersonating', 'A Different Chef');
+    localStorage.setItem('quoteme_chef_impersonation_event_id', 'evt-stale-123');
+    localStorage.setItem('quoteme_guest_token', 'stale.guest.token');
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText(/We couldn't open that link/)).toBeInTheDocument();
+    });
+
+    expect(localStorage.getItem('quoteme_admin_token')).toBeNull();
+    expect(localStorage.getItem('quoteme_impersonating')).toBeNull();
+    expect(localStorage.getItem('quoteme_chef_impersonating')).toBeNull();
+    expect(localStorage.getItem('quoteme_chef_impersonation_event_id')).toBeNull();
+    expect(localStorage.getItem('quoteme_guest_token')).toBeNull();
+  });
+
+  it('a stale impersonation key present before a failed open does not survive it', async () => {
+    consumeChefMagicLink.mockResolvedValueOnce({
+      error: 'already_used',
+      error_code: 'already_used',
+      data: undefined,
+    });
+
+    localStorage.setItem('quoteme_chef_impersonating', 'A Different Chef');
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText(/This link has already been used/)).toBeInTheDocument();
+    });
+
+    expect(localStorage.getItem('quoteme_chef_impersonating')).toBeNull();
+  });
+
+  it('regression: a successful open still clears prior-identity keys and the single-consume guard still fires exactly once', async () => {
+    localStorage.setItem('quoteme_chef_impersonating', 'A Different Chef');
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Review quote/ })).toBeInTheDocument();
+    });
+
+    expect(localStorage.getItem('quoteme_token')).toBe(mockJwt);
+    expect(localStorage.getItem('quoteme_chef_impersonating')).toBeNull();
+    expect(consumeChefMagicLink).toHaveBeenCalledTimes(1);
   });
 });
