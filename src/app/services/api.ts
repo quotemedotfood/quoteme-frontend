@@ -10,6 +10,11 @@ interface ApiResponse<T> {
   // structured BE errors (modal display) read this. String-only callers
   // continue to use `error`.
   error_data?: Record<string, unknown>;
+  // BUG #39: human-readable copy from the BE, separate from `error`/
+  // `error_code` (which are stable machine codes). Populated for endpoints
+  // whose error payload carries both, e.g. consumeChefMagicLink's
+  // `expired` / `account_conflict` responses.
+  message?: string;
   status?: number;
   token?: string;
 }
@@ -166,7 +171,10 @@ export interface ChefMagicLinkConsumeResponse {
 }
 
 export interface ChefMagicLinkConsumeError {
-  error: "invalid_token" | "expired" | "role_conflict" | string;
+  // BUG #39: the chef magic-link TTL rewrite removed "already_used" and
+  // added "account_conflict" (422). "role_conflict" is left in place as an
+  // existing, separate code this ticket doesn't touch.
+  error: "invalid_token" | "expired" | "account_conflict" | "role_conflict" | string;
   message?: string;
   existing_role?: string;
 }
@@ -2669,6 +2677,11 @@ export async function consumeChefMagicLink(
       return {
         error: errorBody.error || `HTTP ${response.status}`,
         error_code: errorBody.error,
+        // BUG #39: thread the BE's human-readable message through - this
+        // was previously dropped, leaving callers with only the machine
+        // code (`error`/`error_code`) and no way to prefer the BE's actual
+        // copy for expired / account_conflict.
+        message: errorBody.message,
         data: undefined,
       };
     }
