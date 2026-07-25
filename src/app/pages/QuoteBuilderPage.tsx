@@ -14,6 +14,11 @@ import { QuoteReviewBar } from '../components/QuoteReviewBar';
 import { MapComponentDrawer } from '../components/MapComponentDrawer';
 import type { CatalogSearchProduct, ChefQuestion } from '../services/api';
 import { latestChefQuestion } from '../utils/chefQuestion';
+// Wave 4(c): reuse Export's exact unresolved-items predicate so the count
+// means the same thing on both screens. availability_status/rep_handled
+// ship on the same getQuote/getGuestQuote response already fetched below;
+// no extra fetch, no BE change.
+import { unacknowledgedUnmatchedLines } from './ExportFinalizePage';
 import { Label } from '../components/ui/label';
 import {
   Drawer,
@@ -119,6 +124,10 @@ export function QuoteBuilderPage() {
   // getQuote/getGuestQuote response used to build `items` below.
   const [chefQuestions, setChefQuestions] = useState<ChefQuestion[]>([]);
   const [hasUnansweredChefQuestion, setHasUnansweredChefQuestion] = useState(false);
+  // Wave 4(c): count of unresolved lines (not_in_catalog && !rep_handled),
+  // computed from the raw fetch response since the transformed ProductItem[]
+  // below drops rep_handled. Same predicate ExportFinalizePage gates send on.
+  const [unresolvedCount, setUnresolvedCount] = useState(0);
 
   // ── Attention / match drawer state ──
   const [matchDrawerOpen, setMatchDrawerOpen] = useState(false);
@@ -174,6 +183,7 @@ export function QuoteBuilderPage() {
         });
       }
       setItems(productItems);
+      setUnresolvedCount(unacknowledgedUnmatchedLines(data.lines || []).length);
       setDistributorCurrency(data.distributor?.currency);
       if (data.input_mode) setInputMode(data.input_mode);
       if (data.detected_concept) setDetectedConcept(data.detected_concept);
@@ -436,7 +446,17 @@ export function QuoteBuilderPage() {
             </button>
             <div className="min-w-0">
               <h1 className="text-xl text-[#4F4F4F]">Quote Builder</h1>
-              <p className="text-sm text-gray-500 truncate">Total Components: {items.length}</p>
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="text-sm text-gray-500 truncate">Total Components: {items.length}</p>
+                {unresolvedCount > 0 && (
+                  <button
+                    onClick={() => navigate(`/export-finalize?quoteId=${quoteId}`)}
+                    className="text-xs font-medium bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full hover:opacity-80 transition-opacity"
+                  >
+                    {unresolvedCount} item{unresolvedCount === 1 ? '' : 's'} need{unresolvedCount === 1 ? 's' : ''} your input
+                  </button>
+                )}
+              </div>
               {inputMode === 'concept_only' && (
                 <p className="text-xs text-amber-600 font-medium mt-0.5">Concept-based starting quote</p>
               )}
