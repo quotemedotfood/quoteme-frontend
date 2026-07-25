@@ -52,7 +52,17 @@ function formatDateTime(d: string | null | undefined): string {
   return parsed.toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
 }
 
-function TierBadge({ tier }: { tier: 'rep' | 'preferred' }) {
+// Ruling 2: a distributor-tier ("preferred") row is either a PREFERENCE
+// (presentation only) or a MANDATE (must be visible + attributable). Both
+// used to render identically as "Distributor" -- this splits them so a
+// QM admin can tell at a glance which rows are hard requirements.
+function TierBadge({
+  tier,
+  signalType,
+}: {
+  tier: 'rep' | 'preferred';
+  signalType?: 'preference' | 'mandate' | null;
+}) {
   if (tier === 'rep') {
     return (
       <Badge variant="outline" className="text-[10px] border-gray-200 text-[#2A2A2A] bg-gray-50 gap-1">
@@ -60,9 +70,16 @@ function TierBadge({ tier }: { tier: 'rep' | 'preferred' }) {
       </Badge>
     );
   }
+  if (signalType === 'mandate') {
+    return (
+      <Badge variant="outline" className="text-[10px] border-amber-200 text-amber-700 bg-amber-50 gap-1">
+        <Home size={10} /> Distributor Mandate
+      </Badge>
+    );
+  }
   return (
     <Badge variant="outline" className="text-[10px] border-gray-200 text-[#2A2A2A] bg-gray-50 gap-1">
-      <Home size={10} /> Distributor
+      <Home size={10} /> Distributor Preference
     </Badge>
   );
 }
@@ -213,7 +230,7 @@ export function QMAdminOperationalMemoryLearnings() {
               <TableBody>
                 {rows.map((row) => (
                   <TableRow key={row.id} className="hover:bg-gray-50">
-                    <TableCell><TierBadge tier={row.tier} /></TableCell>
+                    <TableCell><TierBadge tier={row.tier} signalType={row.distributor_signal_type} /></TableCell>
                     <TableCell>
                       <span className="font-medium text-[#2A2A2A]">{row.canonical_key}</span>
                     </TableCell>
@@ -233,6 +250,12 @@ export function QMAdminOperationalMemoryLearnings() {
                     </TableCell>
                     <TableCell className="text-sm text-gray-600">
                       {correctionTypeLabel(row.provenance.correction_type)}
+                      {row.tier === 'preferred' && row.distributor_signal_type === 'mandate' && (
+                        <div className="mt-1 text-xs text-amber-700">
+                          Mandate set by {row.mandate_set_by?.name ?? 'unknown'}.
+                          {row.mandate_reason ? ` Reason: ${row.mandate_reason}.` : ''}
+                        </div>
+                      )}
                     </TableCell>
                     <TableCell className="text-sm text-gray-500">
                       {formatDateTime(row.provenance.promoted_at)}

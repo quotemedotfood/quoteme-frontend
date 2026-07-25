@@ -2,12 +2,17 @@
 //
 // DistributorMemoryBadge.test.tsx — Operational Memory Epic, Lane 2.
 //
-// The house-pick label is plain, no sparkles/confidence numbers/em-dashes.
-// Distributor name is interpolated but the surrounding copy is fixed.
+// The distributor label is plain, no sparkles/confidence numbers/em dashes.
+// Ruling 2: PREFERENCE is presentation only ("Distributor Focus"), MANDATE
+// is a distinct label that MUST carry attribution (set by / reason).
 
 import { describe, it, expect, afterEach } from 'vitest';
 import { render, screen, cleanup } from '@testing-library/react';
-import { DistributorMemoryBadge, distributorMemoryLabel } from './DistributorMemoryBadge';
+import {
+  DistributorMemoryBadge,
+  distributorMemoryLabel,
+  distributorMandateTooltip,
+} from './DistributorMemoryBadge';
 
 afterEach(cleanup);
 
@@ -28,25 +33,68 @@ describe('distributorMemoryLabel', () => {
   });
 });
 
-describe('DistributorMemoryBadge', () => {
-  it('exposes the distributor-specific accessible name', () => {
-    render(<DistributorMemoryBadge distributorName="Altamira" />);
+describe('distributorMandateTooltip', () => {
+  it('includes distributor name, who set it, and the reason', () => {
+    expect(distributorMandateTooltip('Altamira', 'Jamie Rivera', 'Contract requirement')).toBe(
+      'Distributor mandate at Altamira, set by Jamie Rivera. Reason: Contract requirement.'
+    );
+  });
 
+  it('degrades gracefully when name/setBy/reason are missing', () => {
+    expect(distributorMandateTooltip(null, null, null)).toBe('Distributor mandate.');
+    expect(distributorMandateTooltip(null, 'Jamie Rivera', null)).toBe(
+      'Distributor mandate, set by Jamie Rivera.'
+    );
+  });
+
+  it('does not contain an em dash or en dash', () => {
+    expect(distributorMandateTooltip('Altamira', 'Jamie Rivera', 'Contract requirement')).not.toMatch(
+      /[–—]/
+    );
+  });
+});
+
+describe('DistributorMemoryBadge', () => {
+  it('renders the "Distributor Focus" label for a preference candidate, no mandate attribution', () => {
+    render(<DistributorMemoryBadge distributorName="Altamira" signalType="preference" />);
+
+    expect(screen.getByText('Distributor Focus')).toBeInTheDocument();
     const badge = screen.getByLabelText('House pick, set by your team at Altamira.');
     expect(badge).toBeInTheDocument();
     expect(badge.getAttribute('title')).toBe('House pick, set by your team at Altamira.');
+    expect(badge.textContent).not.toMatch(/mandate/i);
   });
 
-  it('falls back to the generic label when distributorName is not provided', () => {
+  it('treats a null/undefined signalType as preference (legacy rows)', () => {
+    render(<DistributorMemoryBadge distributorName="Altamira" />);
+
+    expect(screen.getByText('Distributor Focus')).toBeInTheDocument();
+    expect(screen.getByLabelText('House pick, set by your team at Altamira.')).toBeInTheDocument();
+  });
+
+  it('falls back to the generic tooltip when distributorName is not provided', () => {
     render(<DistributorMemoryBadge />);
 
-    const badge = screen.getByLabelText('House pick, set by your team.');
-    expect(badge).toBeInTheDocument();
+    expect(screen.getByLabelText('House pick, set by your team.')).toBeInTheDocument();
   });
 
-  it('renders no other text content (icon-only, no visible label)', () => {
-    render(<DistributorMemoryBadge distributorName="Altamira" />);
-    const badge = screen.getByLabelText('House pick, set by your team at Altamira.');
-    expect(badge.textContent).toBe('');
+  it('renders a distinct "Distributor Mandate" label with set-by and reason attribution', () => {
+    render(
+      <DistributorMemoryBadge
+        distributorName="Altamira"
+        signalType="mandate"
+        mandateSetBy="Jamie Rivera"
+        mandateReason="Contract requirement"
+      />
+    );
+
+    expect(screen.getByText('Distributor Mandate')).toBeInTheDocument();
+    const badge = screen.getByLabelText(
+      'Distributor mandate at Altamira, set by Jamie Rivera. Reason: Contract requirement.'
+    );
+    expect(badge).toBeInTheDocument();
+    expect(badge.getAttribute('title')).toBe(
+      'Distributor mandate at Altamira, set by Jamie Rivera. Reason: Contract requirement.'
+    );
   });
 });
