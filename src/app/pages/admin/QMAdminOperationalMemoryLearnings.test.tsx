@@ -38,6 +38,9 @@ const { repLearning, distributorLearning, getOperationalMemoryLearnings, revertO
   const distributorLearning = {
     id: 'learning-dist-1',
     tier: 'preferred' as const,
+    distributor_signal_type: 'preference' as const,
+    mandate_reason: null,
+    mandate_set_by: null,
     canonical_key: 'produce|basil|2',
     category: 'produce',
     catalog_version: 'v0',
@@ -58,11 +61,41 @@ const { repLearning, distributorLearning, getOperationalMemoryLearnings, revertO
     },
   };
 
+  // Operational Memory Epic, Lane 2 revision (Ruling 2): a distributor-tier
+  // MANDATE row -- must be visibly distinct from the preference row above
+  // and carry attribution (who set it, why).
+  const mandateLearning = {
+    id: 'learning-dist-2',
+    tier: 'preferred' as const,
+    distributor_signal_type: 'mandate' as const,
+    mandate_reason: 'Contract requirement',
+    mandate_set_by: { id: 'admin-1', name: 'Morgan Lee', email: 'morgan@testcompany.com' },
+    canonical_key: 'produce|garlic|3',
+    category: 'produce',
+    catalog_version: 'v0',
+    policy_version: 'v0',
+    active: true,
+    reverted_at: null,
+    product: { id: 'prod-3', name: 'Peeled Garlic', brand: 'Sysco Reliance', item_number: 'GAR-003' },
+    distributor: { id: 'dist-1', name: 'Test Distributor' },
+    rep: null,
+    provenance: {
+      promoted_from_operational_event_id: 'event-3',
+      promoted_from_quote_id: 'quote-3',
+      promoted_by_user_id: 'admin-1',
+      promoted_by: { id: 'admin-1', name: 'Morgan Lee', email: 'morgan@testcompany.com' },
+      promoted_at: '2026-07-12T09:30:00Z',
+      correction_type: 'better_fit',
+      quote_id: 'quote-3',
+    },
+  };
+
   return {
     repLearning,
     distributorLearning,
+    mandateLearning,
     getOperationalMemoryLearnings: vi.fn(async () => ({
-      data: { learnings: [repLearning, distributorLearning], count: 2 },
+      data: { learnings: [repLearning, distributorLearning, mandateLearning], count: 3 },
     })),
     revertOperationalMemoryLearning: vi.fn(async (id: string) => ({
       data: { ...(id === repLearning.id ? repLearning : distributorLearning), active: false, reverted_at: '2026-07-16T00:00:00Z' },
@@ -116,14 +149,14 @@ describe('QMAdminOperationalMemoryLearnings', () => {
   it('shows an Active status for a non-reverted row and a Revert action', async () => {
     renderPage();
 
-    await waitFor(() => expect(screen.getAllByText('Active').length).toBe(2));
-    expect(screen.getAllByRole('button', { name: 'Revert' }).length).toBe(2);
+    await waitFor(() => expect(screen.getAllByText('Active').length).toBe(3));
+    expect(screen.getAllByRole('button', { name: 'Revert' }).length).toBe(3);
   });
 
   it('reverts a row and reloads the list, future-only (no historical mutation UI)', async () => {
     renderPage();
 
-    await waitFor(() => expect(screen.getAllByRole('button', { name: 'Revert' }).length).toBe(2));
+    await waitFor(() => expect(screen.getAllByRole('button', { name: 'Revert' }).length).toBe(3));
 
     const revertButtons = screen.getAllByRole('button', { name: 'Revert' });
     fireEvent.click(revertButtons[0]);
@@ -150,5 +183,23 @@ describe('QMAdminOperationalMemoryLearnings', () => {
         expect.objectContaining({ tier: 'preferred' })
       )
     );
+  });
+
+  // Operational Memory Epic, Lane 2 revision (Ruling 2): a distributor
+  // MANDATE row must read as distinct from a distributor PREFERENCE row,
+  // and must surface who set it and why. Preference rows carry neither.
+  it('distinguishes a distributor MANDATE row from a PREFERENCE row and surfaces mandate provenance', async () => {
+    renderPage();
+
+    await waitFor(() => expect(screen.getByText('produce|garlic|3')).toBeInTheDocument());
+
+    // Tier column: no longer identical "Distributor" for both.
+    expect(screen.getByText('Distributor Mandate')).toBeInTheDocument();
+    expect(screen.getByText('Distributor Preference')).toBeInTheDocument();
+
+    // Mandate attribution (who + why) shown only for the mandate row.
+    expect(screen.getByText(/Mandate set by Morgan Lee/)).toBeInTheDocument();
+    expect(screen.getByText(/Contract requirement/)).toBeInTheDocument();
+    expect(screen.queryByText(/Mandate set by Jamie Rivera/)).not.toBeInTheDocument();
   });
 });

@@ -10,6 +10,11 @@ interface ApiResponse<T> {
   // structured BE errors (modal display) read this. String-only callers
   // continue to use `error`.
   error_data?: Record<string, unknown>;
+  // BUG #39: human-readable copy from the BE, separate from `error`/
+  // `error_code` (which are stable machine codes). Populated for endpoints
+  // whose error payload carries both, e.g. consumeChefMagicLink's
+  // `expired` / `account_conflict` responses.
+  message?: string;
   status?: number;
   token?: string;
 }
@@ -166,7 +171,10 @@ export interface ChefMagicLinkConsumeResponse {
 }
 
 export interface ChefMagicLinkConsumeError {
-  error: "invalid_token" | "expired" | "role_conflict" | string;
+  // BUG #39: the chef magic-link TTL rewrite removed "already_used" and
+  // added "account_conflict" (422). "role_conflict" is left in place as an
+  // existing, separate code this ticket doesn't touch.
+  error: "invalid_token" | "expired" | "account_conflict" | "role_conflict" | string;
   message?: string;
   existing_role?: string;
 }
@@ -329,6 +337,18 @@ export interface AlignmentCandidateResponse {
   /** The distributor's name, present only when distributor_memory is true;
    * feeds the "House pick, set by your team at {distributor}." copy. */
   distributor_name: string | null;
+  /** Operational Memory Epic, Lane 2 revision (Ruling 2): disambiguates a
+   * distributor_memory candidate into a PREFERENCE (presentation only) or
+   * a MANDATE (a hard distributor requirement that MUST be visible and
+   * attributable). null/undefined for legacy rows -- treat as preference. */
+  distributor_signal_type?: 'preference' | 'mandate' | null;
+  /** Present only when distributor_signal_type is "mandate" -- the reason
+   * the distributor gave when setting the mandate (contract, compliance,
+   * supplier transition, etc). */
+  distributor_mandate_reason?: string | null;
+  /** Present only when distributor_signal_type is "mandate" -- the full
+   * name of the person (rep or QM-admin) who set the mandate. */
+  distributor_mandate_set_by?: string | null;
   product: {
     id: string;
     item_number: string;
@@ -2669,6 +2689,11 @@ export async function consumeChefMagicLink(
       return {
         error: errorBody.error || `HTTP ${response.status}`,
         error_code: errorBody.error,
+        // BUG #39: thread the BE's human-readable message through - this
+        // was previously dropped, leaving callers with only the machine
+        // code (`error`/`error_code`) and no way to prefer the BE's actual
+        // copy for expired / account_conflict.
+        message: errorBody.message,
         data: undefined,
       };
     }

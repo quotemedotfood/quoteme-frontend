@@ -228,6 +228,9 @@ export function MatchDrawer({
       rep_memory: scored?.rep_memory ?? false,
       distributor_memory: scored?.distributor_memory ?? false,
       distributor_name: scored?.distributor_name ?? null,
+      distributor_signal_type: scored?.distributor_signal_type ?? null,
+      distributor_mandate_reason: scored?.distributor_mandate_reason ?? null,
+      distributor_mandate_set_by: scored?.distributor_mandate_set_by ?? null,
       product: currentProduct,
     };
   }, [currentProduct, candidates]);
@@ -352,7 +355,12 @@ export function MatchDrawer({
                         />
                       )}
                       {!currentMatch.rep_memory && currentMatch.distributor_memory && (
-                        <DistributorMemoryBadge distributorName={currentMatch.distributor_name} />
+                        <DistributorMemoryBadge
+                          distributorName={currentMatch.distributor_name}
+                          signalType={currentMatch.distributor_signal_type}
+                          mandateReason={currentMatch.distributor_mandate_reason}
+                          mandateSetBy={currentMatch.distributor_mandate_set_by}
+                        />
                       )}
                     </h4>
                     <p className="text-[11.5px] mt-[6px]" style={{ color: 'var(--qm-gray-500)' }}>
@@ -429,7 +437,12 @@ export function MatchDrawer({
                             />
                           )}
                           {!candidate.rep_memory && candidate.distributor_memory && (
-                            <DistributorMemoryBadge distributorName={candidate.distributor_name} />
+                            <DistributorMemoryBadge
+                              distributorName={candidate.distributor_name}
+                              signalType={candidate.distributor_signal_type}
+                              mandateReason={candidate.distributor_mandate_reason}
+                              mandateSetBy={candidate.distributor_mandate_set_by}
+                            />
                           )}
                         </h4>
                         <p className="text-[11.5px] mt-[6px]" style={{ color: 'var(--qm-gray-500)' }}>
