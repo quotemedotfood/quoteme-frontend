@@ -34,6 +34,7 @@ type ConsumeChefMagicLinkResult = {
   data?: ChefMagicLinkConsumeResponse;
   error?: string;
   error_code?: string;
+  message?: string;
   token?: string;
 };
 
