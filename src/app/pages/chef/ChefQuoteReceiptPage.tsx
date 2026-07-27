@@ -12,6 +12,7 @@ import {
 import { categoryLabel } from '../../utils/categoryLabel';
 import { isLockedQuoteState, quoteStatusLabel } from '../../utils/quoteStatusLabel';
 import { formatQuoteDate } from '../../utils/format';
+import { chefProductName } from '../../utils/chefProductName';
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -220,7 +221,7 @@ export function ChefQuoteReceiptPage() {
   const docGroups: QuoteDocGroup[] = Array.from(grouped.entries()).map(([category, lines]) => ({
     cat: categoryLabel(category),
     items: lines.map((l) => ({
-      name: toTitleCase(l.product.product),
+      name: toTitleCase(chefProductName(l.product.product)),
       pack: l.product.pack_size || undefined,
       note: l.product.brand ? toTitleCase(l.product.brand) : undefined,
       qty: l.quantity,

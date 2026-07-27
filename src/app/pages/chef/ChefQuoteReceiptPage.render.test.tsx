@@ -123,3 +123,50 @@ describe('ChefQuoteReceiptPage - accept guard (BUG #28)', () => {
     expect(acceptChefQuote).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('ChefQuoteReceiptPage - chef-facing product name normalization', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    getChefQuote.mockClear();
+    acceptChefQuote.mockClear();
+  });
+
+  afterEach(() => {
+    cleanup();
+  });
+
+  it('strips asterisk-wrapped warehouse tokens from the product name shown to the chef', async () => {
+    getChefQuote.mockImplementationOnce(async () => ({
+      data: {
+        ...baseQuote,
+        lines: [
+          {
+            id: 'line-1',
+            position: 1,
+            category: 'seafood',
+            quantity: 2,
+            unit_price_cents: 1000,
+            unit_price: '10.00',
+            alignment_selected: 1,
+            availability_status: 'available',
+            chef_note: null,
+            component: null,
+            product: {
+              id: 'prod-1',
+              item_number: '001',
+              brand: 'Acme',
+              product: 'SALMON *DEAD* FILLET',
+              pack_size: '10lb',
+              category: 'seafood',
+            },
+          },
+        ],
+      },
+    }));
+
+    renderPage();
+
+    await screen.findByText('Salmon Fillet');
+    expect(screen.queryByText(/DEAD/i)).toBeNull();
+  });
+});
