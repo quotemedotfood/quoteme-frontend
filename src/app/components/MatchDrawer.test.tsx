@@ -301,3 +301,146 @@ describe('MatchDrawer — chain toggle + reason picker', () => {
     expect(screen.getByLabelText('Reason for this pick')).toBeInTheDocument();
   });
 });
+
+describe('MatchDrawer -- Needs Your Call display cap (Constitution VIII / Justin ruling 5)', () => {
+  // Two or three defensible options, never five. The current-match card
+  // occupies one slot, so alternates are capped at 2 -- total on-screen
+  // options never exceed 3, even with 5 candidates available or after
+  // repeated "Find more" appends. Past the cap the escape is Catalog
+  // Search / Manually Add, not a longer list.
+
+  it('shows at most 2 alternates (3 options total with current match) when 5 candidates are available', () => {
+    const currentProduct = { id: 'prod-current', item_number: '1000', brand: 'Acme', product: 'Current Pick', pack_size: '10 lb', category: 'protein' };
+    const candidates = [
+      makeCandidate({ id: 'prod-alt-1', product: { id: 'prod-alt-1', item_number: '2001', brand: 'Acme', product: 'Alt One', pack_size: '10 lb', category: 'protein' } }),
+      makeCandidate({ id: 'prod-alt-2', product: { id: 'prod-alt-2', item_number: '2002', brand: 'Acme', product: 'Alt Two', pack_size: '10 lb', category: 'protein' } }),
+      makeCandidate({ id: 'prod-alt-3', product: { id: 'prod-alt-3', item_number: '2003', brand: 'Acme', product: 'Alt Three', pack_size: '10 lb', category: 'protein' } }),
+      makeCandidate({ id: 'prod-alt-4', product: { id: 'prod-alt-4', item_number: '2004', brand: 'Acme', product: 'Alt Four', pack_size: '10 lb', category: 'protein' } }),
+    ];
+
+    render(
+      <MatchDrawer
+        open={true}
+        onOpenChange={() => {}}
+        ingredientName="chicken"
+        currentProduct={currentProduct}
+        candidates={candidates}
+        quoteId="q-1"
+        quoteLineId="line-1"
+      />
+    );
+
+    expect(screen.getByText(/Alternate Products \(2\)/)).toBeInTheDocument();
+    expect(screen.getByText('Acme Alt One')).toBeInTheDocument();
+    expect(screen.getByText('Acme Alt Two')).toBeInTheDocument();
+    expect(screen.queryByText('Acme Alt Three')).not.toBeInTheDocument();
+    expect(screen.queryByText('Acme Alt Four')).not.toBeInTheDocument();
+  });
+
+  it('hides the "Find more matches" button once already at the 3-option ceiling', () => {
+    const candidates = [
+      makeCandidate({ id: 'prod-x1', product: { id: 'prod-x1', item_number: '3001', brand: 'Acme', product: 'X One', pack_size: '10 lb', category: 'protein' } }),
+      makeCandidate({ id: 'prod-x2', product: { id: 'prod-x2', item_number: '3002', brand: 'Acme', product: 'X Two', pack_size: '10 lb', category: 'protein' } }),
+    ];
+
+    render(
+      <MatchDrawer
+        open={true}
+        onOpenChange={() => {}}
+        ingredientName="chicken"
+        currentProduct={null}
+        candidates={candidates}
+        onFindMoreMatches={vi.fn().mockResolvedValue([])}
+        quoteId="q-1"
+        quoteLineId="line-1"
+      />
+    );
+
+    // Already 2 alternates -- at the ceiling, so no "find more" escape offered.
+    expect(screen.queryByText('Find 2 more matches')).not.toBeInTheDocument();
+    // Catalog Search remains present as the escape hatch.
+    expect(screen.getByText('Catalog Search')).toBeInTheDocument();
+  });
+
+  it('shows the "Find more matches" button below the cap, and it disappears after it pushes the list to the ceiling', async () => {
+    const candidate = makeCandidate({ id: 'prod-only', product: { id: 'prod-only', item_number: '4001', brand: 'Acme', product: 'Only One', pack_size: '10 lb', category: 'protein' } });
+    const more = [
+      makeCandidate({ id: 'prod-more-1', product: { id: 'prod-more-1', item_number: '4002', brand: 'Acme', product: 'More One', pack_size: '10 lb', category: 'protein' } }),
+      makeCandidate({ id: 'prod-more-2', product: { id: 'prod-more-2', item_number: '4003', brand: 'Acme', product: 'More Two', pack_size: '10 lb', category: 'protein' } }),
+    ];
+    const onFindMoreMatches = vi.fn().mockResolvedValue(more);
+
+    render(
+      <MatchDrawer
+        open={true}
+        onOpenChange={() => {}}
+        ingredientName="chicken"
+        currentProduct={null}
+        candidates={[candidate]}
+        onFindMoreMatches={onFindMoreMatches}
+        quoteId="q-1"
+        quoteLineId="line-1"
+      />
+    );
+
+    const findMoreButton = screen.getByText('Find 2 more matches');
+    fireEvent.click(findMoreButton);
+
+    await vi.waitFor(() => {
+      expect(onFindMoreMatches).toHaveBeenCalledTimes(1);
+    });
+
+    // Even though onFindMoreMatches returned 2 more (total 3 candidates),
+    // the display cap holds at 2 alternates, and the button is now gone.
+    await vi.waitFor(() => {
+      expect(screen.getByText(/Alternate Products \(2\)/)).toBeInTheDocument();
+    });
+    expect(screen.queryByText('Find 2 more matches')).not.toBeInTheDocument();
+    expect(screen.queryByText('Acme More Two')).not.toBeInTheDocument();
+  });
+
+  it('renders a single candidate as the current-match MATCH card, not a forced one-option alternates list', () => {
+    const currentProduct = { id: 'prod-solo', item_number: '5001', brand: 'Acme', product: 'Solo Match', pack_size: '10 lb', category: 'protein' };
+    const soloCandidate = makeCandidate({ id: 'prod-solo', product: currentProduct });
+
+    render(
+      <MatchDrawer
+        open={true}
+        onOpenChange={() => {}}
+        ingredientName="chicken"
+        currentProduct={currentProduct}
+        candidates={[soloCandidate]}
+        quoteId="q-1"
+        quoteLineId="line-1"
+      />
+    );
+
+    expect(screen.getByText('Current Match')).toBeInTheDocument();
+    expect(screen.getByText('Best Match')).toBeInTheDocument();
+    // The lone candidate is consumed by the current-match card, not
+    // re-listed as a one-item "Alternate Products" section.
+    expect(screen.queryByText(/Alternate Products/)).not.toBeInTheDocument();
+  });
+
+  it('with 2 candidates shows current match + 1 alternate, with Catalog Search present as the escape', () => {
+    const currentProduct = { id: 'prod-cur', item_number: '6001', brand: 'Acme', product: 'Current One', pack_size: '10 lb', category: 'protein' };
+    const altCandidate = makeCandidate({ id: 'prod-alt', product: { id: 'prod-alt', item_number: '6002', brand: 'Acme', product: 'Alt Candidate', pack_size: '10 lb', category: 'protein' } });
+
+    render(
+      <MatchDrawer
+        open={true}
+        onOpenChange={() => {}}
+        ingredientName="chicken"
+        currentProduct={currentProduct}
+        candidates={[altCandidate]}
+        quoteId="q-1"
+        quoteLineId="line-1"
+      />
+    );
+
+    expect(screen.getByText('Current Match')).toBeInTheDocument();
+    expect(screen.getByText(/Alternate Products \(1\)/)).toBeInTheDocument();
+    expect(screen.getByText('Acme Alt Candidate')).toBeInTheDocument();
+    expect(screen.getByText('Catalog Search')).toBeInTheDocument();
+  });
+});

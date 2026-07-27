@@ -235,15 +235,24 @@ export function MatchDrawer({
     };
   }, [currentProduct, candidates]);
 
+  // Needs Your Call display cap (Constitution VIII / Justin ruling 5): two or
+  // three defensible options, never five. The current-match card already
+  // occupies one slot, so alternates are capped at 2 here regardless of how
+  // many candidates or "find more" appends have accumulated in extraAlternates
+  // -- the ceiling holds even after repeated Find More clicks. Beyond the cap,
+  // the escape is Catalog Search / Manually Add, both rendered below.
+  const MAX_ALTERNATES = 2;
+
   const allAlternates = useMemo(() => {
     const seen = new Set<string>();
     if (currentProduct) seen.add(currentProduct.id);
     const combined = [...candidates, ...extraAlternates];
-    return combined.filter(c => {
+    const deduped = combined.filter(c => {
       if (seen.has(c.product.id)) return false;
       seen.add(c.product.id);
       return true;
     });
+    return deduped.slice(0, MAX_ALTERNATES);
   }, [candidates, extraAlternates, currentProduct]);
 
   const toggle = (id: string) => {
@@ -479,8 +488,10 @@ export function MatchDrawer({
             </div>
           )}
 
-          {/* Find More Matches */}
-          {onFindMoreMatches && (
+          {/* Find More Matches -- hidden once the display cap (current match +
+              2 alternates = 3 options) is reached. Past this point the escape
+              is Catalog Search / Manually Add below, not a longer list. */}
+          {onFindMoreMatches && allAlternates.length < MAX_ALTERNATES && (
             <button
               type="button"
               onClick={handleFindMore}
