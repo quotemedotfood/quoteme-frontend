@@ -11,7 +11,9 @@ import {
   AdminDistributorDetail,
   AdminUser,
   uploadAdminDistributorLogo,
+  grantFreeQuotes,
 } from '../../services/adminApi';
+import { useAsyncMutation } from '../../hooks/useAsyncMutation';
 
 const LOGO_ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 const LOGO_MAX_BYTES = 5 * 1024 * 1024; // 5 MB
@@ -147,6 +149,108 @@ function StatesServedEditor({ distributorId, initialStates, primaryState, countr
   );
 }
 
+// ─── QuotaResetControl ─────────────────────────────────────────────────────
+// P0-2b (FE): the qm-admin lever that restores/corrects a distributor's
+// free-quote allowance in one action (Constitution IV, the admin lever that
+// keeps a distributor quoting). grant_free_quotes stays increment-only
+// BE-side (ruling); this control computes the delta between the admin's
+// target quota and the current effective_quota and posts that delta via
+// grantFreeQuotes. Every call writes an AdminAction audit row BE-side
+// already, so this control does not attempt its own audit trail. It only
+// computes the number to send and reflects the refetched result.
+
+// Mirrors Distributor::BASE_FREE_QUOTES (BE), the floor a distributor's
+// effective quota can never go below via this control.
+const BASE_FREE_QUOTES = 5;
+
+interface QuotaResetControlProps {
+  bonusFreeQuotes: number;
+  effectiveQuota: number;
+  submitting: boolean;
+  error: string | null;
+  onSetQuota: (delta: number) => void;
+}
+
+function QuotaResetControl({ bonusFreeQuotes, effectiveQuota, submitting, error, onSetQuota }: QuotaResetControlProps) {
+  const [target, setTarget] = useState(String(effectiveQuota));
+  const [localMsg, setLocalMsg] = useState<string | null>(null);
+
+  // Keep the field in sync once the parent re-renders post-refetch with the
+  // new effective_quota, so it always shows the true current value rather
+  // than a stale typed-but-not-submitted one.
+  useEffect(() => {
+    setTarget(String(effectiveQuota));
+  }, [effectiveQuota]);
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setLocalMsg(null);
+    const parsed = parseInt(target, 10);
+    if (Number.isNaN(parsed)) {
+      setLocalMsg('Enter a whole number.');
+      return;
+    }
+    // A distributor's effective quota cannot go below the base allowance.
+    const clamped = Math.max(parsed, BASE_FREE_QUOTES);
+    if (clamped !== parsed) setTarget(String(clamped));
+    const delta = clamped - effectiveQuota;
+    if (delta === 0) {
+      setLocalMsg('Already at that quota.');
+      return;
+    }
+    onSetQuota(delta);
+  }
+
+  return (
+    <div className="bg-white border border-gray-200 rounded-xl p-5 mb-8">
+      <h2 className="text-lg font-semibold text-[#2A2A2A] mb-4" style={{ fontFamily: "'Playfair Display', serif" }}>
+        Free Quotes
+      </h2>
+      <div className="flex items-center gap-8 mb-4">
+        <div>
+          <span className="text-xs text-gray-500 block mb-0.5">Effective quota</span>
+          <span className="text-xl font-bold text-[#2A2A2A]">{effectiveQuota}</span>
+        </div>
+        <div>
+          <span className="text-xs text-gray-500 block mb-0.5">Bonus granted</span>
+          <span className="text-xl font-bold text-[#2A2A2A]">{bonusFreeQuotes}</span>
+        </div>
+      </div>
+      {/* noValidate: the min={BASE_FREE_QUOTES} attribute below is a UI hint
+          (spinner floor), not the enforcement point. Our own clamp in
+          handleSubmit is authoritative so a below-base value is corrected
+          and still sent, rather than silently blocked by native HTML5
+          constraint validation before our JS ever runs. */}
+      <form onSubmit={handleSubmit} noValidate className="flex items-end gap-3">
+        <div>
+          <label htmlFor="quota-target-input" className="block text-sm font-medium text-[#4F4F4F] mb-1">Set quota to</label>
+          <Input
+            id="quota-target-input"
+            type="number"
+            min={BASE_FREE_QUOTES}
+            value={target}
+            onChange={(e) => setTarget(e.target.value)}
+            disabled={submitting}
+            className="w-24"
+          />
+        </div>
+        <Button
+          type="submit"
+          disabled={submitting}
+          className="bg-[#7FAEC2] hover:bg-[#6A9AB0] text-white text-sm"
+        >
+          {submitting ? 'Setting...' : 'Set quota'}
+        </Button>
+      </form>
+      <p className="text-xs text-gray-400 mt-2">
+        Minimum quota is {BASE_FREE_QUOTES}, the base allowance every distributor starts with.
+      </p>
+      {error && <p className="text-sm text-red-500 mt-2">{error}</p>}
+      {localMsg && <p className="text-sm text-gray-500 mt-2">{localMsg}</p>}
+    </div>
+  );
+}
+
 // ─── QMAdminDistributorDetailPage ────────────────────────────────────────────
 
 export function QMAdminDistributorDetailPage() {
@@ -207,6 +311,24 @@ export function QMAdminDistributorDetailPage() {
     }
     load();
   }, [id]);
+
+  // P0-2b: "Set quota" control. Reuses the same refetch-after-mutation
+  // pattern as the Add Admin / Add Rep handlers above (getAdminDistributor +
+  // setDist) so effective_quota never goes stale after a grant, and routes
+  // through useAsyncMutation so a double-submit fires the call once.
+  const {
+    run: runSetQuota,
+    loading: quotaSubmitting,
+    error: quotaError,
+  } = useAsyncMutation(
+    (delta: number) => grantFreeQuotes(id!, delta),
+    {
+      onSuccess: async () => {
+        const refreshed = await getAdminDistributor(id!);
+        if (refreshed.data) setDist(refreshed.data);
+      },
+    }
+  );
 
   async function handleLogoFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -442,6 +564,15 @@ export function QMAdminDistributorDetailPage() {
         primaryState={dist.primary_state ?? null}
         country={dist.country ?? null}
         onSaved={(updated) => setDist(updated)}
+      />
+
+      {/* Free Quotes / P0-2b quota reset control */}
+      <QuotaResetControl
+        bonusFreeQuotes={dist.bonus_free_quotes ?? 0}
+        effectiveQuota={dist.effective_quota ?? BASE_FREE_QUOTES}
+        submitting={quotaSubmitting}
+        error={quotaError}
+        onSetQuota={(delta) => runSetQuota(delta)}
       />
 
       {/* Add Admin Modal */}

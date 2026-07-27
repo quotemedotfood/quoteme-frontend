@@ -117,6 +117,12 @@ export interface AdminDistributor {
 export interface AdminDistributorDetail extends AdminDistributor {
   order_days: string | null;
   minimum_order_cents: number;
+  // P0-2b: qm-admin quota lever fields (serialize_detail). effective_quota is
+  // the base free-quote allowance (5) plus whatever bonus_free_quotes has
+  // been granted via grantFreeQuotes. See QuotaResetControl in
+  // pages/admin/QMAdminDistributorDetail.tsx.
+  bonus_free_quotes?: number;
+  effective_quota?: number;
   branding_slug?: string | null;
   admins: Array<{
     user_id: string;
@@ -358,6 +364,21 @@ export async function updateAdminDistributor(
 
 export function getAdminDistributorExportUrl(distributorId: string, type: 'catalog' | 'quotes' | 'reps'): string {
   return `${API_BASE_URL}/api/v1/admin/distributors/${distributorId}/export?type=${type}`;
+}
+
+// P0-2b: grant_free_quotes stays increment-only BE-side (ruling). A negative
+// amount decrements via the same +=. Callers (e.g. the "Set quota" control)
+// compute the delta between a target quota and the current effective_quota
+// and pass that delta as amount. Every call writes an AdminAction audit row
+// BE-side.
+export async function grantFreeQuotes(
+  distributorId: string,
+  amount: number
+): Promise<ApiResponse<{ bonus_free_quotes: number }>> {
+  return fetchWithAuth(`/api/v1/admin/distributors/${distributorId}/grant_free_quotes`, {
+    method: 'POST',
+    body: JSON.stringify({ amount }),
+  });
 }
 
 export async function downloadDistributorExport(distributorId: string, type: 'catalog' | 'quotes' | 'reps'): Promise<void> {
