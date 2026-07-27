@@ -11,6 +11,7 @@ import {
 } from '../../services/api';
 import { categoryLabel } from '../../utils/categoryLabel';
 import { formatCurrency } from '../../utils/formatCurrency';
+import { chefProductName } from '../../utils/chefProductName';
 
 // ─── Shared styles ──────────────────────────────────────────────────────────────
 
@@ -145,7 +146,7 @@ function OrderGuideRow({ item, orderGuideId }: RowProps) {
       {/* Product description — full width on mobile */}
       <div className="col-span-8 sm:col-span-4">
         <span className="text-sm text-[#2A2A2A] font-medium leading-snug">
-          {toTitleCase(item.product_description)}
+          {toTitleCase(chefProductName(item.product_description))}
         </span>
         {/* Mobile-only secondary info */}
         <div className="sm:hidden flex flex-wrap gap-x-3 mt-0.5">

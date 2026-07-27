@@ -23,6 +23,7 @@ import {
   stateFromQuoteState,
   type QuoteDocGroup,
 } from '../../components/chef/QuoteStateDocument';
+import { chefProductName } from '../../utils/chefProductName';
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -161,7 +162,7 @@ export function ChefPullReceiptPage() {
   const docGroups: QuoteDocGroup[] = Array.from(grouped.entries()).map(([category, catLines]) => ({
     cat: toTitleCase(category),
     items: catLines.map((l) => ({
-      name: toTitleCase(l.product.product),
+      name: toTitleCase(chefProductName(l.product.product)),
       pack: l.product.pack_size || undefined,
       note: l.product.brand ? toTitleCase(l.product.brand) : undefined,
       qty: l.quantity,
