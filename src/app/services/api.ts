@@ -2422,6 +2422,8 @@ export interface CCLineItem {
   note?: string;
   qty: number;
   unit: number; // unit price
+  component_name?: string | null; // dish_component/ingredient name, for unmatched lines
+  unmatched?: boolean; // true when the line has no matched catalog product
 }
 
 export interface CCLineGroup {
