@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router';
 import { getGuestQuote, getChefQuote, acceptChefQuote, sendChefQuestion } from '../../services/api';
 import { acceptCaptureAuthUrl } from '../../utils/captureFlow';
+import { useAsyncMutation } from '../../hooks/useAsyncMutation';
 import type { QuoteResponse, QuoteLineResponse } from '../../services/api';
 import {
   QuoteStateDocument,
@@ -54,7 +55,6 @@ export function ChefQuoteReceiptPage() {
   const [questionText, setQuestionText] = useState('');
   const [sending, setSending] = useState(false);
   const [questionSent, setQuestionSent] = useState(false);
-  const [accepting, setAccepting] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [savedForLater, setSavedForLater] = useState(false);
 
@@ -82,6 +82,31 @@ export function ChefQuoteReceiptPage() {
   const [searchParams] = useSearchParams();
   const autoAcceptedRef = useRef(false);
 
+  // BUG #28: the auto-accept effect below used to call a bare async
+  // handleAccept() directly, bypassing the manual button's own
+  // `disabled={accepting}` state entirely (that state only guards the
+  // button, not the effect). If the effect fired while the chef also
+  // clicked "Looks good" (or the effect re-ran before its own re-render
+  // landed), both paths could race into acceptChefQuote() concurrently and
+  // double-POST /accept. Routing both triggers through the SAME
+  // useAsyncMutation instance means they share one synchronous
+  // inFlightRef guard, so whichever fires second is blocked immediately,
+  // before any await. autoAcceptedRef is kept as-is for its own job
+  // (never re-firing auto-accept once it has run once).
+  const acceptMutation = useAsyncMutation(
+    async () => {
+      if (!id) return { error: 'No quote loaded.' };
+      return acceptChefQuote(id);
+    },
+    {
+      onSuccess: (data) => {
+        if (data?.order_guide_id) {
+          navigate(`/chef/order-guide/${data.order_guide_id}`);
+        }
+      },
+    }
+  );
+
   async function handleAccept() {
     if (!id) return;
     // P0: accept 404s for an unauthenticated guest. Capture them first — sign up
@@ -91,18 +116,7 @@ export function ChefQuoteReceiptPage() {
       return;
     }
     setActionError(null);
-    setAccepting(true);
-    const res = await acceptChefQuote(id);
-    if (res.error) {
-      setActionError(res.error);
-      setAccepting(false);
-      return;
-    }
-    if (res.data?.order_guide_id) {
-      navigate(`/chef/order-guide/${res.data.order_guide_id}`);
-    } else {
-      setAccepting(false);
-    }
+    await acceptMutation.run();
   }
 
   // P0: on return from the capture flow (?intent=accept), once authenticated and the
@@ -302,10 +316,12 @@ export function ChefQuoteReceiptPage() {
           )}
 
           {/* Action error — surfaced on accept/question failure so the chef
-              sees a real problem instead of a silent drop. */}
-          {actionError && (
+              sees a real problem instead of a silent drop. Accept errors now
+              live on acceptMutation.error (owned by useAsyncMutation);
+              actionError still covers the question-send path. */}
+          {(actionError || acceptMutation.error) && (
             <p className="text-sm text-red-600 mb-1">
-              We couldn't complete that action ({actionError}). Please try again or contact your rep directly.
+              We couldn't complete that action ({actionError || acceptMutation.error}). Please try again or contact your rep directly.
             </p>
           )}
 
@@ -357,10 +373,10 @@ export function ChefQuoteReceiptPage() {
               {/* Looks good */}
               <button
                 onClick={handleAccept}
-                disabled={accepting}
+                disabled={acceptMutation.loading}
                 className="w-full bg-[#2A2A2A] hover:bg-[#1A1A1A] text-white rounded-lg px-6 py-3.5 text-base font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {accepting ? 'Building your order guide…' : 'Looks good'}
+                {acceptMutation.loading ? 'Building your order guide…' : 'Looks good'}
               </button>
 
               {/* I have questions */}

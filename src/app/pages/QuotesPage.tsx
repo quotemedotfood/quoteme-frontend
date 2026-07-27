@@ -5,6 +5,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { BottomSheet } from '../components/BottomSheet';
 import { getQuotes, requoteQuote, downloadQuotePdf, downloadQuoteCsv, downloadOrderGuide, deleteQuote, type QuoteListItem, type GetQuotesParams } from '../services/api';
+import { useAsyncMutation } from '../hooks/useAsyncMutation';
 import { stripSeedPrefix } from '../utils/format';
 import { legacyStatusToState } from '../components/chef/QuoteStatusPill';
 import { quoteStatusLabel } from '../utils/quoteStatusLabel';
@@ -157,12 +158,21 @@ export function QuotesPage() {
     navigate('/map-ingredients', { state: { quoteId } });
   };
 
+  // BUG #28: this delete had no in-flight guard at all (a "naked delete").
+  // A fast double-click on the confirm-modal Delete button could fire
+  // deleteQuote() twice for the same id. Routed through useAsyncMutation so
+  // a synchronous second call is blocked before any await, and the button
+  // below is disabled while the delete is in flight.
+  const deleteMutation = useAsyncMutation(
+    async (quoteId: string) => deleteQuote(quoteId)
+  );
+
   const handleDeleteQuote = async (quoteId: string) => {
-    const response = await deleteQuote(quoteId);
-    if (response.error) {
-      setError(`Delete failed: ${response.error}`);
-    } else {
+    const ok = await deleteMutation.run(quoteId);
+    if (ok) {
       setQuotes(prev => prev.filter(q => q.id !== quoteId));
+    } else if (deleteMutation.error) {
+      setError(`Delete failed: ${deleteMutation.error}`);
     }
     setConfirmDeleteId(null);
   };
@@ -710,13 +720,18 @@ export function QuotesPage() {
             <h3 className="text-lg font-medium text-[#2A2A2A] mb-2">Delete Quote?</h3>
             <p className="text-sm text-gray-500 mb-6">This action cannot be undone. The quote and all its line items will be permanently deleted.</p>
             <div className="flex gap-3 justify-end">
-              <Button variant="outline" onClick={() => setConfirmDeleteId(null)}>Cancel</Button>
+              <Button variant="outline" onClick={() => setConfirmDeleteId(null)} disabled={deleteMutation.loading}>Cancel</Button>
               <Button
                 className="bg-red-500 hover:bg-red-600 text-white"
                 onClick={() => handleDeleteQuote(confirmDeleteId)}
+                disabled={deleteMutation.loading}
               >
-                <Trash2 className="w-4 h-4 mr-2" />
-                Delete
+                {deleteMutation.loading ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Trash2 className="w-4 h-4 mr-2" />
+                )}
+                {deleteMutation.loading ? 'Deleting...' : 'Delete'}
               </Button>
             </div>
           </div>

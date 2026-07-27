@@ -456,12 +456,37 @@ function delay(ms: number): Promise<void> {
 // for free — `.message` is already the plain-language copy above.
 export class NetworkFetchFailedError extends Error {}
 
+// BUG #28: a raw network-level failure (TypeError) tells the client nothing
+// about whether the request actually reached the server. For a mutating
+// verb (POST/PATCH/PUT/DELETE) that is a real risk, not just a cosmetic
+// one: if the connection drops AFTER the server already processed the
+// request (e.g. a Railway instance swap cutting the response mid-flight),
+// the original request already took effect server-side (the email is
+// already sent, the record already deleted). Blindly retrying in that case
+// silently re-fires the same non-idempotent action a second time, which is
+// exactly the "rep sends a quote and the chef gets it twice" class of bug,
+// and it lives entirely inside this shared helper, below every call site's
+// own in-flight guard (useAsyncMutation's ref cannot see or block a retry
+// that happens inside a single mutationFn() call).
+// Only safe/idempotent methods (GET/HEAD/OPTIONS; the default when no
+// method is given) get the retry-once treatment. Mutating verbs get a
+// single attempt: a network-class failure there surfaces the same
+// plain-language copy immediately, with no second request sent.
+function isSafeRetryableMethod(method?: string): boolean {
+  const normalized = (method || 'GET').toUpperCase();
+  return normalized === 'GET' || normalized === 'HEAD' || normalized === 'OPTIONS';
+}
+
 async function fetchWithRetry(input: string, init?: RequestInit): Promise<Response> {
+  const retryable = isSafeRetryableMethod(init?.method);
   try {
     return await fetch(input, init);
   } catch (firstError) {
     if (!isNetworkFetchFailure(firstError)) {
       throw firstError;
+    }
+    if (!retryable) {
+      throw new NetworkFetchFailedError(NETWORK_FAILURE_MESSAGE);
     }
     await delay(NETWORK_RETRY_DELAY_MS);
     try {
