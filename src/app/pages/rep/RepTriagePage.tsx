@@ -45,6 +45,7 @@ import {
 import { RepMatchStateBadge } from '../../components/rep/RepMatchStateBadge';
 import { CatalogConfirmBanner } from '../../components/rep/CatalogConfirmBanner';
 import { getRepIncomingQuotes, getRepInbound, convertRepInboundOpportunity } from '../../services/api';
+import { useAsyncMutation } from '../../hooks/useAsyncMutation';
 import type { RepIncomingQuote, InboundRow, InboundBrandItem } from '../../services/api';
 import { repRowFlags, REP_FLAG_META } from './repRowFlags';
 import type { RepFlagKey } from './repRowFlags';
@@ -504,8 +505,23 @@ function TriageRow({
   nav: (dest: string, opts?: { quoteId?: string }) => void;
   onConvertSuccess?: (quoteId: string) => void;
 }) {
-  const [converting, setConverting] = useState(false);
-  const [convertError, setConvertError] = useState<string | null>(null);
+  // BUG #28: this was gated only by the `converting` React state, which
+  // updates on the next render, so a fast double click/tap can re-enter
+  // handleConvert before that render lands and fire
+  // convertRepInboundOpportunity() twice for the same opportunity.
+  // useAsyncMutation's inFlightRef blocks a synchronous second call before
+  // any await, closing that race.
+  const convertMutation = useAsyncMutation(
+    async (opportunityId: string) => convertRepInboundOpportunity(opportunityId),
+    {
+      onSuccess: (data) => {
+        if (data?.quote_id) {
+          onConvertSuccess?.(data.quote_id);
+          nav('rep-incoming', { quoteId: data.quote_id });
+        }
+      },
+    }
+  );
 
   // Bug 2 FE: inbound QUOTE rows must be actionable so reps can open/price them.
   // Inbound opportunity rows (no linked artifact/quote) stay non-clickable.
@@ -527,17 +543,8 @@ function TriageRow({
 
   const handleConvert = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!q._opportunityId || converting) return;
-    setConverting(true);
-    setConvertError(null);
-    const res = await convertRepInboundOpportunity(q._opportunityId);
-    setConverting(false);
-    if (res.error || !res.data) {
-      setConvertError(res.error ?? 'Conversion failed');
-      return;
-    }
-    onConvertSuccess?.(res.data.quote_id);
-    nav('rep-incoming', { quoteId: res.data.quote_id });
+    if (!q._opportunityId) return;
+    await convertMutation.run(q._opportunityId);
   };
 
   return (
@@ -625,9 +632,9 @@ function TriageRow({
         )}
 
         {/* Convert error */}
-        {convertError && (
+        {convertMutation.error && (
           <div style={{ ...sans, fontSize: 11, color: '#B91C1C', marginTop: 4 }}>
-            {convertError}
+            {convertMutation.error}
           </div>
         )}
       </div>
@@ -668,22 +675,22 @@ function TriageRow({
         <button
           type="button"
           onClick={handleConvert}
-          disabled={converting}
+          disabled={convertMutation.loading}
           style={{
             ...sans,
             display: 'inline-flex', alignItems: 'center', gap: 5,
             fontSize: 12, fontWeight: 600,
             padding: '6px 13px',
             borderRadius: 6,
-            background: converting ? 'var(--primary-light, rgba(224,92,26,.12))' : 'var(--primary, #E05C1A)',
-            color: converting ? 'var(--primary, #E05C1A)' : '#fff',
+            background: convertMutation.loading ? 'var(--primary-light, rgba(224,92,26,.12))' : 'var(--primary, #E05C1A)',
+            color: convertMutation.loading ? 'var(--primary, #E05C1A)' : '#fff',
             border: `1.5px solid var(--primary, #E05C1A)`,
-            cursor: converting ? 'default' : 'pointer',
+            cursor: convertMutation.loading ? 'default' : 'pointer',
             flexShrink: 0,
             transition: 'background 0.15s',
           }}
         >
-          {converting ? 'Building…' : 'Build quote'}
+          {convertMutation.loading ? 'Building...' : 'Build quote'}
         </button>
       ) : null}
     </div>

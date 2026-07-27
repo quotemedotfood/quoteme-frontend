@@ -9,9 +9,19 @@
 //
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, cleanup, act } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router';
 import { UserProvider } from '../contexts/UserContext';
+
+/** Deferred promise helper so a test can control exactly when a mock send
+ * resolves, to simulate two clicks overlapping while the first is in flight. */
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((res) => {
+    resolve = res;
+  });
+  return { promise, resolve };
+}
 
 // vi.mock factories are hoisted above imports, so any values they reference
 // must go through vi.hoisted rather than plain top-level consts.
@@ -53,7 +63,7 @@ const { getQuote, sendQuote, baseQuote, setBackendSent } = vi.hoisted(() => {
         ? { ...baseQuote, status: 'sent', quote_status_label: 'Sent' }
         : { ...baseQuote },
     })),
-    sendQuote: vi.fn(async () => {
+    sendQuote: vi.fn(async (): Promise<{ data?: any; error?: string }> => {
       backendSent = true;
       return { data: { ...baseQuote, status: 'sent', quote_status_label: 'Sent' } };
     }),
@@ -161,6 +171,33 @@ describe('ExportFinalizePage - real render', () => {
       await waitFor(() => {
         expect(drawerContent).toHaveAttribute('data-state', 'closed');
       });
+    });
+  });
+
+  describe('BUG #28 - synchronous double-invoke guard on the send button', () => {
+    it('a synchronous double-click on "Send Email" fires sendQuote exactly once', async () => {
+      const gate = deferred<{ data?: any; error?: string }>();
+      sendQuote.mockImplementation(() => gate.promise);
+
+      renderPage();
+
+      await waitFor(() => {
+        expect(screen.getByText(/Status: Draft/)).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByRole('button', { name: 'Email Quote to Chef' }));
+
+      const drawerSendButton = await screen.findByRole('button', { name: /Send Email/i });
+      fireEvent.click(drawerSendButton);
+      fireEvent.click(drawerSendButton);
+
+      expect(sendQuote).toHaveBeenCalledTimes(1);
+
+      await act(async () => {
+        gate.resolve({ data: { ...baseQuote, status: 'sent', quote_status_label: 'Sent' } });
+      });
+
+      expect(sendQuote).toHaveBeenCalledTimes(1);
     });
   });
 });

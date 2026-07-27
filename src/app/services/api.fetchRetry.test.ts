@@ -5,6 +5,11 @@
 // now auto-retries once on that failure class before giving up, and only
 // then falls back to a plain-language message. This is centralized so every
 // caller in api.ts benefits without each call site knowing about retries.
+//
+// @vitest-environment jsdom
+// (BUG #28 additions below exercise sendQuote(), which goes through
+// fetchWithAuth() -> getAuthToken() -> localStorage; the plain node
+// environment this file used to run in has no localStorage global.)
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { NETWORK_FAILURE_MESSAGE } from './api';
 
@@ -83,4 +88,33 @@ describe('fetchWithRetry (core fetch helper) — network-class failures', () => 
     expect(fetchSpy).toHaveBeenCalledTimes(1);
     expect(res.error).toBe('boom: unrelated failure');
   });
+});
+
+// BUG #28: retrying a mutating request on a network-class failure risks a
+// silent duplicate side effect if the original request already reached the
+// server (e.g. the email already went out) before the connection dropped.
+// Only safe/idempotent methods (GET/HEAD/OPTIONS) get the retry-once
+// treatment; mutating verbs get exactly one attempt.
+describe('fetchWithRetry (core fetch helper): mutating requests are never retried', () => {
+  it('does NOT retry sendQuote (POST) on a network/CORS-class rejection, one attempt only', async () => {
+    fetchSpy.mockRejectedValueOnce(new TypeError('Failed to fetch'));
+
+    const { sendQuote } = await import('./api');
+    const res = await sendQuote('q-1', 'chef@restaurant.com');
+
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    expect(res.error).toBe(NETWORK_FAILURE_MESSAGE);
+  });
+
+  it('still retries a GET on the same failure class (idempotent methods keep the retry-once behavior)', async () => {
+    fetchSpy
+      .mockRejectedValueOnce(new TypeError('Failed to fetch'))
+      .mockResolvedValueOnce(okResponse({ id: 'd-1', name: 'Acme Foods', logo_url: null }));
+
+    const { getDistributorById } = await import('./api');
+    const res = await getDistributorById('d-1');
+
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
+    expect(res.data).toMatchObject({ id: 'd-1', name: 'Acme Foods' });
+  }, 10000);
 });

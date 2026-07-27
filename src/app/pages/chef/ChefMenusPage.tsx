@@ -34,6 +34,7 @@ import {
   type ChefMenuRow,
   type ChefOrderGuideRow,
 } from '../../services/api';
+import { useAsyncMutation } from '../../hooks/useAsyncMutation';
 
 // ─── Palette ──────────────────────────────────────────────────────────────────
 
@@ -780,11 +781,23 @@ export function ChefMenusPage() {
     }
   };
 
+  // BUG #28: this was a naked delete (no in-flight guard at all). The
+  // kebab menu item closes itself the instant it is clicked, so there is no
+  // `disabled` affordance to wire here, but the underlying call is now
+  // routed through useAsyncMutation's synchronous guard so a repeat
+  // invocation (e.g. two queued confirm() dialogs from a fast double
+  // click/tap) cannot fire deleteChefMenu() twice for the same menu.
+  const deleteMenuMutation = useAsyncMutation(
+    async (menuId: string) => deleteChefMenu(menuId)
+  );
+
   const handleDelete = async (menuId: string) => {
     const ok = window.confirm('Remove this menu?');
     if (!ok) return;
-    await deleteChefMenu(menuId);
-    setMenus((prev) => prev.filter((m) => m.id !== menuId));
+    const success = await deleteMenuMutation.run(menuId);
+    if (success) {
+      setMenus((prev) => prev.filter((m) => m.id !== menuId));
+    }
   };
 
   return (
