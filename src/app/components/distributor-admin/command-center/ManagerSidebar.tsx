@@ -4,10 +4,9 @@
 //   • same masthead pattern (logo, collapse button)
 //   • same "WORKING AS" block (serif name, sans role + company, 2px charcoal rule)
 //   • same grouped nav (icon, label, count, active left-border, collapse/hidden)
-//   • same bottom hide-sidebar control
 //
 // Manager destinations (locked order per README):
-//   THE FLOOR:  Today · Inbound · Rep activity
+//   THE FLOOR:  Today · Inbound · Quotes
 //   NEEDS YOU:  Assignments · Team
 //               └─ Inside sales (muted sub-item, "Soon", no section label)
 //
@@ -29,7 +28,6 @@ import {
   Settings,
   PanelLeftClose,
   PanelLeftOpen,
-  X,
   ArrowLeft,
   Plus,
   LogOut,
@@ -446,7 +444,7 @@ export function ManagerSidebar({
         />
         <CCNavItem
           icon={FileText}
-          label="Rep activity"
+          label="Quotes"
           current={active === 'quotes'}
           collapsed={collapsed}
           count={{ n: quotesCount, attention: false }}
@@ -636,30 +634,6 @@ export function ManagerSidebar({
                 Sign out
               </span>
             )}
-          </button>
-        </div>
-        <div style={{ padding: collapsed ? '4px 8px' : '4px 24px' }}>
-          <button
-            type="button"
-            onClick={() => onModeChange('hidden')}
-            aria-label="Hide sidebar"
-            style={{
-              ...sans,
-              width: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              justifyContent: collapsed ? 'center' : 'flex-start',
-              padding: '8px 0',
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              fontSize: 11.5,
-              color: C.gray500,
-            }}
-          >
-            <X size={14} color={C.gray500} strokeWidth={1.6} />
-            {!collapsed && <span>Hide sidebar</span>}
           </button>
         </div>
       </div>
