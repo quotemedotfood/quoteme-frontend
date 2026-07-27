@@ -147,12 +147,38 @@ function LineItemDoc({ groups, total }: { groups: CCLineGroup[]; total: number |
                   }}
                 >
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ ...sans, fontSize: 13, color: C.charcoal, lineHeight: 1.3 }}>
-                      {it.name}
+                    <div
+                      style={{
+                        ...sans,
+                        fontSize: 13,
+                        lineHeight: 1.3,
+                        color: it.unmatched ? C.gray400 : C.charcoal,
+                        fontStyle: it.unmatched ? 'italic' : 'normal',
+                      }}
+                    >
+                      {it.unmatched ? (it.component_name || 'Unknown ingredient') : it.name}
                     </div>
-                    <div style={{ ...sans, ...tabular, fontSize: 11, color: C.gray500, lineHeight: 1.3 }}>
-                      {it.pack}{it.note ? ` · ${it.note}` : ''}
-                    </div>
+                    {it.unmatched ? (
+                      <span
+                        style={{
+                          ...sans,
+                          display: 'inline-block',
+                          marginTop: 3,
+                          fontSize: 10.5,
+                          color: '#92400E',
+                          background: '#FFFBEB',
+                          border: '1px solid #FDE68A',
+                          borderRadius: 4,
+                          padding: '1px 6px',
+                        }}
+                      >
+                        Not in catalog
+                      </span>
+                    ) : (
+                      <div style={{ ...sans, ...tabular, fontSize: 11, color: C.gray500, lineHeight: 1.3 }}>
+                        {it.pack}{it.note ? ` · ${it.note}` : ''}
+                      </div>
+                    )}
                   </div>
                   <div
                     style={{
@@ -164,7 +190,7 @@ function LineItemDoc({ groups, total }: { groups: CCLineGroup[]; total: number |
                       color: C.gray700,
                     }}
                   >
-                    {it.qty} × {money(it.unit)}
+                    {it.unmatched ? null : `${it.qty} × ${money(it.unit)}`}
                   </div>
                 </div>
               ))}
