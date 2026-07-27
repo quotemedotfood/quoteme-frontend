@@ -1672,6 +1672,12 @@ export interface QuoteListItem {
   rep_reviewed_at?: string | null;
   created_at: string;
   sent_at: string | null;
+  // INTERIM (P1-3 quote-status-display patch, 2026-07): BE now includes the
+  // J1 `state` on list rows alongside legacy `status`. During the post-send
+  // resting period `state` can itself be stale (frozen at
+  // 'distributor_quote'), so QuotesPage does not treat it as unconditionally
+  // authoritative yet -- see getStatusDisplayLabel in QuotesPage.tsx.
+  state?: string | null;
 }
 
 export interface GetQuotesParams {

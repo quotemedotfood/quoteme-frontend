@@ -22,9 +22,33 @@ export const isClosedQuote = (status: string): boolean =>
  * Routes through legacyStatusToState → quoteStatusLabel so legacy stored
  * values ('won'/'lost') render as J1-locked labels ('Accepted'/'Closed').
  * Exported for direct unit testing.
+ *
+ * INTERIM (P1-3, quote-status-display patch, 2026-07): `status` stays
+ * frozen at 'sent' for the entire post-send resting period -- waiting on a
+ * rep, rep actively pricing, and rep-priced-and-ready are all the same
+ * stored value -- which made EVERY sent quote render "Rep pricing" forever,
+ * even once it was actually ready or resolved. The BE-provided `state` is
+ * not reliably advanced through that same window either (also frozen at
+ * 'distributor_quote'), so it cannot be trusted blindly during the resting
+ * period. Per Constitution XIII ("a status means what it says"), a genuine
+ * sent/won signal on `status` is handled directly here rather than routed
+ * through legacyStatusToState; every other case still prefers the
+ * BE-provided `state` when present (mirrors the pattern in
+ * ChefQuotesPage.tsx: `quote.state ?? legacyStatusToState(quote.status)`).
+ * legacyStatusToState itself is intentionally left untouched -- it is
+ * shared with the chef-facing QuoteStatusPill (Justin-locked pill labels)
+ * and "Rep pricing" while status is 'sent' is correct copy there (chef is
+ * still waiting on their rep). Remove this branch once BE correctly
+ * advances `state` through the full J1 lifecycle end to end.
  */
-export function getStatusDisplayLabel(status: string): string {
-  return quoteStatusLabel(legacyStatusToState(status), 'pill');
+export function getStatusDisplayLabel(status: string, state?: string | null): string {
+  if (status === 'won') {
+    return quoteStatusLabel('accepted', 'pill');
+  }
+  if (status === 'sent') {
+    return 'Sent';
+  }
+  return quoteStatusLabel(state ?? legacyStatusToState(status), 'pill');
 }
 
 export function QuotesPage() {
@@ -185,19 +209,30 @@ export function QuotesPage() {
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
-  const getStatusBadge = (status: string) => {
-    // Map legacy stored values ('won'/'lost') to J1 states for display and styling.
-    const state = legacyStatusToState(status);
-    const label = getStatusDisplayLabel(status);
+  // INTERIM (P1-3, quote-status-display patch): resolves the style key used
+  // for badge coloring with the same precedence as getStatusDisplayLabel --
+  // see that function's doc comment for why. Kept as a distinct key from
+  // 'distributor_quote' so a merely-sent quote is not colored as though rep
+  // pricing is actively in progress.
+  const getStatusStyleKey = (status: string, state?: string | null): string => {
+    if (status === 'won') return 'accepted';
+    if (status === 'sent') return 'sent';
+    return state ?? legacyStatusToState(status);
+  };
+
+  const getStatusBadge = (status: string, state?: string | null) => {
+    const styleKey = getStatusStyleKey(status, state);
+    const label = getStatusDisplayLabel(status, state);
     const styles: Record<string, string> = {
       preview: 'bg-yellow-100 text-yellow-800',
+      sent: 'bg-yellow-100 text-yellow-800', // INTERIM: sent/resting, same warm treatment as preview
       distributor_quote: 'bg-green-100 text-green-800',
       confirmed: 'bg-[#A5CFDD]/20 text-[#2A5F6F]',
       accepted: 'bg-[#A5CFDD]/20 text-[#2A5F6F]',
       declined: 'bg-red-100 text-red-800',
     };
     return (
-      <span className={`inline-block px-2 py-0.5 text-xs rounded-full ${styles[state] || 'bg-gray-100 text-gray-800'}`}>
+      <span className={`inline-block px-2 py-0.5 text-xs rounded-full ${styles[styleKey] || 'bg-gray-100 text-gray-800'}`}>
         {label}
       </span>
     );
@@ -369,7 +404,7 @@ export function QuotesPage() {
                       {quote.line_count} item{quote.line_count !== 1 ? 's' : ''}
                     </p>
                   </div>
-                  {getStatusBadge(quote.status)}
+                  {getStatusBadge(quote.status, quote.state)}
                 </div>
 
                 <div className="flex justify-between items-end mt-3">
@@ -544,7 +579,7 @@ export function QuotesPage() {
                         {stripSeedPrefix(quote.working_label) || '-'}
                       </td>
                       <td className="px-6 py-4">
-                        {getStatusBadge(quote.status)}
+                        {getStatusBadge(quote.status, quote.state)}
                       </td>
                       <td className="px-6 py-4 text-sm text-[#2A2A2A]">
                         {formatDate(quote.created_at)}
