@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, ReactNode } from 'react';
 import * as Sentry from '@sentry/react';
 import { User, signIn, signUp, getCurrentUser, convertGuestToUser, SignUpData, LoginData, getGuestToken } from '../services/api';
 import { isDemoMode } from '../utils/demoMode';
@@ -61,7 +61,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(false);
   }, []);
 
-  async function login(credentials: LoginData): Promise<{ success: boolean; error?: string; error_code?: string }> {
+  const login = useCallback(async (credentials: LoginData): Promise<{ success: boolean; error?: string; error_code?: string }> => {
     // Include guest token if available so backend can link guest quotes
     const guestToken = getGuestToken();
     const loginData = guestToken ? { ...credentials, guest_token: guestToken } : credentials;
@@ -82,12 +82,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     console.warn('[login] No token in response, login will fail');
     return { success: false, error: 'No token received. Check browser console for details.' };
-  }
+  }, [validateToken]);
 
-  async function signup(
+  const signup = useCallback(async (
     data: SignUpData,
     guestToken?: string
-  ): Promise<{ success: boolean; error?: string; error_code?: string }> {
+  ): Promise<{ success: boolean; error?: string; error_code?: string }> => {
     // If guest token exists, convert guest to user
     if (guestToken) {
       const response = await convertGuestToUser({
@@ -123,31 +123,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     return { success: false, error: 'No token received' };
-  }
+  }, [validateToken]);
 
-  function logout() {
+  const logout = useCallback(() => {
     localStorage.removeItem('quoteme_token');
     setUser(null);
     // Clear Sentry user context on logout.
     Sentry.setUser(null);
-  }
+  }, []);
 
   const refreshUser = useCallback(async () => {
     await validateToken('refresh');
   }, [validateToken]);
 
+  const value = useMemo<AuthContextType>(() => ({
+    user,
+    isAuthenticated,
+    isLoading,
+    login,
+    signup,
+    logout,
+    refreshUser,
+  }), [user, isAuthenticated, isLoading, login, signup, logout, refreshUser]);
+
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        isAuthenticated,
-        isLoading,
-        login,
-        signup,
-        logout,
-        refreshUser,
-      }}
-    >
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );

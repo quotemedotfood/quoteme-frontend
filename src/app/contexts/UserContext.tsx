@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import * as Sentry from '@sentry/react';
 import { getGuestSession } from '../services/api';
 import { isDemoMode } from '../utils/demoMode';
@@ -83,16 +83,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem('user_profile', JSON.stringify(profile));
   }, [profile]);
 
-  // Auto-init guest session in demo mode
-  const demoInitRef = useRef(false);
-  useEffect(() => {
-    if (isDemoMode() && !demoInitRef.current) {
-      demoInitRef.current = true;
-      initGuestSessionInternal();
-    }
-  }, []);
-
-  async function initGuestSessionInternal() {
+  const initGuestSessionInternal = useCallback(async () => {
     // B-182: never initialize a guest session for an authenticated user. A real
     // bearer token (rep/admin/chef) must not be shadowed by a guest session —
     // doing so bled the rep's identity into "Guest User"/"Guest Distributor".
@@ -125,7 +116,16 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       // Tag Sentry with anonymous guest identity using first 12 chars of new token.
       Sentry.setUser({ id: response.data.token.slice(0, 12), role: 'guest_chef' });
     }
-  }
+  }, []);
+
+  // Auto-init guest session in demo mode
+  const demoInitRef = useRef(false);
+  useEffect(() => {
+    if (isDemoMode() && !demoInitRef.current) {
+      demoInitRef.current = true;
+      initGuestSessionInternal();
+    }
+  }, [initGuestSessionInternal]);
 
   const updateProfile = useCallback((updates: Partial<UserProfile>) => {
     setProfile(prev => {
@@ -138,28 +138,28 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  const incrementQuoteCount = () => {
+  const incrementQuoteCount = useCallback(() => {
     setProfile(prev => ({
       ...prev,
       quotesUsed: prev.quotesUsed + 1
     }));
-  };
+  }, []);
 
-  const hasQuotesRemaining = () => {
+  const hasQuotesRemaining = useCallback(() => {
     return profile.hasPaidSubscription || profile.quotesUsed < profile.quotesLimit;
-  };
+  }, [profile.hasPaidSubscription, profile.quotesUsed, profile.quotesLimit]);
 
-  const quotesRemaining = profile.hasPaidSubscription 
-    ? Infinity 
+  const quotesRemaining = profile.hasPaidSubscription
+    ? Infinity
     : Math.max(0, profile.quotesLimit - profile.quotesUsed);
 
-  const initGuestSession = async () => {
+  const initGuestSession = useCallback(async () => {
     await initGuestSessionInternal();
-  };
+  }, [initGuestSessionInternal]);
 
-  const getGuestToken = () => {
+  const getGuestToken = useCallback(() => {
     return localStorage.getItem('quoteme_guest_token');
-  };
+  }, []);
 
   const syncWithAuthUser = useCallback((user: any) => {
     if (user) {
@@ -180,17 +180,28 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     }
   }, [updateProfile]);
 
+  const value = useMemo<UserContextType>(() => ({
+    profile,
+    updateProfile,
+    incrementQuoteCount,
+    hasQuotesRemaining,
+    quotesRemaining,
+    initGuestSession,
+    getGuestToken,
+    syncWithAuthUser,
+  }), [
+    profile,
+    updateProfile,
+    incrementQuoteCount,
+    hasQuotesRemaining,
+    quotesRemaining,
+    initGuestSession,
+    getGuestToken,
+    syncWithAuthUser,
+  ]);
+
   return (
-    <UserContext.Provider value={{ 
-      profile, 
-      updateProfile, 
-      incrementQuoteCount,
-      hasQuotesRemaining,
-      quotesRemaining,
-      initGuestSession,
-      getGuestToken,
-      syncWithAuthUser,
-    }}>
+    <UserContext.Provider value={value}>
       {children}
     </UserContext.Provider>
   );
