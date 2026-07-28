@@ -209,7 +209,7 @@ export function MapComponentDrawer({
                     const label = s >= 90 ? { text: 'Strong Match', cls: 'text-green-600' }
                       : s >= 70 ? { text: 'Good Match', cls: 'text-[#2A5F6F]' }
                       : s >= 50 ? { text: 'Review Suggested', cls: 'text-amber-600' }
-                      : { text: 'Needs Your Pick', cls: 'text-red-500' };
+                      : { text: 'Needs Your Call', cls: 'text-red-500' };
                     return <span className={`font-medium ${label.cls}`}>{label.text}</span>;
                   })()}
                 </div>
@@ -267,7 +267,7 @@ export function MapComponentDrawer({
                           const label = s >= 90 ? { text: 'Strong Match', cls: 'text-green-600' }
                             : s >= 70 ? { text: 'Good Match', cls: 'text-[#2A5F6F]' }
                             : s >= 50 ? { text: 'Review Suggested', cls: 'text-amber-600' }
-                            : { text: 'Needs Your Pick', cls: 'text-red-500' };
+                            : { text: 'Needs Your Call', cls: 'text-red-500' };
                           return <span className={`font-medium ${label.cls}`}>{label.text}</span>;
                         })()}
                       </div>

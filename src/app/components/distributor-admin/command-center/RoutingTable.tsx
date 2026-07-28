@@ -625,7 +625,7 @@ function DesktopRow({
         }}
       >
         {row.kind === 'quote' && typeof row.items === 'number' && row.items > 0
-          ? `${row.items} items`
+          ? `${row.items} item${row.items === 1 ? '' : 's'}`
           : formatColdLandingArtifact(row.source, stripSeedPrefix(row.artifact?.name)) || '-'}
       </div>
 

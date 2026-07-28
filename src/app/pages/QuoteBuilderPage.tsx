@@ -66,10 +66,10 @@ interface ProductItem {
   alignmentCandidates?: AlignmentCandidate[];
 }
 
-export function getItemMatchStatus(item: ProductItem): 'Needs Your Pick' | 'Review Suggested' | null {
-  if (item.unmatched) return 'Needs Your Pick';
+export function getItemMatchStatus(item: ProductItem): 'Needs Your Call' | 'Review Suggested' | null {
+  if (item.unmatched) return 'Needs Your Call';
   const score = item.matchScore != null ? Math.round(item.matchScore * 100) : null;
-  if (score !== null && score < 50) return 'Needs Your Pick';
+  if (score !== null && score < 50) return 'Needs Your Call';
   if (score !== null && score < 70) return 'Review Suggested';
   return null;
 }
@@ -654,7 +654,7 @@ export function QuoteBuilderPage() {
                   {(() => {
                     const status = getItemMatchStatus(item);
                     if (!status) return null;
-                    const isUnmatched = status === 'Needs Your Pick';
+                    const isUnmatched = status === 'Needs Your Call';
                     return (
                       <button
                         onClick={(e) => {
@@ -863,7 +863,7 @@ export function QuoteBuilderPage() {
                         {(() => {
                           const status = getItemMatchStatus(item);
                           if (!status) return null;
-                          const isUnmatched = status === 'Needs Your Pick';
+                          const isUnmatched = status === 'Needs Your Call';
                           return (
                             <button
                               onClick={(e) => {

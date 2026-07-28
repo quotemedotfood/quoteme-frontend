@@ -71,7 +71,7 @@ export function PullDistributorAnchor({
 
   const metaParts: string[] = [];
   if (distributor.catalog_item_count != null) {
-    metaParts.push(`${distributor.catalog_item_count.toLocaleString()} items`);
+    metaParts.push(`${distributor.catalog_item_count.toLocaleString()} item${distributor.catalog_item_count === 1 ? '' : 's'}`);
   }
   const refreshed = formatRefreshed(distributor.catalog_refreshed_at);
   if (refreshed) {

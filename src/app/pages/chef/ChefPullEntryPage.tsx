@@ -423,7 +423,7 @@ export function ChefPullEntryPage() {
                 >
                   {menus.map((m) => {
                     const parts = [m.name];
-                    if (m.item_count) parts.push(`${m.item_count} items`);
+                    if (m.item_count) parts.push(`${m.item_count} item${m.item_count === 1 ? '' : 's'}`);
                     if (m.last_quoted_at) {
                       const d = new Date(m.last_quoted_at);
                       parts.push(`last quoted ${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`);

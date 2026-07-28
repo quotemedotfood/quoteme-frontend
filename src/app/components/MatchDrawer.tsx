@@ -56,7 +56,7 @@ function scoreLabel(score: number | null): { text: string; color: string; bg: st
   if (s >= 90) return { text: 'Strong Match', color: 'var(--md-green-fg)', bg: 'var(--md-green-bg)' };
   if (s >= 70) return { text: 'Good Match', color: 'var(--md-blue-fg)', bg: 'var(--md-blue-bg)' };
   if (s >= 50) return { text: 'Review Suggested', color: '#8A6114', bg: '#FBEFD8' };
-  return { text: 'Needs Your Pick', color: '#B23A34', bg: '#FBE4E2' };
+  return { text: 'Needs Your Call', color: '#B23A34', bg: '#FBE4E2' };
 }
 
 function tierLabel(position: number): string {

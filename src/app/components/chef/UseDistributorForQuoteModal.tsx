@@ -144,7 +144,7 @@ export function UseDistributorForQuoteModal({
               <div className="qm-eyebrow" style={{ fontSize: 9 }}>
                 CATALOG
               </div>
-              <div className="ink mt-0.5 num">{distributor.items} items</div>
+              <div className="ink mt-0.5 num">{distributor.items} item{Number(distributor.items) === 1 ? '' : 's'}</div>
               <div className="ink-faint num">updated {distributor.updated}</div>
             </div>
             <div>
