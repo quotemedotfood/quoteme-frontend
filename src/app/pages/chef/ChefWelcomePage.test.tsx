@@ -282,7 +282,7 @@ describe('ChefWelcomePage: BUG #39 error-copy branches', () => {
       expect(screen.getByText("This link's been around the block.")).toBeInTheDocument();
     });
     expect(
-      screen.getByText('Quote links expire after 30 days. Your rep can send a fresh one in a moment.'),
+      screen.getByText('Quote links expire after 72 hours. Your rep can send a fresh one in a moment.'),
     ).toBeInTheDocument();
   });
 
