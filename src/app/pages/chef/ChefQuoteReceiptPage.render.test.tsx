@@ -24,7 +24,7 @@ function deferred<T>() {
   return { promise, resolve };
 }
 
-const { getChefQuote, acceptChefQuote, baseQuote } = vi.hoisted(() => {
+const { getChefQuote, getGuestQuote, acceptChefQuote, baseQuote } = vi.hoisted(() => {
   const baseQuote: any = {
     id: 'quote-1',
     status: 'sent',
@@ -39,6 +39,7 @@ const { getChefQuote, acceptChefQuote, baseQuote } = vi.hoisted(() => {
   return {
     baseQuote,
     getChefQuote: vi.fn(async () => ({ data: { ...baseQuote } })),
+    getGuestQuote: vi.fn(async () => ({ data: { ...baseQuote } })),
     acceptChefQuote: vi.fn(async (): Promise<{ data?: { order_guide_id: string }; error?: string }> => ({ data: { order_guide_id: 'og-1' } })),
   };
 });
@@ -48,6 +49,7 @@ vi.mock('../../services/api', async (importOriginal) => {
   return {
     ...actual,
     getChefQuote,
+    getGuestQuote,
     acceptChefQuote,
   };
 });
@@ -168,5 +170,50 @@ describe('ChefQuoteReceiptPage - chef-facing product name normalization', () => 
 
     await screen.findByText('Salmon Fillet');
     expect(screen.queryByText(/DEAD/i)).toBeNull();
+  });
+});
+
+describe('ChefQuoteReceiptPage - pinned mobile CTA footer (Justin mobile ruling)', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    getChefQuote.mockClear();
+    getGuestQuote.mockClear();
+    acceptChefQuote.mockClear();
+  });
+
+  afterEach(() => {
+    cleanup();
+  });
+
+  function ctaFooterOf(button: HTMLElement): HTMLElement {
+    const footer = button.closest('div.fixed');
+    expect(footer).not.toBeNull();
+    return footer as HTMLElement;
+  }
+
+  it('authenticated chef: CTA footer is fixed at bottom-0 with 68px reserved for the ChefTabBar, reverting to static flow at md', async () => {
+    renderPage(); // renderPage seeds quoteme_token → chef shell → tab bar present
+    const button = await screen.findByRole('button', { name: 'Looks good' });
+    const footer = ctaFooterOf(button);
+    expect(footer.className).toContain('bottom-0');
+    expect(footer.className).toContain('pb-[68px]');
+    expect(footer.className).toContain('md:static');
+  });
+
+  it('guest (magic-link, no bearer token): no tab bar exists, so the CTA footer pins flush to the viewport bottom', async () => {
+    // No quoteme_token → the page fetches via getGuestQuote and
+    // ChefShellLayout would render no tab bar for a guest.
+    render(
+      <MemoryRouter initialEntries={['/chef/quotes/quote-1']}>
+        <Routes>
+          <Route path="/chef/quotes/:id" element={<ChefQuoteReceiptPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    expect(getGuestQuote).toHaveBeenCalledTimes(1);
+    const button = await screen.findByRole('button', { name: 'Looks good' });
+    const footer = ctaFooterOf(button);
+    expect(footer.className).toContain('bottom-0');
+    expect(footer.className).not.toContain('pb-[68px]');
   });
 });

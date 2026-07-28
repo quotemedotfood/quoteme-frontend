@@ -186,12 +186,24 @@ export function ChefPullReceiptPage() {
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <div className="min-h-screen bg-[#FBFAF7] flex flex-col">
-      {/* Anchor strip */}
-      <PullDistributorAnchor distributor={distributor} />
+    // Justin mobile ruling: primary CTA bar pinned to the bottom of the
+    // viewport, item list scrolls above it. This route is standalone (no
+    // ChefShellLayout, no ChefTabBar at any width), so the page owns the
+    // viewport: fixed-height flex column (100dvh — no vh min-height
+    // fallback, which would win over dvh while the mobile URL bar is
+    // visible and push the footer below the fold), anchor pinned top,
+    // document + line items scrolling in the middle, CTA footer pinned
+    // bottom. Same layout at 390 and 768+.
+    <div className="h-dvh bg-[#FBFAF7] flex flex-col overflow-hidden">
+      {/* Anchor strip — non-shrinking, always visible */}
+      <div className="shrink-0">
+        <PullDistributorAnchor distributor={distributor} />
+      </div>
 
-      <div className="flex-1 flex flex-col items-center px-6 py-10">
-        <div className="w-full max-w-xl">
+      {/* Scrollable document region */}
+      <div className="flex-1 min-h-0 overflow-y-auto">
+        <div className="flex flex-col items-center px-6 py-10">
+          <div className="w-full max-w-xl">
 
           {/* ── 1+3. Document — D6 state-driven chrome (replaces the inline
               header + price-less grouped line list). Anchor strip, "Items to
@@ -257,42 +269,49 @@ export function ChefPullReceiptPage() {
             </div>
           )}
 
-          {/* ── 5. Primary CTA ───────────────────────────────────────────── */}
-          <div className="border-t border-[#F0EDE7] pt-8 flex flex-col gap-3">
-
-            {affiliated && rep && (
-              // Affiliated: send directly to the rep
-              <button
-                type="button"
-                onClick={handleSendToRep}
-                className="w-full bg-[#2A2A2A] hover:bg-[#1A1A1A] text-white rounded-lg px-6 py-3.5 text-base font-medium transition-colors"
-              >
-                Send to {rep.first_name ?? rep.name}
-              </button>
-            )}
-
-            {/* Pull another quote */}
-            <button
-              type="button"
-              onClick={() =>
-                navigate('/chef/pull/entry', {
-                  state: { distributor },
-                })
-              }
-              className="w-full border border-[#E0E0E0] hover:border-[#BDBDBD] text-[#4F4F4F] rounded-lg px-6 py-3.5 text-base font-medium transition-colors"
-            >
-              Pull another quote
-            </button>
-
-            {/* Back to quotes */}
-            <button
-              type="button"
-              onClick={() => navigate('/chef/quotes')}
-              className="w-full text-[#9E9E9E] hover:text-[#4F4F4F] px-6 py-2.5 text-sm font-medium transition-colors"
-            >
-              Back to quotes
-            </button>
           </div>
+        </div>
+      </div>
+
+      {/* ── 5. Primary CTA — pinned footer ─────────────────────────────────
+          Non-shrinking, solid background, subtle top border. The document
+          region above scrolls underneath it; no tab bar on this route so no
+          bottom offset is needed at any width. */}
+      <div className="shrink-0 border-t border-[#F0EDE7] bg-[#FBFAF7] px-6 py-4">
+        <div className="mx-auto w-full max-w-xl flex flex-col gap-3">
+
+          {affiliated && rep && (
+            // Affiliated: send directly to the rep
+            <button
+              type="button"
+              onClick={handleSendToRep}
+              className="w-full bg-[#2A2A2A] hover:bg-[#1A1A1A] text-white rounded-lg px-6 py-3.5 text-base font-medium transition-colors"
+            >
+              Send to {rep.first_name ?? rep.name}
+            </button>
+          )}
+
+          {/* Pull another quote */}
+          <button
+            type="button"
+            onClick={() =>
+              navigate('/chef/pull/entry', {
+                state: { distributor },
+              })
+            }
+            className="w-full border border-[#E0E0E0] hover:border-[#BDBDBD] text-[#4F4F4F] rounded-lg px-6 py-3.5 text-base font-medium transition-colors"
+          >
+            Pull another quote
+          </button>
+
+          {/* Back to quotes */}
+          <button
+            type="button"
+            onClick={() => navigate('/chef/quotes')}
+            className="w-full text-[#9E9E9E] hover:text-[#4F4F4F] px-6 py-2 text-sm font-medium transition-colors"
+          >
+            Back to quotes
+          </button>
         </div>
       </div>
 
