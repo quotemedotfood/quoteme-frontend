@@ -2,6 +2,16 @@ import { useState, useEffect } from 'react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogFooter,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from '../components/ui/alert-dialog';
 import { Loader2, Check, Send, UserPlus, Users, X, LogIn, RefreshCw, UserX } from 'lucide-react';
 import { inviteRep, getDistributorAdminReps, impersonateRep, cancelRepInvite, resendRepInvite, disableRep } from '../services/api';
 import type { DistributorRep } from '../services/api';
@@ -25,6 +35,9 @@ export function DistributorRepsPage() {
   const [resendSuccess, setResendSuccess] = useState<string | null>(null);
   const [disabling, setDisabling] = useState<string | null>(null);
   const [disableError, setDisableError] = useState<string | null>(null);
+  // Holds the existing rep/admin row a typed invite email matched, while the
+  // confirm dialog is open. Null when no confirm is pending.
+  const [confirmMatch, setConfirmMatch] = useState<DistributorRep | null>(null);
 
   useEffect(() => {
     if (!document.getElementById('quoteme-fonts')) {
@@ -60,10 +73,26 @@ export function DistributorRepsPage() {
 
   useEffect(() => { loadReps(); }, []);
 
-  const handleInvite = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!name.trim() || !email.trim()) return;
+  // Same-distributor prevention (item 1c, FE half): the BE will silently
+  // attach a rep role to any existing user with no confirm, which is the
+  // root cause of the dual-role bug. This checks the typed email against the
+  // people already loaded for THIS distributor (the deduped admin+rep list
+  // in `reps`) and, on a match, holds the submit for an explicit confirm
+  // instead of posting straight through.
+  //
+  // Scope limit: this can only catch a match against people already loaded
+  // for this distributor. It cannot see whether the email holds a role at
+  // ANOTHER distributor entirely, since that requires a BE lookup this page
+  // has no route for. Cross-distributor detection, the notification email,
+  // and the registration-path guard are the BE half of this fix and are
+  // tracked separately (BE-gated, not attempted here).
+  function findExistingRepByEmail(candidateEmail: string): DistributorRep | undefined {
+    const normalized = candidateEmail.trim().toLowerCase();
+    if (!normalized) return undefined;
+    return reps.find((r) => r.email.trim().toLowerCase() === normalized);
+  }
 
+  const submitInvite = async () => {
     setSending(true);
     setError('');
     setSuccessMessage('');
@@ -85,6 +114,30 @@ export function DistributorRepsPage() {
       loadReps();
     }
     setSending(false);
+  };
+
+  const handleInvite = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim() || !email.trim()) return;
+
+    const existing = findExistingRepByEmail(email);
+    if (existing) {
+      // Hold the submit and ask for explicit confirmation before this
+      // email gets a second role at this distributor.
+      setConfirmMatch(existing);
+      return;
+    }
+
+    await submitInvite();
+  };
+
+  const handleConfirmAddAnyway = async () => {
+    setConfirmMatch(null);
+    await submitInvite();
+  };
+
+  const handleCancelConfirm = () => {
+    setConfirmMatch(null);
   };
 
   const handleImpersonate = async (rep: DistributorRep) => {
@@ -452,6 +505,30 @@ export function DistributorRepsPage() {
           </table>
         </div>
       )}
+
+      <AlertDialog
+        open={!!confirmMatch}
+        onOpenChange={(open) => { if (!open) setConfirmMatch(null); }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Add a rep role anyway?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirmMatch && (
+                <>
+                  This email already belongs to{' '}
+                  {[confirmMatch.first_name, confirmMatch.last_name].filter(Boolean).join(' ') || confirmMatch.email}
+                  {' '}({confirmMatch.is_admin ? 'a distributor admin' : 'a rep'}) at this distributor. Add a rep role anyway?
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleCancelConfirm}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmAddAnyway}>Add anyway</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
