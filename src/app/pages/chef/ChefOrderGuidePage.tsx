@@ -365,6 +365,17 @@ export function ChefOrderGuidePage() {
 
         {/* ── Header ─────────────────────────────────────────────────────────── */}
         <header className="mb-8 print:mb-6">
+          {/* Distributor logo — guarded on logo_url; nil until a distributor
+              sets a logo, so this stays invisible until the BE field lands. */}
+          {guide.distributor?.logo_url && (
+            <img
+              src={guide.distributor.logo_url}
+              alt={guide.distributor?.name || 'Distributor logo'}
+              className="object-contain mb-2"
+              style={{ maxHeight: 32, maxWidth: '100%' }}
+            />
+          )}
+
           {/* Distributor name — small caps */}
           {guide.distributor?.name && (
             <p className="text-[11px] font-semibold tracking-widest uppercase text-[#9E9E9E] mb-1">

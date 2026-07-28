@@ -255,7 +255,7 @@ export interface QuoteResponse {
   /** currency is optional/forward-compatible: BE CANADA-CURRENCY has landed
    * distributors.currency but not all serializers expose it on this object
    * yet — FE formatCurrency() calls default to USD when absent. */
-  distributor?: { id: string; name: string; currency?: string } | null;
+  distributor?: { id: string; name: string; currency?: string; logo_url?: string | null } | null;
   lines: QuoteLineResponse[];
   input_mode?: string | null;
   detected_concept?: string | null;
@@ -2081,6 +2081,8 @@ export interface DistributorHomeData {
   quote_count: number;
   /** branding_config.slug — guaranteed non-nil for new distributors, but nil for pre-existing ones until backfilled. */
   slug: string | null;
+  /** Distributor logo image URL. Nil until a logo is set on the distributor. */
+  logo_url?: string | null;
 }
 
 export async function getDistributorHome(): Promise<ApiResponse<DistributorHomeData>> {
@@ -2851,7 +2853,7 @@ export interface OrderGuideResponse {
   order_days: string | null;
   minimum_order_cents: number | null;
   /** currency optional/forward-compatible — see QuoteResponse.distributor note. */
-  distributor: { name: string; phone: string | null; email: string | null; currency?: string } | null;
+  distributor: { name: string; phone: string | null; email: string | null; currency?: string; logo_url?: string | null } | null;
   restaurant: { name: string; address: string | null } | null;
   rep: { name: string; email: string | null; phone: string | null } | null;
   items: OrderGuideItemResponse[];
@@ -3036,6 +3038,8 @@ export interface PullQuoteDistributor {
   catalog_refreshed_at?: string | null;
   /** currency optional/forward-compatible — see QuoteResponse.distributor note. */
   currency?: string;
+  /** Distributor logo image URL. Nil until a logo is set on the distributor. */
+  logo_url?: string | null;
   rep?: {
     name: string;
     first_name?: string | null;

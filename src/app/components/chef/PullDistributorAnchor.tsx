@@ -22,6 +22,10 @@ export interface PullDistributorInfo {
   catalog_item_count?: number | null;
   /** ISO date string when catalog was last refreshed */
   catalog_refreshed_at?: string | null;
+  /** Distributor logo image URL. Optional/forward-compatible — nil until a
+   * distributor sets a logo. When absent, the built-in building-icon SVG
+   * fallback renders instead (unchanged from prior behavior). */
+  logo_url?: string | null;
   rep?: {
     name: string;
     email: string;
@@ -79,21 +83,30 @@ export function PullDistributorAnchor({
       <div className="flex items-center justify-between gap-3 max-w-lg mx-auto">
         {/* Left: distributor info */}
         <div className="flex items-center gap-2.5 min-w-0">
-          {/* Icon: small building mark */}
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="#9E9E9E"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="shrink-0"
-          >
-            <rect x="2" y="7" width="20" height="14" rx="2" />
-            <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
-          </svg>
+          {/* Logo when available, else the built-in building-icon SVG fallback */}
+          {distributor.logo_url ? (
+            <img
+              src={distributor.logo_url}
+              alt={distributor.name}
+              className="shrink-0 object-contain"
+              style={{ width: 14, height: 14 }}
+            />
+          ) : (
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="#9E9E9E"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="shrink-0"
+            >
+              <rect x="2" y="7" width="20" height="14" rx="2" />
+              <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+            </svg>
+          )}
 
           <div className="flex flex-col min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
