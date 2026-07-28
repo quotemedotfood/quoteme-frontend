@@ -201,7 +201,7 @@ export function RepAvatar({ initials, name, size = 28 }: RepAvatarProps) {
 // ── Section head ──────────────────────────────────────────────────────────────
 
 interface CCSectionHeadProps {
-  eyebrow?: string;
+  eyebrow?: React.ReactNode;
   eyebrowColor?: string;
   title: string;
   sub?: string;
