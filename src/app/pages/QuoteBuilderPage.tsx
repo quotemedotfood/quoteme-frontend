@@ -1,6 +1,6 @@
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
-import { ArrowLeft, Save, Filter, Plus, Minus, Edit, ChevronUp, ChevronDown, ArrowUpDown, ArrowUp, ArrowDown, Loader2, X, Trash2, AlertTriangle, MessageCircle } from 'lucide-react';
+import { ArrowLeft, Save, Filter, Plus, Minus, Edit, ChevronUp, ChevronDown, ArrowUpDown, ArrowUp, ArrowDown, Loader2, X, Trash2, AlertTriangle, MessageCircle, Lock } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router';
 import { useState, useEffect, useCallback } from 'react';
 import { useUser } from '../contexts/UserContext';
@@ -14,6 +14,10 @@ import { QuoteReviewBar } from '../components/QuoteReviewBar';
 import { MapComponentDrawer } from '../components/MapComponentDrawer';
 import type { CatalogSearchProduct, ChefQuestion } from '../services/api';
 import { latestChefQuestion } from '../utils/chefQuestion';
+// P1: same locked signal used by QuoteReviewPage's CONFIRMED-LOCKED CTA work
+// (sent_at / status / state / quote_type) so a sent quote's price inputs
+// never round-trip to the BE's 422 on locked-quote edits.
+import { isLockedQuoteState } from '../utils/quoteStatusLabel';
 // Wave 4(c): reuse Export's exact unresolved-items predicate so the count
 // means the same thing on both screens. availability_status/rep_handled
 // ship on the same getQuote/getGuestQuote response already fetched below;
@@ -137,6 +141,10 @@ export function QuoteBuilderPage() {
   // ── Price editing state ──
   const [editingPriceId, setEditingPriceId] = useState<string | null>(null);
   const [editingPriceValue, setEditingPriceValue] = useState('');
+  // P1: true once the quote has been sent / reached a locked J1 state.
+  // Drives disabling the price-edit affordance so it can never round-trip
+  // to the BE's reject-on-locked-quote 422.
+  const [quoteLocked, setQuoteLocked] = useState(false);
 
   const isGuest = !localStorage.getItem('quoteme_token');
   const fetchQuote = (id: string) => isGuest ? getGuestQuote(id) : getQuote(id);
@@ -184,6 +192,10 @@ export function QuoteBuilderPage() {
       }
       setItems(productItems);
       setUnresolvedCount(unacknowledgedUnmatchedLines(data.lines || []).length);
+      setQuoteLocked(
+        !!data.sent_at ||
+          isLockedQuoteState({ status: data.status, state: data.state, quote_type: data.quote_type }),
+      );
       setDistributorCurrency(data.distributor?.currency);
       if (data.input_mode) setInputMode(data.input_mode);
       if (data.detected_concept) setDetectedConcept(data.detected_concept);
@@ -289,6 +301,7 @@ export function QuoteBuilderPage() {
   });
 
   const applyBulkAdjustment = () => {
+    if (quoteLocked) return;
     const adjustment = parseFloat(bulkAdjustment) || 0;
     setItems(
       items.map((item) => {
@@ -380,7 +393,7 @@ export function QuoteBuilderPage() {
   };
 
   const savePrices = async () => {
-    if (!quoteId) return;
+    if (!quoteId || quoteLocked) return;
     setSaving(true);
     setSaveError(null);
     try {
@@ -467,7 +480,8 @@ export function QuoteBuilderPage() {
               variant="outline"
               className="border-gray-300 text-[#2A2A2A]"
               onClick={savePrices}
-              disabled={saving}
+              disabled={saving || quoteLocked}
+              title={quoteLocked ? 'Pricing is locked once a quote is sent' : undefined}
             >
               {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
               {saving ? 'Saving...' : 'Save Draft'}
@@ -494,47 +508,56 @@ export function QuoteBuilderPage() {
         {/* Pricing Controls */}
         <div className="bg-white rounded-lg p-4 md:p-6 mb-6 shadow-sm overflow-hidden">
           <h2 className="text-lg text-[#2A2A2A] mb-1">Adjust Pricing</h2>
-          <p className="text-gray-500 text-sm mb-4 md:mb-6">
-            Adjust pricing for all items or edit individual prices
-          </p>
-
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
-            <label className="text-sm text-[#2A2A2A] font-medium">% Adjustment</label>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => {
-                  const current = parseFloat(bulkAdjustment) || 0;
-                  setBulkAdjustment(String(current - 1));
-                }}
-                className="text-[#2A2A2A] hover:text-[#4F4F4F] p-1 flex-shrink-0"
-              >
-                <Minus className="w-4 h-4" />
-              </button>
-              <Input
-                type="number"
-                value={bulkAdjustment}
-                onChange={(e) => setBulkAdjustment(e.target.value)}
-                className="w-24 sm:w-32 h-9 text-center border-gray-300 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                placeholder="0"
-              />
-              <button
-                onClick={() => {
-                  const current = parseFloat(bulkAdjustment) || 0;
-                  setBulkAdjustment(String(current + 1));
-                }}
-                className="text-[#2A2A2A] hover:text-[#4F4F4F] p-1 flex-shrink-0"
-              >
-                <Plus className="w-4 h-4" />
-              </button>
-              <span className="text-sm text-gray-500">%</span>
+          {quoteLocked ? (
+            <div className="flex items-center gap-2 text-sm text-gray-500 mt-2">
+              <Lock className="w-4 h-4 flex-shrink-0" />
+              <p>Pricing is locked once a quote is sent.</p>
             </div>
-            <Button
-              onClick={applyBulkAdjustment}
-              className="w-full sm:w-auto bg-[#7FAEC2] hover:bg-[#6A9AB0] text-white px-6"
-            >
-              Apply
-            </Button>
-          </div>
+          ) : (
+            <>
+              <p className="text-gray-500 text-sm mb-4 md:mb-6">
+                Adjust pricing for all items or edit individual prices
+              </p>
+
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
+                <label className="text-sm text-[#2A2A2A] font-medium">% Adjustment</label>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      const current = parseFloat(bulkAdjustment) || 0;
+                      setBulkAdjustment(String(current - 1));
+                    }}
+                    className="text-[#2A2A2A] hover:text-[#4F4F4F] p-1 flex-shrink-0"
+                  >
+                    <Minus className="w-4 h-4" />
+                  </button>
+                  <Input
+                    type="number"
+                    value={bulkAdjustment}
+                    onChange={(e) => setBulkAdjustment(e.target.value)}
+                    className="w-24 sm:w-32 h-9 text-center border-gray-300 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                    placeholder="0"
+                  />
+                  <button
+                    onClick={() => {
+                      const current = parseFloat(bulkAdjustment) || 0;
+                      setBulkAdjustment(String(current + 1));
+                    }}
+                    className="text-[#2A2A2A] hover:text-[#4F4F4F] p-1 flex-shrink-0"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </button>
+                  <span className="text-sm text-gray-500">%</span>
+                </div>
+                <Button
+                  onClick={applyBulkAdjustment}
+                  className="w-full sm:w-auto bg-[#7FAEC2] hover:bg-[#6A9AB0] text-white px-6"
+                >
+                  Apply
+                </Button>
+              </div>
+            </>
+          )}
         </div>
 
         {saveError && (
@@ -616,15 +639,23 @@ export function QuoteBuilderPage() {
                 size="sm"
                 className="flex-1 md:flex-none text-[#2A2A2A] border-gray-300"
                 onClick={() => {
+                  if (quoteLocked) return;
                   if (editMode) {
                     savePrices();
                   }
                   setEditMode(!editMode);
                 }}
-                disabled={saving}
+                disabled={saving || quoteLocked}
+                title={quoteLocked ? 'Pricing is locked once a quote is sent' : undefined}
               >
-                {saving ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Edit className="w-4 h-4 mr-1" />}
-                {editMode ? (saving ? 'Saving...' : 'Save') : 'Edit price'}
+                {quoteLocked ? (
+                  <Lock className="w-4 h-4 mr-1" />
+                ) : saving ? (
+                  <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                ) : (
+                  <Edit className="w-4 h-4 mr-1" />
+                )}
+                {quoteLocked ? 'Pricing locked' : editMode ? (saving ? 'Saving...' : 'Save') : 'Edit price'}
               </Button>
               <Button
                 variant="outline"
@@ -697,8 +728,11 @@ export function QuoteBuilderPage() {
                    <div className="truncate"><span className="text-gray-400">Dish:</span> {item.dish}</div>
                 </div>
 
-                {/* Price controls at bottom */}
-                {editMode ? (
+                {/* Price controls at bottom. Defensive `!quoteLocked` guard
+                    in addition to the editMode-toggle guard above: even if
+                    editMode were somehow already true, a locked quote must
+                    never render an editable price input. */}
+                {editMode && !quoteLocked ? (
                   <div className="flex flex-col gap-2 mt-2 w-full">
                     <div className="w-full">
                       <span className="text-xs text-gray-400 mb-1 block">Price</span>
@@ -939,7 +973,7 @@ export function QuoteBuilderPage() {
                       </td>
                     )}
                     <td className="px-4 py-3 text-sm text-[#2A2A2A] text-right">
-                      {editMode ? (
+                      {editMode && !quoteLocked ? (
                         <div className="flex items-center justify-end gap-2">
                           <button
                             onClick={(e) => {
