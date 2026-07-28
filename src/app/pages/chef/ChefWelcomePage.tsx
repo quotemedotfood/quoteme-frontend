@@ -265,7 +265,7 @@ export function ChefWelcomePage() {
                 <div
                   style={{ ...sans, fontSize: 11.5, color: C.gray500, fontVariantNumeric: 'tabular-nums' }}
                 >
-                  {q.item_count} items across {q.category_count} categories
+                  {q.item_count} item{q.item_count === 1 ? '' : 's'} across {q.category_count} categor{q.category_count === 1 ? 'y' : 'ies'}
                 </div>
               </div>
               <div

@@ -787,9 +787,9 @@ function ConceptsTab() {
             )}
             {testResult.profile_data && (
               <div className="mt-2 text-xs space-y-1">
-                <p>Strong fit: {testResult.profile_data.strong_fit.length} items ({testResult.profile_data.strong_fit.slice(0, 5).join(', ')}{testResult.profile_data.strong_fit.length > 5 ? '...' : ''})</p>
-                <p>Likely fit: {testResult.profile_data.likely_fit.length} items ({testResult.profile_data.likely_fit.slice(0, 5).join(', ')}{testResult.profile_data.likely_fit.length > 5 ? '...' : ''})</p>
-                <p>Manual review: {testResult.profile_data.manual.length} items</p>
+                <p>Strong fit: {testResult.profile_data.strong_fit.length} item{testResult.profile_data.strong_fit.length === 1 ? '' : 's'} ({testResult.profile_data.strong_fit.slice(0, 5).join(', ')}{testResult.profile_data.strong_fit.length > 5 ? '...' : ''})</p>
+                <p>Likely fit: {testResult.profile_data.likely_fit.length} item{testResult.profile_data.likely_fit.length === 1 ? '' : 's'} ({testResult.profile_data.likely_fit.slice(0, 5).join(', ')}{testResult.profile_data.likely_fit.length > 5 ? '...' : ''})</p>
+                <p>Manual review: {testResult.profile_data.manual.length} item{testResult.profile_data.manual.length === 1 ? '' : 's'}</p>
               </div>
             )}
           </div>

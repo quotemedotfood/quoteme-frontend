@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router';
-import { ArrowLeft, Loader2, AlertTriangle, Send, Mail, MessageSquare, Download, X, Check } from 'lucide-react';
+import { ArrowLeft, Loader2, AlertTriangle, Send, Mail, MessageSquare, Download, X, Check, Lock } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
@@ -11,6 +11,7 @@ import { useUser } from '../contexts/UserContext';
 import { categoryLabel } from '../utils/categoryLabel';
 import { formatCurrency } from '../utils/formatCurrency';
 import { useAsyncMutation } from '../hooks/useAsyncMutation';
+import { isLockedQuoteState } from '../utils/quoteStatusLabel';
 
 function toTitleCase(str: string): string {
   if (!str) return '';
@@ -28,7 +29,7 @@ function matchLabel(score: number): { text: string; cls: string } {
   if (score >= 0.9) return { text: 'Strong Match', cls: 'bg-green-100 text-green-700' };
   if (score >= 0.7) return { text: 'Good Match', cls: 'bg-[#A5CFDD]/20 text-[#2A5F6F]' };
   if (score >= 0.5) return { text: 'Review Suggested', cls: 'bg-amber-100 text-amber-700' };
-  return { text: 'Needs Your Pick', cls: 'bg-red-100 text-red-700' };
+  return { text: 'Needs Your Call', cls: 'bg-red-100 text-red-700' };
 }
 
 export function QuoteReviewPage() {
@@ -170,6 +171,12 @@ export function QuoteReviewPage() {
   ];
 
   const categories = ['all', ...new Set(lines.map(l => l.category).filter(Boolean))];
+
+  // CONFIRMED-LOCKED: once a quote has already been sent (this session's
+  // sendSuccess, or a persisted sent_at from a prior session) or has moved
+  // into a terminal/locked J1 state, the primary CTA must reflect that
+  // instead of staying a live, re-clickable "Send Quote" action.
+  const quoteLocked = !!sendSuccess || !!quote.sent_at || isLockedQuoteState(quote);
 
   // Send handlers
   const handleSendEmail = () => sendEmailMutation.run();
@@ -313,7 +320,7 @@ export function QuoteReviewPage() {
               <option value="strong">Strong Match</option>
               <option value="good">Good Match</option>
               <option value="review">Review Suggested</option>
-              <option value="needs">Needs Your Pick</option>
+              <option value="needs">Needs Your Call</option>
             </select>
           </div>
 
@@ -455,6 +462,13 @@ export function QuoteReviewPage() {
             >
               <Send size={16} /> Sign up to send quotes
             </a>
+          ) : quoteLocked ? (
+            <div
+              className="inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-md text-[#166534] font-medium bg-[#DCFCE7] border border-[#86EFAC] w-full md:w-auto min-h-[48px] cursor-default"
+              aria-label="Quote confirmed and sent"
+            >
+              <Lock size={16} /> Confirmed & Sent
+            </div>
           ) : (
             <Button
               onClick={() => setSendDrawerOpen(true)}

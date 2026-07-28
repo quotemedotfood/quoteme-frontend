@@ -24,19 +24,19 @@ function makeItem(overrides: Partial<Parameters<typeof getItemMatchStatus>[0]> =
 }
 
 describe('getItemMatchStatus — drawer-openable rows (ticket #6)', () => {
-  it('flags unmatched items ("Awaiting rep review" rows) as Needs Your Pick', () => {
+  it('flags unmatched items ("Awaiting rep review" rows) as Needs Your Call', () => {
     const item = makeItem({ unmatched: true, resolution_label: null });
-    expect(getItemMatchStatus(item)).toBe('Needs Your Pick');
+    expect(getItemMatchStatus(item)).toBe('Needs Your Call');
   });
 
-  it('flags unmatched items with a resolution_label as Needs Your Pick too', () => {
+  it('flags unmatched items with a resolution_label as Needs Your Call too', () => {
     const item = makeItem({ unmatched: true, resolution_label: 'Pending distributor match' });
-    expect(getItemMatchStatus(item)).toBe('Needs Your Pick');
+    expect(getItemMatchStatus(item)).toBe('Needs Your Call');
   });
 
-  it('flags low-confidence matches (<50) as Needs Your Pick', () => {
+  it('flags low-confidence matches (<50) as Needs Your Call', () => {
     const item = makeItem({ unmatched: false, matchScore: 0.4 });
-    expect(getItemMatchStatus(item)).toBe('Needs Your Pick');
+    expect(getItemMatchStatus(item)).toBe('Needs Your Call');
   });
 
   it('flags medium-confidence matches (50-69) as Review Suggested', () => {

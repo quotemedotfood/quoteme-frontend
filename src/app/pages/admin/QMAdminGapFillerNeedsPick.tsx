@@ -204,7 +204,7 @@ export function QMAdminGapFillerNeedsPick() {
           className="text-2xl font-bold text-[#2A2A2A]"
           style={{ fontFamily: "'Playfair Display', serif" }}
         >
-          Needs Your Pick
+          Needs Your Call
         </h1>
       </div>
       <p className="text-sm text-gray-500 mb-6">

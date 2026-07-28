@@ -125,7 +125,7 @@ export function CatalogUploadDrawer({ open, onOpenChange, onUploadComplete }: Ca
         const isZero = data.item_count === 0;
         setColumnInfo(data.column_info || null);
         setUploadResult({
-          message: data.message || `${data.item_count} products imported`,
+          message: data.message || `${data.item_count} product${data.item_count === 1 ? '' : 's'} imported`,
           isError: isZero,
         });
         if (isZero) return;
@@ -388,7 +388,7 @@ export function CatalogUploadDrawer({ open, onOpenChange, onUploadComplete }: Ca
               className="w-full bg-[#F2993D] hover:bg-[#E08A2E] text-white"
             >
               <Check className="w-4 h-4 mr-2" />
-              Done: {uploadedCatalog.item_count} Products Imported
+              Done: {uploadedCatalog.item_count} Product{uploadedCatalog.item_count === 1 ? '' : 's'} Imported
             </Button>
           ) : (
             <Button

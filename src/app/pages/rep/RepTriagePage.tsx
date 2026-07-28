@@ -581,7 +581,7 @@ function TriageRow({
           {stripSeedPrefix(q.label) || q.id}
           {!isInbound && (
             <>
-              {' '}· {q.chef_first} {q.chef_last} · {q.item_count} items
+              {' '}· {q.chef_first} {q.chef_last} · {q.item_count} item{q.item_count === 1 ? '' : 's'}
             </>
           )}
           {isInbound && q._sourceLabel &&

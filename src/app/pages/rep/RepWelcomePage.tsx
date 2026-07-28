@@ -220,7 +220,7 @@ export function RepWelcomePage() {
                   {q.restaurant}
                 </div>
                 <div style={{ ...sans, fontSize: 11.5, color: C.gray500, fontVariantNumeric: 'tabular-nums' }}>
-                  {q.item_count} items
+                  {q.item_count} item{q.item_count === 1 ? '' : 's'}
                   {q.waiting_hours != null && q.waiting_hours > 0 ? ` · waiting ${q.waiting_hours}h` : ''}
                 </div>
                 <div style={{ marginTop: 6 }}>

@@ -88,7 +88,7 @@ function BuyerDashboard() {
                     {stripSeedPrefix(q.working_label) || q.restaurant || 'Untitled Draft'}
                   </div>
                   <div className="text-xs text-red-400 mt-0.5">
-                    {formatDate(q.created_at)} · {q.line_count} items
+                    {formatDate(q.created_at)} · {q.line_count} item{q.line_count === 1 ? '' : 's'}
                   </div>
                 </div>
                 <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-red-100 text-red-700 flex-shrink-0 ml-3">
@@ -235,7 +235,7 @@ function BuyerDashboard() {
                           {stripSeedPrefix(q.working_label) || q.restaurant || 'Untitled Quote'}
                         </div>
                         <div className="text-xs text-gray-400 mt-0.5">
-                          {formatDate(q.created_at)} · {q.line_count} items
+                          {formatDate(q.created_at)} · {q.line_count} item{q.line_count === 1 ? '' : 's'}
                         </div>
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0 ml-3">
@@ -353,7 +353,7 @@ function RepDashboard() {
                           {stripSeedPrefix(q.working_label) || q.restaurant || 'Untitled Quote'}
                         </div>
                         <div className="text-xs text-gray-400 mt-0.5">
-                          {formatDate(q.created_at)} · {q.line_count} items
+                          {formatDate(q.created_at)} · {q.line_count} item{q.line_count === 1 ? '' : 's'}
                         </div>
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0 ml-3">

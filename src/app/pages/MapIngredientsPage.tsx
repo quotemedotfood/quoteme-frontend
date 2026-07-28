@@ -104,13 +104,13 @@ function getMatchStatus(line: QuoteLine | undefined, isMapped: boolean): string 
   if (!line?.product) return 'No Match';
   const bestCandidate = line.alignment_candidates?.find(c => c.position === 1);
   const score = bestCandidate?.score != null ? Math.round(bestCandidate.score * 100) : null;
-  if (score === null || score < 50) return 'Needs Your Pick';
+  if (score === null || score < 50) return 'Needs Your Call';
   if (score < 70) return 'Review Suggested';
   if (score < 90) return 'Good Match';
   return 'Strong Match';
 }
 
-const MATCH_STATUS_OPTIONS = ['Strong Match', 'Good Match', 'Review Suggested', 'Needs Your Pick', 'Your Pick', 'No Match'] as const;
+const MATCH_STATUS_OPTIONS = ['Strong Match', 'Good Match', 'Review Suggested', 'Needs Your Call', 'Your Pick', 'No Match'] as const;
 
 // ─── Filter Dropdown ─────────────────────────────────────────────────────────
 
@@ -562,8 +562,8 @@ export function MapIngredientsPage() {
         ? confidence >= 90 ? { text: 'Strong Match', cls: 'bg-green-100 text-green-700' }
           : confidence >= 70 ? { text: 'Good Match', cls: 'bg-[#A5CFDD]/20 text-[#2A5F6F]' }
           : confidence >= 50 ? { text: 'Review Suggested', cls: 'bg-amber-100 text-amber-700' }
-          : { text: 'Needs Your Pick', cls: 'bg-red-100 text-red-700' }
-        : !bestMatch ? { text: 'Needs Your Pick', cls: 'bg-red-100 text-red-700' }
+          : { text: 'Needs Your Call', cls: 'bg-red-100 text-red-700' }
+        : !bestMatch ? { text: 'Needs Your Call', cls: 'bg-red-100 text-red-700' }
         : null;
 
     const bestMatchIsRepMemory = bestCandidate?.rep_memory === true;
@@ -804,7 +804,7 @@ export function MapIngredientsPage() {
                 {hasActiveFilters && (
                   <>
                     <span className="text-xs text-gray-500 ml-2">
-                      Showing {filteredCount} of {allLines.length} items
+                      Showing {filteredCount} of {allLines.length} item{allLines.length === 1 ? '' : 's'}
                     </span>
                     <button
                       onClick={clearAllFilters}

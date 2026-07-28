@@ -514,7 +514,7 @@ function QuoteRow({ q }: { q: ChefQuoteRow }) {
         <div style={{ ...sans, fontSize: 11.5, color: C.gray500, lineHeight: 1.3, marginTop: 2 }}>
           {formatDate(q.created_at)}
           {total && ` · ${total}`}
-          {q.item_count > 0 && ` · ${q.item_count} items`}
+          {q.item_count > 0 && ` · ${q.item_count} item${q.item_count === 1 ? '' : 's'}`}
         </div>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
