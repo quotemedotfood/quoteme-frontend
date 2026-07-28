@@ -83,6 +83,11 @@ export interface QuoteStateDocumentProps {
   rep: string;
   repPhone?: string;
   distributorShort?: string; // omitted when the surface has no distributor name
+  /** Distributor logo image URL. Optional/forward-compatible — the BE
+   * `logo_url` field is nil until a distributor sets a logo. When absent,
+   * the document falls back to the plain distributor name text (unchanged
+   * from prior behavior) rather than rendering a broken image. */
+  distributorLogoUrl?: string | null;
   /** CANADA-CURRENCY: ISO code (e.g. "USD"/"CAD") threaded from the caller's
    * quote.distributor.currency. Optional/forward-compatible — defaults to
    * USD via formatCurrency() when the caller has none in scope. */
@@ -118,6 +123,7 @@ export function QuoteStateDocument({
   rep,
   repPhone,
   distributorShort,
+  distributorLogoUrl,
   currency,
   catalogUpdated,
   groups,
@@ -270,9 +276,20 @@ export function QuoteStateDocument({
           </div>
           <div className="flex-1 text-right min-w-0">
             <div style={eyebrowSm}>DISTRIBUTOR</div>
-            <div className="text-[13px] mt-0.5 truncate" style={{ color: INK }}>
-              {distributorShort || '-'}
-            </div>
+            {distributorLogoUrl ? (
+              <div className="mt-0.5 flex justify-end">
+                <img
+                  src={distributorLogoUrl}
+                  alt={distributorShort || 'Distributor logo'}
+                  className="object-contain"
+                  style={{ maxHeight: 30, maxWidth: '100%' }}
+                />
+              </div>
+            ) : (
+              <div className="text-[13px] mt-0.5 truncate" style={{ color: INK }}>
+                {distributorShort || '-'}
+              </div>
+            )}
             {catalogUpdated && (
               <div className="text-[12px]" style={{ color: INK_SOFT }}>
                 {catalogUpdated}

@@ -252,6 +252,7 @@ export function ChefQuoteReceiptPage() {
             rep={repName || 'your rep'}
             repPhone={repContact?.phone || undefined}
             distributorShort={quote.distributor?.name ?? undefined}
+            distributorLogoUrl={quote.distributor?.logo_url}
             currency={quote.distributor?.currency}
             groups={docGroups}
             pricedCount={pricedCount}

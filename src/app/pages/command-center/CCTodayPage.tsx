@@ -148,22 +148,35 @@ function todayLabel(): string {
 // footer alone. Falls back to "THE BOARD · [DAY]" when the name has not
 // loaded yet or is missing, so the header never renders blank or broken.
 //
-// The identity cluster wraps the name in its own inline-flex slot so a
-// distributor logo can sit alongside it once the BE logo bind ships
-// (tracked separately) -- no <img> is rendered yet, so there is nothing to
-// break in the meantime.
-function BoardHeaderEyebrow({ distributorName }: { distributorName: string | null }) {
+// The identity cluster wraps the name + logo in its own inline-flex slot.
+// `logoUrl` is optional/forward-compatible -- nil until a distributor sets a
+// logo (BE `logo_url` field), so no <img> renders until then.
+function BoardHeaderEyebrow({
+  distributorName,
+  logoUrl,
+}: {
+  distributorName: string | null;
+  logoUrl?: string | null;
+}) {
   return (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
       <span>THE BOARD</span>
       {distributorName && (
         <>
           <span aria-hidden="true">·</span>
-          {/* Identity cluster: logo slot reserved here for later, name only for now */}
+          {/* Identity cluster: logo (when available) + name */}
           <span
             data-testid="board-distributor-identity"
             style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
           >
+            {logoUrl && (
+              <img
+                src={logoUrl}
+                alt={distributorName}
+                className="object-contain"
+                style={{ height: 16, maxWidth: 60 }}
+              />
+            )}
             {distributorName}
           </span>
         </>
@@ -453,6 +466,8 @@ export function CCTodayPage() {
   // already fetched below (no new fetch) -- same field the sidebar footer
   // reads via user.distributor_name, sourced here from the CC home response.
   const [distributorName, setDistributorName] = useState<string | null>(null);
+  // Nil until a distributor sets a logo (BE `logo_url` field, forward-compatible).
+  const [distributorLogoUrl, setDistributorLogoUrl] = useState<string | null>(null);
   // P7: catalog presence gate
   const [hasCatalog, setHasCatalog] = useState<boolean | null>(null);
   const [uploadDrawerOpen, setUploadDrawerOpen] = useState(false);
@@ -487,6 +502,7 @@ export function CCTodayPage() {
         // P7: catalog guidance — show block when no catalog OR 0-product catalog
         setHasCatalog(res.data.has_catalog && res.data.catalog_product_count > 0);
         setDistributorName(res.data.distributor_name || null);
+        setDistributorLogoUrl(res.data.logo_url || null);
       }
     });
 
@@ -597,7 +613,7 @@ export function CCTodayPage() {
     <div style={{ maxWidth: 720 }}>
       {/* Page header */}
       <CCSectionHead
-        eyebrow={<BoardHeaderEyebrow distributorName={distributorName} />}
+        eyebrow={<BoardHeaderEyebrow distributorName={distributorName} logoUrl={distributorLogoUrl} />}
         title="What needs you this morning."
         right={
           <button
