@@ -233,8 +233,41 @@ export function ChefQuoteReceiptPage() {
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
+  // Mobile pinned-CTA geometry (Justin ruling: primary CTA bar pinned to the
+  // bottom of the viewport, item list scrolls above it).
+  //
+  // At <768 the decision block below is position:fixed at bottom:0.
+  // Two sub-cases:
+  //   • Authenticated chef/buyer/group_admin: ChefShellLayout renders the
+  //     fixed ChefTabBar (z-50, content-sized: its flex-basis 56px is inert
+  //     on a fixed element, so its real height varies with fonts/devices).
+  //     The footer (z-40) reserves the tab-bar zone with 68px of internal
+  //     bottom padding: the bar draws on top of the footer's empty padding,
+  //     the CTA content always clears it by >= 68px, and there is never a
+  //     see-through gap between footer and bar at any actual bar height.
+  //   • Guest (magic-link arrival, no bearer token): ChefShellLayout renders
+  //     a bare <Outlet /> (no tab bar) — normal padding, CTA sits at the
+  //     viewport bottom.
+  // Bearer-token presence is the same signal the fetch effect above uses to
+  // pick the chef vs guest endpoint, and any authenticated non-chef-side
+  // role is redirected away by RootLayout before this page mounts.
+  //
+  // At >=768 the desktop shell has no tab bar and the page is a window-
+  // scrolled document, so the block reverts to static flow (md:static) at
+  // the end of the column — no double-pinning.
+  //
+  // The mobile-only bottom padding on the scroll column reserves clearance
+  // so the last line items scroll clear of the fixed footer; it widens while
+  // the question box is open (the footer grows upward).
+  const hasChefTabBar =
+    typeof window !== 'undefined' && !!localStorage.getItem('quoteme_token');
+
   return (
-    <div className="flex flex-col items-center px-6 py-12">
+    <div
+      className={`flex flex-col items-center px-6 pt-12 ${
+        questionOpen ? 'pb-[400px]' : 'pb-[240px]'
+      } md:pb-12`}
+    >
       <div className="w-full max-w-xl">
 
         {/* ── 1+2. Document — D6 state-driven chrome (replaces the legacy header,
@@ -307,8 +340,19 @@ export function ChefQuoteReceiptPage() {
           </div>
         )}
 
-        {/* ── 4. Decision actions ───────────────────────────────────────── */}
-        <div className="border-t border-[#F0F0F0] pt-8 flex flex-col gap-3">
+        {/* ── 4. Decision actions ───────────────────────────────────────────
+            Mobile (<768): fixed footer pinned to the viewport bottom — solid
+            background + subtle top border, stacked flush above the ChefTabBar
+            when it is present (see hasChefTabBar above). The item list
+            scrolls underneath it.
+            Desktop (>=768): static, in-flow at the end of the document
+            column, exactly as before. */}
+        <div
+          className={`fixed inset-x-0 bottom-0 z-40 border-t border-[#F0F0F0] bg-white px-6 pt-4 ${
+            hasChefTabBar ? 'pb-[68px]' : 'pb-3'
+          } md:static md:z-auto md:bg-transparent md:px-0 md:pt-8 md:pb-0`}
+        >
+          <div className="mx-auto w-full max-w-xl flex flex-col gap-3">
 
           {/* Question sent confirmation */}
           {questionSent && (
@@ -431,6 +475,7 @@ export function ChefQuoteReceiptPage() {
             </a>
           )}
 
+          </div>
         </div>
       </div>
     </div>
