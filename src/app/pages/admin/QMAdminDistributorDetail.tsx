@@ -28,6 +28,16 @@ import {
   TableHead,
   TableCell,
 } from '../../components/ui/table';
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogFooter,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from '../../components/ui/alert-dialog';
 import { handleImpersonate } from '../../utils/impersonate';
 import { regionsForCountry } from '../../constants/regions';
 
@@ -285,6 +295,11 @@ export function QMAdminDistributorDetailPage() {
   const [assignSubmitting, setAssignSubmitting] = useState(false);
   const [assignMsg, setAssignMsg] = useState<string | null>(null);
   const [assignError, setAssignError] = useState<string | null>(null);
+  // item 1c (BE half, PR #306 RoleConflictGuard): assign_admin 409s with
+  // { error_code: "role_conflict_requires_confirm" } when this user already
+  // holds a role elsewhere. Holds the BE's generic message while that
+  // confirm is pending; null when no confirm is pending.
+  const [assignConfirmMessage, setAssignConfirmMessage] = useState<string | null>(null);
 
   // Add Rep modal state (B-188 fix: mirrors the Add Admin "invite new" tab,
   // scoped to always creating role=rep)
@@ -372,6 +387,7 @@ export function QMAdminDistributorDetailPage() {
     setInviteMsg(null); setInviteError(null); setInviteSubmitting(false);
     setExistingSearch(''); setSelectedUserId('');
     setAssignMsg(null); setAssignError(null); setAssignSubmitting(false);
+    setAssignConfirmMessage(null);
     setAddAdminTab('invite');
   }
 
@@ -401,14 +417,20 @@ export function QMAdminDistributorDetailPage() {
     setTimeout(() => closeAddAdmin(), 2000);
   }
 
-  async function handleAssignAdmin() {
+  async function handleAssignAdmin(confirm = false) {
     if (!id || !selectedUserId) return;
     setAssignError(null);
     setAssignSubmitting(true);
     // Path (b): assign existing user as distributor_admin via dedicated endpoint
-    const res = await assignDistributorAdmin(id, selectedUserId);
+    const res = await assignDistributorAdmin(id, selectedUserId, confirm);
     setAssignSubmitting(false);
+    if (res.status === 409 && res.error_code === 'role_conflict_requires_confirm' && !confirm) {
+      // Hold the submit for an explicit confirm instead of failing outright.
+      setAssignConfirmMessage(res.error || 'This user already has a role elsewhere. Assign anyway?');
+      return;
+    }
     if (res.error) { setAssignError(res.error); return; }
+    setAssignConfirmMessage(null);
     setAssignMsg('Admin assigned.');
     const refreshed = await getAdminDistributor(id);
     if (refreshed.data) setDist(refreshed.data);
@@ -692,7 +714,7 @@ export function QMAdminDistributorDetailPage() {
                   <Button
                     type="button"
                     disabled={!selectedUserId || assignSubmitting}
-                    onClick={handleAssignAdmin}
+                    onClick={() => handleAssignAdmin()}
                     className="bg-[#7FAEC2] hover:bg-[#6a9ab0] text-white"
                   >
                     {assignSubmitting ? 'Assigning...' : 'Assign Admin'}
@@ -703,6 +725,22 @@ export function QMAdminDistributorDetailPage() {
           </div>
         </div>
       )}
+
+      <AlertDialog
+        open={!!assignConfirmMessage}
+        onOpenChange={(open) => { if (!open) setAssignConfirmMessage(null); }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Assign admin anyway?</AlertDialogTitle>
+            <AlertDialogDescription>{assignConfirmMessage}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setAssignConfirmMessage(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => handleAssignAdmin(true)}>Assign anyway</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Add Rep Modal (B-188 fix: mirrors the Add Admin modal exactly, always role=rep) */}
       {showAddRep && (

@@ -2,6 +2,16 @@ import { useState, useEffect } from 'react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogFooter,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from '../components/ui/alert-dialog';
 import { Loader2, Check, Send, UserPlus, Users, X, LogIn, RefreshCw, UserX } from 'lucide-react';
 import { inviteRep, getDistributorAdminReps, impersonateRep, cancelRepInvite, resendRepInvite, disableRep } from '../services/api';
 import type { DistributorRep } from '../services/api';
@@ -25,6 +35,16 @@ export function DistributorRepsPage() {
   const [resendSuccess, setResendSuccess] = useState<string | null>(null);
   const [disabling, setDisabling] = useState<string | null>(null);
   const [disableError, setDisableError] = useState<string | null>(null);
+  // Holds the existing rep/admin row a typed invite email matched, while the
+  // confirm dialog is open. Null when no confirm is pending.
+  const [confirmMatch, setConfirmMatch] = useState<DistributorRep | null>(null);
+  // item 1c (BE half, PR #306 RoleConflictGuard): the BE 409s with
+  // { error_code: "role_conflict_requires_confirm" } for the cross-distributor
+  // case the client-side check above cannot see (an email that holds a role
+  // at ANOTHER distributor this page has no visibility into). Holds the BE's
+  // own generic message while that confirm is pending. Mutually exclusive
+  // with confirmMatch -- only one dialog is ever shown for one add.
+  const [pendingBeConfirmMessage, setPendingBeConfirmMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (!document.getElementById('quoteme-fonts')) {
@@ -60,10 +80,31 @@ export function DistributorRepsPage() {
 
   useEffect(() => { loadReps(); }, []);
 
-  const handleInvite = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!name.trim() || !email.trim()) return;
+  // Same-distributor prevention (item 1c, FE half): the BE will silently
+  // attach a rep role to any existing user with no confirm, which is the
+  // root cause of the dual-role bug. This checks the typed email against the
+  // people already loaded for THIS distributor (the deduped admin+rep list
+  // in `reps`) and, on a match, holds the submit for an explicit confirm
+  // instead of posting straight through.
+  //
+  // Scope limit: this can only catch a match against people already loaded
+  // for this distributor. It cannot see whether the email holds a role at
+  // ANOTHER distributor entirely, since that requires a BE lookup this page
+  // has no route for. Cross-distributor detection, the notification email,
+  // and the registration-path guard are the BE half of this fix and are
+  // tracked separately (BE-gated, not attempted here).
+  function findExistingRepByEmail(candidateEmail: string): DistributorRep | undefined {
+    const normalized = candidateEmail.trim().toLowerCase();
+    if (!normalized) return undefined;
+    return reps.find((r) => r.email.trim().toLowerCase() === normalized);
+  }
 
+  // `confirm` is the BE gate flag (item 1c, PR #306 RoleConflictGuard): send
+  // it as true once the admin has explicitly confirmed (either via the
+  // client-side same-distributor dialog below, or via the BE-driven
+  // cross-distributor dialog). A first attempt always passes confirm=false
+  // unless the client-side check already caught it.
+  const submitInvite = async (confirm: boolean) => {
     setSending(true);
     setError('');
     setSuccessMessage('');
@@ -72,7 +113,19 @@ export function DistributorRepsPage() {
       name: name.trim(),
       email: email.trim(),
       territory: territory.trim() || undefined,
+      confirm,
     });
+
+    if (res.status === 409 && res.error_code === 'role_conflict_requires_confirm' && !confirm) {
+      // Cross-distributor case: the client-side pre-check above only knows
+      // about people already loaded for THIS distributor, so it cannot catch
+      // an email that holds a role somewhere else. The BE is the only place
+      // that knows that, hence the 409. Hold the submit for an explicit
+      // confirm instead of failing outright.
+      setSending(false);
+      setPendingBeConfirmMessage(res.error || 'This email already has a role elsewhere. Add anyway?');
+      return;
+    }
 
     if (res.error) {
       setError(res.error);
@@ -85,6 +138,42 @@ export function DistributorRepsPage() {
       loadReps();
     }
     setSending(false);
+  };
+
+  const handleInvite = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim() || !email.trim()) return;
+
+    const existing = findExistingRepByEmail(email);
+    if (existing) {
+      // Hold the submit and ask for explicit confirmation before this
+      // email gets a second role at this distributor.
+      setConfirmMatch(existing);
+      return;
+    }
+
+    await submitInvite(false);
+  };
+
+  const handleConfirmAddAnyway = async () => {
+    setConfirmMatch(null);
+    // The admin already confirmed the same-distributor match client-side --
+    // send confirm:true directly so this satisfies the BE gate in one step
+    // instead of round-tripping through a second BE 409 and a second dialog.
+    await submitInvite(true);
+  };
+
+  const handleCancelConfirm = () => {
+    setConfirmMatch(null);
+  };
+
+  const handleConfirmBeGate = async () => {
+    setPendingBeConfirmMessage(null);
+    await submitInvite(true);
+  };
+
+  const handleCancelBeGate = () => {
+    setPendingBeConfirmMessage(null);
   };
 
   const handleImpersonate = async (rep: DistributorRep) => {
@@ -452,6 +541,42 @@ export function DistributorRepsPage() {
           </table>
         </div>
       )}
+
+      {/* Single dialog for both confirm paths (client-side same-distributor
+          match, and the BE-driven cross-distributor 409) -- confirmMatch and
+          pendingBeConfirmMessage are mutually exclusive (submitInvite only
+          reaches the BE for a 409 when the client-side check found nothing),
+          so only one of these is ever set and only one dialog ever shows. */}
+      <AlertDialog
+        open={!!confirmMatch || !!pendingBeConfirmMessage}
+        onOpenChange={(open) => {
+          if (!open) {
+            setConfirmMatch(null);
+            setPendingBeConfirmMessage(null);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Add a rep role anyway?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirmMatch ? (
+                <>
+                  This email already belongs to{' '}
+                  {[confirmMatch.first_name, confirmMatch.last_name].filter(Boolean).join(' ') || confirmMatch.email}
+                  {' '}({confirmMatch.is_admin ? 'a distributor admin' : 'a rep'}) at this distributor. Add a rep role anyway?
+                </>
+              ) : (
+                pendingBeConfirmMessage
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={confirmMatch ? handleCancelConfirm : handleCancelBeGate}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmMatch ? handleConfirmAddAnyway : handleConfirmBeGate}>Add anyway</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

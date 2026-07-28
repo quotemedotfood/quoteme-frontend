@@ -11,6 +11,16 @@ import {
   TableCell,
 } from '../../components/ui/table';
 import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogFooter,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from '../../components/ui/alert-dialog';
+import {
   getAdminUsers,
   assignDistributor,
   searchDistributors,
@@ -35,6 +45,11 @@ export function QMAdminUnassociatedReps() {
   const [selectedDist, setSelectedDist] = useState<{ id: string; name: string } | null>(null);
   const [assigning, setAssigning] = useState(false);
   const debounceRef = useRef<number>();
+  // item 1c (BE half, PR #306 RoleConflictGuard): assign_distributor 409s
+  // with { error_code: "role_conflict_requires_confirm" } when this user
+  // already holds a role elsewhere. Holds the BE's generic message while
+  // that confirm is pending; null when no confirm is pending.
+  const [confirmGateMessage, setConfirmGateMessage] = useState<string | null>(null);
 
   useEffect(() => {
     loadUsers();
@@ -101,15 +116,21 @@ export function QMAdminUnassociatedReps() {
     return result;
   }, [users, search, sortField, sortDir]);
 
-  async function handleAssign() {
+  async function handleAssign(confirm = false) {
     if (!assignUser || !selectedDist) return;
     setAssigning(true);
-    const res = await assignDistributor(assignUser.id, selectedDist.id);
+    const res = await assignDistributor(assignUser.id, selectedDist.id, confirm);
     setAssigning(false);
+    if (res.status === 409 && res.error_code === 'role_conflict_requires_confirm' && !confirm) {
+      // Hold the submit for an explicit confirm instead of failing outright.
+      setConfirmGateMessage(res.error || 'This user already has a role elsewhere. Assign anyway?');
+      return;
+    }
     if (res.data) {
       setAssignUser(null);
       setSelectedDist(null);
       setDistQuery('');
+      setConfirmGateMessage(null);
       loadUsers();
     } else {
       setError(res.error || 'Failed to assign distributor');
@@ -251,7 +272,7 @@ export function QMAdminUnassociatedReps() {
             <div className="flex gap-2 justify-end">
               <Button variant="ghost" onClick={() => setAssignUser(null)}>Cancel</Button>
               <Button
-                onClick={handleAssign}
+                onClick={() => handleAssign()}
                 disabled={!selectedDist || assigning}
                 className="bg-[#7FAEC2] hover:bg-[#6A9AB0] text-white"
               >
@@ -261,6 +282,22 @@ export function QMAdminUnassociatedReps() {
           </div>
         </div>
       )}
+
+      <AlertDialog
+        open={!!confirmGateMessage}
+        onOpenChange={(open) => { if (!open) setConfirmGateMessage(null); }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Assign distributor anyway?</AlertDialogTitle>
+            <AlertDialogDescription>{confirmGateMessage}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setConfirmGateMessage(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => handleAssign(true)}>Assign anyway</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
