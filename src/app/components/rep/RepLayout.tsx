@@ -26,6 +26,30 @@ import { RepNewspaperSidebar } from './RepDesktopShell';
 import type { RepActiveTab, RepSidebarMode } from './RepDesktopShell';
 import { useAuth } from '../../contexts/AuthContext';
 
+// ─── Role label ───────────────────────────────────────────────────────────────
+// The "Working as" block previously showed only the rep's name and their
+// distributor's name, no role. After the CJ identity split, the rep user and
+// the distributor_admin user are distinct logins, so the sidebar must state
+// which role the CURRENT session is acting as, not just who is signed in.
+// Same ROLE_LABEL/roleLabel pattern already used in CCLayout.tsx (and
+// pages/SettingsPage.tsx, pages/admin/QMAdminUsers.tsx,
+// pages/admin/QMAdminUserDetail.tsx), kept local rather than extracted into a
+// shared util to stay in scope for this change.
+const ROLE_LABEL: Record<string, string> = {
+  distributor_admin: 'Distributor Admin',
+  quoteme_admin: 'QM Admin',
+  rep: 'Rep',
+  chef: 'Chef',
+  buyer: 'Buyer',
+  group_admin: 'Group Admin',
+  brand: 'Brand',
+};
+
+function roleLabel(role: string | undefined): string {
+  if (!role) return 'Rep';
+  return ROLE_LABEL[role] ?? role;
+}
+
 // ─── Sidebar context ──────────────────────────────────────────────────────────
 
 interface RepSidebarContextValue {
@@ -80,6 +104,10 @@ export function RepLayout({ children }: RepLayoutProps = {}) {
     ? [user.first_name, user.last_name].filter(Boolean).join(' ').trim() || 'Rep'
     : 'Rep';
   const distributorName = user?.distributor?.name ?? user?.distributor_name ?? '';
+  // Session-derived role label, never hardcoded, so a rep login always reads
+  // "Rep" and, should this shell ever render for another role, that role's
+  // own label shows instead.
+  const sessionRoleLabel = roleLabel(user?.role);
 
   const active = activeTabFromPath(location.pathname);
   const hidden = mode === 'hidden';
@@ -114,6 +142,7 @@ export function RepLayout({ children }: RepLayoutProps = {}) {
             active={active}
             onNav={nav}
             repName={repName}
+            roleLabel={sessionRoleLabel}
             distributorName={distributorName}
           />
         )}
