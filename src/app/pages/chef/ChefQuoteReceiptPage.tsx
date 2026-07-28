@@ -190,9 +190,6 @@ export function ChefQuoteReceiptPage() {
   const matchedLines = quote.lines.filter(
     (l) => l.availability_status === 'available' && l.product,
   );
-  const unmatchedLines = quote.lines.filter(
-    (l) => l.availability_status === 'not_in_catalog' || !l.product,
-  );
 
   const grouped = groupByCategory(matchedLines);
 
@@ -211,8 +208,10 @@ export function ChefQuoteReceiptPage() {
 
   // ── D6 QuoteStateDocument props ──────────────────────────────────────────────
   // The document body (header + priced matched lines + totals) is now the
-  // state-driven QuoteStateDocument. The unmatched-lines section + decision
-  // actions below stay (Justin no-silent-drops + core chef flow).
+  // state-driven QuoteStateDocument. The decision actions below stay (core
+  // chef flow). Chef-clean ruling: catalog-gap ("not_in_catalog") lines are
+  // no longer surfaced here — the BE omits them from chef-facing output and
+  // this page never renders an unmatched section, even if one slips through.
   const docState = quote.state
     ? stateFromQuoteState(quote.state)
     : quote.preview
@@ -294,51 +293,6 @@ export function ChefQuoteReceiptPage() {
             confirmedAt={confirmedDate}
           />
         </div>
-
-        {/* ── 3. Items your rep will handle ─────────────────────────────── */}
-        {/* Justin's law: every typed ingredient surfaces — matched as products
-            above, unmatched here. No silent drops, no generic legend that
-            hides what the chef actually sent. */}
-        {unmatchedLines.length > 0 && (
-          <div className="mb-8">
-            <p
-              className="text-xs font-semibold text-[#9E9E9E] tracking-widest uppercase mb-3 pb-2 border-b border-[#F0F0F0]"
-            >
-              Items your rep will handle
-            </p>
-            {/* B-110(a): on locked/accepted quotes, show a single "Your rep will handle this"
-                note at the section level rather than repeating the pill on every line item. */}
-            {isLocked && (
-              <p className="text-xs text-[#92400E] bg-amber-50 border border-amber-200 rounded px-3 py-2 mb-3">
-                Your rep will handle these items directly.
-              </p>
-            )}
-            <div className="flex flex-col gap-3">
-              {unmatchedLines.map((line) => (
-                <div key={line.id} className="flex items-start justify-between gap-4">
-                  <div className="flex flex-col gap-1">
-                    <span className="text-[#2A2A2A] text-base font-medium leading-snug">
-                      {toTitleCase(line.component?.name || line.category || 'Item')}
-                    </span>
-                    {/* H-2: on a confirmed/accepted quote do NOT show the per-item pill —
-                        the single section note above covers it. On pending quotes show
-                        the resolution label (or fallback) as a per-item pill. */}
-                    {!isLocked && (
-                      <span className="inline-flex self-start bg-amber-50 text-amber-800 border border-amber-200 px-2 py-0.5 rounded text-xs">
-                        {(line as any).resolution_label || 'Awaiting rep review'}
-                      </span>
-                    )}
-                  </div>
-                  {line.category && line.component?.name && (
-                    <span className="text-sm text-[#9E9E9E] whitespace-nowrap shrink-0 mt-0.5">
-                      {categoryLabel(line.category)}
-                    </span>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
 
         {/* ── 4. Decision actions ───────────────────────────────────────────
             Mobile (<768): fixed footer pinned to the viewport bottom — solid

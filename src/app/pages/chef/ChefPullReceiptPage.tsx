@@ -7,8 +7,10 @@
 //   Unaffiliated: (no CTA — share flow not yet built)
 //
 // The distributor anchor at top persists so the chef always sees context.
-// Line items are grouped by category. Unmatched items surface in a
-// "Items to confirm" section — no silent drops.
+// Line items are grouped by category. Chef-clean ruling: catalog-gap
+// ("not_in_catalog") lines are never surfaced here, the BE omits them from
+// chef-facing output and this page does not render an unmatched section
+// even if one slips through.
 //
 // Copy doctrine: calm, operational.
 // BANNED: AI, intelligent, automated, platform, ecosystem, seamless.
@@ -23,6 +25,7 @@ import {
   stateFromQuoteState,
   type QuoteDocGroup,
 } from '../../components/chef/QuoteStateDocument';
+import { categoryLabel } from '../../utils/categoryLabel';
 import { chefProductName } from '../../utils/chefProductName';
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
@@ -149,9 +152,6 @@ export function ChefPullReceiptPage() {
   const matchedLines = lines.filter(
     (l) => l.availability_status === 'available' && l.product,
   );
-  const unmatchedLines = lines.filter(
-    (l) => l.availability_status === 'not_in_catalog' || !l.product,
-  );
   const grouped = groupByCategory(matchedLines);
 
   const affiliated = distributor?.affiliated ?? false;
@@ -160,7 +160,7 @@ export function ChefPullReceiptPage() {
   // ── D6 QuoteStateDocument props (replaces the inline header + line list) ──────
   const docState = quote.state ? stateFromQuoteState(quote.state) : 'preview';
   const docGroups: QuoteDocGroup[] = Array.from(grouped.entries()).map(([category, catLines]) => ({
-    cat: toTitleCase(category),
+    cat: categoryLabel(category),
     items: catLines.map((l) => ({
       name: toTitleCase(chefProductName(l.product.product)),
       pack: l.product.pack_size || undefined,
@@ -205,9 +205,9 @@ export function ChefPullReceiptPage() {
         <div className="flex flex-col items-center px-6 py-10">
           <div className="w-full max-w-xl">
 
-          {/* ── 1+3. Document — D6 state-driven chrome (replaces the inline
-              header + price-less grouped line list). Anchor strip, "Items to
-              confirm" (unmatched), and CTAs below stay. */}
+          {/* ── 1. Document — D6 state-driven chrome (replaces the inline
+              header + price-less grouped line list). Anchor strip and CTAs
+              below stay. */}
           {quote.restaurant && (
             <div
               className="mb-8 overflow-hidden rounded-lg"
@@ -239,41 +239,11 @@ export function ChefPullReceiptPage() {
             </div>
           )}
 
-          {/* ── 4. Unmatched items ───────────────────────────────────────── */}
-          {unmatchedLines.length > 0 && (
-            <div className="mb-8">
-              <p className="text-xs font-semibold text-[#9E9E9E] tracking-widest uppercase mb-3 pb-2 border-b border-[#F0EDE7]">
-                Items to confirm
-              </p>
-              <div className="flex flex-col gap-3">
-                {unmatchedLines.map((line) => (
-                  <div key={line.id} className="flex items-start justify-between gap-4">
-                    <div className="flex flex-col gap-1">
-                      <span className="text-[#2A2A2A] text-base font-medium leading-snug">
-                        {toTitleCase(line.component?.name || line.category || 'Item')}
-                      </span>
-                      {docState !== 'preview' && (
-                        <span className="inline-flex self-start bg-amber-50 text-amber-800 border border-amber-200 px-2 py-0.5 rounded text-xs">
-                          {(line as { resolution_label?: string }).resolution_label ?? 'Not in catalog'}
-                        </span>
-                      )}
-                    </div>
-                    {line.category && line.component?.name && (
-                      <span className="text-sm text-[#9E9E9E] whitespace-nowrap shrink-0 mt-0.5">
-                        {toTitleCase(line.category)}
-                      </span>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
           </div>
         </div>
       </div>
 
-      {/* ── 5. Primary CTA — pinned footer ─────────────────────────────────
+      {/* ── 3. Primary CTA — pinned footer ─────────────────────────────────
           Non-shrinking, solid background, subtle top border. The document
           region above scrolls underneath it; no tab bar on this route so no
           bottom offset is needed at any width. */}

@@ -1,12 +1,16 @@
 // b1xx-chef-surfaces.test.ts
 //
-// Unit tests for the three B-1xx chef-surface fixes:
+// Unit tests for the B-1xx chef-surface fixes:
 //
 //   B-103: OrderGuideRow download links use fetchWithAuth blob fetch
 //          (not bare <a href> to the Railway hostname)
 //   B-108b: SidebarHelpInput clears input + shows "Sent!" on send
-//   B-110(a): Accepted/locked quote collapses "Your rep will handle this"
-//             to a single section note (not repeated per line item)
+//
+// B-110(a) (per-item "Your rep will handle this" pill) was removed as part
+// of the chef-clean ruling: the unmatched/"Items your rep will handle"
+// section no longer renders on ChefQuoteReceiptPage, so its coverage was
+// retired along with the feature. B-110(b) (order guide link) is unrelated
+// to that section and still applies.
 
 import { describe, it, expect } from 'vitest';
 
@@ -69,40 +73,6 @@ describe('B-108b SidebarHelpInput openDrawer confirmation logic', () => {
     const result = simulateOpenDrawer('  question  ');
     expect(result.fired).toBe(true);
     expect(result.setSent).toBe(true);
-  });
-});
-
-// ─── B-110(a): "Your rep will handle this" collapsed to single header ────────
-//
-// Logic: when isLocked is true, no per-item pill should render (returns null).
-// When isLocked is false, the per-item pill label comes from resolution_label
-// or a fallback.
-
-function perItemPillLabel(isLocked: boolean, resolutionLabel?: string): string | null {
-  // mirrors the new conditional in ChefQuoteReceiptPage
-  if (isLocked) return null;
-  return resolutionLabel || 'Awaiting rep review';
-}
-
-describe('B-110(a) per-item pill suppression on accepted/locked quotes', () => {
-  it('returns null (no pill) on a locked/accepted quote', () => {
-    expect(perItemPillLabel(true)).toBeNull();
-  });
-
-  it('returns null regardless of resolution_label on a locked quote', () => {
-    expect(perItemPillLabel(true, 'Your rep will handle this')).toBeNull();
-  });
-
-  it('returns resolution_label on an unlocked quote', () => {
-    expect(perItemPillLabel(false, 'Sourcing alternative')).toBe('Sourcing alternative');
-  });
-
-  it('returns fallback on an unlocked quote with no resolution_label', () => {
-    expect(perItemPillLabel(false)).toBe('Awaiting rep review');
-  });
-
-  it('returns fallback on unlocked quote with empty string resolution_label', () => {
-    expect(perItemPillLabel(false, '')).toBe('Awaiting rep review');
   });
 });
 
