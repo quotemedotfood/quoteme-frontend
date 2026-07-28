@@ -1,4 +1,4 @@
-// RepDesktopShell + RepNewspaperSidebar — rep desktop chrome.
+// RepDesktopShell + RepNewspaperSidebar , rep desktop chrome.
 //
 // Mirrors ChefTabDesktopShell / NewspaperSidebarStub (chef-side) with
 // rep-specific nav destinations:
@@ -7,13 +7,17 @@
 // Sidebar modes: 'open' (280px) · 'collapsed' (64px) · 'hidden' (no sidebar).
 // When hidden, a restore button floats at the left edge.
 //
-// "WORKING AS" block: rep name + distributor name (never catalog name).
+// "WORKING AS" block: rep name + role label + distributor name (never catalog
+// name). Role label is derived from the signed-in user's actual role (see
+// RepLayout.tsx's roleLabel()) so a rep login always reads "Rep" and never a
+// stale or borrowed label after the CJ identity split (rep and distributor_admin
+// are now distinct logins, each rendering its own session's role).
 //
 // Nav group structure (Stage 1 restructure 2026-05-28):
 //   THE DAILY WORK: Quotes (with sub-items: Inbound · History)
 //   [bottom]:       Settings · Hide sidebar
 //
-// Catalog removed from rep sidebar — reps access catalog via
+// Catalog removed from rep sidebar , reps access catalog via
 // /distributor-admin/catalog links embedded in the triage banners.
 //
 // Source: designs/handoff/5272026/src/screens-rep.jsx · RepNewspaperSidebar
@@ -22,7 +26,7 @@
 // Cross-cutting constraint: Sacred Orange = var(--primary), never #F9A64B.
 // Coverage/accent dots = var(--accent).
 //
-// SIDEBAR PERSISTENCE BUG — FIXED:
+// SIDEBAR PERSISTENCE BUG , FIXED:
 //   Previously each rep page (RepTriagePage, RepIncomingQuotePage,
 //   RepReviewThreePanelDesktop) rendered its own <RepDesktopShell> instance,
 //   causing the shell to unmount/remount on every navigation and sidebar mode
@@ -195,7 +199,7 @@ function NavDestination({
         )}
       </button>
 
-      {/* Sub-items — always shown when parent is active, open mode only */}
+      {/* Sub-items , always shown when parent is active, open mode only */}
       {!collapsed && on && item.sub && (
         <div style={{ paddingLeft: 52 }}>
           {item.sub.map((s) => {
@@ -243,7 +247,12 @@ export interface RepNewspaperSidebarProps {
   onNav: (target: string) => void;
   /** Rep's full name */
   repName?: string;
-  /** Distributor name — never catalog name */
+  /** Human-readable role label for the signed-in session (e.g. "Rep",
+   *  "Distributor Admin"). Session-derived, never hardcoded. Defaults to
+   *  "Rep" since this sidebar is only mounted for the rep route tree, but the
+   *  caller always passes the live, computed label. */
+  roleLabel?: string;
+  /** Distributor name , never catalog name */
   distributorName?: string;
   /** Stage 2: badge count on Inbound sub-item (not wired yet) */
   incomingCount?: number;
@@ -255,6 +264,7 @@ export function RepNewspaperSidebar({
   active,
   onNav,
   repName = 'Rep',
+  roleLabel = 'Rep',
   distributorName = '',
   incomingCount = 0,
 }: RepNewspaperSidebarProps) {
@@ -380,7 +390,7 @@ export function RepNewspaperSidebar({
               textOverflow: 'ellipsis',
             }}
           >
-            {distributorName}
+            {distributorName ? `${roleLabel} · ${distributorName}` : roleLabel}
           </div>
         </div>
       ) : (
@@ -393,7 +403,7 @@ export function RepNewspaperSidebar({
             justifyContent: 'center',
             borderTop: `2px solid ${C.charcoal}`,
           }}
-          title={`${repName} · ${distributorName}`}
+          title={distributorName ? `${repName} · ${roleLabel} · ${distributorName}` : `${repName} · ${roleLabel}`}
         >
           <div
             style={{
@@ -402,7 +412,7 @@ export function RepNewspaperSidebar({
               border: `1px solid ${C.softLine}`,
               background: C.warmPaper,
             }}
-            aria-label={repName}
+            aria-label={`${repName}, ${roleLabel}`}
           >
             <span style={{ ...serif, fontSize: 12, fontWeight: 600, color: C.charcoal }}>
               {initials}
@@ -523,6 +533,7 @@ export interface RepDesktopShellProps {
   children?: React.ReactNode;
   initialMode?: RepSidebarMode;
   repName?: string;
+  roleLabel?: string;
   distributorName?: string;
   incomingCount?: number;
 }
@@ -533,6 +544,7 @@ export function RepDesktopShell({
   children,
   initialMode = 'open',
   repName,
+  roleLabel,
   distributorName,
   incomingCount,
 }: RepDesktopShellProps) {
@@ -555,6 +567,7 @@ export function RepDesktopShell({
           active={active}
           onNav={nav}
           repName={repName}
+          roleLabel={roleLabel}
           distributorName={distributorName}
           incomingCount={incomingCount}
         />

@@ -1,4 +1,4 @@
-// RepLayout — persistent shell for all /rep/* routes.
+// RepLayout , persistent shell for all /rep/* routes.
 //
 // Solves the sidebar-reset-on-nav bug: previously each rep page mounted its own
 // <RepDesktopShell> with local useState, so every navigation remounted the shell
@@ -11,7 +11,7 @@
 //   └── <main> wrapper
 //       └── <Outlet />      ← rep pages render their content body here
 //
-// Active tab is derived from useLocation().pathname — no prop drilling.
+// Active tab is derived from useLocation().pathname , no prop drilling.
 //
 // Sidebar context: pages/sub-components that need to control sidebar mode
 // (e.g., a "hide sidebar" action deeper in the tree) consume RepSidebarContext.
@@ -25,6 +25,30 @@ import { Outlet, useLocation, useNavigate } from 'react-router';
 import { RepNewspaperSidebar } from './RepDesktopShell';
 import type { RepActiveTab, RepSidebarMode } from './RepDesktopShell';
 import { useAuth } from '../../contexts/AuthContext';
+
+// ─── Role label ───────────────────────────────────────────────────────────────
+// The "Working as" block previously showed only the rep's name and their
+// distributor's name, no role. After the CJ identity split, the rep user and
+// the distributor_admin user are distinct logins, so the sidebar must state
+// which role the CURRENT session is acting as, not just who is signed in.
+// Same ROLE_LABEL/roleLabel pattern already used in CCLayout.tsx (and
+// pages/SettingsPage.tsx, pages/admin/QMAdminUsers.tsx,
+// pages/admin/QMAdminUserDetail.tsx), kept local rather than extracted into a
+// shared util to stay in scope for this change.
+const ROLE_LABEL: Record<string, string> = {
+  distributor_admin: 'Distributor Admin',
+  quoteme_admin: 'QM Admin',
+  rep: 'Rep',
+  chef: 'Chef',
+  buyer: 'Buyer',
+  group_admin: 'Group Admin',
+  brand: 'Brand',
+};
+
+function roleLabel(role: string | undefined): string {
+  if (!role) return 'Rep';
+  return ROLE_LABEL[role] ?? role;
+}
 
 // ─── Sidebar context ──────────────────────────────────────────────────────────
 
@@ -52,7 +76,7 @@ function activeTabFromPath(pathname: string): RepActiveTab {
   if (pathname.startsWith('/rep/customers')) return 'customers';
   if (pathname.startsWith('/rep/profile')) return 'profile';
   if (pathname.startsWith('/rep/settings') || pathname.startsWith('/settings')) return 'settings';
-  // /dashboard shared route used by reps — treat as inbound
+  // /dashboard shared route used by reps , treat as inbound
   if (pathname === '/dashboard') return 'quotes-inbound';
   // Default to inbound
   return 'quotes-inbound';
@@ -80,6 +104,10 @@ export function RepLayout({ children }: RepLayoutProps = {}) {
     ? [user.first_name, user.last_name].filter(Boolean).join(' ').trim() || 'Rep'
     : 'Rep';
   const distributorName = user?.distributor?.name ?? user?.distributor_name ?? '';
+  // Session-derived role label, never hardcoded, so a rep login always reads
+  // "Rep" and, should this shell ever render for another role, that role's
+  // own label shows instead.
+  const sessionRoleLabel = roleLabel(user?.role);
 
   const active = activeTabFromPath(location.pathname);
   const hidden = mode === 'hidden';
@@ -87,7 +115,7 @@ export function RepLayout({ children }: RepLayoutProps = {}) {
   const nav = (dest: string, opts?: { quoteId?: string }) => {
     if (dest === 'rep-triage' || dest === 'rep-quotes-inbound') navigate('/rep/quotes/inbound');
     else if (dest === 'rep-quotes-history') navigate('/rep/quotes/history');
-    // P0: old triage view (/rep/quotes/:id) deleted — route into the canonical
+    // P0: old triage view (/rep/quotes/:id) deleted , route into the canonical
     // quote-build flow instead (MapIngredientsPage loads the existing quote).
     else if (dest === 'rep-incoming' && opts?.quoteId) navigate('/map-ingredients', { state: { quoteId: opts.quoteId } });
     else if (dest === 'rep-pricing' && opts?.quoteId) navigate('/map-ingredients', { state: { quoteId: opts.quoteId } });
@@ -114,6 +142,7 @@ export function RepLayout({ children }: RepLayoutProps = {}) {
             active={active}
             onNav={nav}
             repName={repName}
+            roleLabel={sessionRoleLabel}
             distributorName={distributorName}
           />
         )}
