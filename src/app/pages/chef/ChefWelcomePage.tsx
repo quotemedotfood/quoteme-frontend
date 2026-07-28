@@ -310,7 +310,7 @@ export function ChefWelcomePage() {
 }
 
 // ─── ExpiredLinkScreen ─────────────────────────────────────────────────────
-// c145: shown when the backend returns error_code "expired" (token > 30 days).
+// c145: shown when the backend returns error_code "expired" (token > 72 hours).
 // Two clean options — no form, no account creation.
 //   Primary:   mailto: with prefilled body → QuoteMe support
 //   Secondary: /chef/entry → build your own quote
@@ -366,7 +366,7 @@ function ExpiredLinkScreen() {
           className="mt-3 text-center"
           style={{ ...sans, fontSize: 14, color: C.gray700, lineHeight: 1.6 }}
         >
-          Quote links expire after 30 days. Your rep can send a fresh one in a moment.
+          Quote links expire after 72 hours. Your rep can send a fresh one in a moment.
         </p>
 
         {/* Divider */}
