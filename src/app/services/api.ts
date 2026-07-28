@@ -2399,6 +2399,10 @@ export interface CCQuoteRow {
   /** BUG #30: attention signal (not a metric) — true while the chef has an
    * unanswered question on this quote. */
   has_unanswered_chef_question: boolean;
+  /** Soft-archive timestamp. BE hides archived quotes from this list server-side,
+   * so in practice this is only ever null/absent on rows the ledger returns; kept
+   * optional for forward-compat with any surface that might fetch archived rows. */
+  archived_at?: string | null;
 }
 
 export interface CCQuoteFilters {
@@ -2541,6 +2545,26 @@ export async function assignRestaurantRep(
       method: 'PATCH',
       body: JSON.stringify({ rep_id: repId }),
     }
+  );
+}
+
+/** POST /api/v1/distributor_admin/quotes/:id/archive
+ *  Soft-archives a quote (idempotent). Archived quotes are hidden server-side
+ *  from the CC board/ledger/counts on subsequent fetches.
+ */
+export async function archiveQuote(quoteId: string): Promise<ApiResponse<{ ok: boolean }>> {
+  return fetchWithAuth(`/api/v1/distributor_admin/quotes/${encodeURIComponent(quoteId)}/archive`, {
+    method: 'POST',
+  });
+}
+
+/** POST /api/v1/distributor_admin/quotes/:id/unarchive
+ *  Restores a previously archived quote so it reappears in the CC board/ledger.
+ */
+export async function unarchiveQuote(quoteId: string): Promise<ApiResponse<{ ok: boolean }>> {
+  return fetchWithAuth(
+    `/api/v1/distributor_admin/quotes/${encodeURIComponent(quoteId)}/unarchive`,
+    { method: 'POST' }
   );
 }
 

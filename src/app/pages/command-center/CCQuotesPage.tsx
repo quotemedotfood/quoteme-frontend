@@ -178,7 +178,7 @@ function RepChip({
 
 // ── Desktop row ───────────────────────────────────────────────────────────────
 
-function DeskRow({ q, onClick, onEdit, onRepClick }: { q: CCQuoteRow; onClick: () => void; onEdit: () => void; onRepClick?: (repId: string, e: React.MouseEvent) => void }) {
+function DeskRow({ q, onClick, onEdit, onArchived, onRepClick }: { q: CCQuoteRow; onClick: () => void; onEdit: () => void; onArchived: () => void; onRepClick?: (repId: string, e: React.MouseEvent) => void }) {
   const [hovered, setHovered] = useState(false);
 
   return (
@@ -309,9 +309,9 @@ function DeskRow({ q, onClick, onEdit, onRepClick }: { q: CCQuoteRow; onClick: (
         <CCStatusTag status={q.status} />
       </div>
 
-      {/* ACTIONS — View PDF + Edit; stop propagation so row click doesn't also fire */}
+      {/* ACTIONS — View PDF + Edit + Archive; stop propagation so row click doesn't also fire */}
       <div onClick={(e) => e.stopPropagation()}>
-        <QuoteRowActions quoteId={q.id} onEdit={onEdit} />
+        <QuoteRowActions quoteId={q.id} onEdit={onEdit} onArchived={onArchived} />
       </div>
     </div>
   );
@@ -319,7 +319,7 @@ function DeskRow({ q, onClick, onEdit, onRepClick }: { q: CCQuoteRow; onClick: (
 
 // ── Mobile row ────────────────────────────────────────────────────────────────
 
-function PhoneRow({ q, onClick, onEdit, onRepClick }: { q: CCQuoteRow; onClick: () => void; onEdit: () => void; onRepClick?: (repId: string, e: React.MouseEvent) => void }) {
+function PhoneRow({ q, onClick, onEdit, onArchived, onRepClick }: { q: CCQuoteRow; onClick: () => void; onEdit: () => void; onArchived: () => void; onRepClick?: (repId: string, e: React.MouseEvent) => void }) {
   const [hovered, setHovered] = useState(false);
 
   return (
@@ -418,7 +418,7 @@ function PhoneRow({ q, onClick, onEdit, onRepClick }: { q: CCQuoteRow; onClick: 
           )}
           {/* Actions inline on mobile row — stop propagation so row click doesn't also fire */}
           <div onClick={(e) => e.stopPropagation()}>
-            <QuoteRowActions quoteId={q.id} onEdit={onEdit} />
+            <QuoteRowActions quoteId={q.id} onEdit={onEdit} onArchived={onArchived} />
           </div>
         </div>
       </div>
@@ -511,6 +511,14 @@ export function CCQuotesPage() {
     navigate(`/distributor-admin/command-center/quotes?rep=${encodeURIComponent(repId)}`);
     // Also update local repFilter so the chips reflect the navigation
     setRepFilter(repId);
+  };
+
+  // Archive dispatch item 5 (2026-07-28): BE hides archived quotes server-side
+  // on refetch, so the client-side change is just removing the row from local
+  // state once QuoteRowActions confirms the archive call succeeded — no
+  // separate "archived" view/tab is in scope here.
+  const handleArchived = (quoteId: string) => {
+    setRows((prev) => prev.filter((r) => r.id !== quoteId));
   };
 
   return (
@@ -718,11 +726,11 @@ export function CCQuotesPage() {
               <div className="hidden lg:block">
                 {/* P0: old triage view (/rep/quotes/:id) deleted — route into the
                     canonical quote-build flow instead. */}
-                <DeskRow q={q} onClick={() => goToDetail(q.id)} onEdit={() => navigate('/map-ingredients', { state: { quoteId: q.id, from: location.pathname } })} onRepClick={goToRep} />
+                <DeskRow q={q} onClick={() => goToDetail(q.id)} onEdit={() => navigate('/map-ingredients', { state: { quoteId: q.id, from: location.pathname } })} onArchived={() => handleArchived(q.id)} onRepClick={goToRep} />
               </div>
               {/* Mobile row — hidden on large screens */}
               <div className="lg:hidden">
-                <PhoneRow q={q} onClick={() => goToDetail(q.id)} onEdit={() => navigate('/map-ingredients', { state: { quoteId: q.id, from: location.pathname } })} onRepClick={goToRep} />
+                <PhoneRow q={q} onClick={() => goToDetail(q.id)} onEdit={() => navigate('/map-ingredients', { state: { quoteId: q.id, from: location.pathname } })} onArchived={() => handleArchived(q.id)} onRepClick={goToRep} />
               </div>
             </React.Fragment>
           ))
