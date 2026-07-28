@@ -217,3 +217,57 @@ describe('B-116/B-130: resolveOpportunityViewTarget — interim View routing', (
     expect(resolveOpportunityViewTarget({ type: 'Quote', id: '' })).toBeNull();
   });
 });
+
+// ── Dispatch item 5 (2026-07-28): quote soft-archive control ─────────────────
+// QuoteRowActions renders a trashcan Archive control (only when the caller
+// passes onArchived) that: (1) confirms via window.confirm — reversible
+// action, light confirm, matching the codebase's existing destructive-action
+// pattern (BrandTeamPage/ChefMenusPage/QMAdminKnowledgeGapFiller all use
+// window.confirm rather than a themed dialog); (2) POSTs archiveQuote(id);
+// (3) on success calls onArchived() so the caller removes the row from local
+// state (BE hides archived quotes server-side, so no refetch is needed).
+// This test mirrors that state machine as a pure function, same style as the
+// B-118 PDF-view-state test above.
+
+type ArchiveState = 'idle' | 'loading' | 'error';
+
+function archiveStateAfterEvent(
+  current: ArchiveState,
+  event: 'confirmDeclined' | 'archiveStart' | 'archiveSuccess' | 'archiveError'
+): ArchiveState {
+  switch (event) {
+    case 'confirmDeclined':
+      // window.confirm() returned false — no state change, no API call fires.
+      return current;
+    case 'archiveStart':
+      return 'loading';
+    case 'archiveSuccess':
+      return 'idle';
+    case 'archiveError':
+      // Persists (no auto-reset) so the control shows "Retry" until the user
+      // tries again, mirroring the B-118 sticky-error fix for View.
+      return 'error';
+  }
+}
+
+describe('Dispatch-5: archiveStateAfterEvent — Archive control state machine', () => {
+  it('declining the confirm leaves state unchanged (no API call)', () => {
+    expect(archiveStateAfterEvent('idle', 'confirmDeclined')).toBe('idle');
+  });
+
+  it('transitions to loading once the archive call starts', () => {
+    expect(archiveStateAfterEvent('idle', 'archiveStart')).toBe('loading');
+  });
+
+  it('transitions to idle on archive success (row then removed by caller)', () => {
+    expect(archiveStateAfterEvent('loading', 'archiveSuccess')).toBe('idle');
+  });
+
+  it('transitions to error on archive failure and stays there (sticky, no auto-reset)', () => {
+    expect(archiveStateAfterEvent('loading', 'archiveError')).toBe('error');
+  });
+
+  it('a retry from error goes back to loading', () => {
+    expect(archiveStateAfterEvent('error', 'archiveStart')).toBe('loading');
+  });
+});
