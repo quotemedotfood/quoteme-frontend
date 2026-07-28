@@ -1,7 +1,7 @@
 // RepLayout.test.tsx
 //
 // Item 1d: the sidebar "WORKING AS" block previously showed only the rep's
-// name and their distributor's name — never the role. After the CJ identity
+// name and their distributor's name , never the role. After the CJ identity
 // split, the rep user and the distributor_admin user are distinct logins, so
 // each session must show ITS OWN role, derived live from the authenticated
 // user, never hardcoded or borrowed from another role.

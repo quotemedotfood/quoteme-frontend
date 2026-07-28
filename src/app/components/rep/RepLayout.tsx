@@ -1,4 +1,4 @@
-// RepLayout — persistent shell for all /rep/* routes.
+// RepLayout , persistent shell for all /rep/* routes.
 //
 // Solves the sidebar-reset-on-nav bug: previously each rep page mounted its own
 // <RepDesktopShell> with local useState, so every navigation remounted the shell
@@ -11,7 +11,7 @@
 //   └── <main> wrapper
 //       └── <Outlet />      ← rep pages render their content body here
 //
-// Active tab is derived from useLocation().pathname — no prop drilling.
+// Active tab is derived from useLocation().pathname , no prop drilling.
 //
 // Sidebar context: pages/sub-components that need to control sidebar mode
 // (e.g., a "hide sidebar" action deeper in the tree) consume RepSidebarContext.
@@ -76,7 +76,7 @@ function activeTabFromPath(pathname: string): RepActiveTab {
   if (pathname.startsWith('/rep/customers')) return 'customers';
   if (pathname.startsWith('/rep/profile')) return 'profile';
   if (pathname.startsWith('/rep/settings') || pathname.startsWith('/settings')) return 'settings';
-  // /dashboard shared route used by reps — treat as inbound
+  // /dashboard shared route used by reps , treat as inbound
   if (pathname === '/dashboard') return 'quotes-inbound';
   // Default to inbound
   return 'quotes-inbound';
@@ -115,7 +115,7 @@ export function RepLayout({ children }: RepLayoutProps = {}) {
   const nav = (dest: string, opts?: { quoteId?: string }) => {
     if (dest === 'rep-triage' || dest === 'rep-quotes-inbound') navigate('/rep/quotes/inbound');
     else if (dest === 'rep-quotes-history') navigate('/rep/quotes/history');
-    // P0: old triage view (/rep/quotes/:id) deleted — route into the canonical
+    // P0: old triage view (/rep/quotes/:id) deleted , route into the canonical
     // quote-build flow instead (MapIngredientsPage loads the existing quote).
     else if (dest === 'rep-incoming' && opts?.quoteId) navigate('/map-ingredients', { state: { quoteId: opts.quoteId } });
     else if (dest === 'rep-pricing' && opts?.quoteId) navigate('/map-ingredients', { state: { quoteId: opts.quoteId } });

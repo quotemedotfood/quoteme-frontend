@@ -1,4 +1,4 @@
-// RepDesktopShell + RepNewspaperSidebar — rep desktop chrome.
+// RepDesktopShell + RepNewspaperSidebar , rep desktop chrome.
 //
 // Mirrors ChefTabDesktopShell / NewspaperSidebarStub (chef-side) with
 // rep-specific nav destinations:
@@ -17,7 +17,7 @@
 //   THE DAILY WORK: Quotes (with sub-items: Inbound · History)
 //   [bottom]:       Settings · Hide sidebar
 //
-// Catalog removed from rep sidebar — reps access catalog via
+// Catalog removed from rep sidebar , reps access catalog via
 // /distributor-admin/catalog links embedded in the triage banners.
 //
 // Source: designs/handoff/5272026/src/screens-rep.jsx · RepNewspaperSidebar
@@ -26,7 +26,7 @@
 // Cross-cutting constraint: Sacred Orange = var(--primary), never #F9A64B.
 // Coverage/accent dots = var(--accent).
 //
-// SIDEBAR PERSISTENCE BUG — FIXED:
+// SIDEBAR PERSISTENCE BUG , FIXED:
 //   Previously each rep page (RepTriagePage, RepIncomingQuotePage,
 //   RepReviewThreePanelDesktop) rendered its own <RepDesktopShell> instance,
 //   causing the shell to unmount/remount on every navigation and sidebar mode
@@ -199,7 +199,7 @@ function NavDestination({
         )}
       </button>
 
-      {/* Sub-items — always shown when parent is active, open mode only */}
+      {/* Sub-items , always shown when parent is active, open mode only */}
       {!collapsed && on && item.sub && (
         <div style={{ paddingLeft: 52 }}>
           {item.sub.map((s) => {
@@ -252,7 +252,7 @@ export interface RepNewspaperSidebarProps {
    *  "Rep" since this sidebar is only mounted for the rep route tree, but the
    *  caller always passes the live, computed label. */
   roleLabel?: string;
-  /** Distributor name — never catalog name */
+  /** Distributor name , never catalog name */
   distributorName?: string;
   /** Stage 2: badge count on Inbound sub-item (not wired yet) */
   incomingCount?: number;

@@ -3,7 +3,7 @@
 // Item 1d: RepNewspaperSidebar's "WORKING AS" block must show the session's
 // role explicitly (e.g. "Rep", "Distributor Admin"), not just a name and a
 // distributor. This is a presentational-level test of the sidebar component
-// itself (mirrors ManagerSidebar.test.tsx) — the role LABEL is passed in as a
+// itself (mirrors ManagerSidebar.test.tsx) , the role LABEL is passed in as a
 // prop here; RepLayout.test.tsx covers deriving that label live from
 // useAuth()/user.role.
 //
