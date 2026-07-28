@@ -142,6 +142,38 @@ function todayLabel(): string {
   }).toUpperCase();
 }
 
+// ── Board header identity ────────────────────────────────────────────────────
+// "THE BOARD · [DISTRIBUTOR] · [DAY]" -- the distributor identity belongs in
+// the header (Constitution XV: identity obvious), not buried in the sidebar
+// footer alone. Falls back to "THE BOARD · [DAY]" when the name has not
+// loaded yet or is missing, so the header never renders blank or broken.
+//
+// The identity cluster wraps the name in its own inline-flex slot so a
+// distributor logo can sit alongside it once the BE logo bind ships
+// (tracked separately) -- no <img> is rendered yet, so there is nothing to
+// break in the meantime.
+function BoardHeaderEyebrow({ distributorName }: { distributorName: string | null }) {
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+      <span>THE BOARD</span>
+      {distributorName && (
+        <>
+          <span aria-hidden="true">·</span>
+          {/* Identity cluster: logo slot reserved here for later, name only for now */}
+          <span
+            data-testid="board-distributor-identity"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
+          >
+            {distributorName}
+          </span>
+        </>
+      )}
+      <span aria-hidden="true">·</span>
+      <span>{todayLabel()}</span>
+    </span>
+  );
+}
+
 // Days since an ISO timestamp. Returns null if null/blank.
 function daysSince(iso: string | null): number | null {
   if (!iso) return null;
@@ -417,6 +449,10 @@ export function CCTodayPage() {
   // Stat cards: home data (product count, rep count)
   const [productCount, setProductCount] = useState<number | null>(null);
   const [homeRepCount, setHomeRepCount] = useState<number | null>(null);
+  // Header identity: distributor name from the same getDistributorHome payload
+  // already fetched below (no new fetch) -- same field the sidebar footer
+  // reads via user.distributor_name, sourced here from the CC home response.
+  const [distributorName, setDistributorName] = useState<string | null>(null);
   // P7: catalog presence gate
   const [hasCatalog, setHasCatalog] = useState<boolean | null>(null);
   const [uploadDrawerOpen, setUploadDrawerOpen] = useState(false);
@@ -450,6 +486,7 @@ export function CCTodayPage() {
         setHomeRepCount(res.data.rep_count);
         // P7: catalog guidance — show block when no catalog OR 0-product catalog
         setHasCatalog(res.data.has_catalog && res.data.catalog_product_count > 0);
+        setDistributorName(res.data.distributor_name || null);
       }
     });
 
@@ -560,7 +597,7 @@ export function CCTodayPage() {
     <div style={{ maxWidth: 720 }}>
       {/* Page header */}
       <CCSectionHead
-        eyebrow={`THE BOARD · ${todayLabel()}`}
+        eyebrow={<BoardHeaderEyebrow distributorName={distributorName} />}
         title="What needs you this morning."
         right={
           <button
