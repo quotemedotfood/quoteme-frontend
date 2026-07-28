@@ -545,7 +545,12 @@ async function fetchWithAuth<T>(
       const errorData = await response.json().catch(() => ({}));
       return {
         error: errorData.error || errorData.message || `HTTP ${response.status}`,
-        error_code: errorData.error,
+        // item 1c: the role-conflict gate (and others) return a dedicated
+        // error_code field distinct from the human-readable `error` message
+        // (e.g. { error_code: "role_conflict_requires_confirm", error: <generic message> }).
+        // Prefer that when present; fall back to `error` for older endpoints
+        // that only ever put the machine code there.
+        error_code: errorData.error_code || errorData.error,
         error_data: errorData,
         status: response.status,
         data: undefined,
@@ -2122,7 +2127,7 @@ export async function getDistributorAdminReps(): Promise<ApiResponse<Distributor
   return fetchWithAuth('/api/v1/distributor_admin/reps');
 }
 
-export async function inviteRep(data: { name: string; email: string; territory?: string }): Promise<ApiResponse<{ message: string }>> {
+export async function inviteRep(data: { name: string; email: string; territory?: string; confirm?: boolean }): Promise<ApiResponse<{ message: string }>> {
   return fetchWithAuth('/api/v1/distributor_admin/reps/invite', {
     method: 'POST',
     body: JSON.stringify(data),

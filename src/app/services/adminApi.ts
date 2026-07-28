@@ -3,6 +3,12 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://web-productio
 interface ApiResponse<T> {
   data?: T;
   error?: string;
+  // item 1c: dual-role prevention gates (assign_distributor, assign_admin)
+  // return 409 { error_code: "role_conflict_requires_confirm", error: <generic
+  // message> } when a confirm is required. Threaded through additively so
+  // callers can branch on the machine code without parsing `error` text.
+  error_code?: string;
+  status?: number;
 }
 
 // C-02: admin endpoints require admin scope. While impersonating, quoteme_token is the
@@ -42,7 +48,11 @@ async function fetchWithAuth<T>(
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      return { error: errorData.error || `Request failed (${response.status})` };
+      return {
+        error: errorData.error || `Request failed (${response.status})`,
+        error_code: errorData.error_code,
+        status: response.status,
+      };
     }
 
     if (response.status === 204) return { data: undefined as T };
@@ -313,11 +323,12 @@ export async function resendWelcome(userId: string): Promise<ApiResponse<{ ok: b
 
 export async function assignDistributor(
   userId: string,
-  distributorId: string
+  distributorId: string,
+  confirm?: boolean
 ): Promise<ApiResponse<AdminUser>> {
   return fetchWithAuth(`/api/v1/admin/users/${userId}/assign_distributor`, {
     method: 'PATCH',
-    body: JSON.stringify({ distributor_id: distributorId }),
+    body: JSON.stringify({ distributor_id: distributorId, ...(confirm ? { confirm: true } : {}) }),
   });
 }
 
@@ -443,11 +454,12 @@ export async function getAdminUser(id: string): Promise<ApiResponse<AdminUser>> 
 
 export async function assignDistributorAdmin(
   distributorId: string,
-  userId: string
+  userId: string,
+  confirm?: boolean
 ): Promise<ApiResponse<{ ok: boolean }>> {
   return fetchWithAuth(`/api/v1/admin/distributors/${distributorId}/assign_admin`, {
     method: 'POST',
-    body: JSON.stringify({ user_id: userId }),
+    body: JSON.stringify({ user_id: userId, ...(confirm ? { confirm: true } : {}) }),
   });
 }
 
