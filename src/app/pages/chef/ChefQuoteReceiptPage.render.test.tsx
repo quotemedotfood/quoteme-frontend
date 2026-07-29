@@ -168,8 +168,156 @@ describe('ChefQuoteReceiptPage - chef-facing product name normalization', () => 
 
     renderPage();
 
-    await screen.findByText('Salmon Fillet');
+    // Asterisk-wrapped warehouse token stripped; case is otherwise untouched
+    // (no title-case transform on chef-facing product names, see Ch XXI).
+    await screen.findByText('SALMON FILLET');
     expect(screen.queryByText(/DEAD/i)).toBeNull();
+  });
+
+  it('Ch XXI: does NOT title-case chef-facing product names or brands (EVOO/IQF/Caplansky\'s stay intact)', async () => {
+    getChefQuote.mockImplementationOnce(async () => ({
+      data: {
+        ...baseQuote,
+        lines: [
+          {
+            id: 'line-1',
+            position: 1,
+            category: 'dry',
+            quantity: 1,
+            unit_price_cents: 500,
+            unit_price: '5.00',
+            alignment_selected: 1,
+            availability_status: 'available',
+            chef_note: null,
+            component: null,
+            product: {
+              id: 'prod-1',
+              item_number: '001',
+              brand: "Caplansky's",
+              product: 'EVOO IQF Q&A Blend',
+              pack_size: '1L',
+              category: 'dry',
+            },
+          },
+        ],
+      },
+    }));
+
+    renderPage();
+
+    await screen.findByText('EVOO IQF Q&A Blend');
+    // Brand renders alongside the pack size in one combined text node
+    // ("1L · Caplansky's"), so match on substring rather than exact text.
+    expect(screen.getByText((_, el) => el?.textContent === "1L · Caplansky's")).toBeInTheDocument();
+    // Regression guards: the old toTitleCase wrapper mangled these exact tokens
+    // (title-casing + apostrophe word-split: "Caplansky's" -> "Caplansky S").
+    expect(screen.queryByText('Evoo Iqf Q&a Blend')).toBeNull();
+    expect(screen.queryByText((_, el) => el?.textContent === "1L · Caplansky S")).toBeNull();
+    expect(screen.queryByText((_, el) => el?.textContent === '1L · Caplansky')).toBeNull();
+  });
+});
+
+describe('ChefQuoteReceiptPage - price_needs_confirmation renders "confirm with rep"', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    getChefQuote.mockClear();
+    acceptChefQuote.mockClear();
+  });
+
+  afterEach(() => {
+    cleanup();
+  });
+
+  it('a line flagged price_needs_confirmation shows "confirm with rep" instead of its unit price, while a non-flagged line shows the price', async () => {
+    getChefQuote.mockImplementationOnce(async () => ({
+      data: {
+        ...baseQuote,
+        lines: [
+          {
+            id: 'line-1',
+            position: 1,
+            category: 'seafood',
+            quantity: 2,
+            unit_price_cents: 1,
+            unit_price: '0.01',
+            price_needs_confirmation: true,
+            alignment_selected: 1,
+            availability_status: 'available',
+            chef_note: null,
+            component: null,
+            product: {
+              id: 'prod-1',
+              item_number: '001',
+              brand: 'Acme',
+              product: 'Salmon Fillet',
+              pack_size: '10lb',
+              category: 'seafood',
+            },
+          },
+          {
+            id: 'line-2',
+            position: 2,
+            category: 'produce',
+            quantity: 3,
+            unit_price_cents: 1000,
+            unit_price: '10.00',
+            alignment_selected: 1,
+            availability_status: 'available',
+            chef_note: null,
+            component: null,
+            product: {
+              id: 'prod-2',
+              item_number: '002',
+              brand: 'Acme',
+              product: 'Roma Tomato',
+              pack_size: '25lb',
+              category: 'produce',
+            },
+          },
+        ],
+      },
+    }));
+
+    renderPage();
+
+    await screen.findByText('confirm with rep');
+    expect(screen.queryByText('$0.01')).toBeNull();
+    expect(screen.getByText('$10.00')).toBeInTheDocument();
+  });
+
+  it('when the flag is absent, a line renders its price exactly as before', async () => {
+    getChefQuote.mockImplementationOnce(async () => ({
+      data: {
+        ...baseQuote,
+        lines: [
+          {
+            id: 'line-1',
+            position: 1,
+            category: 'seafood',
+            quantity: 2,
+            unit_price_cents: 1000,
+            unit_price: '10.00',
+            alignment_selected: 1,
+            availability_status: 'available',
+            chef_note: null,
+            component: null,
+            product: {
+              id: 'prod-1',
+              item_number: '001',
+              brand: 'Acme',
+              product: 'Salmon Fillet',
+              pack_size: '10lb',
+              category: 'seafood',
+            },
+          },
+        ],
+      },
+    }));
+
+    renderPage();
+
+    await screen.findByText('$10.00');
+    expect(screen.queryByText('confirm with rep')).toBeNull();
   });
 });
 

@@ -221,11 +221,12 @@ export function ChefQuoteReceiptPage() {
   const docGroups: QuoteDocGroup[] = Array.from(grouped.entries()).map(([category, lines]) => ({
     cat: categoryLabel(category),
     items: lines.map((l) => ({
-      name: toTitleCase(chefProductName(l.product.product)),
+      name: chefProductName(l.product.product),
       pack: l.product.pack_size || undefined,
-      note: l.product.brand ? toTitleCase(l.product.brand) : undefined,
+      note: l.product.brand || undefined,
       qty: l.quantity,
       unit: l.unit_price_cents != null ? l.unit_price_cents / 100 : undefined,
+      needsConfirmation: l.price_needs_confirmation === true,
     })),
   }));
   const pricedCount = matchedLines.filter((l) => l.unit_price_cents != null).length;

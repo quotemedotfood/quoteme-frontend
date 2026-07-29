@@ -42,19 +42,33 @@ const sans: React.CSSProperties = {
 
 type TabId = 'home' | 'menus' | 'order-guides' | 'distributors' | 'settings';
 
-interface TabDef {
-  id: TabId | 'build';
+export interface TabDef {
+  id: string;
   label: string;
   target: string;
   isAction?: boolean;
 }
 
+const CHEF_TABS: TabDef[] = [
+  { id: 'home',          label: 'Quotes',       target: 'tab-home' },
+  { id: 'menus',         label: 'Menus',        target: 'tab-menus' },
+  // B-124: Distributors tab navigates to /chef/distributors (consolidated view).
+  { id: 'distributors',  label: 'Distributors', target: 'tab-distributors' },
+  { id: 'build',         label: 'Build Quote',  target: 'distributor-new', isAction: true },
+];
+
 export interface ChefTabBarProps {
-  active?: TabId;
+  active?: TabId | string;
   nav?: (target: string) => void;
+  /** Override the tab set. Defaults to the chef 4-tab set (Quotes / Menus /
+   *  Distributors / Build Quote). Rep mobile nav (Justin's nav ruling,
+   *  2026-07) reuses this component's fixed-bottom + scroll-hide chrome with
+   *  its own 3-tab set (Today / Inbound / Quotes) rather than a second
+   *  parallel bottom-bar implementation — see RepLayout.tsx. */
+  tabs?: TabDef[];
 }
 
-export function ChefTabBar({ active = 'home', nav = () => {} }: ChefTabBarProps) {
+export function ChefTabBar({ active = 'home', nav = () => {}, tabs = CHEF_TABS }: ChefTabBarProps) {
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const [hidden, setHidden] = useState(false);
 
@@ -98,14 +112,6 @@ export function ChefTabBar({ active = 'home', nav = () => {} }: ChefTabBarProps)
     scrollTarget.addEventListener('scroll', onScroll, { passive: true });
     return () => scrollTarget.removeEventListener('scroll', onScroll);
   }, []);
-
-  const tabs: TabDef[] = [
-    { id: 'home',          label: 'Quotes',       target: 'tab-home' },
-    { id: 'menus',         label: 'Menus',        target: 'tab-menus' },
-    // B-124: Distributors tab navigates to /chef/distributors (consolidated view).
-    { id: 'distributors',  label: 'Distributors', target: 'tab-distributors' },
-    { id: 'build',         label: 'Build Quote',  target: 'distributor-new', isAction: true },
-  ];
 
   return (
     <div

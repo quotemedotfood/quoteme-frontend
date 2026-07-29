@@ -134,3 +134,121 @@ describe('RepLayout - "Working as" role indicator (item 1d)', () => {
     expect(screen.getAllByText('Rep').length).toBeGreaterThanOrEqual(1);
   });
 });
+
+// ─── Mobile bottom nav (Justin's nav ruling, 2026-07-29) ─────────────────────
+//
+// Below 768px the aside (RepNewspaperSidebar, hard-coded 280px/64px flex
+// width) must not render at all — that width was stealing horizontal space
+// from the content column on real handsets. A bottom nav (Today / Inbound /
+// Quotes, reusing ChefTabBar) takes over instead, except on the quote-detail
+// / Review-and-Send screens (/quote-builder, /export-finalize) where Send
+// owns the bottom exclusively.
+function mockMatchMedia(matches: boolean) {
+  const mql = {
+    matches,
+    media: '(min-width: 768px)',
+    onchange: null,
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  } as unknown as MediaQueryList;
+  window.matchMedia = vi.fn().mockReturnValue(mql);
+}
+
+function renderLayoutAt(pathname: string, isDesktop: boolean) {
+  mockMatchMedia(isDesktop);
+  return render(
+    <MemoryRouter initialEntries={[pathname]}>
+      <AuthProvider>
+        <RepLayout>
+          <div>PAGE_BODY</div>
+        </RepLayout>
+      </AuthProvider>
+    </MemoryRouter>,
+  );
+}
+
+describe('RepLayout - mobile bottom nav (Justin\'s nav ruling)', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    localStorage.setItem('quoteme_token', 'fake.jwt');
+    getCurrentUser.mockReset();
+    getCurrentUser.mockResolvedValue({
+      data: {
+        id: 'user-1',
+        email: 'rep@sysco.com',
+        first_name: 'Jamie',
+        last_name: 'Rivera',
+        role: 'rep',
+        status: 'active',
+        distributor: { id: 'dist-1', name: 'Sysco Boston' },
+      },
+    });
+  });
+
+  afterEach(() => {
+    cleanup();
+  });
+
+  it('below 768px: aside is not rendered, content is full-width, bottom bar renders', async () => {
+    renderLayoutAt('/rep/quotes/inbound', false);
+
+    await waitFor(() => {
+      expect(screen.getByText('PAGE_BODY')).toBeTruthy();
+    });
+
+    expect(screen.queryByTestId('rep-sidebar-aside')).toBeNull();
+    expect(screen.getByText('Today')).toBeTruthy();
+    expect(screen.getByText('Inbound')).toBeTruthy();
+    expect(screen.getByText('Quotes')).toBeTruthy();
+  });
+
+  it('below 768px on the quote-builder route: bottom bar is suppressed (Send wins)', async () => {
+    renderLayoutAt('/quote-builder', false);
+
+    await waitFor(() => {
+      expect(screen.getByText('PAGE_BODY')).toBeTruthy();
+    });
+
+    expect(screen.queryByTestId('rep-sidebar-aside')).toBeNull();
+    // "Today" is unique to the bottom bar (the desktop aside's own nav
+    // labels are Quotes / Inbound / History / Customers / My Profile /
+    // Settings — never "Today"), so its absence proves the bar is gone.
+    expect(screen.queryByText('Today')).toBeNull();
+  });
+
+  it('below 768px on the export-finalize route: bottom bar is suppressed (Send wins)', async () => {
+    renderLayoutAt('/export-finalize', false);
+
+    await waitFor(() => {
+      expect(screen.getByText('PAGE_BODY')).toBeTruthy();
+    });
+
+    expect(screen.queryByText('Today')).toBeNull();
+  });
+
+  it('at/above 768px: unchanged — aside renders, no bottom bar', async () => {
+    renderLayoutAt('/rep/quotes/inbound', true);
+
+    await waitFor(() => {
+      expect(screen.getByText('PAGE_BODY')).toBeTruthy();
+    });
+
+    expect(screen.getByTestId('rep-sidebar-aside')).toBeTruthy();
+    // "Today" is unique to the bottom bar — its absence proves the bottom
+    // bar did not mount above the breakpoint.
+    expect(screen.queryByText('Today')).toBeNull();
+  });
+
+  it('at/above 768px on the quote-builder route: aside still renders (nothing changes above 768px)', async () => {
+    renderLayoutAt('/quote-builder', true);
+
+    await waitFor(() => {
+      expect(screen.getByText('PAGE_BODY')).toBeTruthy();
+    });
+
+    expect(screen.getByTestId('rep-sidebar-aside')).toBeTruthy();
+  });
+});

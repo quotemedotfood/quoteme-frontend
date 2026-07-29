@@ -138,11 +138,15 @@ function AuthRoute() {
 // P0: the old quote-triage view (`RepIncomingQuotePage` — "Search your
 // catalog" links, "Items to Confirm" block) has been deleted entirely. Any
 // remaining deep link / bookmark to /rep/quotes/:id now redirects into the
-// canonical quote-build flow (MapIngredientsPage reads ?quoteId= and loads
-// the existing quote's matches) at the same quote id.
+// canonical quote route (QuoteBuilderPage reads ?quoteId= and renders the
+// quote work-product directly) at the same quote id.
+// Constitution X: the quote is the destination, not the process screen -
+// a rep opening a ready-quote link must land on the quote itself, not get
+// bounced into the ingredient-matching step-through. QuoteBuilderPage still
+// offers a back-arrow to /map-ingredients for anyone who wants to re-match.
 function RepQuoteIdRedirect() {
   const { id } = useParams<{ id: string }>();
-  return <Navigate to={`/map-ingredients?quoteId=${id}`} replace />;
+  return <Navigate to={`/quote-builder?quoteId=${id}`} replace />;
 }
 
 export const router = createBrowserRouter([
@@ -395,7 +399,7 @@ export const router = createBrowserRouter([
             //   /rep/quotes/inbound      → RepTriagePage (was /rep/triage)
             //   /rep/quotes/history      → QuotesPage (was /rep/quotes)
             //   /rep/quotes/:id          → P0: old triage view (RepIncomingQuotePage)
-            //                              DELETED; redirects to /map-ingredients?quoteId=:id
+            //                              DELETED; redirects to /quote-builder?quoteId=:id
             //                              (see RepQuoteIdRedirect) for any lingering deep link.
             //
             // Legacy redirect: /rep/triage → /rep/quotes/inbound

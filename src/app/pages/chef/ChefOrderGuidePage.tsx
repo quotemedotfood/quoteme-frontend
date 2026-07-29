@@ -19,12 +19,6 @@ const headlineStyle: React.CSSProperties = { fontFamily: "'Playfair Display', se
 
 // ─── Helpers ────────────────────────────────────────────────────────────────────
 
-function toTitleCase(str: string): string {
-  if (!str) return '';
-  if (/[^\x00-\x7F]/.test(str)) return str;
-  return str.replace(/\w\S*/g, (w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
-}
-
 // NOTE: the previous local formatter used minimumFractionDigits: 0 (trimmed
 // trailing zeros, e.g. "$1,234" / "$1,234.5"). The shared util always shows a
 // fixed 2 decimals ("$1,234.00" / "$1,234.50") to match every other money
@@ -140,17 +134,17 @@ function OrderGuideRow({ item, orderGuideId }: RowProps) {
 
       {/* Brand */}
       <div className="col-span-2 hidden sm:block">
-        <span className="text-[11px] text-[#9E9E9E]">{item.brand ? toTitleCase(item.brand) : '-'}</span>
+        <span className="text-[11px] text-[#9E9E9E]">{item.brand || '-'}</span>
       </div>
 
       {/* Product description — full width on mobile */}
       <div className="col-span-8 sm:col-span-4">
         <span className="text-sm text-[#2A2A2A] font-medium leading-snug">
-          {toTitleCase(chefProductName(item.product_description))}
+          {chefProductName(item.product_description)}
         </span>
         {/* Mobile-only secondary info */}
         <div className="sm:hidden flex flex-wrap gap-x-3 mt-0.5">
-          {item.brand && <span className="text-[11px] text-[#9E9E9E]">{toTitleCase(item.brand)}</span>}
+          {item.brand && <span className="text-[11px] text-[#9E9E9E]">{item.brand}</span>}
           {item.pack_size && <span className="text-[11px] text-[#9E9E9E]">{item.pack_size}</span>}
         </div>
       </div>

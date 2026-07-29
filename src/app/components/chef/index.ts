@@ -5,7 +5,7 @@ export { CatalogStatusBadge } from './CatalogStatusBadge';
 export type { CatalogStatusBadgeProps, CatalogStatus } from './CatalogStatusBadge';
 
 export { ChefTabBar } from './ChefTabBar';
-export type { ChefTabBarProps } from './ChefTabBar';
+export type { ChefTabBarProps, TabDef } from './ChefTabBar';
 
 export { ChefTabDesktopShell } from './ChefTabDesktopShell';
 export type { ChefTabDesktopShellProps } from './ChefTabDesktopShell';
