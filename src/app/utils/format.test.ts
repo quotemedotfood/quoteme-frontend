@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { stripSeedPrefix, formatColdLandingArtifact } from './format';
+import { stripSeedPrefix, formatColdLandingArtifact, stripBracketWrap } from './format';
 
 describe('stripSeedPrefix', () => {
   it('strips the "[SEED] " prefix from a seed label', () => {
@@ -29,6 +29,35 @@ describe('stripSeedPrefix', () => {
   it('strips only the exact prefix "[SEED] " (with trailing space)', () => {
     // "[SEED]" without trailing space is NOT stripped
     expect(stripSeedPrefix('[SEED]Q-1067')).toBe('[SEED]Q-1067');
+  });
+});
+
+describe('stripBracketWrap', () => {
+  // Chef quote header regression: restaurant name rendering as "[Name]"
+  // instead of "Name".
+  it('strips a full "[" "]" wrap around the name', () => {
+    expect(stripBracketWrap('[The Grove]')).toBe('The Grove');
+  });
+
+  it('leaves a name with no bracket wrap unchanged', () => {
+    expect(stripBracketWrap('The Grove')).toBe('The Grove');
+  });
+
+  it('leaves a name that only contains brackets partway through unchanged', () => {
+    expect(stripBracketWrap('The Grove [Downtown]')).toBe('The Grove [Downtown]');
+  });
+
+  it('trims surrounding whitespace before checking for a bracket wrap', () => {
+    expect(stripBracketWrap('  [The Grove]  ')).toBe('The Grove');
+  });
+
+  it('is null/undefined-safe', () => {
+    expect(stripBracketWrap(null)).toBe('');
+    expect(stripBracketWrap(undefined)).toBe('');
+  });
+
+  it('returns empty string for an empty input', () => {
+    expect(stripBracketWrap('')).toBe('');
   });
 });
 

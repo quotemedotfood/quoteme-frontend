@@ -22,6 +22,7 @@
 
 import { quoteStatusLabel } from '../../utils/quoteStatusLabel';
 import { formatCurrency } from '../../utils/formatCurrency';
+import { stripBracketWrap } from '../../utils/format';
 
 export type QuoteDocumentState = 'preview' | 'distributor' | 'confirmed';
 
@@ -166,7 +167,12 @@ export function QuoteStateDocument({
       // Both use the shared label helper so copy stays consistent across surfaces.
       // B-154: label stays uppercased (CSS textTransform); date is split into
       // eyebrowDate so it renders in title case, matching the body date format.
-      eyebrow: `${(isAccepted ? quoteStatusLabel('accepted', 'header') : quoteStatusLabel('confirmed', 'header')).toUpperCase()} · LOCKED`,
+      // Chef-header regression: this used to append "· LOCKED", an internal/
+      // rep document-state term that read like an internal system lock state
+      // to the chef. Removed — "CONFIRMED QUOTE" / "ACCEPTED" alone is the
+      // chef-appropriate copy; the document chrome (seal, thick rule) already
+      // communicates that the quote is final.
+      eyebrow: (isAccepted ? quoteStatusLabel('accepted', 'header') : quoteStatusLabel('confirmed', 'header')).toUpperCase(),
       eyebrowDate: confirmedAt ? ` ${confirmedAt.replace(/, \d{4}$/, '')}` : '',
       watermark: null,
       topRightSlot: 'seal',
@@ -223,7 +229,7 @@ export function QuoteStateDocument({
               className="font-semibold mt-1"
               style={{ ...SERIF, fontSize: 26, lineHeight: 1.15, color: INK }}
             >
-              {restaurant}
+              {stripBracketWrap(restaurant)}
             </h1>
             <div className="mt-1 text-[13px] leading-relaxed" style={{ color: INK_SOFT }}>
               {forName && <>For <span style={{ color: INK }}>{forName}</span></>}
@@ -375,7 +381,7 @@ function QuoteStateGroup({
           {group.cat}
         </h3>
         <span className="text-[11px]" style={{ ...TABULAR, color: INK_FAINT }}>
-          {group.items.length} items
+          {group.items.length} item{group.items.length === 1 ? '' : 's'}
         </span>
       </div>
       <div className="mt-1">

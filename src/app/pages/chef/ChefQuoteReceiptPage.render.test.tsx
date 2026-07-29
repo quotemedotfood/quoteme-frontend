@@ -168,8 +168,52 @@ describe('ChefQuoteReceiptPage - chef-facing product name normalization', () => 
 
     renderPage();
 
-    await screen.findByText('Salmon Fillet');
+    // Asterisk-wrapped warehouse token stripped; case is otherwise untouched
+    // (no title-case transform on chef-facing product names, see Ch XXI).
+    await screen.findByText('SALMON FILLET');
     expect(screen.queryByText(/DEAD/i)).toBeNull();
+  });
+
+  it('Ch XXI: does NOT title-case chef-facing product names or brands (EVOO/IQF/Caplansky\'s stay intact)', async () => {
+    getChefQuote.mockImplementationOnce(async () => ({
+      data: {
+        ...baseQuote,
+        lines: [
+          {
+            id: 'line-1',
+            position: 1,
+            category: 'dry',
+            quantity: 1,
+            unit_price_cents: 500,
+            unit_price: '5.00',
+            alignment_selected: 1,
+            availability_status: 'available',
+            chef_note: null,
+            component: null,
+            product: {
+              id: 'prod-1',
+              item_number: '001',
+              brand: "Caplansky's",
+              product: 'EVOO IQF Q&A Blend',
+              pack_size: '1L',
+              category: 'dry',
+            },
+          },
+        ],
+      },
+    }));
+
+    renderPage();
+
+    await screen.findByText('EVOO IQF Q&A Blend');
+    // Brand renders alongside the pack size in one combined text node
+    // ("1L · Caplansky's"), so match on substring rather than exact text.
+    expect(screen.getByText((_, el) => el?.textContent === "1L · Caplansky's")).toBeInTheDocument();
+    // Regression guards: the old toTitleCase wrapper mangled these exact tokens
+    // (title-casing + apostrophe word-split: "Caplansky's" -> "Caplansky S").
+    expect(screen.queryByText('Evoo Iqf Q&a Blend')).toBeNull();
+    expect(screen.queryByText((_, el) => el?.textContent === "1L · Caplansky S")).toBeNull();
+    expect(screen.queryByText((_, el) => el?.textContent === '1L · Caplansky')).toBeNull();
   });
 });
 

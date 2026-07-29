@@ -40,7 +40,7 @@ type ConsumeChefMagicLinkResult = {
 
 // vi.mock factories are hoisted above imports, so any values they reference
 // must go through vi.hoisted rather than plain top-level consts.
-const { mockJwt, consumeChefMagicLink, getCurrentUser } = vi.hoisted(() => {
+const { mockJwt, consumeChefMagicLink, getCurrentUser, getChefQuote } = vi.hoisted(() => {
   const mockJwt = 'mock.chef.jwt';
   const mockUser = {
     id: 'chef-1',
@@ -92,6 +92,16 @@ const { mockJwt, consumeChefMagicLink, getCurrentUser } = vi.hoisted(() => {
         distributor: null,
       },
     })),
+    // Welcome-count fix: ChefWelcomePage fetches the real quote lines after a
+    // successful consume so it can recompute matched-only item/category
+    // counts (matchedLineCounts) instead of trusting the BE's raw
+    // item_count/category_count. Default mock returns no lines (opt-in per
+    // test); a rejection here must never break rendering, since the call is
+    // fire-and-forget. Typed loosely (not the real ApiResponse<QuoteResponse>)
+    // since these tests only ever read res.data.lines / res.error.
+    getChefQuote: vi.fn<() => Promise<{ data?: { lines: unknown[] }; error?: string }>>(
+      async () => ({ data: { lines: [] } }),
+    ),
   };
 });
 
@@ -101,6 +111,7 @@ vi.mock('../../services/api', async (importOriginal) => {
     ...actual,
     consumeChefMagicLink,
     getCurrentUser,
+    getChefQuote,
   };
 });
 
@@ -131,6 +142,7 @@ describe('ChefWelcomePage: BUG #29 magic-link session isolation', () => {
     localStorage.clear();
     consumeChefMagicLink.mockClear();
     getCurrentUser.mockClear();
+    getChefQuote.mockClear();
   });
 
   afterEach(() => {
@@ -188,6 +200,7 @@ describe('ChefWelcomePage: #29-residue clear stale identity on error', () => {
     localStorage.clear();
     consumeChefMagicLink.mockClear();
     getCurrentUser.mockClear();
+    getChefQuote.mockClear();
   });
 
   afterEach(() => {
@@ -257,11 +270,88 @@ describe('ChefWelcomePage: #29-residue clear stale identity on error', () => {
   });
 });
 
+// Welcome-count mismatch fix (2026-07-29): the consume payload's raw
+// item_count/category_count count ALL lines (including not_in_catalog), but
+// the receipt the chef lands on next only ever shows matched lines. Before
+// this fix the welcome envelope could promise "51 items across 14
+// categories" while the receipt delivered 24 across 7 - because the two
+// surfaces counted different things. ChefWelcomePage now recounts from the
+// real quote lines (matchedLineCounts, shared with the receipt's own
+// filter) once they load, and displays that instead.
+describe('ChefWelcomePage: welcome count matches the matched-only receipt count', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    consumeChefMagicLink.mockClear();
+    getCurrentUser.mockClear();
+    getChefQuote.mockClear();
+  });
+
+  afterEach(() => {
+    cleanup();
+  });
+
+  it('replaces the BE raw item_count/category_count with the matched-only recount once quote lines load', async () => {
+    // Mock consume response reports 12 items / 4 categories (raw, all lines).
+    // The real quote has only 2 matched (available + has product) lines
+    // across 1 category - the rest are not_in_catalog and would be hidden
+    // on the receipt.
+    getChefQuote.mockResolvedValueOnce({
+      data: {
+        lines: [
+          {
+            id: 'l1',
+            availability_status: 'available',
+            category: 'produce',
+            product: { category: 'produce' },
+          },
+          {
+            id: 'l2',
+            availability_status: 'available',
+            category: 'produce',
+            product: { category: 'produce' },
+          },
+          {
+            id: 'l3',
+            availability_status: 'not_in_catalog',
+            category: 'dairy',
+            product: null,
+          },
+        ],
+      },
+    });
+
+    renderPage();
+
+    // Raw BE count (12 items across 4 categories) shows first...
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /Review quote/ })).toBeInTheDocument();
+    });
+
+    // ...then corrects to the matched-only recount (2 items across 1 category)
+    // once getChefQuote's lines resolve.
+    await waitFor(() => {
+      expect(screen.getByText('2 items across 1 category')).toBeInTheDocument();
+    });
+    expect(screen.queryByText('12 items across 4 categories')).not.toBeInTheDocument();
+  });
+
+  it('falls back to the raw BE counts if the recount fetch never resolves with data', async () => {
+    getChefQuote.mockResolvedValueOnce({ error: 'boom' });
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('12 items across 4 categories')).toBeInTheDocument();
+    });
+  });
+});
+
 describe('ChefWelcomePage: BUG #39 error-copy branches', () => {
   beforeEach(() => {
     localStorage.clear();
     consumeChefMagicLink.mockClear();
     getCurrentUser.mockClear();
+    getChefQuote.mockClear();
   });
 
   afterEach(() => {

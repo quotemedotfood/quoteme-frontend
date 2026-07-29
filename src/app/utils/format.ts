@@ -10,6 +10,23 @@ export function stripSeedPrefix(label: string | null | undefined): string {
   return label.startsWith(SEED_PREFIX) ? label.slice(SEED_PREFIX.length) : label;
 }
 
+/**
+ * Strips a literal "[" "]" wrap fully enclosing a display name before
+ * render — e.g. a restaurant name arriving as "[The Grove]" instead of
+ * "The Grove". Seen on the chef quote header; the bracket wrap is a data/
+ * placeholder artifact, not intended chef-facing copy. Only strips a wrap
+ * around the ENTIRE string (leading "[" AND trailing "]"), so a legitimate
+ * name that merely contains brackets partway through is left alone.
+ */
+export function stripBracketWrap(name: string | null | undefined): string {
+  if (!name) return '';
+  const trimmed = name.trim();
+  if (trimmed.startsWith('[') && trimmed.endsWith(']') && trimmed.length > 1) {
+    return trimmed.slice(1, -1).trim();
+  }
+  return name;
+}
+
 export function toTitleCase(str: string): string {
   if (!str) return '';
   // If the string contains non-ASCII characters (e.g. accented culinary terms like
