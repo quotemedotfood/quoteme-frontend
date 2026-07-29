@@ -278,11 +278,17 @@ describe('ChefWelcomePage: BUG #39 error-copy branches', () => {
 
     renderPage();
 
+    // Refusal-page rework (2026-07-29): heading/subcopy updated to the
+    // actionable version - see ChefWelcomePage.refusal.test.tsx for full
+    // coverage of the rep/distributor/quote-reference card and the
+    // "Request a new link" button states this rework added.
     await waitFor(() => {
-      expect(screen.getByText("This link's been around the block.")).toBeInTheDocument();
+      expect(screen.getByText('This link has expired.')).toBeInTheDocument();
     });
     expect(
-      screen.getByText('Quote links expire after 72 hours. Your rep can send a fresh one in a moment.'),
+      screen.getByText(
+        "Quote links expire after 72 hours, but you're not stuck. Request a fresh one below and your rep will get it right to you.",
+      ),
     ).toBeInTheDocument();
   });
 

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
-import { consumeChefMagicLink } from '../../services/api';
+import { consumeChefMagicLink, requestNewChefMagicLink } from '../../services/api';
 import type { ChefMagicLinkConsumeResponse } from '../../services/api';
 import { useEstablishSession, clearPriorIdentityKeys } from '../../hooks/useSessionOnUse';
 import { stripSeedPrefix } from '../../utils/format';
@@ -71,6 +71,14 @@ export function ChefWelcomePage() {
   const [data, setData] = useState<ChefMagicLinkConsumeResponse | null>(null);
   const [errorCode, setErrorCode] = useState<string>('');
   const [errorMsg, setErrorMsg] = useState<string>('');
+  // Refusal-page (2026-07-29, Justin's dead-end ruling): rep/distributor/
+  // quote context for the expired-link screen. NOT populated by the BE
+  // today (see the ApiResponse.rep/distributor/quote_reference comment in
+  // api.ts) - stays undefined until the BE ships that extension, at which
+  // point ExpiredLinkScreen picks these up automatically.
+  const [errorRep, setErrorRep] = useState<{ name: string; email: string; phone: string | null } | null>(null);
+  const [errorDistributor, setErrorDistributor] = useState<{ name: string } | null>(null);
+  const [errorQuoteReference, setErrorQuoteReference] = useState<string | null>(null);
 
   // BUG #29: guards against a second consume call for the same token. A
   // single-use token that consume() has already burned MUST NOT be handed
@@ -158,6 +166,9 @@ export function ChefWelcomePage() {
         // render the raw code string as if it were a message.
         setErrorCode(res.error_code || res.error || 'invalid_token');
         setErrorMsg(res.message || '');
+        setErrorRep(res.rep || null);
+        setErrorDistributor(res.distributor || null);
+        setErrorQuoteReference(res.quote_reference || null);
         setState('error');
       }
     })();
@@ -184,7 +195,12 @@ export function ChefWelcomePage() {
   if (state === 'error' && errorCode === 'expired') {
     return (
       <PageShell>
-        <ExpiredLinkScreen />
+        <ExpiredLinkScreen
+          token={token}
+          rep={errorRep}
+          distributor={errorDistributor}
+          quoteReference={errorQuoteReference}
+        />
       </PageShell>
     );
   }
@@ -310,22 +326,82 @@ export function ChefWelcomePage() {
 }
 
 // ─── ExpiredLinkScreen ─────────────────────────────────────────────────────
-// c145: shown when the backend returns error_code "expired" (token > 72 hours).
-// Two clean options — no form, no account creation.
-//   Primary:   mailto: with prefilled body → QuoteMe support
-//   Secondary: /chef/entry → build your own quote
-// Expired-token state has no quote loaded, so we don't know the rep yet.
-// Per Justin (2026-05-22): use generic support@quoteme.food, not "Marcus".
+// Refusal-page rework (2026-07-29, Justin's dead-end ruling): "a dead end is
+// not an error state, it is a lost sale" (Constitution XIV/XV/XXIII). This
+// screen used to be a true dead end - a generic message and, at best, a
+// mailto to a generic support inbox. It now gives the chef a live path
+// forward without leaving the page:
+//   1. Rep / distributor / quote-reference context, rendered whenever the
+//      consume response actually carries it (see the ApiResponse.rep/
+//      distributor/quote_reference comment in api.ts - the BE does not send
+//      these on the expired branch yet, so this card is conditional and
+//      simply doesn't render until that ships).
+//   2. Primary action: "Request a new link", which POSTs the expired token
+//      to requestNewChefMagicLink (api.ts) - a NEW endpoint contract flagged
+//      for BE follow-up, see that helper's doc comment for the full
+//      method/path/payload/response shape assumed here.
+//   3. A graceful fallback: if the request call fails, the rep's mailto/tel
+//      links (when present) and the generic support/build-your-own actions
+//      stay visible and usable - the chef is never stuck.
+// Per Justin (2026-05-22): use generic support@quoteme.food when no rep
+// email is available, not a placeholder name.
 const SUPPORT_EMAIL = 'support@quoteme.food';
 const MAILTO_SUBJECT = encodeURIComponent('Fresh quote link request');
 const MAILTO_BODY = encodeURIComponent(
   "Hi,\n\nThe link I received to view my quote has expired. Could you send a fresh link?\n\nThanks",
 );
 
-function ExpiredLinkScreen() {
+type RequestLinkState = 'idle' | 'loading' | 'success' | 'error';
+
+function InlineSpinner() {
+  return (
+    <span
+      aria-hidden="true"
+      className="inline-block w-3.5 h-3.5 rounded-full"
+      style={{
+        border: '2px solid rgba(255,255,255,0.4)',
+        borderTopColor: '#fff',
+        animation: 'spin 0.8s linear infinite',
+      }}
+    />
+  );
+}
+
+function ExpiredLinkScreen({
+  token,
+  rep,
+  distributor,
+  quoteReference,
+}: {
+  token: string;
+  rep?: { name: string; email: string; phone: string | null } | null;
+  distributor?: { name: string } | null;
+  quoteReference?: string | null;
+}) {
+  const [requestState, setRequestState] = useState<RequestLinkState>('idle');
+
+  const hasRepContact = Boolean(rep?.email || rep?.phone);
+  const hasContextCard = Boolean(rep?.name || distributor?.name || quoteReference || hasRepContact);
+
+  async function handleRequestNewLink() {
+    setRequestState('loading');
+    try {
+      const res = await requestNewChefMagicLink(token);
+      if (res.data?.success) {
+        setRequestState('success');
+      } else {
+        setRequestState('error');
+      }
+    } catch {
+      setRequestState('error');
+    }
+  }
+
   return (
     <div className="flex flex-col items-center justify-center flex-1 px-6 py-16">
       <div className="max-w-sm w-full">
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+
         {/* Icon — envelope with a clock, rendered inline SVG */}
         <div className="flex justify-center mb-7">
           <div
@@ -346,19 +422,19 @@ function ExpiredLinkScreen() {
               {/* Envelope body */}
               <rect x="2" y="4" width="20" height="16" rx="2" />
               <polyline points="2,4 12,13 22,4" />
-              {/* Clock overlay — bottom-right */}
+              {/* Clock overlay, bottom right */}
               <circle cx="17.5" cy="16.5" r="3.5" fill={C.warmPaper} stroke={C.charcoal} strokeWidth="1.5" />
               <polyline points="17.5,14.8 17.5,16.5 18.7,17.7" />
             </svg>
           </div>
         </div>
 
-        {/* Headline */}
+        {/* Headline — warm, not an error tone */}
         <h1
           className="text-center"
           style={{ ...serif, fontSize: 24, fontWeight: 600, color: C.charcoal, lineHeight: 1.25 }}
         >
-          This link's been around the block.
+          This link has expired.
         </h1>
 
         {/* Sub-copy */}
@@ -366,28 +442,140 @@ function ExpiredLinkScreen() {
           className="mt-3 text-center"
           style={{ ...sans, fontSize: 14, color: C.gray700, lineHeight: 1.6 }}
         >
-          Quote links expire after 72 hours. Your rep can send a fresh one in a moment.
+          Quote links expire after 72 hours, but you're not stuck. Request a fresh one below and your rep will
+          get it right to you.
         </p>
 
-        {/* Divider */}
-        <div className="mt-8" style={{ borderTop: `1px solid ${C.softLine}` }} />
+        {/* Rep / distributor / quote-reference context card, only when the
+            consume response actually carries it. */}
+        {hasContextCard && (
+          <div
+            className="mt-6 rounded-md p-4"
+            style={{ border: `1px solid ${C.softLine}`, background: '#fff' }}
+          >
+            {distributor?.name && (
+              <>
+                <div style={eyebrow(9)}>DISTRIBUTOR</div>
+                <div className="mt-0.5" style={{ ...sans, fontSize: 14, color: C.charcoal }}>
+                  {distributor.name}
+                </div>
+              </>
+            )}
+            {rep?.name && (
+              <div className={distributor?.name ? 'mt-3' : ''}>
+                <div style={eyebrow(9)}>YOUR REP</div>
+                <div className="mt-0.5" style={{ ...sans, fontSize: 14, color: C.charcoal }}>
+                  {rep.name}
+                </div>
+              </div>
+            )}
+            {hasRepContact && (
+              <div className="mt-2 flex flex-col gap-1">
+                {rep?.email && (
+                  <a
+                    href={`mailto:${rep.email}`}
+                    className="no-underline"
+                    style={{ ...sans, fontSize: 13, color: C.orange }}
+                  >
+                    {rep.email}
+                  </a>
+                )}
+                {rep?.phone && (
+                  <a
+                    href={`tel:${rep.phone}`}
+                    className="no-underline"
+                    style={{ ...sans, fontSize: 13, color: C.orange }}
+                  >
+                    {rep.phone}
+                  </a>
+                )}
+              </div>
+            )}
+            {quoteReference && (
+              <div
+                className="mt-3 pt-3"
+                style={{ ...sans, fontSize: 11.5, color: C.gray500, borderTop: `1px solid ${C.softLine}` }}
+              >
+                Quote {quoteReference}
+              </div>
+            )}
+          </div>
+        )}
 
-        {/* Actions */}
+        {/* Primary action: request a new link, four states */}
+        <div className="mt-7">
+          <button
+            type="button"
+            onClick={handleRequestNewLink}
+            disabled={requestState === 'loading' || requestState === 'success'}
+            className="flex items-center justify-center gap-2 w-full rounded-md font-medium transition-colors"
+            style={{
+              ...sans,
+              fontSize: 15,
+              padding: '12px 18px',
+              background: requestState === 'success' ? '#DDEFE3' : C.orange,
+              color: requestState === 'success' ? '#1F5C3A' : '#fff',
+              cursor: requestState === 'loading' || requestState === 'success' ? 'default' : 'pointer',
+              border: 'none',
+            }}
+            onMouseEnter={(e) => {
+              if (requestState === 'idle' || requestState === 'error') {
+                e.currentTarget.style.background = C.orangeHover;
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (requestState === 'idle' || requestState === 'error') {
+                e.currentTarget.style.background = C.orange;
+              }
+            }}
+          >
+            {requestState === 'loading' && (
+              <>
+                <InlineSpinner />
+                Sending...
+              </>
+            )}
+            {requestState === 'success' && 'Your rep has been notified, a fresh link is on the way'}
+            {(requestState === 'idle' || requestState === 'error') && 'Request a new link'}
+          </button>
+
+          {requestState === 'error' && (
+            <p
+              className="mt-2.5 text-center"
+              style={{ ...sans, fontSize: 12.5, color: C.gray700, lineHeight: 1.5 }}
+            >
+              {hasRepContact
+                ? 'Could not reach your rep automatically. Use the contact info above.'
+                : 'Could not reach your rep automatically. Email us below and we will get you a fresh link.'}
+            </p>
+          )}
+        </div>
+
+        {/* Divider */}
+        <div className="mt-7" style={{ borderTop: `1px solid ${C.softLine}` }} />
+
+        {/* Fallback actions: always available, never gated on the button above */}
         <div className="mt-7 flex flex-col gap-3">
-          {/* Primary: mailto */}
           <a
             href={`mailto:${SUPPORT_EMAIL}?subject=${MAILTO_SUBJECT}&body=${MAILTO_BODY}`}
             className="flex items-center justify-center gap-2 w-full rounded-md font-medium transition-colors no-underline"
             style={{
               ...sans,
-              fontSize: 15,
-              padding: '12px 18px',
-              background: C.orange,
-              color: '#fff',
+              fontSize: 14,
+              padding: '11px 18px',
+              background: 'transparent',
+              color: C.gray700,
+              border: `1px solid ${C.softLine}`,
               textDecoration: 'none',
             }}
-            onMouseEnter={(e) => (e.currentTarget.style.background = C.orangeHover)}
-            onMouseLeave={(e) => (e.currentTarget.style.background = C.orange)}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = C.gray400;
+              e.currentTarget.style.color = C.charcoal;
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = C.softLine;
+              e.currentTarget.style.color = C.gray700;
+            }}
           >
             <svg
               width="15"
@@ -406,7 +594,6 @@ function ExpiredLinkScreen() {
             Email us for a fresh link
           </a>
 
-          {/* Secondary: /chef/entry */}
           <a
             href="/chef/entry"
             className="flex items-center justify-center gap-1.5 w-full rounded-md font-medium transition-colors no-underline"

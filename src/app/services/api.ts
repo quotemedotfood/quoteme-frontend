@@ -17,6 +17,19 @@ interface ApiResponse<T> {
   message?: string;
   status?: number;
   token?: string;
+  // Refusal-page follow-up (feat/refusal-page): rep/distributor/quote
+  // context for consumeChefMagicLink's `expired` response so the FE can
+  // render an actionable dead-end screen instead of a generic error. NOT
+  // YET RETURNED by the BE today - the consume endpoint's `expired` rescue
+  // branch only sends { error, error_code, message }. Proposed BE follow-up:
+  // extend that branch to look up ChefMagicLink.find_by(token:) (the row
+  // still exists, only expires_at gates it) and thread through the same
+  // rep/distributor/quote_reference shape serialize_welcome_quote already
+  // builds on the success path. Rendered defensively/conditionally on the
+  // FE until that ships.
+  rep?: { name: string; email: string; phone: string | null } | null;
+  distributor?: { name: string } | null;
+  quote_reference?: string | null;
 }
 
 // V2 multi-restaurant guard rail — 409 payload when an authenticated chef
@@ -177,6 +190,13 @@ export interface ChefMagicLinkConsumeError {
   error: "invalid_token" | "expired" | "account_conflict" | "role_conflict" | string;
   message?: string;
   existing_role?: string;
+  // Refusal-page follow-up: NOT sent by the BE yet on `expired` today (see
+  // the ApiResponse.rep/distributor/quote_reference comment above) - read
+  // defensively when present so the FE lights up automatically once the BE
+  // ships this without a second FE change.
+  rep?: { name: string; email: string; phone: string | null } | null;
+  distributor?: { name: string } | null;
+  quote_reference?: string | null;
 }
 
 // Menu create response
@@ -2758,12 +2778,84 @@ export async function consumeChefMagicLink(
         // code (`error`/`error_code`) and no way to prefer the BE's actual
         // copy for expired / account_conflict.
         message: errorBody.message,
+        // Refusal-page follow-up: threaded through defensively - undefined
+        // today until the BE ships the expired-response extension described
+        // above, at which point the refusal screen picks these up with no
+        // further FE change.
+        rep: errorBody.rep,
+        distributor: errorBody.distributor,
+        quote_reference: errorBody.quote_reference,
         data: undefined,
       };
     }
 
     const data: ChefMagicLinkConsumeResponse = await response.json();
     return { data, token: data.jwt };
+  } catch (err) {
+    return {
+      error: err instanceof Error ? err.message : 'Network error',
+      data: undefined,
+    };
+  }
+}
+
+// ─── Refusal-page: request a fresh chef magic link ─────────────────────────
+// feat/refusal-page (2026-07-29, Justin's dead-end ruling): the expired-link
+// screen must give the chef a path forward without leaving the page. This
+// helper backs the "Request a new link" button.
+//
+// FLAGGED FOR BE FOLLOW-UP - this endpoint does NOT exist yet. Proposed
+// contract:
+//   POST /api/v1/chef/magic_links/request_new
+//   body:    { token: string }   // the EXPIRED token from the URL - the
+//                                 // ChefMagicLink row still exists (only
+//                                 // expires_at gates consume), so the BE
+//                                 // can look it up by token even though
+//                                 // it's expired.
+//   success: 200 { success: true, message?: string,
+//                  rep?: { name, email, phone } | null,
+//                  distributor?: { name } | null,
+//                  quote_reference?: string | null }
+//     - BE behavior: ChefMagicLinkService.generate_for(recipient_email:
+//       link.recipient_email, quote: link.quote, created_by:
+//       link.created_by_user) reissues a fresh token/expiry on the same
+//       row, then ChefMagicLinksMailer.chef_quote_sent(magic_link:
+//       new_link).deliver_later resends the email. Returning the same
+//       rep/distributor/quote_reference shape lets the FE light up those
+//       fields even before the expired-response extension (above) ships.
+//   error:   4xx/5xx { error: string, message?: string }
+//     - e.g. token not found at all -> 404 { error: "invalid_token" }
+export interface RequestNewChefMagicLinkResponse {
+  success: true;
+  message?: string;
+  rep?: { name: string; email: string; phone: string | null } | null;
+  distributor?: { name: string } | null;
+  quote_reference?: string | null;
+}
+
+export async function requestNewChefMagicLink(
+  expiredToken: string,
+): Promise<ApiResponse<RequestNewChefMagicLinkResponse>> {
+  try {
+    const response = await fetchWithRetry(`${API_BASE_URL}/api/v1/chef/magic_links/request_new`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: expiredToken }),
+    });
+
+    if (!response.ok) {
+      const errorBody: { error?: string; message?: string } = await response
+        .json()
+        .catch(() => ({ error: `HTTP ${response.status}` }));
+      return {
+        error: errorBody.error || `HTTP ${response.status}`,
+        message: errorBody.message,
+        data: undefined,
+      };
+    }
+
+    const data: RequestNewChefMagicLinkResponse = await response.json();
+    return { data };
   } catch (err) {
     return {
       error: err instanceof Error ? err.message : 'Network error',
