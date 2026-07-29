@@ -281,6 +281,7 @@ export function RepNewspaperSidebar({
 
   return (
     <aside
+      data-testid="rep-sidebar-aside"
       style={{
         width,
         flexShrink: 0,
