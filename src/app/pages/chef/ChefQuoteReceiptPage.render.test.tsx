@@ -173,6 +173,110 @@ describe('ChefQuoteReceiptPage - chef-facing product name normalization', () => 
   });
 });
 
+describe('ChefQuoteReceiptPage - price_needs_confirmation renders "confirm with rep"', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    getChefQuote.mockClear();
+    acceptChefQuote.mockClear();
+  });
+
+  afterEach(() => {
+    cleanup();
+  });
+
+  it('a line flagged price_needs_confirmation shows "confirm with rep" instead of its unit price, while a non-flagged line shows the price', async () => {
+    getChefQuote.mockImplementationOnce(async () => ({
+      data: {
+        ...baseQuote,
+        lines: [
+          {
+            id: 'line-1',
+            position: 1,
+            category: 'seafood',
+            quantity: 2,
+            unit_price_cents: 1,
+            unit_price: '0.01',
+            price_needs_confirmation: true,
+            alignment_selected: 1,
+            availability_status: 'available',
+            chef_note: null,
+            component: null,
+            product: {
+              id: 'prod-1',
+              item_number: '001',
+              brand: 'Acme',
+              product: 'Salmon Fillet',
+              pack_size: '10lb',
+              category: 'seafood',
+            },
+          },
+          {
+            id: 'line-2',
+            position: 2,
+            category: 'produce',
+            quantity: 3,
+            unit_price_cents: 1000,
+            unit_price: '10.00',
+            alignment_selected: 1,
+            availability_status: 'available',
+            chef_note: null,
+            component: null,
+            product: {
+              id: 'prod-2',
+              item_number: '002',
+              brand: 'Acme',
+              product: 'Roma Tomato',
+              pack_size: '25lb',
+              category: 'produce',
+            },
+          },
+        ],
+      },
+    }));
+
+    renderPage();
+
+    await screen.findByText('confirm with rep');
+    expect(screen.queryByText('$0.01')).toBeNull();
+    expect(screen.getByText('$10.00')).toBeInTheDocument();
+  });
+
+  it('when the flag is absent, a line renders its price exactly as before', async () => {
+    getChefQuote.mockImplementationOnce(async () => ({
+      data: {
+        ...baseQuote,
+        lines: [
+          {
+            id: 'line-1',
+            position: 1,
+            category: 'seafood',
+            quantity: 2,
+            unit_price_cents: 1000,
+            unit_price: '10.00',
+            alignment_selected: 1,
+            availability_status: 'available',
+            chef_note: null,
+            component: null,
+            product: {
+              id: 'prod-1',
+              item_number: '001',
+              brand: 'Acme',
+              product: 'Salmon Fillet',
+              pack_size: '10lb',
+              category: 'seafood',
+            },
+          },
+        ],
+      },
+    }));
+
+    renderPage();
+
+    await screen.findByText('$10.00');
+    expect(screen.queryByText('confirm with rep')).toBeNull();
+  });
+});
+
 describe('ChefQuoteReceiptPage - pinned mobile CTA footer (Justin mobile ruling)', () => {
   beforeEach(() => {
     localStorage.clear();

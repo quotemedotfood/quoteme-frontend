@@ -226,6 +226,7 @@ export function ChefQuoteReceiptPage() {
       note: l.product.brand ? toTitleCase(l.product.brand) : undefined,
       qty: l.quantity,
       unit: l.unit_price_cents != null ? l.unit_price_cents / 100 : undefined,
+      needsConfirmation: l.price_needs_confirmation === true,
     })),
   }));
   const pricedCount = matchedLines.filter((l) => l.unit_price_cents != null).length;

@@ -291,6 +291,11 @@ export interface QuoteLineResponse {
   quantity: number;
   unit_price_cents: number | null;
   unit_price: string | null;
+  /** True when this line's unit price is the $0.01 ingest floor (importer
+   * price-floor work) rather than a real distributor price. Chef-facing
+   * surfaces render "confirm with rep" in place of the price/total for
+   * these lines instead of the floor value. */
+  price_needs_confirmation?: boolean;
   alignment_selected: number;
   availability_status: 'available' | 'not_in_catalog';
   /** True once a rep has acknowledged an unmatched (not_in_catalog) line via

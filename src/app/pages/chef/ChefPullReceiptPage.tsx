@@ -167,6 +167,7 @@ export function ChefPullReceiptPage() {
       note: l.product.brand ? toTitleCase(l.product.brand) : undefined,
       qty: l.quantity,
       unit: (l.unit_price_cents ?? 0) / 100,
+      needsConfirmation: l.price_needs_confirmation === true,
     })),
   }));
   const pricedCount = matchedLines.filter((l) => l.unit_price_cents != null).length;

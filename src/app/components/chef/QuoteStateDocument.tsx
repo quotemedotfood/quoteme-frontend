@@ -58,6 +58,10 @@ export interface QuoteDocLineItem {
   note?: string;
   qty: number;
   unit: number | undefined;
+  /** True when this line's unit price is the $0.01 ingest floor, not a real
+   * distributor price (BE price_needs_confirmation). Chef-facing document
+   * renders "confirm with rep" in place of the price for these lines. */
+  needsConfirmation?: boolean;
 }
 export interface QuoteDocGroup {
   cat: string;
@@ -394,12 +398,18 @@ function QuoteStateGroup({
                 {state === 'preview' ? (
                   <div className="text-[13.5px]" style={{ color: INK_FAINT }}>-</div>
                 ) : priced ? (
-                  <div
-                    className={`text-[13.5px] ${state === 'confirmed' ? 'font-semibold' : 'font-medium'}`}
-                    style={{ color: INK }}
-                  >
-                    {it.unit != null ? money(it.unit, currency) : <span style={{ color: INK_FAINT }}>-</span>}
-                  </div>
+                  it.needsConfirmation ? (
+                    <div className="text-[12.5px] italic" style={{ color: INK_FAINT }}>
+                      confirm with rep
+                    </div>
+                  ) : (
+                    <div
+                      className={`text-[13.5px] ${state === 'confirmed' ? 'font-semibold' : 'font-medium'}`}
+                      style={{ color: INK }}
+                    >
+                      {it.unit != null ? money(it.unit, currency) : <span style={{ color: INK_FAINT }}>-</span>}
+                    </div>
+                  )
                 ) : (
                   <div className="text-[12.5px] italic" style={{ color: INK_FAINT }}>
                     pricing…
