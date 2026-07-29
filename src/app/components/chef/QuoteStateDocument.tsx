@@ -19,6 +19,14 @@
 // quoteStatusLabel('confirmed', 'header') → "Confirmed Quote" so the
 // detail-page document header label aligns with the shared helper used
 // by list views (which show "Ready" via the 'pill' context).
+//
+// Constitution XI (BE PR #318, lockstep): the BE writer's expanded state
+// machine (received/preparing/validating/ready_for_review/needs_rep_decision/
+// ready_to_send/sending/sent/accepted, plus legacy preview/distributor_quote/
+// confirmed/declined/expired) is folded down to these 3 document treatments
+// in stateFromQuoteState() below. Its DEFAULT branch is the safe non-final
+// 'preview' chrome (previously 'confirmed') so an unrecognized/future state
+// can never render as a locked, final quote to the chef.
 
 import { quoteStatusLabel } from '../../utils/quoteStatusLabel';
 import { formatCurrency } from '../../utils/formatCurrency';
@@ -29,6 +37,20 @@ export type QuoteDocumentState = 'preview' | 'distributor' | 'confirmed';
 // BE Quote.state → document state. BE uses "distributor_quote"; the document
 // prop uses "distributor". preview/confirmed pass through; accepted/declined/
 // expired render as confirmed chrome (locked document).
+//
+// Constitution XI (BE PR #318, lockstep): the merged writer now also emits a
+// pre-engagement/in-progress pipeline of states between quote intake and
+// send -- received, preparing, validating, ready_for_review,
+// needs_rep_decision, ready_to_send, sending -- followed by the delivered
+// document (sent) and the chef's decision (accepted). None of the
+// in-progress states are a finished, chef-facing document, so they all map
+// to the same non-final 'preview' chrome as the legacy "awaiting rep" state
+// (H-3 regression this guards against: a mid-pipeline state like
+// `ready_to_send`/`sending` must never read to the chef as a confirmed/final
+// quote). `sent` is the fully priced, delivered document -- same locked
+// chrome as legacy 'confirmed'; the eyebrow/seal only flip to ACCEPTED once
+// `quoteState === 'accepted'` (see `isAccepted` below), so a `sent` quote
+// correctly still reads CONFIRMED QUOTE, not ACCEPTED.
 export function stateFromQuoteState(quoteState: string | null | undefined): QuoteDocumentState {
   switch (quoteState) {
     case 'preview':
@@ -36,8 +58,32 @@ export function stateFromQuoteState(quoteState: string | null | undefined): Quot
     case 'distributor_quote':
     case 'distributor':
       return 'distributor';
+
+    // XI in-progress / pre-engagement states -- non-final, chef-safe chrome.
+    case 'received':
+    case 'preparing':
+    case 'validating':
+    case 'ready_for_review':
+    case 'needs_rep_decision':
+    case 'ready_to_send':
+    case 'sending':
+      return 'preview';
+
+    // XI delivered state + legacy terminal states -- locked document chrome.
+    case 'sent':
+    case 'confirmed':
+    case 'accepted':
+    case 'declined':
+    case 'expired':
+      return 'confirmed';
+
     default:
-      return 'confirmed'; // confirmed | accepted | declined | expired | null-with-pricing
+      // SAFE DEFAULT (H-3/Constitution XI fix): this used to fall through to
+      // 'confirmed', so any unrecognized or future BE state rendered as a
+      // locked, final "CONFIRMED QUOTE" to the chef. An unmapped state must
+      // never look final -- fall back to the same non-final chrome as the
+      // in-progress XI states instead.
+      return 'preview';
   }
 }
 
