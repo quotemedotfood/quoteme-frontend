@@ -136,4 +136,59 @@ describe('QuoteBuilderPage - price inputs locked on sent quotes (P1)', () => {
     const priceInputs = await screen.findAllByRole('textbox');
     expect(priceInputs.length).toBeGreaterThan(0);
   });
+
+  // Dispatch #7 (QB smalls) -- unmatched (not_in_catalog) lines have no
+  // product, so their $0.00 is a placeholder, not a real price. Editing it
+  // implies you can set a price for a line that isn't in the catalog. Even
+  // in edit mode on an unsent quote, an unmatched line must render its price
+  // read-only (a dash), while a matched line in the same quote stays
+  // editable.
+  it('never renders an editable price input for an unmatched line, even in edit mode on a draft quote', async () => {
+    setQuoteOverrides({
+      sent_at: null,
+      status: 'draft',
+      state: 'preview',
+      lines: [
+        {
+          id: 'line-1',
+          component: { name: 'onion', source_dish: 'Test Dish' },
+          category: 'Produce',
+          unit_price_cents: 500,
+          availability_status: 'available',
+          rep_handled: false,
+          product: {
+            id: 'product-1',
+            item_number: 'SKU-1',
+            brand: 'Acme',
+            product: 'Diced Onion',
+            pack_size: '10lb',
+          },
+          alignment_candidates: [],
+        },
+        {
+          id: 'line-2',
+          component: { name: 'mystery herb', source_dish: 'Test Dish' },
+          category: 'Produce',
+          unit_price_cents: 0,
+          availability_status: 'not_in_catalog',
+          rep_handled: false,
+          product: null,
+          alignment_candidates: [],
+        },
+      ],
+    });
+
+    renderPage();
+
+    const toggle = await screen.findByRole('button', { name: /edit price/i });
+    fireEvent.click(toggle);
+
+    // The matched line (onion) is editable.
+    const priceInputs = await screen.findAllByRole('textbox');
+    expect(priceInputs.length).toBeGreaterThan(0);
+
+    // The unmatched line ($0.00 placeholder) renders read-only, as a dash,
+    // never as an editable input.
+    expect(await screen.findAllByText('-')).not.toHaveLength(0);
+  });
 });

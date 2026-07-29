@@ -20,7 +20,21 @@ export function QuoteReviewBar({ quoteId, onMatchesUpdated }: QuoteReviewBarProp
   // height/position so dismissing it causes no layout jump. `noSidebarOffset`
   // is kept in QuoteReviewBarProps (unused here) so QuoteBuilderPage's call
   // site keeps compiling unchanged.
-  const cardClass = 'fixed bottom-[88px] right-4 md:right-6 z-40 w-[calc(100%-2rem)] max-w-md';
+  //
+  // Dispatch #7 (QB smalls): bottom offset raised from 88px to 144px. The
+  // floating "Finish Quote" button on QuoteBuilderPage sits at bottom-[80px]
+  // with a ~48px min-height, i.e. it occupies the 80-128px band from the
+  // viewport bottom -- the old 88px offset put this card's bottom edge
+  // *inside* that band, covering the primary CTA (Ch XXII). 144px clears the
+  // button's top edge (128px) with a 16px gap. MapIngredientsPage's "Adjust
+  // Pricing" button sits much lower (bottom-6, ~24-72px band) so the extra
+  // clearance only moves this card a bit higher there -- still non-
+  // overlapping, still fully functional.
+  //
+  // Width: fixed px + a plain (non-calc) vw cap instead of the previous
+  // `w-[calc(100%-2rem)]` -- calc()-driven percentage widths are a known
+  // layout-thrash trigger for libraries that observe element size.
+  const cardClass = 'fixed bottom-[144px] right-4 md:right-6 z-40 w-[380px] max-w-[92vw]';
   const [state, setState] = useState<ReviewState>('idle');
   const [comment, setComment] = useState('');
   const [error, setError] = useState<string | null>(null);

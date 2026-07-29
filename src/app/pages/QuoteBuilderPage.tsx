@@ -160,12 +160,19 @@ export function QuoteBuilderPage() {
       const res = await fetchQuote(quoteId);
       if (res.error || !res.data) throw new Error(res.error || 'Failed to load quote');
       const data = res.data as any;
-      const seenProducts = new Set<string>();
+      // Dedup by line id (always unique per backend row), NOT by matched
+      // product id. Dedup-by-product-id used to silently drop a legitimate
+      // second line whenever two different components (e.g. two dishes)
+      // happened to resolve to the SAME catalog product, undercounting
+      // "Total Components" in the header vs. the true line count elsewhere
+      // (dueling-count fix, dispatch #7). Keying on line.id still guards the
+      // original intent -- collapsing literal duplicate rows from the API --
+      // without conflating distinct components that share a product.
+      const seenLines = new Set<string>();
       const productItems: ProductItem[] = [];
       for (const line of (data.lines || [])) {
-        const productId = line.product?.id || line.id;
-        if (seenProducts.has(productId)) continue;
-        seenProducts.add(productId);
+        if (seenLines.has(line.id)) continue;
+        seenLines.add(line.id);
         const priceDollars = (line.unit_price_cents || 0) / 100;
         const isUnmatched = line.availability_status === 'not_in_catalog';
         const bestCandidate = (line.alignment_candidates || []).find((c: AlignmentCandidate) => c.position === 1);
@@ -496,12 +503,11 @@ export function QuoteBuilderPage() {
                 Save as Stock Quote
               </Button>
             )}
-            <Button
-              onClick={() => navigate(`/export-finalize?quoteId=${quoteId}`)}
-              className="hidden md:flex bg-[#F2993D] hover:bg-[#E8953A] text-white"
-            >
-              Finish quote
-            </Button>
+            {/* Dispatch #7 (QB smalls): the header used to also render a
+                desktop-only "Finish quote" button here, duplicating the
+                always-visible floating "Finish Quote" CTA below (Constitution
+                XXII: one primary action). Removed -- the floating button is
+                the single Finish Quote entry point on every breakpoint. */}
           </div>
         </div>
 
@@ -731,8 +737,11 @@ export function QuoteBuilderPage() {
                 {/* Price controls at bottom. Defensive `!quoteLocked` guard
                     in addition to the editMode-toggle guard above: even if
                     editMode were somehow already true, a locked quote must
-                    never render an editable price input. */}
-                {editMode && !quoteLocked ? (
+                    never render an editable price input. `!item.unmatched`
+                    added (dispatch #7, QB smalls): a not_in_catalog line has
+                    no product, so its $0.00 is a placeholder, not a real
+                    price -- it must never render editable. */}
+                {editMode && !quoteLocked && !item.unmatched ? (
                   <div className="flex flex-col gap-2 mt-2 w-full">
                     <div className="w-full">
                       <span className="text-xs text-gray-400 mb-1 block">Price</span>
@@ -825,7 +834,9 @@ export function QuoteBuilderPage() {
                 ) : (
                   <div className="flex justify-between items-center mt-2 pt-2 border-t border-gray-100">
                     <span className="text-xs text-gray-400">Price</span>
-                    <span className="font-semibold text-[#2A2A2A] text-base">{formatCurrency(Math.round(item.currentPrice * 100), distributorCurrency)}</span>
+                    <span className="font-semibold text-[#2A2A2A] text-base">
+                      {item.unmatched && item.currentPrice === 0 ? '-' : formatCurrency(Math.round(item.currentPrice * 100), distributorCurrency)}
+                    </span>
                   </div>
                 )}
 
@@ -973,7 +984,10 @@ export function QuoteBuilderPage() {
                       </td>
                     )}
                     <td className="px-4 py-3 text-sm text-[#2A2A2A] text-right">
-                      {editMode && !quoteLocked ? (
+                      {/* `!item.unmatched` (dispatch #7, QB smalls): a
+                          not_in_catalog line has no product, its $0.00 is a
+                          placeholder, not a real price -- never editable. */}
+                      {editMode && !quoteLocked && !item.unmatched ? (
                         <div className="flex items-center justify-end gap-2">
                           <button
                             onClick={(e) => {
