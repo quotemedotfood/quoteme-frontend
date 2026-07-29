@@ -153,4 +153,27 @@ describe('QuoteBuilderPage - unresolved items badge (Wave 4c)', () => {
 
     expect(navigateMock).toHaveBeenCalledWith('/export-finalize?quoteId=quote-1');
   });
+
+  // Dispatch #7 (QB smalls) -- dueling counts. The load-time dedup used to key
+  // on the matched product id, so two DIFFERENT lines (different dishes/
+  // components) that happen to resolve to the SAME catalog product were
+  // wrongly collapsed into one, undercounting "Total Components". Dedup must
+  // key on the line id (always unique per backend row) instead, so two
+  // distinct lines sharing one product both count.
+  it('counts two distinct lines that share the same matched product as two components, not one', async () => {
+    setQuoteLines([
+      makeLine('line-1', {
+        availability_status: 'available',
+        product: { id: 'shared-product', item_number: 'SKU-1', brand: 'Brand', product: 'Yellow Onion', pack_size: '25lb' },
+      }),
+      makeLine('line-2', {
+        availability_status: 'available',
+        product: { id: 'shared-product', item_number: 'SKU-1', brand: 'Brand', product: 'Yellow Onion', pack_size: '25lb' },
+      }),
+    ]);
+
+    renderPage();
+
+    expect(await screen.findByText('Total Components: 2')).toBeInTheDocument();
+  });
 });
