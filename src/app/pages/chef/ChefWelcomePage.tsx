@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
-import { consumeChefMagicLink } from '../../services/api';
+import { consumeChefMagicLink, getChefQuote } from '../../services/api';
 import type { ChefMagicLinkConsumeResponse } from '../../services/api';
 import { useEstablishSession, clearPriorIdentityKeys } from '../../hooks/useSessionOnUse';
 import { stripSeedPrefix } from '../../utils/format';
 import { formatCurrency } from '../../utils/formatCurrency';
+import { matchedLineCounts } from '../../utils/matchedLineCounts';
 
 // V2 W4 — Justin/Moose lock: the page IS the quote arrival. No greeting,
 // no "welcome", no account framing. Lead with rep + distributor + the
@@ -71,6 +72,16 @@ export function ChefWelcomePage() {
   const [data, setData] = useState<ChefMagicLinkConsumeResponse | null>(null);
   const [errorCode, setErrorCode] = useState<string>('');
   const [errorMsg, setErrorMsg] = useState<string>('');
+  // Welcome-count fix: the consume payload's quote.item_count/category_count
+  // are raw BE counts over ALL lines (including not_in_catalog). The quote
+  // receipt the chef lands on next only ever shows matched lines (the
+  // chef-clean filter), so these raw counts overpromise ("51 items / 14
+  // categories" when the receipt shows 24 / 7). liveCounts recomputes the
+  // matched-only numbers from the same quote's real lines via
+  // matchedLineCounts() (shared with ChefQuoteReceiptPage) once the session
+  // is established; falls back to the BE's raw counts only if that fetch
+  // hasn't resolved yet or fails, so the page never blocks on it.
+  const [liveCounts, setLiveCounts] = useState<{ itemCount: number; categoryCount: number } | null>(null);
 
   // BUG #29: guards against a second consume call for the same token. A
   // single-use token that consume() has already burned MUST NOT be handed
@@ -149,6 +160,15 @@ export function ChefWelcomePage() {
         });
         setData(res.data);
         setState('ready');
+
+        // Fetch the real quote lines so the welcome summary can report the
+        // SAME matched-only count the receipt is about to show. Fire-and-
+        // forget: the envelope has already painted with the BE's raw counts
+        // above, this just corrects them in place the moment it resolves.
+        getChefQuote(res.data.quote.id).then((quoteRes) => {
+          if (cancelled || !quoteRes.data) return;
+          setLiveCounts(matchedLineCounts(quoteRes.data.lines));
+        });
       } else {
         // BUG #39: `error`/`error_code` are the machine code (e.g.
         // 'expired', 'account_conflict'); `message` is the BE's
@@ -207,6 +227,10 @@ export function ChefWelcomePage() {
   const restaurantLine = [q.restaurant?.name, [q.restaurant?.city, q.restaurant?.state].filter(Boolean).join(', ')]
     .filter(Boolean).join(' · ');
   const sentDate = formatDate(q.sent_at || q.created_at);
+  // One source of truth: prefer the matched-only recount once it lands;
+  // fall back to the BE's raw consume-payload counts until it does.
+  const displayItemCount = liveCounts?.itemCount ?? q.item_count;
+  const displayCategoryCount = liveCounts?.categoryCount ?? q.category_count;
 
   return (
     <PageShell topRight={sentDate}>
@@ -265,7 +289,7 @@ export function ChefWelcomePage() {
                 <div
                   style={{ ...sans, fontSize: 11.5, color: C.gray500, fontVariantNumeric: 'tabular-nums' }}
                 >
-                  {q.item_count} item{q.item_count === 1 ? '' : 's'} across {q.category_count} categor{q.category_count === 1 ? 'y' : 'ies'}
+                  {displayItemCount} item{displayItemCount === 1 ? '' : 's'} across {displayCategoryCount} categor{displayCategoryCount === 1 ? 'y' : 'ies'}
                 </div>
               </div>
               <div

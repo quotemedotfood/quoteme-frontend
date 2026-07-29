@@ -38,10 +38,19 @@ export function ChefBadgePill({
   currentLocationName,
   onClick,
 }: ChefBadgePillProps) {
+  // Chef-header regression: this component always prepends its own "Chef "
+  // honorific below, so `firstName` must never itself already carry one.
+  // ChefTopbar's fallback chain (firstName || email-local-part || 'Chef')
+  // can resolve to the bare literal "Chef" when a session has neither a
+  // first name nor a usable email, which used to render as "Chef Chef".
+  // Strip any leading "Chef" defensively so the label can never double up,
+  // regardless of what a caller passes in; fall back to a neutral "there"
+  // if stripping leaves nothing.
+  const displayName = firstName.trim().replace(/^chef\s*/i, '') || 'there';
   const label =
     chefType === 'multi' && currentLocationName
-      ? `Chef ${firstName} · ${currentLocationName}`
-      : `Chef ${firstName}`;
+      ? `Chef ${displayName} · ${currentLocationName}`
+      : `Chef ${displayName}`;
 
   return (
     <button
