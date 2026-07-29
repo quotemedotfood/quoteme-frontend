@@ -15,7 +15,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach } from 'vitest';
 import { render, screen, cleanup } from '@testing-library/react';
-import { QuoteStateDocument, type QuoteDocGroup } from './QuoteStateDocument';
+import { QuoteStateDocument, stateFromQuoteState, type QuoteDocGroup } from './QuoteStateDocument';
 
 afterEach(() => {
   cleanup();
@@ -119,6 +119,91 @@ describe('QuoteStateDocument - confirmed-state eyebrow copy (chef-facing)', () =
     expect(screen.queryByText(/LOCKED/i)).toBeNull();
     // "ACCEPTED" legitimately renders twice — once in the eyebrow, once on
     // the seal badge — so assert on the count rather than a single match.
+    expect(screen.getAllByText('ACCEPTED').length).toBeGreaterThanOrEqual(2);
+  });
+});
+
+describe('QuoteStateDocument - Constitution XI state mapping (BE PR #318 lockstep)', () => {
+  it('maps a pre-terminal XI state (ready_to_send) to the non-final preview chrome, not confirmed', () => {
+    expect(stateFromQuoteState('ready_to_send')).toBe('preview');
+
+    render(
+      <QuoteStateDocument
+        {...baseProps}
+        state={stateFromQuoteState('ready_to_send')}
+        quoteState="ready_to_send"
+        groups={oneItemGroup('DAIRY')}
+        totalCount={1}
+        pricedCount={0}
+      />,
+    );
+    expect(screen.queryByText('CONFIRMED QUOTE')).toBeNull();
+    expect(screen.queryByText(/CONFIRMED/i)).toBeNull();
+    expect(screen.getByText('PREVIEW QUOTE · NOT YET PRICED')).toBeInTheDocument();
+  });
+
+  it('maps every other XI in-progress state to the non-final preview chrome as well', () => {
+    const inProgressStates = [
+      'received',
+      'preparing',
+      'validating',
+      'ready_for_review',
+      'needs_rep_decision',
+      'sending',
+    ];
+    for (const s of inProgressStates) {
+      expect(stateFromQuoteState(s)).toBe('preview');
+    }
+  });
+
+  it('defaults an unknown/future state to the safe non-final preview chrome, not confirmed', () => {
+    expect(stateFromQuoteState('some_future_state_318b')).toBe('preview');
+
+    render(
+      <QuoteStateDocument
+        {...baseProps}
+        state={stateFromQuoteState('some_future_state_318b')}
+        quoteState="some_future_state_318b"
+        groups={oneItemGroup('DAIRY')}
+        totalCount={1}
+        pricedCount={0}
+      />,
+    );
+    expect(screen.queryByText('CONFIRMED QUOTE')).toBeNull();
+    expect(screen.getByText('PREVIEW QUOTE · NOT YET PRICED')).toBeInTheDocument();
+  });
+
+  it('maps XI "sent" to the confirmed/locked document chrome, reading CONFIRMED QUOTE (not ACCEPTED)', () => {
+    expect(stateFromQuoteState('sent')).toBe('confirmed');
+
+    render(
+      <QuoteStateDocument
+        {...baseProps}
+        state={stateFromQuoteState('sent')}
+        quoteState="sent"
+        groups={oneItemGroup('DAIRY')}
+        totalCount={1}
+        pricedCount={1}
+      />,
+    );
+    expect(screen.getByText('CONFIRMED QUOTE')).toBeInTheDocument();
+    expect(screen.queryByText('ACCEPTED')).toBeNull();
+  });
+
+  it('maps XI "accepted" to the confirmed document chrome reading ACCEPTED', () => {
+    expect(stateFromQuoteState('accepted')).toBe('confirmed');
+
+    render(
+      <QuoteStateDocument
+        {...baseProps}
+        state={stateFromQuoteState('accepted')}
+        quoteState="accepted"
+        groups={oneItemGroup('DAIRY')}
+        totalCount={1}
+        pricedCount={1}
+      />,
+    );
+    expect(screen.queryByText(/LOCKED/i)).toBeNull();
     expect(screen.getAllByText('ACCEPTED').length).toBeGreaterThanOrEqual(2);
   });
 });
