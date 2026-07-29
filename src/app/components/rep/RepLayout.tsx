@@ -20,10 +20,12 @@
 // kept in RepDesktopShell.tsx as a named export to avoid breaking any future
 // one-off usage, but it is no longer instantiated by any routed page.
 
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router';
 import { RepNewspaperSidebar } from './RepDesktopShell';
 import type { RepActiveTab, RepSidebarMode } from './RepDesktopShell';
+import { ChefTabBar } from '../chef/ChefTabBar';
+import type { TabDef } from '../chef/ChefTabBar';
 import { useAuth } from '../../contexts/AuthContext';
 
 // ─── Role label ───────────────────────────────────────────────────────────────
@@ -82,6 +84,71 @@ function activeTabFromPath(pathname: string): RepActiveTab {
   return 'quotes-inbound';
 }
 
+// ─── Mobile bottom nav (Justin's nav ruling, 2026-07-29) ─────────────────────
+//
+// Below 768px the rep <aside> (RepNewspaperSidebar) is not rendered at all —
+// its hard-coded 280px/64px flex width was stealing horizontal space from the
+// content column on real handsets (280px of a 390px viewport left ~110px for
+// the quote itself). Below that breakpoint the content column takes full
+// width and a fixed bottom nav (Today / Inbound / Quotes) takes over,
+// reusing ChefTabBar's fixed-bottom + scroll-hide chrome rather than a
+// second parallel bottom-bar component — see chef/ChefTabBar.tsx.
+//
+// EXCEPTION (part of the ruling, Ch XXII — secondary actions never compete
+// with Send): on the quote-detail screens (/quote-builder, /export-finalize)
+// Send owns the bottom exclusively, so the bottom nav is suppressed there.
+// Those two routes are the only surfaces reached under RepLayout that render
+// the quote itself with a Send-driving action in the fixed bottom area
+// (ExportFinalizePage's "Email Quote to Chef" bar; QuoteBuilderPage's
+// "Continue to Export" FAB) — /map-ingredients and /start-new-quote are
+// process steps, not the quote detail, so they keep the bottom nav.
+const REP_BOTTOM_TABS: TabDef[] = [
+  { id: 'today',    label: 'Today',   target: 'rep-tab-today' },
+  { id: 'inbound',  label: 'Inbound', target: 'rep-tab-inbound' },
+  { id: 'quotes',   label: 'Quotes',  target: 'rep-tab-quotes' },
+];
+
+function repBottomTabFromPath(pathname: string): string {
+  if (pathname === '/dashboard') return 'today';
+  if (pathname.startsWith('/rep/quotes/history')) return 'quotes';
+  if (pathname.startsWith('/rep/quotes')) return 'inbound';
+  if (
+    pathname.startsWith('/start-new-quote') ||
+    pathname.startsWith('/map-ingredients') ||
+    pathname.startsWith('/quote-builder') ||
+    pathname.startsWith('/export-finalize')
+  ) {
+    return 'inbound';
+  }
+  return '';
+}
+
+// Quote-detail / Review-and-Send surfaces — Send wins, bottom nav suppressed.
+export function isRepQuoteDetailRoute(pathname: string): boolean {
+  return pathname.startsWith('/quote-builder') || pathname.startsWith('/export-finalize');
+}
+
+// Environments without matchMedia (some jsdom/test setups) default to
+// desktop so pre-existing desktop-oriented tests/behavior are unaffected —
+// real browsers all support matchMedia, so this only matters in test envs.
+function supportsMatchMedia(): boolean {
+  return typeof window !== 'undefined' && typeof window.matchMedia === 'function';
+}
+
+function useIsDesktop(): boolean {
+  const [isDesktop, setIsDesktop] = useState<boolean>(
+    supportsMatchMedia() ? window.matchMedia('(min-width: 768px)').matches : true
+  );
+  useEffect(() => {
+    if (!supportsMatchMedia()) return;
+    const mq = window.matchMedia('(min-width: 768px)');
+    const handler = (e: MediaQueryListEvent) => setIsDesktop(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
+  return isDesktop;
+}
+
 // ─── RepLayout ────────────────────────────────────────────────────────────────
 
 const sans: React.CSSProperties = {
@@ -99,6 +166,7 @@ export function RepLayout({ children }: RepLayoutProps = {}) {
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const isDesktop = useIsDesktop();
 
   const repName = user
     ? [user.first_name, user.last_name].filter(Boolean).join(' ').trim() || 'Rep'
@@ -110,7 +178,12 @@ export function RepLayout({ children }: RepLayoutProps = {}) {
   const sessionRoleLabel = roleLabel(user?.role);
 
   const active = activeTabFromPath(location.pathname);
-  const hidden = mode === 'hidden';
+  // Below 768px the aside never renders, so "hidden" (the desktop-only
+  // collapse-to-nothing mode) is meaningless there — gate it to desktop.
+  const hidden = isDesktop && mode === 'hidden';
+  // Quote-detail / Review-and-Send surfaces suppress the bottom nav so Send
+  // owns the bottom exclusively (Justin's nav ruling, Ch XXII).
+  const showBottomNav = !isDesktop && !isRepQuoteDetailRoute(location.pathname);
 
   const nav = (dest: string, opts?: { quoteId?: string }) => {
     if (dest === 'rep-triage' || dest === 'rep-quotes-inbound') navigate('/rep/quotes/inbound');
@@ -125,6 +198,12 @@ export function RepLayout({ children }: RepLayoutProps = {}) {
     else if (dest === 'rep-settings') navigate('/settings');
   };
 
+  const navBottom = (target: string) => {
+    if (target === 'rep-tab-today') navigate('/dashboard');
+    else if (target === 'rep-tab-inbound') navigate('/rep/quotes/inbound');
+    else if (target === 'rep-tab-quotes') navigate('/rep/quotes/history');
+  };
+
   return (
     <RepSidebarContext.Provider value={{ mode, setMode }}>
       <div
@@ -135,7 +214,7 @@ export function RepLayout({ children }: RepLayoutProps = {}) {
           background: '#fff',
         }}
       >
-        {!hidden && (
+        {isDesktop && !hidden && (
           <RepNewspaperSidebar
             mode={mode}
             onModeChange={setMode}
@@ -158,15 +237,18 @@ export function RepLayout({ children }: RepLayoutProps = {}) {
           <div
             style={{
               ...sans,
-              padding: '36px 40px',
+              padding: isDesktop ? '36px 40px' : '20px 16px',
               maxWidth: 1180,
+              // Reserve space above the fixed bottom nav so scrolled content
+              // never sits underneath it.
+              paddingBottom: showBottomNav ? 84 : (isDesktop ? undefined : 20),
             }}
           >
             {children ?? <Outlet />}
           </div>
         </main>
 
-        {hidden && (
+        {isDesktop && hidden && (
           <button
             type="button"
             onClick={() => setMode('open')}
@@ -190,6 +272,14 @@ export function RepLayout({ children }: RepLayoutProps = {}) {
           >
             › sidebar
           </button>
+        )}
+
+        {showBottomNav && (
+          <ChefTabBar
+            active={repBottomTabFromPath(location.pathname)}
+            nav={navBottom}
+            tabs={REP_BOTTOM_TABS}
+          />
         )}
       </div>
     </RepSidebarContext.Provider>
