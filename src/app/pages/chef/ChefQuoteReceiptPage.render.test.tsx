@@ -13,7 +13,7 @@
 //
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, waitFor, cleanup, act } from '@testing-library/react';
+import { render, screen, fireEvent, cleanup, act } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router';
 
 function deferred<T>() {
@@ -78,25 +78,21 @@ describe('ChefQuoteReceiptPage - accept guard (BUG #28)', () => {
     cleanup();
   });
 
-  it('the auto-accept effect and a racing manual click share one guard: acceptChefQuote fires exactly once', async () => {
+  it('A2: returning with ?intent=accept opens the confirmation and does NOT auto-accept; confirming fires acceptChefQuote exactly once even on a racing double-click', async () => {
     const gate = deferred<{ data?: { order_guide_id: string }; error?: string }>();
     acceptChefQuote.mockImplementation(() => gate.promise);
 
     renderPage('?intent=accept');
 
-    // The auto-accept effect fires as soon as the quote loads (?intent=accept).
-    await waitFor(() => {
-      expect(acceptChefQuote).toHaveBeenCalledTimes(1);
-    });
+    // A2 safety: coming back from the capture flow must surface the confirmation,
+    // never fire accept on its own. The confirm button is present; accept is not called.
+    const confirm = await screen.findByRole('button', { name: /accept and start order guide/i });
+    expect(acceptChefQuote).not.toHaveBeenCalled();
 
-    // Race a manual click against the still-in-flight auto-accept call.
-    // Whether the button is already disabled or not, the underlying
-    // acceptChefQuote() must not be invoked a second time for the same
-    // accept action; the shared inFlightRef blocks it synchronously even
-    // if the click somehow reaches the handler before re-render.
-    const button = screen.getByRole('button', { name: /building your order guide|looks good/i });
-    fireEvent.click(button);
-
+    // BUG #28: a racing double-click on the confirm button shares one inFlightRef,
+    // so the underlying POST fires exactly once.
+    fireEvent.click(confirm);
+    fireEvent.click(confirm);
     expect(acceptChefQuote).toHaveBeenCalledTimes(1);
 
     await act(async () => {
@@ -106,16 +102,20 @@ describe('ChefQuoteReceiptPage - accept guard (BUG #28)', () => {
     expect(acceptChefQuote).toHaveBeenCalledTimes(1);
   });
 
-  it('a synchronous double-click on "Looks good" (no auto-accept) fires acceptChefQuote exactly once', async () => {
+  it('A2: "Looks good" opens the confirmation without accepting (one tap never accepts); a double-click on the confirm button fires acceptChefQuote exactly once', async () => {
     const gate = deferred<{ data?: { order_guide_id: string }; error?: string }>();
     acceptChefQuote.mockImplementation(() => gate.promise);
 
     renderPage();
 
-    const button = await screen.findByRole('button', { name: 'Looks good' });
-    fireEvent.click(button);
-    fireEvent.click(button);
+    const looksGood = await screen.findByRole('button', { name: 'Looks good' });
+    fireEvent.click(looksGood);
+    // A2: the first tap only opens the confirmation; accept has not fired.
+    expect(acceptChefQuote).not.toHaveBeenCalled();
 
+    const confirm = screen.getByRole('button', { name: /accept and start order guide/i });
+    fireEvent.click(confirm);
+    fireEvent.click(confirm);
     expect(acceptChefQuote).toHaveBeenCalledTimes(1);
 
     await act(async () => {
@@ -123,6 +123,29 @@ describe('ChefQuoteReceiptPage - accept guard (BUG #28)', () => {
     });
 
     expect(acceptChefQuote).toHaveBeenCalledTimes(1);
+  });
+
+  it('A3: the confirmation names an unanswered chef question and does NOT block accept (warn, not block)', async () => {
+    getChefQuote.mockResolvedValueOnce({
+      data: {
+        ...baseQuote,
+        has_unanswered_chef_question: true,
+        chef_questions: [
+          { id: 'q1', body: 'Can you match last month price on the salmon?', created_at: '2026-01-02T00:00:00Z', read: false },
+        ],
+      },
+    });
+
+    renderPage();
+
+    const looksGood = await screen.findByRole('button', { name: 'Looks good' });
+    fireEvent.click(looksGood);
+
+    // Warn: the open question is surfaced in the confirmation (getByText throws if absent).
+    screen.getByText(/Can you match last month price on the salmon\?/);
+    // Not block: the confirm button is present and enabled.
+    const confirm = screen.getByRole('button', { name: /accept and start order guide/i }) as HTMLButtonElement;
+    expect(confirm.disabled).toBe(false);
   });
 });
 
