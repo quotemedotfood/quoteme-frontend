@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useLayoutEffect, useRef } from 'react';
+import type { CSSProperties } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router';
 import { getGuestQuote, getChefQuote, acceptChefQuote, sendChefQuestion } from '../../services/api';
 import { acceptCaptureAuthUrl } from '../../utils/captureFlow';
@@ -58,6 +59,19 @@ export function ChefQuoteReceiptPage() {
   const [questionSent, setQuestionSent] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [savedForLater, setSavedForLater] = useState(false);
+  // A2 (chef accept safety): accept creates an order guide and cannot be undone,
+  // so it requires a deliberate second action. "Looks good" opens this
+  // confirmation; only the confirm button inside it actually accepts.
+  const [confirmOpen, setConfirmOpen] = useState(false);
+
+  // A1: the decision panel is position:fixed at <768, so the scrolling document
+  // must reserve bottom padding EQUAL to the panel's real height, or the last
+  // quote lines stay permanently under it (Justin measured 252px of an 844px
+  // screen covered, no dismiss control). The old hardcoded pb-[240px] undershot
+  // the real, device/font/state-dependent height. Measure it and drive padding
+  // from the measurement so the last row always clears.
+  const decisionPanelRef = useRef<HTMLDivElement>(null);
+  const [panelHeight, setPanelHeight] = useState(240);
 
   useEffect(() => {
     if (!id) return;
@@ -129,7 +143,10 @@ export function ChefQuoteReceiptPage() {
     if (!quote) return;
     if (quote.status === 'won' || quote.state === 'accepted') return;
     autoAcceptedRef.current = true;
-    handleAccept();
+    // A2: never auto-accept on return from the capture flow. The chef tapped
+    // "Looks good" before signup; completing signup is not the deliberate accept.
+    // Surface the confirmation so acceptance is always a distinct, informed tap.
+    setConfirmOpen(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, quote]);
 
@@ -147,6 +164,26 @@ export function ChefQuoteReceiptPage() {
     setQuestionOpen(false);
     setQuestionText('');
   }
+
+  // A1: keep the scroll-column bottom padding equal to the fixed decision panel's
+  // measured height (mobile only; the panel is md:static, in flow, at >=768). A
+  // ResizeObserver re-measures whenever the panel grows or shrinks (question box
+  // opens, confirmation opens, tab bar present, font/device differences).
+  useLayoutEffect(() => {
+    const el = decisionPanelRef.current;
+    if (!el) return;
+    const measure = () => setPanelHeight(el.offsetHeight);
+    measure();
+    // ResizeObserver is absent in jsdom (tests) and very old browsers; fall back
+    // to a one-time measure plus a window-resize listener there.
+    if (typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', measure);
+      return () => window.removeEventListener('resize', measure);
+    }
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [quote]);
 
   // ── Loading ────────────────────────────────────────────────────────────────
 
@@ -209,6 +246,12 @@ export function ChefQuoteReceiptPage() {
   // H-2/H-5: shared isLockedQuoteState() from quoteStatusLabel utils.
   const isLocked = isLockedQuoteState(quote);
 
+  // A3: warn (do not block) if the chef has an unanswered question with the rep.
+  // Justin withdrew the "impossible state" framing: under the order-guide model,
+  // accepting with an open question is normal, so this is context, not a guard.
+  const openChefQuestion = quote.chef_questions?.find((q) => !q.read) || null;
+  const hasOpenChefQuestion = quote.has_unanswered_chef_question === true || questionSent;
+
   // ── D6 QuoteStateDocument props ──────────────────────────────────────────────
   // The document body (header + priced matched lines + totals) is now the
   // state-driven QuoteStateDocument. The unmatched-lines section + decision
@@ -265,9 +308,8 @@ export function ChefQuoteReceiptPage() {
 
   return (
     <div
-      className={`flex flex-col items-center px-6 pt-12 ${
-        questionOpen ? 'pb-[400px]' : 'pb-[240px]'
-      } md:pb-12`}
+      className="flex flex-col items-center px-6 pt-12 pb-[var(--chef-cta-h)] md:pb-12"
+      style={{ ['--chef-cta-h']: `${panelHeight}px` } as CSSProperties}
     >
       <div className="w-full max-w-xl">
 
@@ -349,6 +391,7 @@ export function ChefQuoteReceiptPage() {
             Desktop (>=768): static, in-flow at the end of the document
             column, exactly as before. */}
         <div
+          ref={decisionPanelRef}
           className={`fixed inset-x-0 bottom-0 z-40 border-t border-[#F0F0F0] bg-white px-6 pt-4 ${
             hasChefTabBar ? 'pb-[68px]' : 'pb-3'
           } md:static md:z-auto md:bg-transparent md:px-0 md:pt-8 md:pb-0`}
@@ -383,6 +426,36 @@ export function ChefQuoteReceiptPage() {
                   ? 'This quote has been declined.'
                   : 'This quote is no longer active.'}
             </p>
+          ) : confirmOpen ? (
+            /* A2/A3: deliberate second action. Plain language, framed as what
+               happens next, not a warning. A3 adds context (not a block) when a
+               question is still open with the rep. */
+            <div className="flex flex-col gap-3">
+              <p className="text-base text-[#2A2A2A] leading-relaxed">
+                This sends your acceptance to your rep and starts your order guide.
+              </p>
+              {hasOpenChefQuestion && (
+                <p className="text-sm text-[#92400E] bg-amber-50 border border-amber-200 rounded px-3 py-2 leading-relaxed">
+                  {openChefQuestion
+                    ? `Heads up: your rep hasn't answered your question yet ("${openChefQuestion.body}"). You can accept now, or wait to hear back first.`
+                    : "Heads up: you have a question with your rep that hasn't been answered yet. You can accept now, or wait to hear back first."}
+                </p>
+              )}
+              <button
+                onClick={handleAccept}
+                disabled={acceptMutation.loading}
+                className="w-full bg-[#2A2A2A] hover:bg-[#1A1A1A] text-white rounded-lg px-6 py-3.5 text-base font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {acceptMutation.loading ? 'Building your order guide…' : 'Accept and start order guide'}
+              </button>
+              <button
+                onClick={() => setConfirmOpen(false)}
+                disabled={acceptMutation.loading}
+                className="w-full text-[#9E9E9E] hover:text-[#4F4F4F] px-6 py-2.5 text-sm font-medium transition-colors disabled:opacity-40"
+              >
+                Not yet
+              </button>
+            </div>
           ) : (
             <>
               {/* Inline question box */}
@@ -417,13 +490,12 @@ export function ChefQuoteReceiptPage() {
                 </div>
               )}
 
-              {/* Looks good */}
+              {/* Looks good - opens a confirmation; NEVER accepts on this tap (A2). */}
               <button
-                onClick={handleAccept}
-                disabled={acceptMutation.loading}
-                className="w-full bg-[#2A2A2A] hover:bg-[#1A1A1A] text-white rounded-lg px-6 py-3.5 text-base font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={() => setConfirmOpen(true)}
+                className="w-full bg-[#2A2A2A] hover:bg-[#1A1A1A] text-white rounded-lg px-6 py-3.5 text-base font-medium transition-colors"
               >
-                {acceptMutation.loading ? 'Building your order guide…' : 'Looks good'}
+                Looks good
               </button>
 
               {/* I have questions */}
@@ -440,8 +512,9 @@ export function ChefQuoteReceiptPage() {
 
           {/* H-5: Save for later is only meaningful when the chef hasn't yet
               acted. Hide it on accepted/confirmed/won quotes — show post-
-              acceptance CTAs (PDF download) instead if available. */}
-          {!isLocked && (
+              acceptance CTAs (PDF download) instead if available. A2: also hidden
+              while the accept confirmation is open, so the choice stands alone. */}
+          {!isLocked && !confirmOpen && (
             savedForLater ? (
               <p className="text-sm text-[#4F4F4F] px-6 py-2.5 text-center">
                 Saved. You can return to this quote anytime.
