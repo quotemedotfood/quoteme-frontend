@@ -145,6 +145,13 @@ export function BrandShellLayout() {
   // All hooks above must be called unconditionally before this early return.
   if (isLoading) return null;
 
+  // Unauth guard. /brand is a direct child of RootWrapper (NOT under RootLayout),
+  // so this shell is the ONLY auth gate for /brand/*. Without this, the
+  // `if (user && role !== 'brand')` check below silently renders the full brand
+  // shell to an unauthenticated visitor (user == null matches neither branch).
+  // Mirrors QMAdminLayout's safe pattern. See the guard-shape note in the PR.
+  if (!user) return <Navigate to="/auth" replace />;
+
   // Brand guard: non-brand roles must never land here.
   if (user && user.role !== 'brand') {
     const landing =

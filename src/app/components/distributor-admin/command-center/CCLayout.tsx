@@ -97,7 +97,7 @@ export function CCLayout() {
 
   const location = useLocation();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
 
   // Fetch unassigned + inbound counts once on mount so sidebar badges are live
   // across all CC screens (including satellite pages like catalog/reps) without polling.
@@ -121,6 +121,13 @@ export function CCLayout() {
     });
     return () => { cancelled = true; };
   }, []);
+
+  // Unauth guard (pattern fix, matches BrandShellLayout / QMAdminLayout). A shell
+  // whose only auth check is `if (user && ...)` silently renders for an
+  // unauthenticated visitor (user == null matches neither branch). CCLayout is
+  // gated by RootLayout today, so this is defense-in-depth rather than a live
+  // hole, but the guard SHAPE is the bug, so we fix the pattern, not the instance.
+  if (!isLoading && !user) return <Navigate to="/auth" replace />;
 
   // B-42: Guard — reps and other non-distributor_admin roles must not access the
   // Command Center shell at all. Redirect reps to their own inbound queue; all other
