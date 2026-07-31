@@ -116,6 +116,25 @@ describe('ChefWelcomePage refusal page: rep/distributor/quote-reference renderin
     // The generic support fallback must still be present - never a dead end.
     expect(screen.getByText('Email us for a fresh link')).toBeInTheDocument();
   });
+
+  it('B1: a role_conflict renders the refusal screen (its own copy, NO reissue button, support fallback kept)', async () => {
+    consumeChefMagicLink.mockResolvedValueOnce({
+      error: 'role_conflict',
+      error_code: 'role_conflict',
+      message: "An account already exists at this email under a different role. Reach out to your rep and we'll sort it out.",
+    });
+
+    renderExpiredPage();
+
+    await waitFor(() => {
+      // role_conflict copy from errorCopy, rendered through the refusal screen
+      expect(screen.getByText("We couldn't open the quote.")).toBeInTheDocument();
+    });
+    // "Request a new link" is expired-only (a fresh link cannot fix a role conflict)
+    expect(screen.queryByText('Request a new link')).not.toBeInTheDocument();
+    // but the branch is never a dead end: the support fallback is still there
+    expect(screen.getByText('Email us for a fresh link')).toBeInTheDocument();
+  });
 });
 
 describe('ChefWelcomePage refusal page: Request a new link button states', () => {

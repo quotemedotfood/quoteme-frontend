@@ -211,27 +211,21 @@ export function ChefWelcomePage() {
     );
   }
 
-  // ── Error: expired link — designed screen (c145) ──────────────────────────
-  if (state === 'error' && errorCode === 'expired') {
+  // ── Error: ONE refusal screen for every refusal branch (B1). A dead end is a
+  //    lost sale, so expired / invalid_token / role_conflict / account_conflict
+  //    all land on the actionable refusal screen (rep contact + support fallback,
+  //    plus the reissue action on expired) instead of a bare dead-end message. ──
+  if (state === 'error') {
     return (
       <PageShell>
-        <ExpiredLinkScreen
+        <RefusalScreen
+          code={errorCode}
+          message={errorMsg}
           token={token}
           rep={errorRep}
           distributor={errorDistributor}
           quoteReference={errorQuoteReference}
         />
-      </PageShell>
-    );
-  }
-
-  // ── Error: other errors ────────────────────────────────────────────────────
-  if (state === 'error') {
-    return (
-      <PageShell>
-        <div className="px-6 py-16">
-          <ErrorPanel code={errorCode} message={errorMsg} />
-        </div>
       </PageShell>
     );
   }
@@ -391,18 +385,38 @@ function InlineSpinner() {
   );
 }
 
-function ExpiredLinkScreen({
+function RefusalScreen({
+  code,
+  message,
   token,
   rep,
   distributor,
   quoteReference,
 }: {
+  code: string;
+  message?: string;
   token: string;
   rep?: { name: string; email: string; phone: string | null } | null;
   distributor?: { name: string } | null;
   quoteReference?: string | null;
 }) {
   const [requestState, setRequestState] = useState<RequestLinkState>('idle');
+
+  // B1: one refusal screen for EVERY refusal branch (a dead end is a lost sale).
+  // Expired keeps its warm, expiry-specific copy and its "Request a new link"
+  // action (which only works on an expired-but-existing row). Every other branch
+  // (invalid_token, role_conflict, account_conflict, ...) derives its copy from
+  // errorCopy and drops the reissue action, since a fresh link cannot resolve a
+  // wrong-role or missing-link case; the rep-contact card and the always-on
+  // support fallback below are that branch's live path forward.
+  const isExpired = code === 'expired';
+  const copy = isExpired
+    ? {
+        title: 'This link has expired.',
+        body:
+          "Quote links expire after 72 hours, but you're not stuck. Request a fresh one below and your rep will get it right to you.",
+      }
+    : errorCopy(code, message);
 
   const hasRepContact = Boolean(rep?.email || rep?.phone);
   const hasContextCard = Boolean(rep?.name || distributor?.name || quoteReference || hasRepContact);
@@ -458,7 +472,7 @@ function ExpiredLinkScreen({
           className="text-center"
           style={{ ...serif, fontSize: 24, fontWeight: 600, color: C.charcoal, lineHeight: 1.25 }}
         >
-          This link has expired.
+          {copy.title}
         </h1>
 
         {/* Sub-copy */}
@@ -466,8 +480,7 @@ function ExpiredLinkScreen({
           className="mt-3 text-center"
           style={{ ...sans, fontSize: 14, color: C.gray700, lineHeight: 1.6 }}
         >
-          Quote links expire after 72 hours, but you're not stuck. Request a fresh one below and your rep will
-          get it right to you.
+          {copy.body}
         </p>
 
         {/* Rep / distributor / quote-reference context card, only when the
@@ -526,7 +539,10 @@ function ExpiredLinkScreen({
           </div>
         )}
 
-        {/* Primary action: request a new link, four states */}
+        {/* Primary action: request a new link. Expired-only: a fresh link cannot
+            resolve a wrong-role or invalid-link refusal, so it is hidden there and
+            the rep-contact card + support fallback below carry the live path. */}
+        {isExpired && (
         <div className="mt-7">
           <button
             type="button"
@@ -574,6 +590,7 @@ function ExpiredLinkScreen({
             </p>
           )}
         </div>
+        )}
 
         {/* Divider */}
         <div className="mt-7" style={{ borderTop: `1px solid ${C.softLine}` }} />
@@ -686,32 +703,15 @@ function PageShell({ children, topRight }: { children: React.ReactNode; topRight
   );
 }
 
-// ─── ErrorPanel ────────────────────────────────────────────────────────────
+// errorCopy: per-code chef-facing copy for the RefusalScreen (B1). Every refusal
+// branch now renders through RefusalScreen; the dead-end ErrorPanel was removed.
 // Known error codes from the consume endpoint:
 //   invalid_token    (401): bad / missing / unknown
-//   expired          (410): token past its TTL (rendered via the dedicated
-//                           ExpiredLinkScreen above, not this panel)
-//   role_conflict    (422): email already has a non-chef account
-//   account_conflict (422): BUG #39, the chef magic-link TTL rewrite's
-//                           replacement error code for cases where the
-//                           backend can't sign the chef in automatically
-function ErrorPanel({ code, message }: { code: string; message?: string }) {
-  const copy = errorCopy(code, message);
-  return (
-    <div className="max-w-md mx-auto text-center">
-      <div style={{ ...serif, fontSize: 22, fontWeight: 600, color: C.charcoal, lineHeight: 1.3 }}>
-        {copy.title}
-      </div>
-      <p
-        className="mt-3"
-        style={{ ...sans, fontSize: 14, color: C.gray700, lineHeight: 1.55 }}
-      >
-        {copy.body}
-      </p>
-    </div>
-  );
-}
-
+//   expired          (410): token past its TTL (RefusalScreen uses its own warm
+//                           expired copy + the reissue action, not this map)
+//   role_conflict    (422): email already has an account under a different role
+//   account_conflict (422): a chef tied to a different restaurant (or a case the
+//                           backend can't sign in automatically)
 function errorCopy(code: string, message?: string): { title: string; body: string } {
   // expired: functionally unreachable through this panel today - the
   // state === 'error' && errorCode === 'expired' check above renders the
