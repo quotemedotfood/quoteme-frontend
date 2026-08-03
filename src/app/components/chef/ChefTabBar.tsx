@@ -139,7 +139,12 @@ export function ChefTabBar({ active = 'home', nav = () => {}, tabs = CHEF_TABS }
               type="button"
               onClick={() => nav(t.target)}
               className="flex-1 flex items-center justify-center"
-              style={{ paddingLeft: 6, paddingRight: 8, minHeight: 0 }}
+              // 44px min tap target — one thumb, wet hands, moving vehicle.
+              // The bar's flex: 0 0 56px is inert here (this bar is position:
+              // fixed, so it is not a flex item), which is why the row had
+              // collapsed to the ~14px text height. Setting the floor on the
+              // buttons grows the bar back to its intended ~56px.
+              style={{ paddingLeft: 6, paddingRight: 8, minHeight: 44 }}
             >
               <span
                 style={{
@@ -169,7 +174,8 @@ export function ChefTabBar({ active = 'home', nav = () => {}, tabs = CHEF_TABS }
             type="button"
             onClick={() => nav(t.target)}
             className="flex-1 flex flex-col items-center justify-center gap-1"
-            style={{ position: 'relative', minHeight: 0 }}
+            // 44px min tap target (see note on the action button above).
+            style={{ position: 'relative', minHeight: 44 }}
           >
             <span
               style={{
