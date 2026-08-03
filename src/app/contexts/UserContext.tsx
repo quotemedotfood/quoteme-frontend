@@ -83,6 +83,18 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem('user_profile', JSON.stringify(profile));
   }, [profile]);
 
+  // On logout (fired by AuthContext), drop the in-memory profile back to the
+  // guest defaults. AuthContext already removed the user_profile key; resetting
+  // here stops the persist effect above from writing the signed-out rep's name,
+  // email and phone back to storage — the profile that lands is defaults only,
+  // never personal data. Matters because logout is a soft navigation, so this
+  // provider is never unmounted to clear its state on its own.
+  useEffect(() => {
+    const onLogout = () => setProfile(defaultProfile);
+    window.addEventListener('quoteme:logout', onLogout);
+    return () => window.removeEventListener('quoteme:logout', onLogout);
+  }, []);
+
   const initGuestSessionInternal = useCallback(async () => {
     // B-182: never initialize a guest session for an authenticated user. A real
     // bearer token (rep/admin/chef) must not be shadowed by a guest session —
