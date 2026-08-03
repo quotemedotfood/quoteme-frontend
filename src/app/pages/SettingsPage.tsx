@@ -31,6 +31,30 @@ function roleLabel(role: string | undefined): string {
   return ROLE_LABEL[role] ?? role;
 }
 
+// Below 768px the distributor_admin settings page must NOT wrap in the
+// ManagerSidebar shell: that sidebar holds a fixed 280px and has no responsive
+// handling, so on a phone it crushed the form column to ~26px and pinned the
+// inputs off the right edge (Justin, item 1). Match RepLayout's matchMedia
+// pattern (kept local, same as RepLayout, rather than extracted) and drop the
+// shell below the breakpoint so settings renders full width.
+function supportsMatchMedia(): boolean {
+  return typeof window !== 'undefined' && typeof window.matchMedia === 'function';
+}
+
+function useIsDesktop(): boolean {
+  const [isDesktop, setIsDesktop] = useState<boolean>(
+    supportsMatchMedia() ? window.matchMedia('(min-width: 768px)').matches : true
+  );
+  useEffect(() => {
+    if (!supportsMatchMedia()) return;
+    const mq = window.matchMedia('(min-width: 768px)');
+    const handler = (e: MediaQueryListEvent) => setIsDesktop(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
+  return isDesktop;
+}
+
 export function SettingsPage() {
   const { profile, updateProfile } = useUser();
   const { user, logout, refreshUser } = useAuth();
@@ -40,6 +64,7 @@ export function SettingsPage() {
 
   // Distributor admin sidebar shell
   const isDistributorAdmin = user?.role === 'distributor_admin';
+  const isDesktop = useIsDesktop();
   const [sidebarMode, setSidebarMode] = useState<CCSidebarMode>('open');
 
   // Edit mode states
@@ -1364,8 +1389,11 @@ export function SettingsPage() {
     </div>
   );
 
-  // For distributor_admin: wrap in the CC sidebar shell so navigation is never lost
-  if (isDistributorAdmin) {
+  // For distributor_admin: wrap in the CC sidebar shell so navigation is never
+  // lost. Desktop only — on a phone the fixed 280px sidebar crushed the form,
+  // so below 768px we render settingsContent full width (the "Back to Board"
+  // link inside it carries the rep back to the command center).
+  if (isDistributorAdmin && isDesktop) {
     return (
       <div style={{ display: 'flex', minHeight: '100vh', background: '#fff', position: 'relative' }}>
         <ManagerSidebar
