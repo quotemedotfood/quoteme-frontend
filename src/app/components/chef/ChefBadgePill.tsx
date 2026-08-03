@@ -43,14 +43,18 @@ export function ChefBadgePill({
   // ChefTopbar's fallback chain (firstName || email-local-part || 'Chef')
   // can resolve to the bare literal "Chef" when a session has neither a
   // first name nor a usable email, which used to render as "Chef Chef".
-  // Strip any leading "Chef" defensively so the label can never double up,
-  // regardless of what a caller passes in; fall back to a neutral "there"
-  // if stripping leaves nothing.
-  const displayName = firstName.trim().replace(/^chef\s*/i, '') || 'there';
-  const label =
-    chefType === 'multi' && currentLocationName
-      ? `Chef ${displayName} · ${currentLocationName}`
-      : `Chef ${displayName}`;
+  // Strip any leading "Chef" defensively so the label can never double up.
+  // C3 (Justin, 2026-07-31): when stripping leaves NO real name, degrade to
+  // NO "Chef" prefix rather than to a fabricated word. The old fallback made
+  // this render "Chef there" (or "Chef Chef"), a bogus name and the first
+  // thing a chef reads. With no name we show the location (multi) or a neutral
+  // "Account" label, never "Chef <fallback-word>".
+  const cleaned = firstName.trim().replace(/^chef\s*/i, '');
+  const label = cleaned
+    ? (chefType === 'multi' && currentLocationName
+        ? `Chef ${cleaned} · ${currentLocationName}`
+        : `Chef ${cleaned}`)
+    : (chefType === 'multi' && currentLocationName ? currentLocationName : 'Account');
 
   return (
     <button
