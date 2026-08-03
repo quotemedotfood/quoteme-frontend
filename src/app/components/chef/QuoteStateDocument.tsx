@@ -128,6 +128,13 @@ export interface QuoteStateDocumentProps {
    * the default CONFIRMED. Without this, won/rep-built quotes (state nil) showed
    * "CONFIRMED" on both the header eyebrow and the seal. */
   accepted?: boolean;
+  /** C1 (Justin, 2026-07-31): whether this quote has been SENT (delivered) but
+   * not yet accepted. Derived by the caller from BOTH axes (status === 'sent'
+   * OR state === 'sent'). A sent quote is delivered, NOT "confirmed" -- under
+   * Ch XI v4 "confirmed" is not a lifecycle state, and the word CONFIRMED must
+   * appear nowhere on a sent quote (header, seal, footer). accepted wins over
+   * sent when both are set. */
+  sent?: boolean;
   restaurant: string;
   forName?: string; // chef full name (omitted on surfaces that don't carry it)
   quoteDate: string;
@@ -182,12 +189,18 @@ export function QuoteStateDocument({
   totalCount = 0,
   lastUpdated = '',
   confirmedAt = '',
+  sent = false,
 }: QuoteStateDocumentProps) {
   const itemCount = totalCount || groups.reduce((a, g) => a + g.items.length, 0);
   const at = distributorShort ? ` at ${distributorShort}` : '';
   // H-3: accepted when the caller says so (status==='won' OR state==='accepted'),
   // falling back to the raw J1 state for callers that only pass quoteState.
   const isAccepted = accepted || quoteState === 'accepted';
+  // C1: a delivered-but-not-accepted quote is SENT, not "confirmed". accepted
+  // wins if both are set. Drives the eyebrow, seal, and footer in the locked
+  // ('confirmed') document treatment so the word CONFIRMED never shows on a
+  // sent quote.
+  const isSent = !isAccepted && (sent || quoteState === 'sent');
 
   const chrome: Chrome = {
     preview: {
@@ -218,11 +231,16 @@ export function QuoteStateDocument({
       // to the chef. Removed — "CONFIRMED QUOTE" / "ACCEPTED" alone is the
       // chef-appropriate copy; the document chrome (seal, thick rule) already
       // communicates that the quote is final.
-      eyebrow: (isAccepted ? quoteStatusLabel('accepted', 'header') : quoteStatusLabel('confirmed', 'header')).toUpperCase(),
+      // C1: sent reads "SENT QUOTE" (delivered), accepted reads "ACCEPTED",
+      // legacy confirmed reads "CONFIRMED QUOTE". The word CONFIRMED never
+      // appears on a sent quote (Justin, 2026-07-31).
+      eyebrow: (isAccepted ? quoteStatusLabel('accepted', 'header') : isSent ? 'Sent Quote' : quoteStatusLabel('confirmed', 'header')).toUpperCase(),
       eyebrowDate: confirmedAt ? ` ${confirmedAt.replace(/, \d{4}$/, '')}` : '',
       watermark: null,
       topRightSlot: 'seal',
-      footerLine: `Confirmed by ${rep}${at} · ${confirmedAt}`,
+      // C2: a sent quote's footer reads "Sent by ..."; accepted/legacy-confirmed
+      // keep "Confirmed by ...".
+      footerLine: isSent ? `Sent by ${rep}${at}` : `Confirmed by ${rep}${at} · ${confirmedAt}`,
     },
   }[state];
 
@@ -311,7 +329,9 @@ export function QuoteStateDocument({
                 label={
                   isAccepted
                     ? quoteStatusLabel('accepted', 'pill').toUpperCase()
-                    : 'CONFIRMED'
+                    : isSent
+                      ? 'SENT'
+                      : 'CONFIRMED'
                 }
               />
             </div>

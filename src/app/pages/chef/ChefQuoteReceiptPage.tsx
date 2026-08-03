@@ -323,6 +323,10 @@ export function ChefQuoteReceiptPage() {
             // H-3: rep-built quotes carry the accepted signal on `status` ('won')
             // while their J1 `state` stays nil; chef-initiated quotes use state.
             accepted={quote.status === 'won' || quote.state === 'accepted'}
+            // C1: a sent (delivered, not yet accepted) quote must read "SENT",
+            // never "CONFIRMED". status 'sent' is the common rep-built case
+            // (J1 state nil); state 'sent' is the chef-initiated case.
+            sent={quote.status === 'sent' || quote.state === 'sent'}
             restaurant={quote.restaurant}
             quoteDate={formatQuoteDate(quote.created_at)}
             rep={repName || 'your rep'}

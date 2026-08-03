@@ -24,10 +24,11 @@ describe('ChefBadgePill - "Chef Chef" dedupe', () => {
     expect(screen.getByText('Chef Daniel')).toBeInTheDocument();
   });
 
-  it('does not double the prefix when firstName already resolves to the bare "Chef" fallback', () => {
+  it('degrades to NO "Chef" prefix (not a fabricated word) when there is no real name (C3)', () => {
     render(<ChefBadgePill firstName="Chef" chefType="single" onClick={() => {}} />);
     expect(screen.queryByText('Chef Chef')).toBeNull();
-    expect(screen.getByText('Chef there')).toBeInTheDocument();
+    expect(screen.queryByText('Chef there')).toBeNull();
+    expect(screen.getByText('Account')).toBeInTheDocument();
   });
 
   it('strips a leading "Chef" if a caller ever passes a name that already carries the honorific', () => {
@@ -36,7 +37,7 @@ describe('ChefBadgePill - "Chef Chef" dedupe', () => {
     expect(screen.queryByText('Chef Chef Daniel')).toBeNull();
   });
 
-  it('multi-location label also dedupes the prefix', () => {
+  it('multi-location with no real name shows the location only, never "Chef <word>"', () => {
     render(
       <ChefBadgePill
         firstName="Chef"
@@ -45,6 +46,7 @@ describe('ChefBadgePill - "Chef Chef" dedupe', () => {
         onClick={() => {}}
       />,
     );
-    expect(screen.getByText('Chef there · Downtown')).toBeInTheDocument();
+    expect(screen.queryByText('Chef there · Downtown')).toBeNull();
+    expect(screen.getByText('Downtown')).toBeInTheDocument();
   });
 });

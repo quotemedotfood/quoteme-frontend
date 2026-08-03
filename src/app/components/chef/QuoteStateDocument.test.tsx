@@ -173,7 +173,9 @@ describe('QuoteStateDocument - Constitution XI state mapping (BE PR #318 lockste
     expect(screen.getByText('PREVIEW QUOTE · NOT YET PRICED')).toBeInTheDocument();
   });
 
-  it('maps XI "sent" to the confirmed/locked document chrome, reading CONFIRMED QUOTE (not ACCEPTED)', () => {
+  it('renders a "sent" quote as SENT (delivered), never CONFIRMED or ACCEPTED (C1)', () => {
+    // sent still uses the locked ('confirmed') VISUAL treatment, but the copy
+    // must read SENT: the word CONFIRMED appears nowhere (header, seal, footer).
     expect(stateFromQuoteState('sent')).toBe('confirmed');
 
     render(
@@ -186,7 +188,8 @@ describe('QuoteStateDocument - Constitution XI state mapping (BE PR #318 lockste
         pricedCount={1}
       />,
     );
-    expect(screen.getByText('CONFIRMED QUOTE')).toBeInTheDocument();
+    expect(screen.getByText('SENT QUOTE')).toBeInTheDocument();
+    expect(screen.queryByText(/CONFIRMED/i)).toBeNull();
     expect(screen.queryByText('ACCEPTED')).toBeNull();
   });
 
