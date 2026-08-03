@@ -127,6 +127,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(() => {
     localStorage.removeItem('quoteme_token');
+    // Reps hand phones to chefs across the counter. After the token clears, the
+    // user_profile key still held the rep's name, email and phone. Drop it here,
+    // and fire quoteme:logout so UserContext also clears its in-memory copy —
+    // logout is a soft navigation (no reload), so the provider stays mounted and
+    // would otherwise re-persist the old profile into a following guest session.
+    localStorage.removeItem('user_profile');
+    window.dispatchEvent(new Event('quoteme:logout'));
     setUser(null);
     // Clear Sentry user context on logout.
     Sentry.setUser(null);
