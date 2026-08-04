@@ -91,6 +91,15 @@ function toTitleCase(str: string): string {
   }).replace(/^./, (c) => c.toUpperCase()); // Always capitalize first letter
 }
 
+// Plain-language, rep-voice copy for every failure this screen can show. No
+// backend strings ever reach the screen (product requirement): say what
+// happened and what to do next, never the server's words or a code. Same
+// sentence across save / apply / finish so the rep learns one recovery.
+const PRICING_SAVE_ERROR =
+  'We could not save your pricing. Check your connection and try again, or use Save Draft to keep your work.';
+const QUOTE_LOAD_ERROR =
+  'We could not load this quote. Check your connection and try again.';
+
 export function QuoteBuilderPage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -210,7 +219,7 @@ export function QuoteBuilderPage() {
       setHasUnansweredChefQuestion(!!data.has_unanswered_chef_question);
       setLoading(false);
     } catch (e: any) {
-      setError(e.message || 'Something went wrong');
+      setError(QUOTE_LOAD_ERROR);
       setLoading(false);
     }
   }, [quoteId]);
@@ -323,7 +332,7 @@ export function QuoteBuilderPage() {
     if (lines.length === 0) return true;
     const res = await persistQuote(quoteId, { lines });
     if (res.error) {
-      setSaveError(res.error);
+      setSaveError(PRICING_SAVE_ERROR);
       return false;
     }
     return true;
@@ -447,7 +456,7 @@ export function QuoteBuilderPage() {
 
       const res = await persistQuote(quoteId, { lines: changedLines });
       if (res.error) {
-        setSaveError(res.error);
+        setSaveError(PRICING_SAVE_ERROR);
       } else {
         // Update basePrices to match saved prices
         setItems(prev => prev.map(item => ({
@@ -457,7 +466,7 @@ export function QuoteBuilderPage() {
         })));
       }
     } catch (e: any) {
-      setSaveError(e.message || 'Failed to save prices');
+      setSaveError(PRICING_SAVE_ERROR);
     } finally {
       setSaving(false);
     }
@@ -611,7 +620,7 @@ export function QuoteBuilderPage() {
 
         {saveError && (
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4 text-sm">
-            Failed to save: {saveError}
+            {saveError}
           </div>
         )}
 
