@@ -310,7 +310,10 @@ export function MapComponentDrawer({
             <CatalogProductSearch
               quoteId={quoteId}
               onSelect={handleSelectManual}
-              initialQuery={isUnmatched ? componentName : undefined}
+              // Prefill with the component name for matched rows too, not only
+              // unmatched ones: the title already shows it, so an empty box just
+              // makes the rep retype what the dialog is displaying (audit item 3).
+              initialQuery={componentName}
             />
             {manualPick && (
               <div className="mt-3 border-2 border-[#7FAEC2] rounded-lg p-4 bg-[#7FAEC2]/5">
