@@ -18,6 +18,8 @@ import { Navigate, Outlet, useLocation, useNavigate } from 'react-router';
 import { ManagerSidebar } from './ManagerSidebar';
 import { CCSearchBar } from './CCSearchBar';
 import { sans, C } from './cc-atoms';
+import { ChefTabBar } from '../../chef/ChefTabBar';
+import type { TabDef } from '../../chef/ChefTabBar';
 import type { CCActiveTab, CCSidebarMode, CCManagerInfo } from './ManagerSidebar';
 import { useAuth } from '../../../contexts/AuthContext';
 import { Link2 } from 'lucide-react';
@@ -85,6 +87,51 @@ function buildMenuDropUrl(slug: string | null | undefined): string | null {
   return `${COLD_LANDING_HOST}/d/${encodeURIComponent(slug)}`;
 }
 
+// ── Mobile bottom nav (Justin's nav ruling, extends RepLayout's gate) ─────────
+// Below 768px the ManagerSidebar (280px flex) is not rendered — on a real
+// handset it stole 43% of a 658px window and there was no bottom nav at all.
+// Full-width content + a fixed bottom bar carrying the primary CC destinations,
+// EXCEPT on quote detail (/quote-builder, /export-finalize) where Send owns the
+// bottom exclusively (Ch XXII — secondary actions never compete with Send).
+// Reuses ChefTabBar's fixed-bottom + scroll-hide chrome, same as RepLayout.
+const CC_BOTTOM_TABS: TabDef[] = [
+  { id: 'today',   label: 'Today',   target: 'cc-tab-today' },
+  { id: 'inbound', label: 'Inbound', target: 'cc-tab-inbound' },
+  { id: 'quotes',  label: 'Quotes',  target: 'cc-tab-quotes' },
+];
+
+function ccBottomTabFromPath(pathname: string): string {
+  if (pathname.startsWith('/distributor-admin/command-center/inbound')) return 'inbound';
+  if (pathname.startsWith('/distributor-admin/command-center/quotes')) return 'quotes';
+  if (pathname.startsWith('/distributor-admin/command-center')) return 'today';
+  return '';
+}
+
+// Quote-detail / Review-and-Send surfaces — Send wins, bottom nav suppressed.
+export function isCCQuoteDetailRoute(pathname: string): boolean {
+  return pathname.startsWith('/quote-builder') || pathname.startsWith('/export-finalize');
+}
+
+// Test envs without matchMedia default to desktop so existing desktop-oriented
+// behavior is unaffected — real browsers all support it.
+function supportsMatchMedia(): boolean {
+  return typeof window !== 'undefined' && typeof window.matchMedia === 'function';
+}
+
+function useIsDesktop(): boolean {
+  const [isDesktop, setIsDesktop] = useState<boolean>(
+    supportsMatchMedia() ? window.matchMedia('(min-width: 768px)').matches : true
+  );
+  useEffect(() => {
+    if (!supportsMatchMedia()) return;
+    const mq = window.matchMedia('(min-width: 768px)');
+    const handler = (e: MediaQueryListEvent) => setIsDesktop(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
+  return isDesktop;
+}
+
 export function CCLayout() {
   const [mode, setMode] = useState<CCSidebarMode>('open');
   const [unassignedCount, setUnassignedCount] = useState(0);
@@ -98,6 +145,7 @@ export function CCLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, isLoading } = useAuth();
+  const isDesktop = useIsDesktop();
 
   // Fetch unassigned + inbound counts once on mount so sidebar badges are live
   // across all CC screens (including satellite pages like catalog/reps) without polling.
@@ -146,7 +194,11 @@ export function CCLayout() {
   }, []);
 
   const active = activeTabFromPath(location.pathname);
-  const hidden = mode === 'hidden';
+  // Below 768px the aside never renders, so "hidden" (the desktop-only
+  // collapse-to-nothing mode) is meaningless there — gate it to desktop.
+  const hidden = isDesktop && mode === 'hidden';
+  // Below 768px a bottom bar carries nav, except on quote detail where Send wins.
+  const showBottomNav = !isDesktop && !isCCQuoteDetailRoute(location.pathname);
 
   const manager: CCManagerInfo = {
     name: user ? `${user.first_name ?? ''} ${user.last_name ?? ''}`.trim() || 'Manager' : 'Manager',
@@ -166,6 +218,12 @@ export function CCLayout() {
     else if (dest === 'settings') navigate('/settings');
   };
 
+  const navBottom = (target: string) => {
+    if (target === 'cc-tab-today') navigate('/distributor-admin/command-center');
+    else if (target === 'cc-tab-inbound') navigate('/distributor-admin/command-center/inbound');
+    else if (target === 'cc-tab-quotes') navigate('/distributor-admin/command-center/quotes');
+  };
+
   return (
     <CCLayoutContext.Provider value={{ mode, setMode }}>
       <div
@@ -176,7 +234,7 @@ export function CCLayout() {
           background: '#fff',
         }}
       >
-        {!hidden && (
+        {isDesktop && !hidden && (
           <ManagerSidebar
             mode={mode}
             onModeChange={setMode}
@@ -203,9 +261,11 @@ export function CCLayout() {
               position: 'sticky',
               top: 0,
               zIndex: 10,
-              padding: '16px 40px',
+              padding: isDesktop ? '16px 40px' : '12px 16px',
               display: 'flex',
               alignItems: 'center',
+              flexWrap: 'wrap',
+              rowGap: 8,
               gap: 16,
               background: '#fff',
               borderBottom: `1px solid ${C.softLine}`,
@@ -322,10 +382,26 @@ export function CCLayout() {
           </div>
 
           {/* Page content */}
-          <div style={{ padding: '32px 40px', maxWidth: 1140 }}>
+          <div
+            style={{
+              padding: isDesktop ? '32px 40px' : '20px 16px',
+              // Reserve space above the fixed bottom nav so scrolled content
+              // never sits underneath it.
+              paddingBottom: showBottomNav ? 84 : undefined,
+              maxWidth: 1140,
+            }}
+          >
             <Outlet />
           </div>
         </main>
+
+        {showBottomNav && (
+          <ChefTabBar
+            active={ccBottomTabFromPath(location.pathname)}
+            nav={navBottom}
+            tabs={CC_BOTTOM_TABS}
+          />
+        )}
 
         {/* Restore FAB when sidebar hidden */}
         {hidden && (
