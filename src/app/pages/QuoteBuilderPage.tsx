@@ -307,19 +307,47 @@ export function QuoteBuilderPage() {
     }
   });
 
-  const applyBulkAdjustment = () => {
+  // Persist every line's on-screen price to the server. Sends the FULL set
+  // (not a diff) so a reset back toward cost is written too: basePrice is not a
+  // reliable "last saved" reference here (Save Draft bakes it into basePrice),
+  // so diffing against it would silently drop a markdown. Pure persistence; the
+  // price math upstream is unchanged. Returns false and surfaces the error on
+  // failure. A locked quote has nothing to write, so it is a no-op that allows
+  // navigation to continue.
+  const persistAllPrices = async (itemsToPersist: ProductItem[]): Promise<boolean> => {
+    if (!quoteId || quoteLocked) return true;
+    const lines = itemsToPersist.map((item) => ({
+      id: item.id,
+      unit_price_cents: Math.round(item.currentPrice * 100),
+    }));
+    if (lines.length === 0) return true;
+    const res = await persistQuote(quoteId, { lines });
+    if (res.error) {
+      setSaveError(res.error);
+      return false;
+    }
+    return true;
+  };
+
+  // Apply means done: paint the adjustment AND write it through immediately, so
+  // a rep who marks a quote up and navigates away never sends it at cost (audit
+  // item 1a). The calculation is untouched; we just persist what Apply paints.
+  const applyBulkAdjustment = async () => {
     if (quoteLocked) return;
     const adjustment = parseFloat(bulkAdjustment) || 0;
-    setItems(
-      items.map((item) => {
-        const newPrice = item.basePrice * (1 + adjustment / 100);
-        return {
-          ...item,
-          currentPrice: newPrice,
-          percentChange: adjustment,
-        };
-      })
-    );
+    const nextItems = items.map((item) => ({
+      ...item,
+      currentPrice: item.basePrice * (1 + adjustment / 100),
+      percentChange: adjustment,
+    }));
+    setItems(nextItems);
+    setSaving(true);
+    setSaveError(null);
+    try {
+      await persistAllPrices(nextItems);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const adjustPrice = (id: string, change: number) => {
@@ -430,6 +458,21 @@ export function QuoteBuilderPage() {
       }
     } catch (e: any) {
       setSaveError(e.message || 'Failed to save prices');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Finish Quote must flush any pending price edits before leaving the builder,
+  // then navigate. If the write fails we stay put and show the error rather than
+  // carrying an unsaved markup into the finalize/send flow (audit item 1b).
+  const handleFinish = async () => {
+    setSaving(true);
+    setSaveError(null);
+    try {
+      const ok = await persistAllPrices(items);
+      if (!ok) return;
+      navigate(`/export-finalize?quoteId=${quoteId}`);
     } finally {
       setSaving(false);
     }
@@ -1071,7 +1114,7 @@ export function QuoteBuilderPage() {
 
       {/* Floating Finish Quote button */}
       <button
-        onClick={() => navigate(`/export-finalize?quoteId=${quoteId}`)}
+        onClick={handleFinish}
         className="fixed bottom-[80px] right-6 bg-[#F2993D] hover:bg-[#E8953A] text-white font-medium py-3 px-6 rounded-full shadow-lg text-base min-h-[48px] z-50"
       >
         Finish Quote
