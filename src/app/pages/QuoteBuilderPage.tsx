@@ -680,7 +680,7 @@ export function QuoteBuilderPage() {
             {sortedItems.map((item) => (
               <div
                 key={item.id}
-                onClick={() => setSelectedItem(item)}
+                onClick={() => openMatchDrawer(item)}
                 className={`bg-white rounded-xl border border-gray-200 shadow-sm p-4 mb-3 cursor-pointer transition-colors ${
                   selectedItem?.id === item.id ? 'border-[#A5CFDD] bg-[#A5CFDD]/5' : ''
                 }`}
@@ -897,7 +897,7 @@ export function QuoteBuilderPage() {
                 {sortedItems.map((item) => (
                   <tr
                     key={item.id}
-                    onClick={() => setSelectedItem(item)}
+                    onClick={() => openMatchDrawer(item)}
                     className={`border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors ${
                       selectedItem?.id === item.id ? 'bg-[#A5CFDD]/10' : ''
                     }`}
