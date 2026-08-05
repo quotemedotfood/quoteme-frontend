@@ -140,6 +140,26 @@ export function getBlockedSendReason(
   return REVIEW_REQUIRED_REASON;
 }
 
+/**
+ * Audit 1c: a quote must be SENT to the contact the rep selected, not always
+ * the primary contact. currentContacts (what the screen shows) is derived from
+ * selectedContactIds; the send used primaryContact regardless, so redirecting a
+ * quote changed the name on screen while the address stayed the previous one.
+ * Resolve the recipient from the live selection: prefer the primary contact
+ * when it is among the selection (the default, where every contact is selected
+ * — no behavior change), otherwise the first selected contact; fall back to the
+ * primary/first before a selection exists.
+ */
+export function resolveRecipientContact<T extends { id: string; is_primary?: boolean }>(
+  contacts: T[],
+  selectedContactIds: string[]
+): T | null {
+  if (!contacts.length) return null;
+  const selected = contacts.filter((c) => selectedContactIds.includes(c.id));
+  const pool = selected.length ? selected : contacts;
+  return pool.find((c) => c.is_primary) || pool[0] || null;
+}
+
 // Mock data for premium onboarding features
 const onboardingDocuments = [
   { id: 'doc1', name: 'New Customer Application (PDF)', type: 'document' },
@@ -417,8 +437,6 @@ export function ExportFinalizePage() {
   const [sendNote, setSendNote] = useState('');
 
   // Derive primary contact from quote data
-  const primaryContact = quoteData?.contacts?.find(c => c.is_primary) || quoteData?.contacts?.[0] || null;
-
   // Determine if this is effectively an open quote (either explicitly or no restaurant/contacts)
   const effectiveOpenQuote = isOpenQuote || (!quoteData?.restaurant && !quoteData?.contacts?.length);
 
@@ -435,12 +453,16 @@ export function ExportFinalizePage() {
 
   // Customer & Contact State (fallback to quote data when available)
   const customerName = effectiveOpenQuote ? 'Open Quote' : (quoteData?.restaurant || 'Loading...');
-  const contactEmail = effectiveOpenQuote ? (manualEmail || null) : (primaryContact?.email || null);
-  const contactPhone = effectiveOpenQuote ? (manualPhone || null) : (primaryContact?.phone || null);
-  const contactName = primaryContact ? `${primaryContact.first_name} ${primaryContact.last_name}` : null;
   const contacts = quoteData?.contacts || [];
 
   const [selectedContactIds, setSelectedContactIds] = useState<string[]>([]);
+
+  // The recipient the quote is sent to follows the rep's selection (what the
+  // screen shows), resolved from the live selectedContactIds (audit 1c).
+  const recipientContact = resolveRecipientContact(contacts, selectedContactIds);
+  const contactEmail = effectiveOpenQuote ? (manualEmail || null) : (recipientContact?.email || null);
+  const contactPhone = effectiveOpenQuote ? (manualPhone || null) : (recipientContact?.phone || null);
+  const contactName = recipientContact ? `${recipientContact.first_name} ${recipientContact.last_name}` : null;
 
   // Auto-select contacts when quote data loads
   useEffect(() => {
