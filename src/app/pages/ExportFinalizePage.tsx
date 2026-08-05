@@ -1293,15 +1293,28 @@ export function ExportFinalizePage() {
                       </p>
                     </div>
                   ) : (
-                    <Button
-                      variant="outline"
-                      className="w-full justify-start border-gray-300 text-[#2A2A2A] h-12"
-                      disabled={!isFinalized || sendEmailMutation.loading}
-                      onClick={handleSendEmail}
-                    >
-                      <Mail className="w-4 h-4 mr-3" />
-                      Send to myself
-                    </Button>
+                    <>
+                      {/* Gate this the same way the sticky "Email Quote to Chef"
+                          control is gated: the review gate applies to every send
+                          (BE send_quote), so disable UP FRONT with the reason
+                          rather than letting the click round-trip to a 422. Send
+                          failures still surface in this card above (:sendEmailMutation.error). */}
+                      {exportBlockedUnreviewed && (
+                        <p className="text-xs text-amber-600 mb-1" data-testid="send-to-myself-review-required">
+                          {blockedSendReason}
+                        </p>
+                      )}
+                      <Button
+                        variant="outline"
+                        className="w-full justify-start border-gray-300 text-[#2A2A2A] h-12"
+                        disabled={!isFinalized || sendEmailMutation.loading || exportBlockedUnreviewed}
+                        title={exportBlockedUnreviewed ? (blockedSendReason ?? undefined) : undefined}
+                        onClick={handleSendEmail}
+                      >
+                        <Mail className="w-4 h-4 mr-3" />
+                        Send to myself
+                      </Button>
+                    </>
                   )
                 )}
               </div>
