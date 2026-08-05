@@ -344,7 +344,10 @@ describe('ChefQuoteReceiptPage - price_needs_confirmation renders "confirm with 
   });
 });
 
-describe('ChefQuoteReceiptPage - pinned mobile CTA footer (Justin mobile ruling)', () => {
+describe('ChefQuoteReceiptPage - decision panel in normal flow (Moose ruling 2026-08-05)', () => {
+  // Supersedes the old "pinned mobile CTA footer" tests. The panel is no longer
+  // position:fixed at any breakpoint: it sits in scroll flow at the bottom of the
+  // document, so nothing covers the quote and asking a question costs no screen.
   beforeEach(() => {
     localStorage.clear();
     getChefQuote.mockClear();
@@ -356,25 +359,15 @@ describe('ChefQuoteReceiptPage - pinned mobile CTA footer (Justin mobile ruling)
     cleanup();
   });
 
-  function ctaFooterOf(button: HTMLElement): HTMLElement {
-    const footer = button.closest('div.fixed');
-    expect(footer).not.toBeNull();
-    return footer as HTMLElement;
-  }
-
-  it('authenticated chef: CTA footer is fixed at bottom-0 with 68px reserved for the ChefTabBar, reverting to static flow at md', async () => {
-    renderPage(); // renderPage seeds quoteme_token → chef shell → tab bar present
+  it('authenticated chef: the decision panel is NOT pinned (no fixed element over the quote)', async () => {
+    const { container } = renderPage(); // seeds quoteme_token → chef shell
     const button = await screen.findByRole('button', { name: 'Looks good' });
-    const footer = ctaFooterOf(button);
-    expect(footer.className).toContain('bottom-0');
-    expect(footer.className).toContain('pb-[68px]');
-    expect(footer.className).toContain('md:static');
+    expect(button.closest('div.fixed')).toBeNull();
+    expect(container.querySelector('[class*="fixed"]')).toBeNull();
   });
 
-  it('guest (magic-link, no bearer token): no tab bar exists, so the CTA footer pins flush to the viewport bottom', async () => {
-    // No quoteme_token → the page fetches via getGuestQuote and
-    // ChefShellLayout would render no tab bar for a guest.
-    render(
+  it('guest (magic-link, no bearer token): decision panel is likewise in flow, not pinned', async () => {
+    const { container } = render(
       <MemoryRouter initialEntries={['/chef/quotes/quote-1']}>
         <Routes>
           <Route path="/chef/quotes/:id" element={<ChefQuoteReceiptPage />} />
@@ -383,8 +376,7 @@ describe('ChefQuoteReceiptPage - pinned mobile CTA footer (Justin mobile ruling)
     );
     expect(getGuestQuote).toHaveBeenCalledTimes(1);
     const button = await screen.findByRole('button', { name: 'Looks good' });
-    const footer = ctaFooterOf(button);
-    expect(footer.className).toContain('bottom-0');
-    expect(footer.className).not.toContain('pb-[68px]');
+    expect(button.closest('div.fixed')).toBeNull();
+    expect(container.querySelector('[class*="fixed"]')).toBeNull();
   });
 });
