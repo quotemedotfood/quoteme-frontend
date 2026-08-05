@@ -1,5 +1,4 @@
-import { useState, useEffect, useLayoutEffect, useRef } from 'react';
-import type { CSSProperties } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router';
 import { getGuestQuote, getChefQuote, acceptChefQuote, sendChefQuestion } from '../../services/api';
 import { acceptCaptureAuthUrl } from '../../utils/captureFlow';
@@ -64,14 +63,11 @@ export function ChefQuoteReceiptPage() {
   // confirmation; only the confirm button inside it actually accepts.
   const [confirmOpen, setConfirmOpen] = useState(false);
 
-  // A1: the decision panel is position:fixed at <768, so the scrolling document
-  // must reserve bottom padding EQUAL to the panel's real height, or the last
-  // quote lines stay permanently under it (Justin measured 252px of an 844px
-  // screen covered, no dismiss control). The old hardcoded pb-[240px] undershot
-  // the real, device/font/state-dependent height. Measure it and drive padding
-  // from the measurement so the last row always clears.
-  const decisionPanelRef = useRef<HTMLDivElement>(null);
-  const [panelHeight, setPanelHeight] = useState(240);
+  // The decision panel is no longer pinned (Moose ruling, 2026-08-05): it sits in
+  // normal scroll flow at the bottom of the document, so nothing covers the quote
+  // and there is no panel height to measure or reserve for. The old fixed-footer
+  // machinery (ref + measured panelHeight + ResizeObserver + reserved bottom
+  // padding) is gone.
 
   useEffect(() => {
     if (!id) return;
@@ -165,26 +161,6 @@ export function ChefQuoteReceiptPage() {
     setQuestionText('');
   }
 
-  // A1: keep the scroll-column bottom padding equal to the fixed decision panel's
-  // measured height (mobile only; the panel is md:static, in flow, at >=768). A
-  // ResizeObserver re-measures whenever the panel grows or shrinks (question box
-  // opens, confirmation opens, tab bar present, font/device differences).
-  useLayoutEffect(() => {
-    const el = decisionPanelRef.current;
-    if (!el) return;
-    const measure = () => setPanelHeight(el.offsetHeight);
-    measure();
-    // ResizeObserver is absent in jsdom (tests) and very old browsers; fall back
-    // to a one-time measure plus a window-resize listener there.
-    if (typeof ResizeObserver === 'undefined') {
-      window.addEventListener('resize', measure);
-      return () => window.removeEventListener('resize', measure);
-    }
-    const ro = new ResizeObserver(measure);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [quote]);
-
   // ── Loading ────────────────────────────────────────────────────────────────
 
   if (loading) {
@@ -277,39 +253,15 @@ export function ChefQuoteReceiptPage() {
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
-  // Mobile pinned-CTA geometry (Justin ruling: primary CTA bar pinned to the
-  // bottom of the viewport, item list scrolls above it).
-  //
-  // At <768 the decision block below is position:fixed at bottom:0.
-  // Two sub-cases:
-  //   • Authenticated chef/buyer/group_admin: ChefShellLayout renders the
-  //     fixed ChefTabBar (z-50, content-sized: its flex-basis 56px is inert
-  //     on a fixed element, so its real height varies with fonts/devices).
-  //     The footer (z-40) reserves the tab-bar zone with 68px of internal
-  //     bottom padding: the bar draws on top of the footer's empty padding,
-  //     the CTA content always clears it by >= 68px, and there is never a
-  //     see-through gap between footer and bar at any actual bar height.
-  //   • Guest (magic-link arrival, no bearer token): ChefShellLayout renders
-  //     a bare <Outlet /> (no tab bar) — normal padding, CTA sits at the
-  //     viewport bottom.
-  // Bearer-token presence is the same signal the fetch effect above uses to
-  // pick the chef vs guest endpoint, and any authenticated non-chef-side
-  // role is redirected away by RootLayout before this page mounts.
-  //
-  // At >=768 the desktop shell has no tab bar and the page is a window-
-  // scrolled document, so the block reverts to static flow (md:static) at
-  // the end of the column — no double-pinning.
-  //
-  // The mobile-only bottom padding on the scroll column reserves clearance
-  // so the last line items scroll clear of the fixed footer; it widens while
-  // the question box is open (the footer grows upward).
-  const hasChefTabBar =
-    typeof window !== 'undefined' && !!localStorage.getItem('quoteme_token');
+  // Decision block: normal scroll flow at the bottom of the document on every
+  // breakpoint (Moose ruling, 2026-08-05). A chef reads the whole quote top to
+  // bottom with nothing over it and finds the decision where he finished reading,
+  // like every paper quote in this trade. No fixed footer, no pinned bar, no
+  // reserved padding, so engaging with the quote never costs the chef screen.
 
   return (
     <div
-      className="flex flex-col items-center px-6 pt-12 pb-[var(--chef-cta-h)] md:pb-12"
-      style={{ ['--chef-cta-h']: `${panelHeight}px` } as CSSProperties}
+      className="flex flex-col items-center px-6 pt-12 pb-12"
     >
       <div className="w-full max-w-xl">
 
@@ -388,26 +340,12 @@ export function ChefQuoteReceiptPage() {
         )}
 
         {/* ── 4. Decision actions ───────────────────────────────────────────
-            Mobile (<768): fixed footer pinned to the viewport bottom — solid
-            background + subtle top border, stacked flush above the ChefTabBar
-            when it is present (see hasChefTabBar above). The item list
-            scrolls underneath it.
-            Desktop (>=768): static, in-flow at the end of the document
-            column, exactly as before. */}
-        <div
-          ref={decisionPanelRef}
-          className={`fixed inset-x-0 bottom-0 z-40 border-t border-[#F0F0F0] bg-white px-6 pt-4 ${
-            hasChefTabBar ? 'pb-[68px]' : 'pb-3'
-          } md:static md:z-auto md:bg-transparent md:px-0 md:pt-8 md:pb-0`}
-        >
+            In normal scroll flow at the bottom of the document, every
+            breakpoint (Moose ruling, 2026-08-05). Never pinned to the viewport,
+            so nothing ever covers the item list and asking a question can never
+            cost the chef screen. */}
+        <div className="border-t border-[#F0F0F0] pt-8">
           <div className="mx-auto w-full max-w-xl flex flex-col gap-3">
-
-          {/* Question sent confirmation */}
-          {questionSent && (
-            <p className="text-sm text-[#2A5F6F] mb-1">
-              Your question has been sent. Your rep will be in touch.
-            </p>
-          )}
 
           {/* Action error — surfaced on accept/question failure so the chef
               sees a real problem instead of a silent drop. Accept errors now
@@ -502,14 +440,26 @@ export function ChefQuoteReceiptPage() {
                 Looks good
               </button>
 
-              {/* I have questions */}
+              {/* I have questions. Once a question is sent, this control is
+                  REPLACED in place by a one-line confirmation (Moose ruling:
+                  replaces or annotates, never added height) so engaging never
+                  costs the chef any screen. */}
               {!questionOpen && (
-                <button
-                  onClick={() => setQuestionOpen(true)}
-                  className="w-full border border-[#E0E0E0] hover:border-[#BDBDBD] text-[#4F4F4F] rounded-lg px-6 py-3.5 text-base font-medium transition-colors"
-                >
-                  I have questions
-                </button>
+                questionSent ? (
+                  <p
+                    data-testid="chef-question-sent"
+                    className="w-full text-sm text-[#2A5F6F] px-6 py-3.5 text-center"
+                  >
+                    Your question has been sent. Your rep will be in touch.
+                  </p>
+                ) : (
+                  <button
+                    onClick={() => setQuestionOpen(true)}
+                    className="w-full border border-[#E0E0E0] hover:border-[#BDBDBD] text-[#4F4F4F] rounded-lg px-6 py-3.5 text-base font-medium transition-colors"
+                  >
+                    I have questions
+                  </button>
+                )
               )}
             </>
           )}
