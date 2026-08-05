@@ -81,30 +81,10 @@ export function getOrderGuideDisabledReason(isFinalized: boolean, quoteId: strin
 /** B-114: Returns the tooltip/title for the sticky "Send Quote" button when disabled. */
 export const SEND_QUOTE_DISABLED_REASON = 'Enter a recipient email above to send.';
 
-/** B-168: Inline/tooltip reason shown when export+send are gated on extraction review. */
+/** Fallback reason (kept for getBlockedSendReason). The rep-review gate that
+ *  used to produce this was removed 2026-08-05; in practice a blocked send now
+ *  always has unmatched items, so the count message below is what shows. */
 export const REVIEW_REQUIRED_REASON = 'Review the extracted menu before sending.';
-
-/**
- * B-168: Mirrors the backend send_quote rep-review gate on the FE.
- *
- * Backend (quotes_controller#send_quote) blocks send unless:
- *   rep_reviewed_at.present? OR state IN (distributor_quote, confirmed)
- *
- * The serializer now exposes rep_reviewed_at (ISO 8601 timestamp or null).
- * A quote passes the gate when rep_reviewed_at is present (truthy) OR its
- * state has cleared rep mediation (distributor_quote/confirmed). When neither
- * holds, the menu hasn't cleared review and export/send must be blocked.
- *
- * Returns true when export/send should be BLOCKED (i.e. NOT reviewed).
- */
-export function isExportBlockedUnreviewed(
-  repReviewedAt: string | null | undefined,
-  state: string | null | undefined
-): boolean {
-  if (repReviewedAt) return false;
-  if (state === 'distributor_quote' || state === 'confirmed') return false;
-  return true;
-}
 
 /**
  * BUG #23: an unmatched line has no product, so it can never go through the
@@ -425,12 +405,16 @@ export function ExportFinalizePage() {
   // B-168: Extraction Review gate — mirror the backend send_quote rep-review gate.
   // Block Send Quote + Convert to Order Guide until the quote has cleared review.
   // Only applies once quote data has loaded (don't pre-block while loading).
-  const exportBlockedUnreviewed =
-    !!quoteData && isExportBlockedUnreviewed(quoteData.rep_reviewed_at, quoteData.state);
+  // Mirrors the backend send gate (Justin, 2026-08-05: gate on the document,
+  // not the rep's attention). The rep-review gate was removed; what blocks a
+  // send is the one verifiable fact about the document: unmatched items the rep
+  // has not resolved. Reason is shown on every send control (never silently).
+  const exportBlockedIncomplete =
+    !!quoteData && unacknowledgedUnmatchedLines(quoteData.lines || []).length > 0;
 
   // BUG #21: never fail silently — name WHY when blocked (unacknowledged
   // unmatched items vs. the generic review-required reason).
-  const blockedSendReason = getBlockedSendReason(exportBlockedUnreviewed, quoteData?.lines || []);
+  const blockedSendReason = getBlockedSendReason(exportBlockedIncomplete, quoteData?.lines || []);
   const unacknowledgedUnmatched = quoteData ? unacknowledgedUnmatchedLines(quoteData.lines || []) : [];
 
   // Customer & Contact State (fallback to quote data when available)
@@ -1197,8 +1181,8 @@ export function ExportFinalizePage() {
                 </Button>
                 <Button
                   className="w-full justify-start bg-[#F2993D] hover:bg-[#E8953A] text-white h-12"
-                  disabled={!isFinalized || downloadingOrderGuide || !quoteId || exportBlockedUnreviewed}
-                  title={exportBlockedUnreviewed ? (blockedSendReason ?? undefined) : (getOrderGuideDisabledReason(isFinalized, quoteId) ?? undefined)}
+                  disabled={!isFinalized || downloadingOrderGuide || !quoteId || exportBlockedIncomplete}
+                  title={exportBlockedIncomplete ? (blockedSendReason ?? undefined) : (getOrderGuideDisabledReason(isFinalized, quoteId) ?? undefined)}
                   onClick={handleOrderGuideDownload}
                 >
                   {downloadingOrderGuide ? (
@@ -1210,7 +1194,7 @@ export function ExportFinalizePage() {
                 </Button>
                 {/* B-168/BUG#21: Inline reason when blocked on extraction review — always
                     names WHY (unacknowledged unmatched items or the generic reason), never silent. */}
-                {exportBlockedUnreviewed && (
+                {exportBlockedIncomplete && (
                   <p className="text-xs text-amber-600 mt-1" data-testid="order-guide-review-required">
                     {blockedSendReason}
                   </p>
@@ -1293,15 +1277,25 @@ export function ExportFinalizePage() {
                       </p>
                     </div>
                   ) : (
-                    <Button
-                      variant="outline"
-                      className="w-full justify-start border-gray-300 text-[#2A2A2A] h-12"
-                      disabled={!isFinalized || sendEmailMutation.loading}
-                      onClick={handleSendEmail}
-                    >
-                      <Mail className="w-4 h-4 mr-3" />
-                      Send to myself
-                    </Button>
+                    <>
+                      {/* Same gate as the sticky send control: block up front
+                          with the reason on it, never a silent click. */}
+                      {exportBlockedIncomplete && (
+                        <p className="text-xs text-amber-600 mb-1" data-testid="send-to-myself-blocked">
+                          {blockedSendReason}
+                        </p>
+                      )}
+                      <Button
+                        variant="outline"
+                        className="w-full justify-start border-gray-300 text-[#2A2A2A] h-12"
+                        disabled={!isFinalized || sendEmailMutation.loading || exportBlockedIncomplete}
+                        title={exportBlockedIncomplete ? (blockedSendReason ?? undefined) : undefined}
+                        onClick={handleSendEmail}
+                      >
+                        <Mail className="w-4 h-4 mr-3" />
+                        Send to myself
+                      </Button>
+                    </>
                   )
                 )}
               </div>
@@ -1332,7 +1326,7 @@ export function ExportFinalizePage() {
         <div className="fixed bottom-0 left-0 right-0 md:left-64 bg-white border-t border-gray-200 p-4 z-40">
           {/* B-168/BUG#21: Review gate takes precedence — block + always explain WHY
               (never silent) before the email hint */}
-          {exportBlockedUnreviewed ? (
+          {exportBlockedIncomplete ? (
             <p className="text-xs text-center text-amber-600 mb-1" data-testid="send-quote-review-required">
               {blockedSendReason}
             </p>
@@ -1346,9 +1340,9 @@ export function ExportFinalizePage() {
           )}
           <button
             onClick={() => setShowEmailDrawer(true)}
-            disabled={exportBlockedUnreviewed || isOpenQuoteSendDisabled(effectiveOpenQuote, manualEmail, contactEmail)}
+            disabled={exportBlockedIncomplete || isOpenQuoteSendDisabled(effectiveOpenQuote, manualEmail, contactEmail)}
             title={
-              exportBlockedUnreviewed
+              exportBlockedIncomplete
                 ? (blockedSendReason ?? undefined)
                 : (isOpenQuoteSendDisabled(effectiveOpenQuote, manualEmail, contactEmail) ? SEND_QUOTE_DISABLED_REASON : undefined)
             }
