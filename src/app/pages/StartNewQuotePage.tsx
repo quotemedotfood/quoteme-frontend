@@ -170,6 +170,22 @@ export function extractionOutcome(
   return { kind: 'pending' };
 }
 
+// Build 2 (FE creation half): the createMenu payload must carry the rep's
+// SELECTED contact so the backend can stamp recipient_email at creation time,
+// not only at send time. Prefer the primary contact among those selected
+// (is_primary true); otherwise fall back to the first selected id; when
+// nothing is selected, return undefined so the quote stays open (no
+// contact_id key sent at all).
+export function resolveContactIdForCreate(
+  selectedContactIds: string[],
+  contacts: { id: string; is_primary?: boolean }[]
+): string | undefined {
+  if (selectedContactIds.length === 0) return undefined;
+  const selectedSet = new Set(selectedContactIds);
+  const primarySelected = contacts.find((c) => selectedSet.has(c.id) && c.is_primary);
+  return primarySelected ? primarySelected.id : selectedContactIds[0];
+}
+
 export function StartNewQuotePage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -780,7 +796,7 @@ export function StartNewQuotePage() {
           navigate(`/chef/status/${response.data.quote_id}`, { state: { completionTarget: 'map-ingredients' } });
         }
       } else {
-        const response = await createMenu({ raw_text: menuText, name: selectedRestaurant?.name || 'New Quote', restaurant_id: selectedRestaurant?.id, menu_id: extractedMenuId ?? undefined });
+        const response = await createMenu({ raw_text: menuText, name: selectedRestaurant?.name || 'New Quote', restaurant_id: selectedRestaurant?.id, menu_id: extractedMenuId ?? undefined, contact_id: resolveContactIdForCreate(selectedContactIds, selectedRestaurant?.contacts || []) });
         if (response.error) {
           if (isServiceBusyError(response.error)) { setServiceBusy(true); return; }
           if (response.error.includes('2 quotes in progress')) { setDraftLimitReached(true); return; }
@@ -858,7 +874,7 @@ export function StartNewQuotePage() {
           navigate(`/chef/status/${response.data.quote_id}`, { state: { completionTarget: 'export-finalize' } });
         }
       } else {
-        const response = await createMenu({ raw_text: menuText, name: selectedRestaurant?.name || 'New Quote', restaurant_id: selectedRestaurant?.id, menu_id: extractedMenuId ?? undefined });
+        const response = await createMenu({ raw_text: menuText, name: selectedRestaurant?.name || 'New Quote', restaurant_id: selectedRestaurant?.id, menu_id: extractedMenuId ?? undefined, contact_id: resolveContactIdForCreate(selectedContactIds, selectedRestaurant?.contacts || []) });
         if (response.error) {
           if (isServiceBusyError(response.error)) { setServiceBusy(true); return; }
           if (response.error.includes('2 quotes in progress')) { setDraftLimitReached(true); return; }
