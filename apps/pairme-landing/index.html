@@ -1,14 +1,387 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>PairMe</title>
-    <meta name="description" content="PairMe: show my server, get the right pairing. No ordering, no purchasing, just better pairings." />
-    <link rel="icon" href="/favicon.svg" />
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PairMe · Nobody should feel stupid reading a wine list</title>
+<meta name="description" content="Photograph any wine list and get wines that actually work with what you ordered, why each one does, and how to say it out loud.">
+<meta name="theme-color" content="#1F2A44">
+<link rel="icon" href="assets/logo-mark.svg" type="image/svg+xml">
+<meta property="og:title" content="PairMe · Nobody should feel stupid reading a wine list">
+<meta property="og:description" content="Photograph any wine list and get wines that actually work with what you ordered, why each one does, and how to say it out loud.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://pairme.wine/">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Piazzolla:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div style="font-family:var(--font-body);color:#1C1C1A;background:#FBFAF7">
+
+<div style="background:#1F2A44;position:sticky;top:0;z-index:60">
+<div style="max-width:1160px;margin:0 auto;padding:14px clamp(20px,4vw,48px);display:flex;align-items:center;justify-content:space-between;gap:16px">
+<div style="display:flex;align-items:center;gap:10px">
+<img src="assets/logo-mark-inverse.svg" alt="PairMe" style="width:26px;height:26px">
+<span style="font:600 17px var(--font-display);color:#fff;letter-spacing:-.01em">PairMe</span>
+</div>
+<div style="display:flex;align-items:center;gap:18px">
+<a href="#restaurants" style="font:500 13px var(--font-body);color:#C9D3DD">For restaurants</a>
+<span style="font:500 13px var(--font-body);color:#A5CFDD"><br></span>
+</div>
+</div>
+</div>
+
+<div style="background:#1F2A44">
+<div style="max-width:1160px;margin:0 auto;padding:clamp(28px,4vw,52px) clamp(20px,4vw,48px) clamp(44px,6vw,76px);display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:clamp(30px,4vw,60px);align-items:center">
+<div>
+<h1 style="margin:0;font:600 clamp(34px,4.6vw,54px)/1.1 var(--font-display);color:#fff;letter-spacing:-.02em;text-wrap:pretty;max-width:15ch">Nobody should feel stupid reading a wine list.</h1>
+<p style="margin:20px 0 0;font:400 clamp(16px,1.5vw,19px)/1.55 var(--font-body);color:#FFCC7D;text-wrap:pretty">So we sit at your table instead.</p>
+<p style="margin:14px 0 0;font:400 15px/1.75 var(--font-body);color:#C9D3DD;text-wrap:pretty;max-width:46ch">Photograph the list. We read it, and we tell you which wines actually work with what you ordered, why each one does, and how to say it out loud.</p>
+<div style="margin-top:30px;background:#FBFAF7;border-radius:20px;padding:20px;max-width:460px">
+<div style="font:600 15px var(--font-display);color:#1C1C1A">Join our beta tester list</div>
+<div style="font:400 13px/1.6 var(--font-body);color:#6B6B66;margin:5px 0 14px">First tables, first bugs, and a direct line to us. One email, nothing else, ever.</div>
+<form name="beta" method="POST" data-netlify="true" onsubmit="return pmJoin(event)" style="display:flex;gap:9px;flex-wrap:wrap">
+<div style="flex:1 1 200px;min-width:0">
+<input class="pm-input" type="email" name="email" id="sup-email" placeholder="you@wherever.com" required style="width:100%">
+</div>
+<button type="submit" style="flex:none;background:#FFCC7D;color:#1F2A44;border:1px solid #E5A44F;border-radius:999px;padding:0 24px;height:48px;font:700 14.5px var(--font-body);cursor:pointer" class="h1"><span id="beta-label">Join</span></button>
+</form>
+<div style="font:500 12.5px var(--font-body);color:#8A5A18;margin-top:9px;min-height:17px"><span id="beta-note"></span></div>
+</div>
+</div>
+
+<div style="display:flex;justify-content:center">
+<div style="width:100%;max-width:340px;background:#FBFAF7;border-radius:24px;box-shadow:0 30px 70px -28px rgba(0,0,0,.6);overflow:hidden">
+<div style="background:#132038;padding:14px 18px">
+<div style="font:600 10.5px var(--font-body);color:#FFCC7D;letter-spacing:.09em;text-transform:uppercase">For the table</div>
+<div style="font:600 17px var(--font-display);color:#fff;margin-top:4px">Table 12 · 8:40</div>
+</div>
+<div style="padding:16px 18px 18px">
+<div style="font:600 10.5px var(--font-body);color:#6B6B66;letter-spacing:.07em;text-transform:uppercase">Wine</div>
+<div style="font:700 21px/1.2 var(--font-body);color:#1C1C1A;margin-top:7px">Domaine Trapet</div>
+<div style="font:500 16px/1.3 var(--font-body);color:#1C1C1A;margin-top:3px">Gevrey-Chambertin</div>
+<div style="font:400 13px/1.5 var(--font-body);color:#6B6B66;margin-top:5px">pinot noir · Burgundy · $234</div>
+<div style="background:#FFF4E4;border:1px solid #FFCC7D;border-radius:12px;padding:12px;margin-top:12px;display:flex;gap:12px;align-items:center">
+<button onclick="pmSay()" style="flex:none;width:44px;height:44px;border-radius:999px;border:2px solid #1F2A44;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center" class="h2" aria-label="Play the pronunciation">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1F2A44" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M11 5 L6 9 H3 v6 h3 l5 4 Z"></path><path d="M15.5 8.5a5 5 0 0 1 0 7"></path><path d="M18.5 5.5a9 9 0 0 1 0 13"></path></svg>
+</button>
+<div style="flex:1;min-width:0">
+<div style="font:600 10px var(--font-body);color:#8A5A18;letter-spacing:.07em;text-transform:uppercase">Say it like this</div>
+<div style="font:700 17px/1.2 var(--font-body);color:#1F2A44;margin-top:3px">zhev-RAY shom-ber-TAN</div>
+</div>
+</div>
+<div style="font:400 12px/1.6 var(--font-body);color:#6B6B66;margin-top:12px;border-top:1px solid #E3E1DB;padding-top:11px">Suggested by PairMe. Not an order.</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+<div style="max-width:1160px;margin:0 auto;padding:clamp(44px,5vw,76px) clamp(20px,4vw,48px) 0">
+<div style="font:600 11.5px var(--font-body);color:#6B6B66;letter-spacing:.09em;text-transform:uppercase">How it works</div>
+<h2 style="margin:10px 0 0;font:600 clamp(24px,2.8vw,34px)/1.2 var(--font-display);color:#1C1C1A;letter-spacing:-.01em;max-width:24ch;text-wrap:pretty">Five steps, and you only ever do three of them.</h2>
+</div>
+
+<div class="pm-stack" style="max-width:1160px;margin:0 auto;padding:clamp(24px,3vw,40px) clamp(20px,4vw,48px) clamp(220px,34vh,360px)">
+
+<div class="pm-step" style="position:sticky;top:78px;margin-bottom:36px;min-height:clamp(320px,calc(100vh - 150px),520px);display:flex;align-items:center;background:#fff;border:1px solid #E3E1DB;border-radius:20px;box-shadow:0 -2px 0 #FFCC7D, 0 20px 50px -26px rgba(31,42,68,.5);overflow:hidden">
+<div style="width:100%;display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:clamp(20px,3vw,40px);padding:clamp(22px,3vw,34px)">
+<div>
+<div style="display:flex;align-items:center;gap:12px">
+<span style="flex:none;width:34px;height:34px;border-radius:999px;background:#FFCC7D;color:#1F2A44;font:700 15px var(--font-body);display:flex;align-items:center;justify-content:center">1</span>
+<h3 style="margin:0;font:600 clamp(20px,2.2vw,26px)/1.2 var(--font-display);color:#1C1C1A">Tell us what you like</h3>
+</div>
+<p style="margin:14px 0 0;font:400 15px/1.75 var(--font-body);color:#6B6B66;text-wrap:pretty">Six questions that get to the bottom of it. Not just red or white, but what you actually reach for, what you'd never order twice, and how far off your own map you want to go tonight. Skip them all and you still get a real pick. It'll just be less yours.</p>
+</div>
+<div style="background:#FBFAF7;border:1px solid #E3E1DB;border-radius:14px;padding:16px">
+<div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px">
+<span style="font:600 10.5px var(--font-body);color:#8A5A18;letter-spacing:.07em;text-transform:uppercase">Question 4 of 6</span>
+<span style="font:600 12px var(--font-body);color:#1F2A44;border:1.5px solid #FFCC7D;border-radius:999px;padding:5px 12px">Skip</span>
+</div>
+<div style="font:600 16px var(--font-display);color:#1C1C1A;margin-top:9px">What do you already love?</div>
+<div style="display:flex;flex-wrap:wrap;gap:7px;margin-top:12px">
+<span style="border:1px solid #1F2A44;background:#FFF4E4;border-radius:999px;padding:8px 13px;font:500 12.5px var(--font-body)">Burgundy</span>
+<span style="border:1px solid #1F2A44;background:#FFF4E4;border-radius:999px;padding:8px 13px;font:500 12.5px var(--font-body)">Loire whites</span>
+<span style="border:1px solid #E3E1DB;background:#fff;border-radius:999px;padding:8px 13px;font:500 12.5px var(--font-body);color:#6B6B66">Barolo</span>
+<span style="border:1px solid #E3E1DB;background:#fff;border-radius:999px;padding:8px 13px;font:500 12.5px var(--font-body);color:#6B6B66">orange wine</span>
+</div>
+<div style="font:600 10.5px var(--font-body);color:#6B6B66;letter-spacing:.07em;text-transform:uppercase;margin-top:16px">Rather not</div>
+<div style="display:flex;flex-wrap:wrap;gap:7px;margin-top:8px">
+<span style="border:1px solid #1F2A44;background:#FFF4E4;border-radius:999px;padding:8px 13px;font:500 12.5px var(--font-body)">heavy oak</span>
+<span style="border:1px solid #E3E1DB;background:#fff;border-radius:999px;padding:8px 13px;font:500 12.5px var(--font-body);color:#6B6B66">sweet</span>
+</div>
+</div>
+</div>
+</div>
+
+<div class="pm-step" style="position:sticky;top:92px;margin-bottom:36px;min-height:clamp(320px,calc(100vh - 150px),520px);display:flex;align-items:center;background:#fff;border:1px solid #E3E1DB;border-radius:20px;box-shadow:0 -2px 0 #FFCC7D, 0 20px 50px -26px rgba(31,42,68,.5);overflow:hidden">
+<div style="width:100%;display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:clamp(20px,3vw,40px);padding:clamp(22px,3vw,34px)">
+<div>
+<div style="display:flex;align-items:center;gap:12px">
+<span style="flex:none;width:34px;height:34px;border-radius:999px;background:#FFCC7D;color:#1F2A44;font:700 15px var(--font-body);display:flex;align-items:center;justify-content:center">2</span>
+<h3 style="margin:0;font:600 clamp(20px,2.2vw,26px)/1.2 var(--font-display);color:#1C1C1A">Take a picture of any menu</h3>
+</div>
+<p style="margin:14px 0 0;font:400 15px/1.75 var(--font-body);color:#6B6B66;text-wrap:pretty">Or don't. We already hold thousands of menus and wine lists, so if you want to do the prep, it's done already. Turn up at the table knowing how to order like a somm.</p>
+</div>
+<div style="background:#0D1220;border-radius:14px;padding:16px;position:relative;min-height:190px;display:flex;flex-direction:column">
+<div style="font:600 13px var(--font-body);color:#fff;text-align:center">Fit the list in the frame</div>
+<div style="flex:1;position:relative;margin:12px 0;border-radius:10px;background:#161D2E;overflow:hidden">
+<div style="position:absolute;inset:0;padding:14px;display:flex;flex-direction:column;gap:8px;opacity:.34">
+<div style="height:7px;width:38%;border-radius:2px;background:#FFCC7D"></div>
+<div style="height:6px;width:74%;border-radius:2px;background:#8FA3BE"></div>
+<div style="height:6px;width:58%;border-radius:2px;background:#8FA3BE"></div>
+<div style="height:6px;width:81%;border-radius:2px;background:#8FA3BE"></div>
+<div style="height:6px;width:49%;border-radius:2px;background:#8FA3BE"></div>
+</div>
+<div style="position:absolute;top:8px;left:8px;width:22px;height:22px;border-top:3px solid #FFCC7D;border-left:3px solid #FFCC7D;border-radius:6px 0 0 0"></div>
+<div style="position:absolute;top:8px;right:8px;width:22px;height:22px;border-top:3px solid #FFCC7D;border-right:3px solid #FFCC7D;border-radius:0 6px 0 0"></div>
+<div style="position:absolute;bottom:8px;left:8px;width:22px;height:22px;border-bottom:3px solid #FFCC7D;border-left:3px solid #FFCC7D;border-radius:0 0 0 6px"></div>
+<div style="position:absolute;bottom:8px;right:8px;width:22px;height:22px;border-bottom:3px solid #FFCC7D;border-right:3px solid #FFCC7D;border-radius:0 0 6px 0"></div>
+</div>
+<div style="display:flex;justify-content:center">
+<div style="width:46px;height:46px;border-radius:999px;border:3px solid #FFCC7D;display:flex;align-items:center;justify-content:center">
+<span style="width:33px;height:33px;border-radius:999px;background:#FFCC7D;display:block"></span>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+<div class="pm-step" style="position:sticky;top:106px;margin-bottom:36px;min-height:clamp(320px,calc(100vh - 150px),520px);display:flex;align-items:center;background:#fff;border:1px solid #E3E1DB;border-radius:20px;box-shadow:0 -2px 0 #FFCC7D, 0 20px 50px -26px rgba(31,42,68,.5);overflow:hidden">
+<div style="width:100%;display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:clamp(20px,3vw,40px);padding:clamp(22px,3vw,34px)">
+<div>
+<div style="display:flex;align-items:center;gap:12px">
+<span style="flex:none;width:34px;height:34px;border-radius:999px;background:#FFCC7D;color:#1F2A44;font:700 15px var(--font-body);display:flex;align-items:center;justify-content:center">3</span>
+<h3 style="margin:0;font:600 clamp(20px,2.2vw,26px)/1.2 var(--font-display);color:#1C1C1A">Tell us what you're ordering</h3>
+</div>
+<p style="margin:14px 0 0;font:400 15px/1.75 var(--font-body);color:#6B6B66;text-wrap:pretty">Any combination, any number of people, any way you want to drink it. One bottle for the table, a glass per course, or one wine that has to stretch from the oysters to the cheese. We can pair it.</p>
+</div>
+<div style="background:#FBFAF7;border:1px solid #E3E1DB;border-radius:14px;padding:16px">
+<div style="font:600 10.5px var(--font-body);color:#6B6B66;letter-spacing:.07em;text-transform:uppercase">Starters</div>
+<div style="border:1px solid #1F2A44;background:#FFF4E4;border-radius:10px;padding:11px;margin-top:9px">
+<div style="display:flex;justify-content:space-between;gap:10px">
+<span style="font:500 13.5px var(--font-body);color:#1C1C1A">Moules en cassoulette</span>
+<span style="font:400 12px var(--font-body);color:#6B6B66;flex:none">$22</span>
+</div>
+<div style="font:400 11.5px/1.5 var(--font-body);color:#6B6B66;margin-top:4px">mussels, Sancerre, shallots, crème fraîche</div>
+</div>
+<div style="border:1px solid #E3E1DB;background:#fff;border-radius:10px;padding:11px;margin-top:8px">
+<div style="display:flex;justify-content:space-between;gap:10px">
+<span style="font:500 13.5px var(--font-body);color:#1C1C1A">Escargots de Bourgogne</span>
+<span style="font:400 12px var(--font-body);color:#6B6B66;flex:none">$19</span>
+</div>
+<div style="font:400 11.5px/1.5 var(--font-body);color:#6B6B66;margin-top:4px">garlic parsley butter, baguette</div>
+</div>
+<div style="font:600 10.5px var(--font-body);color:#6B6B66;letter-spacing:.07em;text-transform:uppercase;margin-top:14px">Mains</div>
+<div style="border:1px solid #1F2A44;background:#FFF4E4;border-radius:10px;padding:11px;margin-top:9px">
+<div style="display:flex;justify-content:space-between;gap:10px">
+<span style="font:500 13.5px var(--font-body);color:#1C1C1A">Steak frites Aquitaine</span>
+<span style="font:400 12px var(--font-body);color:#6B6B66;flex:none">$48</span>
+</div>
+<div style="font:400 11.5px/1.5 var(--font-body);color:#6B6B66;margin-top:4px">hanger steak, black truffle vinaigrette</div>
+</div>
+</div>
+</div>
+</div>
+
+<div class="pm-step" style="position:sticky;top:120px;margin-bottom:36px;min-height:clamp(320px,calc(100vh - 150px),520px);display:flex;align-items:center;background:#fff;border:1px solid #E3E1DB;border-radius:20px;box-shadow:0 -2px 0 #FFCC7D, 0 20px 50px -26px rgba(31,42,68,.5);overflow:hidden">
+<div style="width:100%;display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:clamp(20px,3vw,40px);padding:clamp(22px,3vw,34px)">
+<div>
+<div style="display:flex;align-items:center;gap:12px">
+<span style="flex:none;width:34px;height:34px;border-radius:999px;background:#FFCC7D;color:#1F2A44;font:700 15px var(--font-body);display:flex;align-items:center;justify-content:center">4</span>
+<h3 style="margin:0;font:600 clamp(20px,2.2vw,26px)/1.2 var(--font-display);color:#1C1C1A">Show us the wine list</h3>
+</div>
+<p style="margin:14px 0 0;font:400 15px/1.75 var(--font-body);color:#6B6B66;text-wrap:pretty">We'll tell you what to drink. The best options on their list for what's coming to your table, with the reason each one works. Not a list of wines. A reason.</p>
+</div>
+<div style="background:#FBFAF7;border:1px solid #E3E1DB;border-radius:14px;padding:16px">
+<div style="border:1.5px solid #1F2A44;background:#fff;border-radius:12px;padding:14px">
+<div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+<span style="font:600 10px var(--font-body);color:#8A5A18;letter-spacing:.07em;text-transform:uppercase">Suited to you</span>
+<span style="font:700 10px var(--font-body);color:#1F2A44;background:#FFE3BC;border-radius:999px;padding:4px 9px">presenting</span>
+</div>
+<div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-top:9px">
+<div>
+<div style="font:700 14.5px var(--font-body);color:#1C1C1A">Domaine Trapet</div>
+<div style="font:400 12.5px var(--font-body);color:#1C1C1A;margin-top:2px">Gevrey-Chambertin</div>
+</div>
+<div style="font:700 14px var(--font-body);color:#1C1C1A;flex:none">$234</div>
+</div>
+<div style="font:400 12.5px/1.65 var(--font-body);color:#1C1C1A;margin-top:10px">The roti has morels, the steak has black truffle. Both point at the same bottle, so one wine covers two mains and gives up nothing.</div>
+</div>
+<div style="border:1px solid #E3E1DB;background:#fff;border-radius:12px;padding:13px;margin-top:9px">
+<div style="font:600 10px var(--font-body);color:#5C8A9C;letter-spacing:.07em;text-transform:uppercase">House suggestion</div>
+<div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-top:8px">
+<div>
+<div style="font:700 14.5px var(--font-body);color:#1C1C1A">Jean Foillard</div>
+<div style="font:400 12.5px var(--font-body);color:#1C1C1A;margin-top:2px">Morgon Côte du Py</div>
+</div>
+<div style="font:700 14px var(--font-body);color:#1C1C1A;flex:none">$102</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+<div class="pm-step" style="position:sticky;top:134px;min-height:clamp(320px,calc(100vh - 150px),520px);display:flex;align-items:center;background:#FFF7EC;border:1.5px solid #FFCC7D;border-radius:20px;box-shadow:0 -2px 0 #E5A44F, 0 20px 50px -26px rgba(31,42,68,.5);overflow:hidden">
+<div style="width:100%;display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:clamp(20px,3vw,40px);padding:clamp(22px,3vw,34px)">
+<div>
+<div style="display:flex;align-items:center;gap:12px">
+<span style="flex:none;width:34px;height:34px;border-radius:999px;background:#1F2A44;color:#FFCC7D;font:700 15px var(--font-body);display:flex;align-items:center;justify-content:center">5</span>
+<h3 style="margin:0;font:600 clamp(20px,2.2vw,26px)/1.2 var(--font-display);color:#1C1C1A">Look brilliant</h3>
+</div>
+<p style="margin:14px 0 0;font:400 15px/1.75 var(--font-body);color:#6B6B66;text-wrap:pretty">How to say it, what it means, why it works. Everything a sommelier knows, minus the hundreds of hours, the thousands of dollars, and the eyebrow.</p>
+</div>
+<div style="background:#fff;border:1px solid #FFCC7D;border-radius:14px;padding:16px;display:flex;gap:14px;align-items:center">
+<button onclick="pmSay()" style="flex:none;width:56px;height:56px;border-radius:999px;border:2px solid #1F2A44;background:#FFF7EC;cursor:pointer;display:flex;align-items:center;justify-content:center" class="h3" aria-label="Play the pronunciation">
+<svg width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="#1F2A44" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M11 5 L6 9 H3 v6 h3 l5 4 Z"></path><path d="M15.5 8.5a5 5 0 0 1 0 7"></path><path d="M18.5 5.5a9 9 0 0 1 0 13"></path></svg>
+</button>
+<div style="flex:1;min-width:0">
+<div style="font:600 10.5px var(--font-body);color:#8A5A18;letter-spacing:.08em;text-transform:uppercase">Say it like this</div>
+<div style="font:700 clamp(19px,2vw,24px)/1.2 var(--font-body);color:#1F2A44;margin-top:5px">zhev-RAY shom-ber-TAN</div>
+<div style="font:400 13px/1.6 var(--font-body);color:#6B6B66;margin-top:6px"><span id="say-hint">Tap the speaker. Land on TAN and stop.</span></div>
+</div>
+</div>
+</div>
+</div>
+
+</div>
+
+<div style="max-width:1160px;margin:0 auto;padding:clamp(40px,5vw,64px) clamp(20px,4vw,48px) 0">
+<div style="border:1px solid #E3E1DB;background:#fff;border-radius:16px;padding:20px;display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:22px">
+<div>
+<div style="font:600 15px var(--font-display);color:#1C1C1A">No account to try us</div>
+<div style="font:400 13.5px/1.7 var(--font-body);color:#6B6B66;margin-top:5px;text-wrap:pretty">Scan the code on your table and go. The six questions are there if you want them, and every one is skippable.</div>
+</div>
+<div>
+<div style="font:600 15px var(--font-display);color:#1C1C1A">We say when a house is featuring a wine</div>
+<div style="font:400 13.5px/1.7 var(--font-body);color:#6B6B66;margin-top:5px;text-wrap:pretty">Marked as theirs, every time it appears. You aren't paying more for the suggestion, but you should still know which one it is.</div>
+</div>
+</div>
+</div>
+
+<div style="max-width:1160px;margin:0 auto;padding:clamp(40px,5vw,64px) clamp(20px,4vw,48px)">
+<div style="background:#1F2A44;border-radius:20px;padding:clamp(26px,4vw,48px);display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:clamp(18px,3vw,40px);align-items:center">
+<div style="font:600 clamp(21px,2.4vw,30px)/1.3 var(--font-display);color:#fff;text-wrap:pretty">You were always going to get good at this. You just never had ten years to spend in a cellar.</div>
+<div style="font:400 clamp(15px,1.4vw,18px)/1.6 var(--font-body);color:#FFCC7D">Be the sommelier you never had time to become.</div>
+</div>
+</div>
+
+<div id="restaurants" style="background:#FFF7EC;border-top:1px solid #FFDCAB;border-bottom:1px solid #FFDCAB;scroll-margin-top:70px">
+<div style="max-width:1160px;margin:0 auto;padding:clamp(44px,5vw,76px) clamp(20px,4vw,48px)">
+<div style="font:600 11.5px var(--font-body);color:#8A5A18;letter-spacing:.09em;text-transform:uppercase">For restaurants</div>
+<h2 style="margin:12px 0 0;font:600 clamp(26px,3.4vw,42px)/1.15 var(--font-display);color:#1C1C1A;letter-spacing:-.015em;max-width:26ch;text-wrap:pretty">A sommelier experience for every guest, without a sommelier.</h2>
+<p style="margin:16px 0 0;font:400 clamp(16px,1.5vw,18px)/1.7 var(--font-body);color:#6B6B66;max-width:52ch;text-wrap:pretty">No somm-trained staff, no Tuesday gap, no table that never gets walked through the list. And every diner feels good about ordering another bottle, because they understand why it's the right one.</p>
+
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:clamp(16px,2vw,22px);margin-top:clamp(28px,3vw,40px)">
+
+<div style="border:1px solid #FFDCAB;background:#fff;border-radius:16px;padding:20px">
+<div style="font:600 16px var(--font-display);color:#1C1C1A">Build the list, or hand it to us</div>
+<div style="font:400 14px/1.7 var(--font-body);color:#6B6B66;margin-top:7px;text-wrap:pretty">Type it, photograph it page by page, or send a spreadsheet. If you'd rather not touch it at all, we'll build it and send it back for your approval. Nothing goes live until you say so.</div>
+</div>
+
+<div style="border:1px solid #FFDCAB;background:#fff;border-radius:16px;padding:20px">
+<div style="font:600 16px var(--font-display);color:#1C1C1A">Every dish paired to your list</div>
+<div style="font:400 14px/1.7 var(--font-body);color:#6B6B66;margin-top:7px;text-wrap:pretty">Not generic advice. Your menu against your cellar, item by item, so the recommendation is always something you can actually pour tonight.</div>
+</div>
+
+<div style="border:1px solid #FFDCAB;background:#fff;border-radius:16px;padding:20px">
+<div style="font:600 16px var(--font-display);color:#1C1C1A">See what your distributors have</div>
+<div style="font:400 14px/1.7 var(--font-body);color:#6B6B66;margin-top:7px;text-wrap:pretty">When a dish has no good match on your list, we show you what's available locally that would fill the gap. Buying decisions with the pairing already done.</div>
+</div>
+
+<div style="border:1px solid #FFDCAB;background:#fff;border-radius:16px;padding:20px">
+<div style="font:600 16px var(--font-display);color:#1C1C1A">By the glass, by the bottle, your call</div>
+<div style="font:400 14px/1.7 var(--font-body);color:#6B6B66;margin-top:7px;text-wrap:pretty">Run it as pours, as bottles, or both. Course it if you want a glass with every plate. You set what we're allowed to suggest.</div>
+</div>
+
+<div style="border:1px solid #FFDCAB;background:#fff;border-radius:16px;padding:20px">
+<div style="font:600 16px var(--font-display);color:#1C1C1A">Feedback on all four things</div>
+<div style="font:400 14px/1.7 var(--font-body);color:#6B6B66;margin-top:7px;text-wrap:pretty">The wine, the food, the service, and the pairing, rated separately by the table that ate it. Anonymous, and specific enough to act on.</div>
+<div style="display:flex;flex-wrap:wrap;gap:7px;margin-top:12px">
+<span style="border:1px solid #E3E1DB;border-radius:999px;padding:6px 11px;font:500 11.5px var(--font-body);color:#6B6B66">Wine</span>
+<span style="border:1px solid #E3E1DB;border-radius:999px;padding:6px 11px;font:500 11.5px var(--font-body);color:#6B6B66">Food</span>
+<span style="border:1px solid #E3E1DB;border-radius:999px;padding:6px 11px;font:500 11.5px var(--font-body);color:#6B6B66">Service</span>
+<span style="border:1px solid #FFCC7D;background:#FFF4E4;border-radius:999px;padding:6px 11px;font:500 11.5px var(--font-body);color:#1C1C1A">Pairing</span>
+</div>
+</div>
+
+<div style="border:1px solid #FFDCAB;background:#fff;border-radius:16px;padding:20px">
+<div style="font:600 16px var(--font-display);color:#1C1C1A">Be there when they come looking</div>
+<div style="font:400 14px/1.7 var(--font-body);color:#6B6B66;margin-top:7px;text-wrap:pretty">Diners search for a bottle they loved and want the dish that goes with it. When that bottle is on your list, your room is the answer.</div>
+</div>
+
+</div>
+
+<div style="background:#1F2A44;border-radius:18px;padding:clamp(22px,3vw,32px);margin-top:clamp(22px,3vw,32px);display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:22px;align-items:center">
+<div>
+<div style="font:600 clamp(18px,2vw,23px)/1.3 var(--font-display);color:#fff;text-wrap:pretty">Send us your wine list. We'll build the page and hand it back for approval.</div>
+<div style="font:400 13.5px/1.7 var(--font-body);color:#C9D3DD;margin-top:8px;text-wrap:pretty">Free to start, no contract. The page carries your name, and we take nothing on what gets poured.</div>
+</div>
+<div style="display:flex;flex-direction:column;gap:10px;align-items:flex-start">
+<a href="mailto:house@pairme.wine" style="display:inline-block;background:#FFCC7D;color:#1F2A44;border-radius:999px;padding:14px 24px;font:700 14.5px var(--font-body);text-decoration:none">house@pairme.wine</a>
+<span style="font:400 12px var(--font-body);color:#8794A8">Or five wines pushed for free, whenever you're ready.</span>
+</div>
+</div>
+</div>
+</div>
+
+<div style="max-width:1160px;margin:0 auto;padding:clamp(36px,4vw,56px) clamp(20px,4vw,48px)">
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:22px;align-items:center">
+<div>
+<div style="font:600 11.5px var(--font-body);color:#6B6B66;letter-spacing:.09em;text-transform:uppercase">Coming to both stores</div>
+<div style="font:400 13.5px/1.7 var(--font-body);color:#6B6B66;margin-top:6px">Beta testers get in first. The list is at the top of this page.</div>
+</div>
+<div style="display:flex;gap:12px;flex-wrap:wrap">
+<div style="flex:1 1 180px;border:1px solid #E3E1DB;background:#F4F2EE;border-radius:14px;padding:14px;display:flex;align-items:center;gap:11px;opacity:.5">
+<svg width="24" height="28" viewBox="0 0 24 28" fill="#6B6B66" style="flex:none"><path d="M19.3 14.9c0-3 2.4-4.4 2.5-4.5-1.4-2-3.5-2.3-4.2-2.3-1.8-.2-3.5 1-4.4 1-.9 0-2.3-1-3.8-1-1.9 0-3.7 1.1-4.7 2.9-2 3.5-.5 8.7 1.4 11.5.9 1.4 2.1 2.9 3.6 2.9 1.4-.1 1.9-.9 3.6-.9 1.7 0 2.1.9 3.6.9 1.5 0 2.5-1.4 3.5-2.7.7-1 1.2-2.1 1.5-3-2.6-1-3.1-3.7-3.1-4.8zM15.9 5.3c.8-1 1.3-2.3 1.2-3.6-1.2.1-2.6.8-3.4 1.7-.7.8-1.3 2.2-1.2 3.4 1.3.1 2.6-.6 3.4-1.5z"></path></svg>
+<div>
+<div style="font:400 9.5px var(--font-body);color:#6B6B66;letter-spacing:.04em">Coming to the</div>
+<div style="font:600 16px var(--font-body);color:#6B6B66;letter-spacing:-.01em">App Store</div>
+</div>
+</div>
+<div style="flex:1 1 180px;border:1px solid #E3E1DB;background:#F4F2EE;border-radius:14px;padding:14px;display:flex;align-items:center;gap:11px;opacity:.5">
+<svg width="24" height="27" viewBox="0 0 24 27" style="flex:none"><path d="M2.3 1.4C2.1 1.7 2 2.1 2 2.7v21.6c0 .6.1 1 .3 1.3l11.2-11.2L2.3 1.4z" fill="#6B6B66"></path><path d="M17.1 10.1L13.5 13.5 2.3 1.4c.4-.5 1.1-.6 1.9-.2l12.9 8.9z" fill="#8B8B85"></path><path d="M17.1 16.9L13.5 13.5l3.6-3.4 3.7 2.6c1.1.8 1.1 2 0 2.8l-3.7 2.4z" fill="#A5A39C"></path><path d="M17.1 16.9L4.2 25.6c-.8.4-1.5.3-1.9-.2l11.2-11.9 3.6 3.4z" fill="#767670"></path></svg>
+<div>
+<div style="font:400 9.5px var(--font-body);color:#6B6B66;letter-spacing:.04em">Coming to</div>
+<div style="font:600 16px var(--font-body);color:#6B6B66;letter-spacing:-.01em">Google Play</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+<div style="background:#1F2A44">
+<div style="max-width:1160px;margin:0 auto;padding:clamp(30px,4vw,44px) clamp(20px,4vw,48px) clamp(34px,4vw,48px)">
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:26px">
+<div>
+<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+<img src="assets/logo-mark-inverse.svg" alt="" style="width:22px;height:22px">
+<span style="font:600 15px var(--font-display);color:#fff">PairMe</span>
+</div>
+<div style="font:400 12.5px/1.7 var(--font-body);color:#8794A8">pairme.wine</div>
+</div>
+<div style="display:flex;flex-direction:column;gap:11px">
+<div style="font:600 11px var(--font-body);color:#FFCC7D;letter-spacing:.09em;text-transform:uppercase">Legal</div>
+<a href="/privacy" style="font:500 13.5px var(--font-body);color:#C9D3DD">Privacy policy</a>
+<a href="/terms" style="font:500 13.5px var(--font-body);color:#C9D3DD">Terms of service</a>
+<a href="/support" style="font:500 13.5px var(--font-body);color:#C9D3DD">Support</a>
+</div>
+<div style="display:flex;flex-direction:column;gap:11px">
+<div style="font:600 11px var(--font-body);color:#FFCC7D;letter-spacing:.09em;text-transform:uppercase">Part of the Find Better Food family</div>
+<a href="https://www.tomarket.com" style="font:500 13.5px var(--font-body);color:#C9D3DD">toMarket</a>
+<a href="https://www.quoteme.food" style="font:500 13.5px var(--font-body);color:#C9D3DD">QuoteMe</a>
+</div>
+</div>
+<div style="border-top:1px solid #37425C;margin-top:26px;padding-top:18px;font:400 12px/1.7 var(--font-body);color:#8794A8;max-width:70ch">
+You must be of legal drinking age to use PairMe, 21+ in the United States. We recommend wine. We never sell it, and we never take a cut of what you drink.
+<div style="margin-top:8px">© 2026 PairMe</div>
+</div>
+</div>
+</div>
+
+</div>
+<script src="pairme.js"></script>
+</body>
 </html>
