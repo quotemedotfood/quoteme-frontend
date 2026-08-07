@@ -1,0 +1,650 @@
+import React from 'react';
+import {
+  ensureSession,
+  getProfile,
+  putProfile,
+  capture as apiCapture,
+  postCaptureRows,
+  getVenues,
+  pair as apiPair,
+  rate as apiRate,
+  fetchRulesBundle,
+} from './api.js';
+import { parseWineList, loadRulesBundle } from '../../../../packages/pairing/src/index.js';
+
+const NAVY="#1F2A44",PEAR="#FFCC7D",ORANGE="#F2993D",BLUED="#5C8A9C";
+
+const THEME={
+ light:{page:"#FBFAF7",card:"#fff",ink:"#1C1C1A",muted:"#6B6B66",rule:"#E3E1DB",chrome:"#1F2A44",chromeSub:"#A5CFDD",sel:"#FFF4E4",selBd:"#FFCC7D",sunken:"#F1EFEA",warnBg:"#FEF3E7",warnBd:"#F2993D",warnInk:"#C4701A",blueBg:"#F4F8F9",blue:"#5C8A9C",pearInk:"#8A5A18",accent2:"#1F2A44",hover2:"#F4F2EC"},
+ dark:{page:"#151A29",card:"#1E2438",ink:"#F3F1EB",muted:"#9EA2AE",rule:"#303A55",chrome:"#0E1320",chromeSub:"#8FB6C4",sel:"#2E2618",selBd:"#8A6A2A",sunken:"#222941",warnBg:"#3A2A18",warnBd:"#F2993D",warnInk:"#F2993D",blueBg:"#1A2731",blue:"#7FAFC0",pearInk:"#F2C889",accent2:"#FFCC7D",hover2:"#2A3350"}};
+const HC={
+ light:{ink:"#000",muted:"#33332F",rule:"#8C8C86",sel:"#FFEBCE",selBd:"#8A5A18",pearInk:"#6E4610",warnInk:"#8A3E00",accent2:"#0F1729"},
+ dark:{ink:"#FFFFFF",muted:"#DEDED8",rule:"#8E9AB5",sel:"#3D3220",selBd:"#F2C889",pearInk:"#FFDDAE",accent2:"#FFE0AE"}};
+
+const DISHES=[
+ {id:"r1",sec:"Raw bar",n:"Oysters, half dozen",d:"East coast, mignonette, lemon",p:24},
+ {id:"r2",sec:"Raw bar",n:"Tuna crudo",d:"blood orange, fennel, Espelette, olive oil",p:23},
+ {id:"r3",sec:"Raw bar",n:"Shrimp cocktail",d:"horseradish, celery heart",p:21},
+ {id:"a2",sec:"Starters",n:"Moules en cassoulette",d:"mussels, Sancerre, shallots, creme fraiche, thyme",p:22},
+ {id:"a5",sec:"Starters",n:"Chicken & duck liver pate",d:"confiture, pickled jardiniere, grain mustard",p:20},
+ {id:"a4",sec:"Starters",n:"Salade de chevre chaud",d:"warm Boucheron, hazelnuts, Dijon vinaigrette",p:17},
+ {id:"a8",sec:"Starters",n:"Local burrata",d:"pickled rhubarb, radicchio, blood orange, pistachio dukkah",p:23},
+ {id:"a3",sec:"Starters",n:"Soupe a l'oignon",d:"veal stock, Gruyere, sourdough croute",p:16},
+ {id:"a7",sec:"Starters",n:"Escargots de Bourgogne",d:"garlic parsley butter, baguette",p:19},
+ {id:"e6",sec:"Mains",n:"Chicken roti",d:"pee wee potatoes, carrots, morel mushrooms, garlic jus",p:35},
+ {id:"e9",sec:"Mains",n:"Steak frites Aquitaine",d:"hanger steak, shallot jus, Perigord black truffle vinaigrette",p:48},
+ {id:"e2",sec:"Mains",n:"Sole meuniere",d:"artichoke barigoule, snap peas, pommes Robuchon, beurre citron",p:38},
+ {id:"e7",sec:"Mains",n:"Seared duck breast",d:"maitake, minted pea puree, madeira reduction",p:39},
+ {id:"e4",sec:"Mains",n:"Cassoulet Toulousain",d:"duck confit, garlic sausage, tarbais beans",p:36},
+ {id:"e5",sec:"Mains",n:"Pork chop Normande",d:"apple, calvados cream, savoy cabbage",p:37},
+ {id:"e8",sec:"Mains",n:"Ratatouille en cocotte",d:"summer squash, basil, chevre, olive crumb",p:29},
+ {id:"e3",sec:"Mains",n:"Bouillabaisse",d:"rouille, saffron, gruyere toasts",p:44},
+ {id:"s2",sec:"Sides",n:"Truffle frites",d:"parmesan, fines herbes, aioli",p:13},
+ {id:"s6",sec:"Sides",n:"Roasted mushrooms",d:"thyme, sea salt",p:null},
+ {id:"s3",sec:"Sides",n:"Haricots verts",d:"almond, brown butter",p:11},
+ {id:"s4",sec:"Sides",n:"Pommes puree",d:"a great deal of butter",p:12},
+ {id:"d1",sec:"Dessert",n:"Tarte tatin",d:"creme fraiche glacee",p:14},
+ {id:"d2",sec:"Dessert",n:"Profiteroles",d:"vanilla ice cream, warm chocolate",p:13},
+ {id:"d3",sec:"Dessert",n:"Ile flottante",d:"creme anglaise, spun sugar",p:12},
+ {id:"d4",sec:"Dessert",n:"Cheese, three",d:"Comte, Epoisses, Roquefort, honeycomb",p:18}];
+const SECS=["Raw bar","Starters","Mains","Sides","Dessert"];
+
+const W={
+ gim:{prod:"Pierre Gimonnet & Fils",wine:"Blanc de Blancs 1er Cru Brut",meta:"chardonnay . Champagne, France",say:"zhee-moh-NAY",speak:"Zhee moh nay. Blanc de Blancs.",tip:"Two syllables that matter: moh-NAY. The rest can mumble.",glass:26,btl:138,stock:6},
+ trapet:{prod:"Domaine Trapet",wine:"Gevrey-Chambertin",meta:"pinot noir . Burgundy, France",say:"zhev-RAY shom-ber-TAN",speak:"Trah pay. Zhev ray shom ber tan.",tip:"Land on TAN and stop.",glass:null,btl:234,stock:3},
+ foil:{prod:"Jean Foillard",wine:"Morgon Cote du Py",meta:"gamay . Beaujolais, France",say:"fwah-YAR, mor-GOHN",speak:"Fwah yar. Mor gohn, coat due pee.",tip:"Foillard rhymes with the back half of boulevard.",glass:21,btl:102,stock:11},
+ vach:{prod:"Domaine Vacheron",wine:"Sancerre",meta:"sauvignon blanc . Loire, France",say:"vash-ROHN, sahn-SEHR",speak:"Vash rohn. Sahn sehr.",tip:"Sancerre is two beats, both short.",glass:23,btl:102,stock:14},
+ huet:{prod:"Domaine Huet",wine:"Vouvray Sec Le Mont",meta:"chenin blanc . Loire, France",say:"oo-AY, voo-VRAY",speak:"Oo ay. Voo vray sec, luh mohn.",tip:"The H is silent. Start with the oo.",glass:22,btl:100,stock:9}};
+
+const BRIEF={
+ gim:{means:"Blanc de Blancs means white from whites, so this is Champagne made only from chardonnay, no red grapes in it at all. 1er Cru is the second best vineyard rank in the region. Gimonnet is a grower, which means they farm what they bottle rather than buying grapes in.",
+  notes:["green apple","lemon peel","fine bubbles","chalk","brioche"],
+  why:"Mussels in cream and a liver pate want opposite things. Acid cuts the creme fraiche, bubbles scrub the fat off the pate, and Champagne is one of the few wines that does both without picking a side.",
+  bridge:"You would like a good Cremant de Bourgogne. Same method, half the price, and nobody at the table can tell in a dark room.",
+  yours:"You rated a Gimonnet five stars at Le Coucou in May, with the oysters."},
+ trapet:{means:"Gevrey-Chambertin is a village in Burgundy, and in Burgundy the village is the label. The grape is pinot noir, always. Trapet farms biodynamically, which mostly means old vines and very little intervention.",
+  notes:["red cherry","forest floor","dried rose","soft tannin","earth"],
+  why:"The roti has morels and the steak has a black truffle vinaigrette. Both are earthy, and pinot noir from Gevrey is the most earthy red that still stays light. One bottle, two mains, nothing given up.",
+  bridge:"Look for a Morey-Saint-Denis next time. Neighbouring village, same grape, usually forty dollars less.",
+  yours:"First time. If it lands, we will know something new about you."},
+ foil:{means:"Morgon is one of the ten crus of Beaujolais, and Cote du Py is its best hill. The grape is gamay. Foillard is one of the four growers who dragged the region back from cheap Nouveau, so this is a serious wine with a silly reputation.",
+  notes:["black cherry","violet","granite","light tannin","bright acid"],
+  why:"Light enough for the chicken, structured enough for the steak. Gamay is the one red that rarely gets in anyone's way, which is why it wins tables where nobody agrees.",
+  bridge:"Try a Fleurie if you want the same wine with the volume turned down.",
+  yours:"You had a Foillard at Bistro Vendome in June and gave it four stars."},
+ vach:{means:"Sancerre is a town in the Loire, and the grape is sauvignon blanc. Vacheron are the family who farm the good slopes and have done for generations.",
+  notes:["grapefruit","wet stone","cut grass","high acid","dry finish"],
+  why:"It is the wine that disappoints the fewest people at a table with mussels and a steak on it. That is faint praise and it is also exactly what you want when nobody has told us anything.",
+  bridge:"A Pouilly-Fume from across the river is the same idea with a little smoke on it.",
+  yours:"Not yet. Sarah rates this producer five stars."},
+ huet:{means:"Vouvray is Loire chenin blanc. Sec means dry, which matters here because Vouvray is also made sweet. Le Mont is Huet's middle vineyard, and Huet is the reference producer for the whole appellation.",
+  notes:["quince","honey","chamomile","wool","bracing acid"],
+  why:"Chenin sits between a Sancerre and a white Burgundy. Richer than the first, no oak like the second, and enough acid to handle butter without going flabby.",
+  bridge:"If this lands, a dry Savennieres is the next step up the same road.",
+  yours:"Your highest rated bottle. Five stars, twice, at Aquitaine and once at home."}};
+
+const ACCOUNTS=[
+ {k:"Vivino",on:"137 ratings read . you rate Loire whites a full point higher than anything else",off:"Ratings and your scanned bottles"},
+ {k:"CellarTracker",on:"Cellar and tasting notes read",off:"Your cellar and tasting notes"},
+ {k:"Wine.com",on:"Order history read",off:"What you've bought, and repeat orders"},
+ {k:"Delectable",on:"Saved bottles read",off:"Saved bottles and follows"}];
+
+const RAIL=["Welcome","Sign in","1 . Knowledge","2 . Adventure","3 . Budget","4 . Taste","5 . Must know","6 . That's it","Where to","The menu","How to drink","The wine","Present","How was it","Your profile","Sarah's profile","Bottle brief","Settings","Camera"];
+const CTA=["Get going","Set my taste","Next","Next","Next","Next","Next","Find table","Continue","Pair it","Show wine","Present","Rate it","Save it","Her list","New table","Back to wine","Done","Use this"];
+
+const MY_HISTORY=[
+ ["Domaine Huet, Vouvray Sec","Aquitaine . 12 Jul","with the sole meuniere",5],
+ ["Jean Foillard, Morgon","Bistro Vendome . 28 Jun","with the duck confit",4],
+ ["Hermann J. Wiemer, Dry Riesling","at home . 14 Jun","with takeaway Thai",5],
+ ["Chateau Cap de Faugeres","Aquitaine . 2 Jun","with the steak frites",3],
+ ["Pierre Gimonnet, Blanc de Blancs","Le Coucou . 18 May","with the oysters",5]];
+const SARAH_HISTORY=[
+ ["Domaine Huet, Vouvray Sec","Aquitaine . 12 Jul",5],
+ ["Sancerre, Vacheron","Bistro Vendome . 28 Jun",5],
+ ["Barbaresco, Produttori","Rezdora . 3 Jun",4],
+ ["Muscadet, Pepiere","Neptune . 21 May",4]];
+
+export const RAIL_LABELS = RAIL;
+export { W, BRIEF, DISHES, SECS, ACCOUNTS };
+
+// ---------------------------------------------------------------------------
+// Routing bridge. Index = screen number (matches SCREENS in App.jsx), value
+// = the canonical URL for that screen. Screens without a dedicated route in
+// the required 14 (SignIn, FriendProfile, BottleBrief, Settings) still get a
+// sensible nested path so they are deep-linkable; go() below just navigates
+// there when the in-app UI moves to that screen index.
+// ---------------------------------------------------------------------------
+const PATH_FOR_SCREEN = [
+  '/',                   // 0  Welcome
+  '/signin',             // 1  SignIn
+  '/setup/1',            // 2  Q1Knowledge
+  '/setup/2',            // 3  Q2Adventure
+  '/setup/3',            // 4  Q3Budget
+  '/setup/4',            // 5  Q4Taste
+  '/setup/5',            // 6  Q5MustKnow
+  '/setup/6',            // 7  Q6Summary
+  '/venue',              // 8  WhereTo
+  '/menu',               // 9  Menu
+  '/direction',          // 10 HowToDrink
+  '/wines',              // 11 TheWine
+  '/server',             // 12 Present
+  '/rate',               // 13 RateIt
+  '/profile',            // 14 YourProfile
+  '/profile/friend',     // 15 FriendProfile
+  '/wines/brief',        // 16 BottleBrief
+  '/profile/settings',   // 17 Settings
+  '/capture',            // 18 Camera
+];
+
+// ---------------------------------------------------------------------------
+// PUT /v1/profile mapping. This is a lossy seam: Desi's onboarding UI has no
+// slot for several of the API's fields (or vice versa). See the mapping
+// notes inline; the seam is also called out in the handoff report.
+// ---------------------------------------------------------------------------
+const LEVEL_OPTIONS = ["1 . Just point at something","2 . I know what I like","3 . I read the list","4 . I could write the list"];
+const WANT_OPTIONS = ["Happy where I am","I want to learn more","Take me all the way"];
+const ALLERGY_LABELS = new Set(['shellfish','nuts','dairy','gluten','egg','sulfite sensitive']);
+const DIETARY_LABELS = new Set(['vegetarian','vegan','pescatarian']);
+const NOT_DRINKING_LABELS = new Set(['no alcohol for me','pregnant']);
+const PARSER_VERSION = 'pairme-web-stub/0.0.0';
+
+function buildProfilePayload(st) {
+  const allergies = st.diet.filter((d) => ALLERGY_LABELS.has(d));
+  const dietary = st.diet.filter((d) => DIETARY_LABELS.has(d));
+  const notDrinking = st.diet.some((d) => NOT_DRINKING_LABELS.has(d));
+  const hi = Math.max(st.bMin, st.bMax);
+  const somLevel = LEVEL_OPTIONS.indexOf(st.level) + 1;
+  const targetLevel = WANT_OPTIONS.indexOf(st.want) + 1;
+  return {
+    preferences: {
+      som_level: somLevel > 0 ? somLevel : undefined,
+      target_level: targetLevel > 0 ? targetLevel : undefined,
+      adventure: st.adv || undefined,
+      // Desi's UI collects a floor and a ceiling; the contract only has one
+      // `budget` int. We send the ceiling: it is what "we never show you
+      // what you didn't ask to see" is protecting.
+      budget: hi || undefined,
+      celebration_flag: !!st.bump,
+      likes: st.likes,
+      likes_free_text: st.loveOwn || null,
+      dislikes: st.dislikes,
+      dislikes_free_text: st.notOwn || null,
+      not_drinking: notDrinking,
+    },
+    safety: {
+      allergies,
+      dietary,
+      // dietOwn is one free text box under a combined "allergies and
+      // dietary" header in Q5MustKnow; there is no separate dietary free
+      // text slot in the contract, so it lands on allergies_free_text.
+      allergies_free_text: st.dietOwn || null,
+    },
+  };
+}
+
+function hydrateFromProfile(profile) {
+  if (!profile) return {};
+  const p = profile.preferences || {};
+  const s = profile.safety || {};
+  const patch = {};
+  if (p.som_level && LEVEL_OPTIONS[p.som_level - 1]) patch.level = LEVEL_OPTIONS[p.som_level - 1];
+  if (p.target_level && WANT_OPTIONS[p.target_level - 1]) patch.want = WANT_OPTIONS[p.target_level - 1];
+  if (p.adventure) patch.adv = p.adventure;
+  if (p.budget) patch.bMax = p.budget;
+  if (Array.isArray(p.likes) && p.likes.length) patch.likes = p.likes;
+  if (p.likes_free_text) patch.loveOwn = p.likes_free_text;
+  if (Array.isArray(p.dislikes) && p.dislikes.length) patch.dislikes = p.dislikes;
+  if (p.dislikes_free_text) patch.notOwn = p.dislikes_free_text;
+  const diet = [].concat(s.allergies || [], s.dietary || []);
+  if (diet.length) patch.diet = diet;
+  return patch;
+}
+
+function mapDirection(st) {
+  // POST /v1/pair's `direction` enum is course_it_out | one_bottle | several.
+  // Desi's UI asks glass-vs-bottle then a sub choice; this is a best effort
+  // mapping until item 5 (the pairing engine) ships and we can verify it.
+  if (st.mode === 'glass') return 'several';
+  if (st.sub === 'single') return 'one_bottle';
+  return 'course_it_out';
+}
+
+/**
+ * Single source of truth for the whole app. Every screen is a pure function
+ * of the object this returns (Desi's contract, unchanged). This version
+ * additionally:
+ *   - bootstraps identity (POST /v1/session) and hydrates the profile
+ *     (GET /v1/profile) on mount,
+ *   - writes the onboarding answers back with PUT /v1/profile,
+ *   - drives the real venue search (GET /v1/venues),
+ *   - runs the capture -> parse (stub) -> POST rows pipeline,
+ *   - calls POST /v1/pair and POST /v1/rating at the right seams,
+ *   - bridges screen navigation to react-router paths via `go`/`syncFromRoute`.
+ *
+ * @param {object} [opts]
+ * @param {(path: string) => void} [opts.navigate] - react-router navigate.
+ * @param {() => void} [opts.openCamera] - opens the capture=environment file input.
+ * @param {() => void} [opts.openGallery] - opens the plain file input.
+ */
+export function usePairMe(opts = {}){
+  const { navigate, openCamera, openGallery } = opts;
+  const [st, set] = React.useState({s:0,dark:false,hc:false,
+    level:"2 . I know what I like",want:"I want to learn more",adv:3,
+    bMin:60,bMax:140,bump:null,
+    likes:["Burgundy","Loire whites","Beaujolais"],dislikes:["heavy oak"],diet:["shellfish"],
+    levelOwn:"",advOwn:"",budgetOwn:"",loveOwn:"",notOwn:"",dietOwn:"",unreadable:"",why:"",
+    guestName:"",rel:null,added:[],
+    venueQ:"",noList:false,blank:false,picked:["a2","a5","e6","e9","s2"],
+    mode:null,sub:null,scope:null,present:["gim","trapet"],
+    guest:"me",resolution:null,rate:{dish:4,wine:5,pair:4},fb:"",share:true,listening:null,skipped:0,
+    linked:["Vivino"],account:null,bottle:"trapet",back:11,saved:false,shared:null,
+    // Integration state (not part of Desi's original demo model).
+    apiError:null,apiLoading:false,
+    anonId:null,
+    captureId:null,rawText:"",captureRows:[],
+    pairOfferings:null,pairCompromise:null,
+    venueResults:[],venueMessage:null,selectedVenueId:null,
+    tableCode:null});
+  const patch = (p) => set(s => Object.assign({}, s, typeof p === 'function' ? p(s) : p));
+  const bodyEl = React.useRef(null);
+  const secs = React.useRef({});
+
+  // --- Bootstrap: identity + profile hydrate + rules bundle warm up -------
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const anonId = await ensureSession();
+        if (cancelled) return;
+        patch({ anonId });
+        const profile = await getProfile();
+        if (cancelled) return;
+        patch(hydrateFromProfile(profile));
+      } catch (err) {
+        if (!cancelled) patch({ apiError: err.message || 'Could not load your saved taste. Starting fresh.' });
+      }
+      // Fire and forget: not surfaced on any screen yet, just proves the
+      // 304-aware cache loader is wired per the contract (G4).
+      loadRulesBundle((sinceVersion) => fetchRulesBundle(sinceVersion)).catch(() => {});
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // --- Real venue search (GET /v1/venues), replacing the hardcoded demo ---
+  React.useEffect(() => {
+    const q = st.venueQ;
+    if (!q || q.trim().length < 2) {
+      if (st.venueResults.length || st.venueMessage) patch({ venueResults: [], venueMessage: null });
+      return;
+    }
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      try {
+        const res = await getVenues(q);
+        if (cancelled) return;
+        if (res.covered === false) {
+          patch({ venueResults: [], venueMessage: res.message });
+        } else {
+          patch({ venueResults: res.venues || [], venueMessage: null });
+        }
+      } catch (err) {
+        if (!cancelled) patch({ venueResults: [], venueMessage: err.message });
+      }
+    }, 300);
+    return () => { cancelled = true; clearTimeout(timer); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [st.venueQ]);
+
+  const go=(n)=>{
+    patch({s:n});
+    if(bodyEl.current)bodyEl.current.scrollTop=0;
+    const path = PATH_FOR_SCREEN[n];
+    if (path && navigate) navigate(path);
+  };
+  // Called by the route layer when the URL changes (deep link, browser
+  // back/forward, or a direct visit) so `s` stays in sync with the path.
+  const syncFromRoute=(n,extra)=>{
+    patch((s2)=>Object.assign({},s2,{s:n},extra||{}));
+  };
+  const jumpTo=(name)=>{const el=secs.current[name];if(el&&bodyEl.current)bodyEl.current.scrollTop=el.offsetTop-52;};
+  const say=(text)=>{try{const sp=window.speechSynthesis;if(!sp)return;sp.cancel();
+      const u=new SpeechSynthesisUtterance(text);u.rate=.82;u.pitch=1;sp.speak(u);}catch(e){}};
+  const field=(key)=>{const on=st.listening===key;return {
+      v:st[key],set:e=>patch({[key]:e.target.value}),
+      mic:()=>patch({listening:on?null:key}),
+      bd:on?PEAR:"var(--pm-rule)",bg:on?"var(--pm-sel)":"var(--pm-card)",
+      hint:on?"Listening. Say it however you'd say it out loud.":""};};
+  const pills=(opts,key,multi)=>opts.map(label=>{
+      const cur=st[key],on=multi?(cur||[]).includes(label):cur===label;
+      return {label,on,bd:on?"var(--pm-chrome)":"var(--pm-rule)",bg:on?"var(--pm-sel)":"var(--pm-card)",
+        pick:()=>patch(st=>({[key]:multi?(st[key].includes(label)?st[key].filter(x=>x!==label):[...st[key],label]):label}))};
+    });
+  const stars=(n)=>[1,2,3,4,5].map(i=>({n:i,fill:i<=n?PEAR:"transparent",stroke:i<=n?"#E5A44F":"var(--pm-rule)"}));
+
+  // Capture pipeline: POST /v1/capture -> parseWineList (stub, always [])
+  // -> POST /v1/capture/:id/rows (404 expected until BE catches up, G1).
+  const handleCaptureFile = async (file) => {
+    patch({ camShot: true, apiError: null });
+    try {
+      const captureRes = await apiCapture(file, st.selectedVenueId || undefined);
+      const rawText = captureRes.raw_text || captureRes.extraction || '';
+      const rows = parseWineList(rawText);
+      await postCaptureRows(captureRes.capture_id, PARSER_VERSION, rows).catch(() => {});
+      patch({ camShot: false, captureId: captureRes.capture_id, rawText, captureRows: rows });
+      go(9); // -> Menu, same destination as Desi's original demo timeout.
+    } catch (err) {
+      patch({ camShot: false, apiError: err.message || 'We could not read that photo. Please try again.' });
+    }
+  };
+
+      const s=st.s,dark=st.dark;
+      const base=dark?THEME.dark:THEME.light;
+      const t=st.hc?Object.assign({},base,dark?HC.dark:HC.light):base;
+      const themeVars="--pm-page:"+t.page+";--pm-card:"+t.card+";--pm-ink:"+t.ink+";--pm-muted:"+t.muted+
+        ";--pm-rule:"+t.rule+";--pm-chrome:"+t.chrome+";--pm-chromeSub:"+t.chromeSub+";--pm-sel:"+t.sel+
+        ";--pm-selBd:"+t.selBd+";--pm-sunken:"+t.sunken+";--pm-warnBg:"+t.warnBg+";--pm-warnBd:"+t.warnBd+
+        ";--pm-warnInk:"+t.warnInk+";--pm-blueBg:"+t.blueBg+";--pm-blue:"+t.blue+";--pm-pearInk:"+t.pearInk+
+        (st.hc?";--pm-dish:16.5px;--pm-desc:13.5px;--pm-sec:12.5px;--pm-weight:600":"")+
+        ";--accent-secondary:"+t.accent2+";--text-primary:"+t.ink+";--text-secondary:"+t.muted+
+        ";--surface-card:"+t.card+";--surface-page:"+t.page+";--surface-sunken:"+t.sunken+
+        ";--border-default:"+t.rule+";--border-strong:"+t.muted+
+        ";--color-navy-50:"+t.hover2+";--color-cream-100:"+t.hover2+";--pm-accent2:"+t.accent2+";color:"+t.ink+";";
+
+      const chosen=st.picked.map(id=>DISHES.find(d=>d.id===id)).filter(Boolean);
+      const blank=st.blank,conflict=st.guest==="sarah";
+      const lo=Math.min(st.bMin,st.bMax),hi=Math.max(st.bMin,st.bMax);
+      const ob=[null,
+        {t:"How well do you know wine?",s:"Be honest. This changes what we say, not what we pour."},
+        {t:"How adventurous are you feeling?",s:"You can change this at any table, any night."},
+        {t:"What's comfortable tonight?",s:"A floor and a ceiling. We never show you what you didn't ask to see."},
+        {t:"What do you already love?",s:"Regions, grapes, styles. Whatever comes to mind."},
+        {t:"Anything we must know?",s:"This one isn't about taste. We take it seriously."},
+        {t:"That's everything.",s:"Six questions, done. Have a full glass."}][s];
+      const glassH=34*Math.min(1,(s>=1&&s<=6?s:0)/6);
+
+      const offerSet=blank?[
+        {k:"vach",role:"Safe, and we mean that kindly",roleColor:t.muted,why:"You've told us nothing, so we won't pretend we know you. Sancerre disappoints the fewest people at a table with mussels and a steak on it.",covers:"Moules, the pate, most of the table"},
+        {k:"foil",role:"If you want a red",roleColor:t.muted,why:"Light enough for the chicken, structured enough for the steak. Gamay is the one red that rarely gets in anyone's way.",covers:"Chicken roti and the steak frites"},
+        {k:"huet",role:"House suggestion",roleColor:t.blue,why:"Aquitaine features this one. Chenin sits between the two above, a little richer than the Sancerre, no tannin at all.",covers:"Everything except the steak"}
+      ]:[
+        {k:"gim",role:"House suggestion",roleColor:t.blue,why:"Mussels in cream and a liver pate don't usually want the same wine. Champagne is the one thing that serves both: the acid cuts the creme fraiche, the bubbles handle the fat.",covers:"Moules and the pate"},
+        {k:"trapet",role:"Suited to you",roleColor:t.pearInk,why:"You said you love Burgundy. Lucky night: the roti has morels, the steak has a black truffle vinaigrette, and both point at the same bottle.",covers:"Chicken roti, steak frites and the truffle frites"},
+        {k:"foil",role:"Simpler, cheaper, still good",roleColor:t.muted,why:"If two bottles feels like a lot, Foillard's Morgon is the one wine here nobody at the table will argue with, and it's a third of the Gevrey.",covers:"Everything, if you'd rather keep it easy"}
+      ];
+      const presentKeys=st.present.filter(k=>offerSet.some(o=>o.k===k));
+      const shownKeys=presentKeys.length?presentKeys:[offerSet[0].k];
+
+      return {
+        themeVars,
+        toggleDark:()=>patch({dark:!dark}),
+        darkLabel:dark?"Light":"Dark",
+        darkIcon:dark?"M12 3v2M12 19v2M5 12H3M21 12h-2M6.3 6.3 4.9 4.9M19.1 19.1l-1.4-1.4M17.7 6.3l1.4-1.4M4.9 19.1l1.4-1.4M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8":"M20 14.5A8.5 8.5 0 0 1 9.5 4 7 7 0 1 0 20 14.5",
+        darkBd:dark?PEAR:"rgba(255,255,255,.35)",darkBg:dark?PEAR:"transparent",darkFg:dark?NAVY:"#fff",
+        toggleHC:()=>patch({hc:!st.hc}),
+        hcBd:st.hc?PEAR:"rgba(255,255,255,.35)",hcBg:st.hc?PEAR:"transparent",hcFg:st.hc?NAVY:"#fff",
+
+        rail:RAIL.map((label,i)=>({label,num:i+1,go:()=>go(i),bg:i===s?"#FFF4E4":"#fff",border:i===s?NAVY:"#E3E1DB"})),
+        screenNo:s+1,screenName:RAIL[s],
+        back:()=>go(Math.max(0,s-1)),fwd:()=>go(Math.min(17,s+1)),
+        bodyRef:el=>{bodyEl.current=el;},
+        ctaLabel:CTA[s],
+        cta:
+          s===7 ? async()=>{
+            patch({apiLoading:true});
+            try{ await putProfile(buildProfilePayload(st)); }
+            catch(err){ patch({apiError:err.message||'Could not save your answers. Continuing anyway.'}); }
+            patch({apiLoading:false});
+            go(8);
+          }
+          : s===10 ? async()=>{
+            try{
+              const res = await apiPair({
+                dish_ids: st.picked,
+                wine_list_id: st.captureId || null,
+                profile_id: null,
+                direction: mapDirection(st),
+              });
+              if (res && !res.notBuilt && Array.isArray(res.offerings)) {
+                patch({pairOfferings:res.offerings,pairCompromise:res.compromise||null});
+              }
+              // else: /v1/pair is not built yet (item 5). offerSet above,
+              // Desi's static demo data, stays the fallback the TheWine
+              // screen renders. See TODO in the handoff report.
+            }catch(err){ patch({apiError:err.message||'Could not reach the wine list. Showing our best guess.'}); }
+            go(11);
+          }
+          : s===13 ? async()=>{
+            if (st.captureId) {
+              try{
+                await apiRate({
+                  capture_id: st.captureId,
+                  dish: st.rate.dish, wine: st.rate.wine, pairing: st.rate.pair,
+                  free_text: st.fb || null, share_with_venue: st.share,
+                });
+              }catch(err){ patch({apiError:err.message||'Could not save your rating.'}); }
+            }
+            go(14);
+          }
+          : s===15?()=>go(8):(s===16||s===17)?()=>go(st.back):s===18?()=>patch({s:9,camShot:false}):()=>go(Math.min(15,s+1)),
+        hasAlt:s===0||s===1||s===11,
+        altLabel:s===0?"Skip setup":s===1?"Not now":"Something else",
+        alt:s===0?()=>patch({s:8,blank:true,skipped:6,likes:[],dislikes:[],diet:[]})
+          :s===1?()=>go(2):()=>go(10),
+        skip:()=>patch(x=>({s:Math.min(15,x.s+1),skipped:x.skipped+1})),
+        goMenu:()=>go(9),
+        goSettings:()=>patch({s:17,back:s===17?st.back:s}),
+        goSignIn:()=>patch({s:1,back:17}),
+        s0:s===0,s1:s===1,s2:s===2,s3:s===3,s4:s===4,s5:s===5,s6:s===6,s7:s===7,s8:s===8,s9:s===9,s10:s===10,s11:s===11,s12:s===12,s13:s===13,s14:s===14,s15:s===15,s16:s===16,s17:s===17,s18:s===18,
+        goCamera:()=>go(18),
+        camTitle:st.camShot?"Hold steady":"Fit the list in the frame",
+        camSub:st.camShot?"Reading the list.":"Corner to corner. A little glare is fine, we have seen worse.",
+        camLines:["72%","58%","81%","49%","77%","63%","85%","54%","70%"].map(w=>({w})),
+        camShot:st.camShot,
+        // Wired to a real <input type=file accept=image/* capture=environment>
+        // in App.jsx (chrome layer, not this screen). No getUserMedia/video:
+        // iOS Safari cannot control flash, and this is a dark dining room.
+        camFire:()=>{ if(openCamera) openCamera(); },
+        camUpload:()=>{ if(openGallery) openGallery(); },
+        camPages:()=>patch({camPage:(st.camPage||1)+1}),
+        camPageNo:st.camPage||1,
+        camNote:(st.camPage||1)>1?"Page "+(st.camPage||1)+". Keep going, we stitch them together.":"Long list? Shoot one page, tap plus, shoot the next.",
+        onboarding:s>=2&&s<=7,step:s-1,obTitle:ob?ob.t:"",obSub:ob?ob.s:"",
+
+        signIns:[
+          {k:"Apple",label:"Continue with Apple",icon:"",fg:"#fff",bg:"#000",bd:"#000"},
+          {k:"Google",label:"Continue with Google",icon:"G",fg:"var(--pm-ink)",bg:"var(--pm-card)",bd:"var(--pm-rule)"},
+          {k:"Email",label:"Continue with email",icon:"@",fg:"var(--pm-ink)",bg:"var(--pm-card)",bd:"var(--pm-rule)"}
+        ].map(o=>Object.assign({},o,{pick:()=>patch({account:o.k,s:st.back===17?17:2})})),
+        // No auth endpoint exists in the API contract v1 (identity is
+        // anon_id only, "no login, no merge"). These sign-in affordances
+        // stay local-only demo state until the backend adds one.
+        signInVivino:()=>patch({account:"Vivino",linked:st.linked.includes("Vivino")?st.linked:[...st.linked,"Vivino"],s:st.back===17?17:2}),
+        signInNote:st.account?"Signed in with "+st.account+". Your taste travels with you now."
+          :"No password, ever. We ask for a name and an email and nothing else. Skip it and you can still use every part of this, we just forget you when you close the app.",
+        glassH:glassH,glassY:38-glassH,
+
+        levelPills:pills(["1 . Just point at something","2 . I know what I like","3 . I read the list","4 . I could write the list"],"level"),
+        wantPills:pills(["Happy where I am","I want to learn more","Take me all the way"],"want"),
+        advRows:["Stick to a colour I know","Stick to grapes I know","Open to anything","I'd love a grape I've never heard of","Surprise me completely"].map((label,i)=>({
+          label,n:i+1,pick:()=>patch({adv:i+1}),
+          bd:st.adv===i+1?"var(--pm-chrome)":"var(--pm-rule)",bg:st.adv===i+1?"var(--pm-sel)":"var(--pm-card)",
+          dot:st.adv===i+1?PEAR:"var(--pm-sunken)"})),
+        lovePills:pills(["Burgundy","Loire whites","Beaujolais","Champagne","Rhone syrah","Barolo","Rioja","German riesling","Napa cabernet","orange wine","rose all year","sherry"],"likes",true),
+        notPills:pills(["heavy oak","very tannic","sweet","high alcohol","funky or natural","big California reds","bubbles"],"dislikes",true),
+        dietPills:pills(["shellfish","nuts","dairy","gluten","egg","vegetarian","vegan","pescatarian","sulfite sensitive"],"diet",true),
+        abstainPills:pills(["driving, one glass","no alcohol for me","pregnant"],"diet",true),
+        relPills:pills(["partner","friend","parent","sibling","colleague","the boss"],"rel"),
+
+        fLevel:field("levelOwn"),fAdv:field("advOwn"),fBudget:field("budgetOwn"),
+        fLove:field("loveOwn"),fNot:field("notOwn"),fDiet:field("dietOwn"),
+        fUnread:field("unreadable"),fVenue:field("venueQ"),fWhy:field("why"),
+        fFb:field("fb"),fGuestName:field("guestName"),
+
+        bMin:lo,bMax:hi,bMaxLabel:hi>=400?"400+":hi,
+        setBMin:e=>patch({bMin:Math.min(+e.target.value,st.bMax)}),
+        setBMax:e=>patch({bMax:Math.max(+e.target.value,st.bMin)}),
+        bLeft:((lo-20)/380*100)+"%",bRight:(100-(hi-20)/380*100)+"%",
+        bumps:[10,20,30].map(p=>({pct:"+"+p+"%",to:Math.round(hi*(1+p/100)),
+          pick:()=>patch({bump:st.bump===p?null:p}),
+          bd:st.bump===p?"var(--pm-chrome)":"var(--pm-rule)",bg:st.bump===p?"var(--pm-sel)":"var(--pm-card)"})),
+        bumpNote:st.bump?"Celebrating. We'll put one bottle up to $"+Math.round(hi*(1+st.bump/100))+" in front of you, and nothing above it.":"Only if you want it. The ceiling stays at $"+hi+" otherwise.",
+
+        summary:[{k:"Knowledge",v:st.level},{k:"Aiming for",v:st.want},{k:"Adventure",v:st.adv+" of 5"},
+          {k:"Comfortable at",v:"$"+lo+" to $"+hi+(st.bump?", +"+st.bump+"% tonight":"")},
+          {k:"Loves",v:st.likes.length?st.likes.join(", "):"not said, and that's allowed"},
+          {k:"Rather not",v:st.dislikes.length?st.dislikes.join(", "):"not said"},
+          {k:"Must know",v:st.diet.length?st.diet.join(", "):"nothing"},
+          {k:"Diners",v:st.added.length?st.added.join(", "):"Sarah"}],
+        addDiner:()=>{const nm=(st.guestName||"").trim();if(!nm)return;
+          patch({added:[...st.added,nm+(st.rel?" ("+st.rel+")":"")],guestName:"",rel:null,s:1});
+          if(bodyEl.current)bodyEl.current.scrollTop=0;},
+        addDinerNote:st.guestName?"We'll start them at question one. You can answer for them, or send it over.":"Name them first. Then we'll run them through the same six.",
+
+        // Real search: GET /v1/venues?q=. covered:false surfaces the
+        // plain-language message in the same slot a hit would occupy since
+        // WhereTo.jsx only ever renders vm.venueHits as a flat list.
+        venueHits: st.venueMessage
+          ? [{label:st.venueMessage,go:()=>{},weight:400,color:"var(--pm-muted)"}]
+          : (st.venueResults||[]).map((v,i)=>({
+              label:v.name+" . "+v.city+", "+v.state,
+              go:()=>{patch({selectedVenueId:v.id});go(9);},
+              weight:i===0?600:400,color:i===0?"var(--pm-ink)":"var(--pm-muted)"})),
+        noList:st.noList,hasList:!st.noList,
+        noListLabel:st.noList?"a venue with no wine list, on":"a venue with no wine list, off",
+        toggleNoList:()=>patch({noList:!st.noList}),
+
+        jumps:SECS.map(name=>({name,go:()=>jumpTo(name)})),
+        menu:SECS.map(name=>({name,ref:el=>{secs.current[name]=el;},dishes:DISHES.filter(d=>d.sec===name).map(d=>{
+          const on=st.picked.includes(d.id);
+          return {n:d.n,d:d.d,price:d.p?"$"+d.p:"mp",
+            bd:on?"var(--pm-chrome)":"var(--pm-rule)",bg:on?"var(--pm-sel)":"var(--pm-card)",
+            toggle:()=>patch(x=>({picked:x.picked.includes(d.id)?x.picked.filter(y=>y!==d.id):[...x.picked,d.id]}))};
+        })})),
+
+        chosen:chosen.map(d=>({n:d.n,sec:d.sec})),dishCount:chosen.length,
+        modes:[["glass","By the glass","Pours, not bottles. Easiest way to drink well with a mixed table."],
+          ["bottle","By the bottle","Better value, and the good stuff often only comes this way."]].map(([k,h,b])=>({
+          h,b,pick:()=>patch({mode:k,sub:null,scope:null}),
+          bd:st.mode===k?"var(--pm-chrome)":"var(--pm-rule)",bg:st.mode===k?"var(--pm-sel)":"var(--pm-card)"})),
+        showSub:!!st.mode,subLabel:st.mode==="glass"?"How many glasses":"How many bottles",
+        subs:(st.mode==="glass"
+          ? [["coursed","Coursed, one glass per item","A pour matched to every plate. "+chosen.length+" glasses.","Best drinking, most spend"],
+             ["mains","Mains only","One good glass each with the main. Starters go unpaired, and that's fine.","Cheapest way in"]]
+          : st.mode==="bottle"
+          ? [["coursed","Coursed, more than one bottle","One for the starters, one for the mains.","Where most tables land"],
+             ["single","Single, just the one","One wine, chosen to stretch.","Simplest. Always a compromise, and we tell you where"]]
+          : []).map(([k,h,b,tt])=>({h,b,t:tt,pick:()=>patch({sub:k}),
+          bd:st.sub===k?"var(--pm-chrome)":"var(--pm-rule)",bg:st.sub===k?"var(--pm-sel)":"var(--pm-card)"})),
+        showScope:st.mode==="bottle"&&st.sub==="single",
+        scopes:[["dinner","The whole dinner","One bottle that has to work from the oysters to the cheese."],
+          ["entrees","Just the entrees","We pair to the mains and leave the starters alone."]].map(([k,h,b])=>({
+          h,b,pick:()=>patch({scope:k}),
+          bd:st.scope===k?"var(--pm-chrome)":"var(--pm-rule)",bg:st.scope===k?"var(--pm-sel)":"var(--pm-card)"})),
+        dirSummary:!st.mode?"Pick one to keep going. You can change it at the table."
+          :st.mode==="glass"?(st.sub?"Glasses it is. We'll name a pour and a price for each one.":"Glass it is. Now, how many.")
+          :st.sub==="coursed"?"Two bottles, one to start and one for the mains."
+          :st.sub==="single"?(st.scope?"One bottle, "+(st.scope==="dinner"?"across the whole dinner.":"pointed at the mains.")+" We'll tell you what it gives up.":"One bottle. For what, though.")
+          :"Bottle it is. Now, how many.",
+        guests:[["me","Just me"],["sarah","+ Sarah"],["add","+ add someone"]].map(([k,label])=>({
+          label,pick:()=>patch({guest:k}),
+          bd:st.guest===k?"var(--pm-chrome)":"var(--pm-rule)",bg:st.guest===k?"var(--pm-sel)":"var(--pm-card)"})),
+        conflict,
+        resolutions:[["hers","Sarah gets her way tonight, skip the bubbles"],
+          ["glass","Champagne by the glass for me, a bottle we both like for the table"],
+          ["split","Split it: her wine with the starters, mine with the mains"]].map(([k,label])=>({
+          label,pick:()=>patch({resolution:k}),
+          bd:st.resolution===k?"var(--pm-chrome)":"var(--pm-rule)",bg:st.resolution===k?"var(--pm-sel)":"var(--pm-card)"})),
+
+        // TODO: st.pairOfferings (from POST /v1/pair) is fetched and stored
+        // above but not mapped into these cards yet. /v1/pair is NOT built
+        // server side (item 5) and the inner `wine` field shape is still
+        // undocumented, so this stays Desi's static demo data (offerSet)
+        // rather than guessing at a shape. Wire it here once item 5 ships.
+        offerTitle:blank?"Three wines, no assumptions":"Your wine",
+        offerSub:blank?"You skipped every question, so this is the honest version.":"Tap the ones you want to present. Everything here is on their list tonight.",
+        blankLabel:blank?"we know nothing about you, on":"we know nothing about you, off",
+        toggleBlank:()=>patch({blank:!blank}),
+        presentCount:presentKeys.length?presentKeys.length+" ready to present":"None chosen yet, we'll present the first one",
+        offers:offerSet.map(o=>{const w=W[o.k],on=presentKeys.includes(o.k);return {
+          role:o.role,roleColor:o.roleColor,prod:w.prod,wine:w.wine,meta:w.meta,say:w.say,btl:w.btl,
+          glass:w.glass?"$"+w.glass+" glass":"bottle only",why:o.why,covers:o.covers,
+          bd:on?"var(--pm-chrome)":"var(--pm-rule)",bw:on?"2px":"1px",bg:on?"var(--pm-sel)":"var(--pm-card)",
+          chip:on?"presenting":"tap to add",chipBg:on?"#FFE3BC":"var(--pm-sunken)",
+          pick:()=>patch(x=>({present:x.present.includes(o.k)?x.present.filter(y=>y!==o.k):[...x.present,o.k]})),
+          speak:()=>say(w.speak),
+          open:()=>patch({s:16,bottle:o.k,back:11}),
+          stockColor:w.stock<4?ORANGE:"var(--pm-muted)",
+          stockNote:w.stock<4?"Only "+w.stock+" left tonight":"Plenty in the cellar"};}),
+
+        foodRows:chosen.map(d=>({n:d.n,sec:d.sec})),
+        handoff:shownKeys.map((k,i)=>{const w=W[k];return {
+          label:shownKeys.length>1?(i===0?"Bottle one":"Bottle two"):"One bottle",
+          prod:w.prod,wine:w.wine,meta:w.meta+" . $"+w.btl,say:w.say,tip:w.tip,speak:()=>say(w.speak)};}),
+        hasDiet:st.diet.length>0,dietLine:st.diet.length?st.diet.join(" . "):"none",
+
+        rateRows:[["dish","The food"],["wine","The wine"],["pair","How they went together"]].map(([k,label])=>({
+          label,stars:stars(st.rate[k]).map(x=>Object.assign({},x,{
+            pick:()=>patch({rate:Object.assign({},st.rate,{[k]:x.n})})}))})),
+        fb:st.fb,setFb:e=>patch({fb:e.target.value}),
+        shareBd:st.share?"var(--pm-chrome)":"var(--pm-rule)",shareBg:st.share?"var(--pm-sel)":"var(--pm-card)",
+        toggleShare:()=>patch({share:!st.share}),
+
+        connectPills:ACCOUNTS.map(a=>{const on=st.linked.includes(a.k);return {
+          label:a.k,tick:on?"check":"+",tickColor:on?"var(--pm-pearInk)":"var(--pm-muted)",
+          bd:on?"var(--pm-chrome)":"var(--pm-rule)",bg:on?"var(--pm-card)":"var(--pm-card)",
+          pick:()=>patch(x=>({linked:x.linked.includes(a.k)?x.linked.filter(y=>y!==a.k):[...x.linked,a.k]}))};}),
+        connectNote:st.linked.length
+          ? st.linked.join(" and ")+" connected. That's "+(st.linked.length*137)+" bottles we don't have to ask you about."
+          : "Or skip it and start fresh. We'll catch up over a few dinners.",
+        connections:ACCOUNTS.map(a=>{const on=st.linked.includes(a.k);return {
+          label:a.k,sub:on?a.on:a.off,action:on?"Disconnect":"Connect",
+          bd:on?"var(--pm-selBd)":"var(--pm-rule)",bg:on?"var(--pm-sel)":"var(--pm-card)",
+          pick:()=>patch(x=>({linked:x.linked.includes(a.k)?x.linked.filter(y=>y!==a.k):[...x.linked,a.k]}))};}),
+        shareTable:()=>patch({shared:"table"}),
+        shareNote:st.shared==="table"?"Sharing sheet open. Text it, and whoever taps it joins your table with their own taste, not a copy of yours."
+          :"Send your table to someone. They answer the six themselves, and then we can pair for both of you.",
+
+        bb:(function(self,key){const w=W[key],b=BRIEF[key];return {
+          prod:w.prod,wine:w.wine,meta:w.meta+" . $"+w.btl+(w.glass?" . $"+w.glass+" glass":" . bottle only"),
+          say:w.say,tip:w.tip,speak:()=>say(w.speak),
+          means:b.means,notes:b.notes,why:b.why,bridge:b.bridge,yours:b.yours,
+          save:()=>patch({saved:!st.saved}),
+          savedLabel:st.saved?"Saved":"Save it",savedBg:st.saved?"var(--pm-sel)":"transparent",
+          share:()=>patch({shared:"bottle"}),
+          shareNote:st.shared==="bottle"?"Sharing sheet open. They get the name, the pronunciation and one line on why it worked, not a link to nowhere.":"Share sends the brief, not a link. Producer, pronunciation, and one line on why it worked."};})(null,st.bottle),
+
+        settingRows:[
+          {k:"dark",label:"Dark mode",sub:"For a dim room, or a table where nobody wants your screen in their eyes.",on:dark,pick:()=>patch({dark:!dark})},
+          {k:"hc",label:"High contrast",sub:"Heavier type, stronger edges, bigger dish names on the menu.",on:st.hc,pick:()=>patch({hc:!st.hc})}
+        ].map(r=>({label:r.label,sub:r.sub,pick:r.pick,
+          bd:r.on?"var(--pm-selBd)":"var(--pm-rule)",bg:r.on?"var(--pm-sel)":"var(--pm-card)",
+          trackBg:r.on?"#FFCC7D":"var(--pm-sunken)",trackBd:r.on?"#E5A44F":"var(--pm-rule)",
+          knobX:r.on?"22px":"2px",knobBg:r.on?"#1F2A44":"var(--pm-muted)"})),
+        demoSpeak:()=>say("Zhev ray shom ber tan. You said that perfectly."),
+        acctTitle:st.account?"Signed in with "+st.account:"Not signed in",
+        acctSub:st.account?"Your taste, your history and your table are saved.":"Everything works without it. Signing in is only so your taste survives closing the app.",
+        acctAction:st.account?"Switch account":"Sign in",
+
+        myLikes:st.likes.length?st.likes:["nothing on file yet"],
+        myNots:st.dislikes.length?st.dislikes:["nothing on file"],
+        historyCount:MY_HISTORY.length+" bottles",
+        history:MY_HISTORY.map(([w,where,dish,r],i)=>({w,where,dish,stars:stars(r),
+          open:()=>patch({s:16,bottle:["huet","foil","huet","trapet","gim"][i],back:14})})),
+        friends:[{name:"Sarah",sub:"partner . loves Loire whites, never bubbles",initial:"S",go:()=>go(14)},
+          {name:"Dan",sub:"friend . Barolo, and nothing under 13%",initial:"D",go:()=>go(14)},
+          {name:"Priya",sub:"colleague . riesling, no red at lunch",initial:"P",go:()=>go(14)}],
+
+        sarahLikes:["Loire whites","Sancerre","Barbaresco","a cold glass in the sun"],
+        sarahNots:["bubbles","heavy oak","anything over $60"],
+        sarahHistory:SARAH_HISTORY.map(([w,where,r])=>({w,where,stars:stars(r)})),
+
+        // Chrome-level (App.jsx), not consumed by any screen.
+        apiError:st.apiError,apiLoading:st.apiLoading,
+        dismissApiError:()=>patch({apiError:null}),
+        syncFromRoute,
+        tableCode:st.tableCode,
+        handleCaptureFile,
+      };
+
+}

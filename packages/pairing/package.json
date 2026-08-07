@@ -1,0 +1,8 @@
+{
+  "name": "@quoteme/pairing",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "src/index.js",
+  "description": "Shared PairMe wine list parsing (stub) and rules bundle cache. Consumed by apps/pairme via a plain relative import; not wired into an npm/pnpm workspace yet."
+}
