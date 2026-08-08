@@ -92,13 +92,27 @@ async function request(path, { method = 'GET', body, isMultipart = false } = {})
   return text ? JSON.parse(text) : null;
 }
 
+// In-flight POST /v1/session promise, shared across concurrent callers.
+// usePairMe's bootstrap effect and the /t/demo effect both call
+// ensureSession() on the same mount; without this, both read localStorage
+// before either write lands and each fires its own POST /v1/session.
+let sessionRequest = null;
+
 /** POST /v1/session - the only endpoint that does not require identity. */
 export async function ensureSession() {
   const existing = getAnonId();
   if (existing) return existing;
-  const data = await request('/v1/session', { method: 'POST' });
-  setAnonId(data.anon_id);
-  return data.anon_id;
+  if (sessionRequest) return sessionRequest;
+  sessionRequest = (async () => {
+    try {
+      const data = await request('/v1/session', { method: 'POST' });
+      setAnonId(data.anon_id);
+      return data.anon_id;
+    } finally {
+      sessionRequest = null;
+    }
+  })();
+  return sessionRequest;
 }
 
 export function getProfile() {
@@ -180,4 +194,39 @@ export function deleteAccount() {
 export function fetchRulesBundle(sinceVersion) {
   const qs = sinceVersion != null ? `?since_version=${sinceVersion}` : '';
   return request(`/v1/rules/bundle${qs}`);
+}
+
+/** POST /v1/events - instrumentation beacon. Not in the documented v1
+ * contract (see PairMe API Contract v1); wired ahead of the BE catching up
+ * per the demo instrumentation spec. Callers should use track() in
+ * ./track.js rather than this directly, so a dropped beacon never throws. */
+export function postEvent(event, props) {
+  return request('/v1/events', { method: 'POST', body: { event, props: props || {} } });
+}
+
+/**
+ * GET /v1/demo - LANE A entry point (/t/demo). Not in the v1 contract doc;
+ * mocked for now (see mocks/handlers.js) since the backend does not serve
+ * it yet. Returns { venue, capture_id, raw_text, rows } - a pre-seeded
+ * venue, wine list and its already-parsed rows so the /t/demo walk can run
+ * end to end without depending on the still-stubbed client wine-list
+ * parser.
+ */
+export function getDemo() {
+  return request('/v1/demo');
+}
+
+/**
+ * POST /v1/pairings - RECORDS a decision the client already made with the
+ * scoring engine (packages/pairing); it does not compute one. See "PairMe
+ * API Contract v1" section on POST /v1/pair (removed by design) vs this
+ * endpoint.
+ */
+export async function postPairing(payload) {
+  try {
+    return await request('/v1/pairings', { method: 'POST', body: payload });
+  } catch (e) {
+    if (e instanceof ApiError && e.status === 404) return { notBuilt: true };
+    throw e;
+  }
 }

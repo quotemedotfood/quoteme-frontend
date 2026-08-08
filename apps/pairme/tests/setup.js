@@ -1,0 +1,37 @@
+// jest-dom's /vitest entry only auto-extends the GLOBAL expect, and this
+// config does not set test.globals:true (specs import expect from 'vitest'
+// explicitly), so extend that imported expect directly - otherwise
+// toBeInTheDocument throws "Invalid Chai property".
+import { afterAll, afterEach, beforeAll, expect } from 'vitest';
+import * as jestDomMatchers from '@testing-library/jest-dom/matchers';
+expect.extend(jestDomMatchers);
+import { cleanup } from '@testing-library/react';
+import { server } from './e2e/msw/server.js';
+import { resetRequestLog } from './e2e/msw/handlers.js';
+
+// Global MSW lifecycle for every spec in this app's test tree, mirroring the
+// standard MSW node testing setup. onUnhandledRequest: 'error' means a spec
+// that hits a real endpoint no handler covers fails immediately and loudly.
+beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
+
+afterEach(() => {
+  // @testing-library/react's automatic per-test cleanup only self-registers
+  // when `afterEach` exists as a GLOBAL; this project's vitest config does
+  // not set test.globals: true (tests import afterEach/describe/it
+  // explicitly instead), so cleanup must be called explicitly here or
+  // multiple renders across tests in the same file pile up in the same
+  // jsdom document (duplicate "Aquitaine" etc. across tests).
+  cleanup();
+  server.resetHandlers();
+  resetRequestLog();
+  // api.js's identity (anon_id) is the only thing persisted to localStorage
+  // (contract note in src/lib/api.js). Clear it between tests so each spec
+  // gets a fresh POST /v1/session instead of silently reusing a stale one.
+  // This setup file runs for every spec in the tree, including the plain
+  // node-environment ones (offlinePairing.noSignal.test.js sets
+  // `@vitest-environment node` since it reassigns global.XMLHttpRequest,
+  // which jsdom makes read-only) - those have no localStorage at all.
+  if (typeof localStorage !== 'undefined') localStorage.clear();
+});
+
+afterAll(() => server.close());

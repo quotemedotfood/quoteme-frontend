@@ -1,0 +1,110 @@
+head,body,acid,tannin,sweetness,alcohol,oak,texture,confidence,source,notes
+chardonnay,3,3,1,1,3,2,still,med,default,varies more than any grape. prefer an appellation row when one exists
+chablis,2,5,1,1,3,0,still,high,classic,the artichoke-safe chardonnay
+puligny montrachet,4,4,1,1,3,3,still,high,classic,
+meursault,4,3,1,1,4,3,still,high,classic,
+chassagne montrachet,4,4,1,1,3,3,still,high,classic,
+bourgogne,3,4,1,1,3,2,still,med,classic,
+saint veran,3,4,1,1,3,1,still,high,classic,unoaked maconnais
+maconnais,3,4,1,1,3,1,still,med,classic,
+aligote,2,5,1,1,2,0,still,high,classic,the snail wine. neutral by design
+sauvignon blanc,2,5,1,1,3,1,still,high,classic,
+sancerre,2,5,1,1,3,0,still,high,classic,
+pouilly fume,3,5,1,1,3,1,still,high,classic,
+touraine,2,5,1,1,3,0,still,high,classic,
+chenin blanc,3,5,1,2,3,1,still,med,classic,sweetness varies by cuvee. see vouvray rows
+vouvray,3,5,1,3,3,0,still,high,classic,demi-sec. use vouvray sec for dry
+savennieres,4,5,1,1,4,1,still,high,classic,
+melon de bourgogne,2,5,1,1,2,0,still,high,classic,
+muscadet,2,5,1,1,2,0,still,high,classic,the other artichoke-safe white
+picpoul,2,5,1,1,2,0,still,high,classic,cheapest safe answer
+riesling,2,5,1,2,2,0,still,med,classic,sweetness varies. alsace drier than mosel
+mosel,2,5,1,3,1,0,still,high,classic,
+alsace,3,4,1,1,4,0,still,high,classic,
+gruner veltliner,3,4,1,1,3,0,still,high,classic,
+savagnin,4,4,1,1,4,2,still,high,classic,oxidative. the morel and walnut wine
+jura,4,4,1,1,4,2,still,med,classic,
+pinot grigio,2,4,1,1,3,0,still,med,classic,
+pinot gris,3,3,1,2,4,1,still,med,classic,alsace style is richer
+vermentino,2,4,1,1,3,0,still,med,classic,
+albarino,2,5,1,1,3,0,still,high,classic,
+verdejo,2,4,1,1,3,0,still,med,classic,
+godello,3,4,1,1,3,1,still,med,classic,
+garganega,2,4,1,1,3,0,still,med,classic,
+soave,2,4,1,1,3,0,still,med,classic,
+arneis,2,4,1,1,3,0,still,med,classic,
+cortese,2,5,1,1,3,0,still,med,classic,
+friulano,3,4,1,1,3,0,still,med,classic,
+ribolla gialla,3,4,2,1,3,1,skin,med,classic,often skin contact
+fiano,3,4,1,1,3,1,still,med,classic,
+falanghina,2,4,1,1,3,0,still,med,classic,
+greco,3,4,1,1,3,0,still,med,classic,
+assyrtiko,3,5,1,1,3,0,still,med,classic,
+santorini,3,5,1,1,4,0,still,high,classic,
+carricante,2,5,1,1,3,0,still,med,classic,
+viognier,4,2,1,1,4,2,still,high,classic,
+marsanne,4,2,1,1,4,2,still,med,classic,
+roussanne,4,3,1,1,4,2,still,med,classic,
+semillon,3,3,1,2,3,2,still,med,classic,
+gewurztraminer,4,2,1,2,4,0,still,high,classic,
+trebbiano,2,4,1,1,3,0,still,med,classic,
+verdicchio,2,4,1,1,3,0,still,med,classic,
+palomino,2,4,1,1,4,3,still,high,classic,sherry. fino dry oloroso richer
+jerez,2,4,1,1,5,3,still,high,classic,fortified and oxidative
+champagne,2,5,1,1,3,1,sparkling,high,classic,the universal fried-food and fat answer
+prosecco,2,4,1,2,2,0,sparkling,high,classic,
+cava,2,4,1,1,3,0,sparkling,med,classic,
+franciacorta,3,4,1,1,3,1,sparkling,med,classic,
+pinot noir,2,4,2,1,3,2,still,high,classic,the mushroom and salmon red
+bourgogne rouge,2,4,2,1,3,2,still,med,classic,
+gevrey chambertin,3,4,3,1,3,2,still,high,classic,truffle affinity
+savigny les beaune,2,4,2,1,3,2,still,high,classic,
+marsannay,2,4,2,1,3,2,still,high,classic,
+gamay,2,5,2,1,2,1,still,high,classic,fruit and acid with almost no tannin. the heat-safe red
+beaujolais,2,5,2,1,2,1,still,high,classic,
+cabernet franc,3,4,3,1,3,2,still,high,classic,herbal edge reads as green pepper
+chinon,3,4,3,1,3,1,still,high,classic,
+bourgueil,3,4,3,1,3,1,still,high,classic,
+poulsard,1,4,1,1,2,1,still,high,classic,palest serious red made. forest floor
+merlot,3,3,3,1,4,3,still,med,classic,
+cabernet sauvignon,4,3,5,1,4,4,still,high,classic,needs fat. never with artichoke
+bordeaux,4,3,4,1,4,3,still,high,classic,
+pauillac,5,3,5,1,4,4,still,high,classic,
+saint emilion,4,3,3,1,4,3,still,high,classic,
+syrah,4,3,4,1,4,3,still,high,classic,peppercorn affinity. rotundone
+cornas,4,4,4,1,4,2,still,high,classic,
+crozes hermitage,4,4,3,1,4,2,still,high,classic,
+grenache,4,2,3,1,5,2,still,high,classic,
+chateauneuf du pape,5,3,3,1,5,2,still,high,classic,
+mourvedre,4,3,4,1,4,2,still,high,classic,
+bandol,4,4,4,1,4,2,still,high,classic,
+tempranillo,3,3,3,1,4,3,still,high,classic,
+rioja,3,4,3,1,4,3,still,high,classic,
+sangiovese,3,5,4,1,4,2,still,high,classic,
+chianti classico,3,5,4,1,4,2,still,high,classic,
+brunello di montalcino,4,5,4,1,4,3,still,high,classic,
+nebbiolo,3,5,5,1,4,2,still,high,classic,truffle affinity. high acid high tannin
+barolo,4,5,5,1,4,3,still,high,classic,
+barbaresco,4,5,4,1,4,3,still,high,classic,
+barbera,3,5,2,1,3,1,still,high,classic,
+dolcetto,3,3,3,1,3,1,still,med,classic,
+montepulciano,3,4,3,1,4,1,still,med,classic,
+aglianico,4,5,5,1,4,2,still,high,classic,
+nerello mascalese,3,4,3,1,4,1,still,high,classic,
+primitivo,4,3,3,2,5,2,still,med,classic,
+zinfandel,4,3,3,2,5,3,still,med,classic,
+corvina,3,4,3,1,3,2,still,med,classic,
+amarone,5,3,4,2,5,3,still,high,classic,
+blaufrankisch,3,4,3,1,3,1,still,high,classic,peppery. cuts triple cream
+saperavi,4,5,4,1,4,2,still,med,classic,dark high acid faintly bitter
+xinomavro,3,5,5,1,4,2,still,med,classic,
+malbec,4,3,4,1,4,3,still,med,classic,
+carmenere,4,3,3,1,4,3,still,med,classic,
+mencia,3,4,3,1,4,1,still,med,classic,
+touriga nacional,4,4,4,1,4,2,still,med,classic,
+porto,5,3,3,5,5,2,still,high,classic,the blue cheese and pecan answer
+madeira,4,5,2,4,5,2,still,high,classic,
+sauternes,4,4,1,5,4,3,still,high,classic,
+tokaj,4,5,1,5,3,2,still,high,classic,
+pinotage,4,3,4,1,4,3,still,med,classic,
+tannat,5,3,5,1,4,3,still,med,classic,
