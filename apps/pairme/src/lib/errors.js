@@ -38,6 +38,10 @@ const SERVER_CODES = new Set([
   'PDF_UNREADABLE',
   'EXTRACTION_TRUNCATED',
   'EMPTY_RESULT',
+  // GET /v1/t/:code (superset #340, table-code resolver, not built server
+  // side yet - see lib/api.js's getTableCode). Its 404 message is already
+  // plain language per the contract this FE codes against.
+  'VENUE_NOT_FOUND',
 ]);
 
 // Fallback copy for every known code, used when a caller passes a bare code
@@ -56,6 +60,7 @@ const CODE_COPY = {
   PDF_UNREADABLE: 'We could not read that PDF. Please try a clearer scan or a photo instead.',
   EXTRACTION_TRUNCATED: 'The wine list was too long to read in full. We used what we could find.',
   EMPTY_RESULT: 'We could not find anything to read in that. Please try again with a clearer photo.',
+  VENUE_NOT_FOUND: "We could not find that table. Ask your server for the code, or point your camera at the wine list instead.",
   NETWORK_ERROR: 'We could not reach the server. Please check your connection and try again.',
   UNKNOWN: 'Something went wrong. Please try again.',
 };

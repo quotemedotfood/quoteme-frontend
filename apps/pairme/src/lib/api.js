@@ -217,6 +217,23 @@ export function getDemo() {
 }
 
 /**
+ * GET /v1/t/:code - generic table-code resolver (superset #340; NOT BUILT
+ * server side yet, see routes.jsx's TableCodeRoute). Contract this FE codes
+ * against ahead of the BE:
+ *   200 { venue: {id,name,city,state}, capture_id, raw_text, rows: [...] }
+ *     (same shape as GET /v1/demo)
+ *   404 { error_code: "VENUE_NOT_FOUND", message: "<plain language>" } for
+ *     an unknown code.
+ * `/t/demo` keeps using getDemo() above, unchanged; this is for every other
+ * table code. A network failure or the 404 both throw ApiError (see
+ * request()); callers should render lib/errors.js's errorCopy(err), never
+ * the raw code.
+ */
+export function getTableCode(code) {
+  return request(`/v1/t/${encodeURIComponent(code)}`);
+}
+
+/**
  * POST /v1/pairings - RECORDS a decision the client already made with the
  * scoring engine (packages/pairing); it does not compute one. See "PairMe
  * API Contract v1" section on POST /v1/pair (removed by design) vs this

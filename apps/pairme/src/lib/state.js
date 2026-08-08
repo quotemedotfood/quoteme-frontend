@@ -11,13 +11,70 @@ import {
   rate as apiRate,
   fetchRulesBundle,
   getDemo,
+  getTableCode,
   postPairing,
   deleteAccount as apiDeleteAccount,
 } from './api.js';
 import { parseWineList, loadRulesBundle } from '../../../../packages/pairing/src/index.js';
+import { DEMO as OFFLINE_DEMO_WINES } from '../../../../packages/pairing/src/demoFixtures.js';
+import { errorCopy } from './errors.js';
 import { track } from './track.js';
 import { buildTables, rowToEngineWine, computeOfferings } from './pairingAdapter.js';
-import { DEMO_DISHES, DEMO_SECTIONS, DEMO_DEFAULT_PICKED } from './demoSeed.js';
+import { getOfflineTables } from './offlinePairing.js';
+import { DEMO_DISHES, DEMO_SECTIONS, DEMO_DEFAULT_PICKED, buildDemoRows } from './demoSeed.js';
+
+// ---------------------------------------------------------------------------
+// PART 1: UI-level no-signal / offline fallback for TheWine.
+//
+// If POST /v1/pair fails (most commonly ApiError NETWORK_ERROR - no signal -
+// but any failure gets the same treatment) or the app is already known to
+// be offline, TheWine still needs to show three real offerings, not an
+// error and not a hardcoded demo array. packages/pairing's scoring engine
+// needs nothing from the network to do this: it is a pure function over the
+// dishes already chosen, whatever wine rows are already loaded, and the
+// rules tables - see lib/offlinePairing.js's own doc comment ("Lane B"),
+// whose getOfflineTables() this reuses verbatim (cached server bundle if
+// this tab ever had signal, else the same CSVs shipped in the JS bundle at
+// build time, zero network either way).
+//
+// "Already-loaded wine rows": preference order is (1) st.demoWineRows, the
+// real wine list this session already parsed (the /t/demo path, or a real
+// camera capture once that pipeline lands rows), (2) OFFLINE_WINE_ROWS
+// below - the same packages/pairing DEMO fixture the /t/demo mock is built
+// from (see demoSeed.js's own header), converted with the same
+// buildDemoRows() helper. That fixture ships inside this app's JS bundle
+// exactly like offlinePairing.js's LOCAL_TABLES CSVs do, so it is "already
+// loaded" the moment the tab opens, never fetched.
+const OFFLINE_WINE_ROWS = buildDemoRows(OFFLINE_DEMO_WINES);
+
+// Desi's static DISHES (used off the /t/demo path) have no `components`
+// field for the scoring engine to read. DEMO_DISHES shares most of the same
+// ids with `components` filled in (see demoSeed.js), so it doubles as a
+// components lookup for the offline fallback rather than duplicating that
+// data a third time.
+const OFFLINE_COMPONENTS_BY_ID = new Map(DEMO_DISHES.map((d) => [d.id, d.components]));
+
+function withOfflineComponents(dish) {
+  if (dish.components) return dish;
+  const components = OFFLINE_COMPONENTS_BY_ID.get(dish.id);
+  return components ? Object.assign({}, dish, { components }) : dish;
+}
+
+/**
+ * The offline/no-signal counterpart to the /t/demo engine call above: same
+ * computeOfferings() call, same role-labelled offerings/compromise shape,
+ * sourced entirely from what is already in memory or already in the bundle.
+ * @param {'course_it_out'|'one_bottle'|'several'} direction
+ * @param {Array} chosenDishes - the table's already-picked dishes.
+ * @param {Array} alreadyLoadedWineRows - st.demoWineRows, may be empty.
+ */
+function computeOfflineOfferings(direction, chosenDishes, alreadyLoadedWineRows) {
+  const T = getOfflineTables();
+  const rows = alreadyLoadedWineRows && alreadyLoadedWineRows.length ? alreadyLoadedWineRows : OFFLINE_WINE_ROWS;
+  const wines = rows.map(rowToEngineWine);
+  const dishes = chosenDishes.map(withOfflineComponents);
+  return computeOfferings(direction, dishes, wines, T);
+}
 
 const NAVY="#1F2A44",PEAR="#FFCC7D",ORANGE="#F2993D",BLUED="#5C8A9C";
 
@@ -324,32 +381,46 @@ export function usePairMe(opts = {}){
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // --- LANE A: /t/demo loads a seeded venue + wine list + food menu -------
-  // Only runs when the URL is /t/demo (TableCodeRoute sets tableCode from
-  // the :code param); every other route leaves demoDishes null so the rest
-  // of the app keeps using Desi's static DISHES/offerSet, unchanged.
+  // --- LANE A / PART 2: /t/:code loads a seeded venue + wine list + food
+  // menu ---------------------------------------------------------------
+  // Runs for ANY table code (TableCodeRoute sets tableCode from the :code
+  // param); every route with no tableCode at all leaves demoDishes null so
+  // the rest of the app keeps using Desi's static DISHES/offerSet, unchanged.
   //
-  // LOOSE END, fixed: `st.demoLoading` used to be in this effect's own
-  // dependency array. patch({demoLoading:true}) below re-renders with
-  // demoLoading now true, which - because it was a dependency - re-ran
-  // this very effect. React runs the PREVIOUS invocation's cleanup first,
-  // setting that invocation's own `cancelled` to true; the in-flight
-  // `await ensureSession()` above then resumed to find its own closure's
-  // `cancelled` already true and returned before ever calling getDemo().
-  // Net effect: the /t/demo fetch self-cancelled on every load and this
-  // path silently fell back to Desi's static DISHES/offerSet. demoLoading
-  // is still read (not written) inside the effect body as a guard against
-  // a stray re-run from the two deps that remain, it just cannot also be a
+  // `/t/demo` keeps calling GET /v1/demo exactly as before (untouched
+  // behaviour, still mocked - the real backend for THAT path exists per the
+  // LANE A brief). Every other code calls GET /v1/t/:code, the generic
+  // resolver PART 2 wires against. That endpoint is NOT built server side
+  // yet - it rides superset #340 - so this is coded against the contract
+  // this FE expects (see lib/api.js's getTableCode doc comment) and mocked
+  // in tests until the BE catches up. Both calls return the same shape
+  // ({venue, capture_id, raw_text, rows}), so one success handler covers
+  // both; a resolver 404 (VENUE_NOT_FOUND) or any other failure is shown as
+  // plain language via errorCopy() - never a raw error code - and the walk
+  // stays on Menu with Desi's static DISHES rather than a broken screen.
+  //
+  // LOOSE END, fixed (carried over from the /t/demo-only version of this
+  // effect): `st.demoLoading` used to be in this effect's own dependency
+  // array. patch({demoLoading:true}) below re-renders with demoLoading now
+  // true, which - because it was a dependency - re-ran this very effect.
+  // React runs the PREVIOUS invocation's cleanup first, setting that
+  // invocation's own `cancelled` to true; the in-flight `await
+  // ensureSession()` above then resumed to find its own closure's
+  // `cancelled` already true and returned before ever calling the resolver.
+  // Net effect: the fetch self-cancelled on every load and this path
+  // silently fell back to Desi's static DISHES/offerSet. demoLoading is
+  // still read (not written) inside the effect body as a guard against a
+  // stray re-run from the two deps that remain, it just cannot also be a
   // dependency of the same effect that sets it.
   React.useEffect(() => {
-    if (st.tableCode !== 'demo' || st.demoDishes || st.demoLoading) return;
+    if (!st.tableCode || st.demoDishes || st.demoLoading) return;
     let cancelled = false;
     (async () => {
       patch({ demoLoading: true });
       try {
         const anonId = await ensureSession();
         if (cancelled) return;
-        const data = await getDemo();
+        const data = st.tableCode === 'demo' ? await getDemo() : await getTableCode(st.tableCode);
         if (cancelled) return;
         patch({
           anonId,
@@ -364,7 +435,11 @@ export function usePairMe(opts = {}){
           demoLoading: false,
         });
       } catch (err) {
-        if (!cancelled) patch({ demoLoading: false, apiError: err.message || 'Could not load the demo table. Please try again.' });
+        // errorCopy() renders the server's own plain-language 404 message
+        // for VENUE_NOT_FOUND verbatim, and a client-safe sentence (never a
+        // raw error_code/status) for anything else (a dead network, a
+        // malformed response, an unmocked/undeployed resolver).
+        if (!cancelled) patch({ demoLoading: false, apiError: errorCopy(err) });
       }
     })();
     return () => { cancelled = true; };
@@ -611,20 +686,49 @@ export function usePairMe(opts = {}){
               // Non-demo entry points have no rules bundle / wine-list rows
               // yet, so fall back to the legacy POST /v1/pair call (item 5,
               // not built server-side; pair() swallows the expected 404).
-              try{
-                const res = await apiPair({
-                  dish_ids: st.picked,
-                  wine_list_id: st.captureId || null,
-                  profile_id: null,
-                  direction,
+              //
+              // PART 1 (no-signal / offline fallback): a website structurally
+              // cannot pair offline unless it tries the client engine, so a
+              // dead network here must not just leave TheWine on Desi's
+              // hardcoded offerSet. `!navigator.onLine` skips the doomed
+              // fetch outright when the app already knows it has no signal;
+              // the catch below covers the other case (signal drops mid
+              // request, or POST /v1/pair fails for any other reason).
+              // Either way this computes REAL offerings with
+              // packages/pairing over whatever wine rows are already loaded
+              // (or the bundled demo fixture if none are), same tables
+              // lib/offlinePairing.js falls back to - see
+              // computeOfflineOfferings above.
+              const runOffline = () => {
+                const offline = computeOfflineOfferings(direction, chosen, st.demoWineRows);
+                patch({
+                  pairingDirection: offline.direction,
+                  pairingOfferings: offline.offerings,
+                  pairingCompromise: offline.compromise,
+                  presentLabels: [],
                 });
-                if (res && !res.notBuilt && Array.isArray(res.offerings)) {
-                  patch({pairOfferings:res.offerings,pairCompromise:res.compromise||null});
+              };
+              if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+                runOffline();
+              } else {
+                try{
+                  const res = await apiPair({
+                    dish_ids: st.picked,
+                    wine_list_id: st.captureId || null,
+                    profile_id: null,
+                    direction,
+                  });
+                  if (res && !res.notBuilt && Array.isArray(res.offerings)) {
+                    patch({pairOfferings:res.offerings,pairCompromise:res.compromise||null});
+                  }
+                  // else: /v1/pair is not built yet (item 5). offerSet above,
+                  // Desi's static demo data, stays the fallback the TheWine
+                  // screen renders. See TODO in the handoff report.
+                }catch(err){
+                  try { runOffline(); }
+                  catch(offlineErr){ patch({apiError:err.message||'Could not reach the wine list. Showing our best guess.'}); }
                 }
-                // else: /v1/pair is not built yet (item 5). offerSet above,
-                // Desi's static demo data, stays the fallback the TheWine
-                // screen renders. See TODO in the handoff report.
-              }catch(err){ patch({apiError:err.message||'Could not reach the wine list. Showing our best guess.'}); }
+              }
             }
             go(11);
           }
