@@ -41,12 +41,23 @@
 <p style="margin:14px 0 0;font:400 15px/1.75 var(--font-body);color:#C9D3DD;text-wrap:pretty;max-width:46ch">Photograph the list. We read it, and we tell you which wines actually work with what you ordered, why each one does, and how to say it out loud.</p>
 <div style="margin-top:30px;background:#FBFAF7;border-radius:20px;padding:20px;max-width:460px">
 <div style="font:600 15px var(--font-display);color:#1C1C1A">Join our beta tester list</div>
-<div style="font:400 13px/1.6 var(--font-body);color:#6B6B66;margin:5px 0 14px">First tables, first bugs, and a direct line to us. One email, nothing else, ever.</div>
-<form name="beta" method="POST" data-netlify="true" onsubmit="return pmJoin(event)" style="display:flex;gap:9px;flex-wrap:wrap">
+<div style="font:400 13px/1.6 var(--font-body);color:#6B6B66;margin:5px 0 14px">First tables, first bugs, and a direct line to us. Only your email is required.</div>
+<form name="beta" method="POST" onsubmit="return pmJoin(event)" style="display:flex;flex-direction:column;gap:12px">
+<div style="display:flex;gap:9px;flex-wrap:wrap">
 <div style="flex:1 1 200px;min-width:0">
-<input class="pm-input" type="email" name="email" id="sup-email" placeholder="you@wherever.com" required style="width:100%">
+<input class="pm-input" type="email" name="email" id="beta-email" placeholder="you@wherever.com" required style="width:100%">
 </div>
 <button type="submit" style="flex:none;background:#FFCC7D;color:#1F2A44;border:1px solid #E5A44F;border-radius:999px;padding:0 24px;height:48px;font:700 14.5px var(--font-body);cursor:pointer" class="h1"><span id="beta-label">Join</span></button>
+</div>
+<div style="display:flex;gap:9px;flex-wrap:wrap">
+<div style="flex:0 1 100px;min-width:84px">
+<label class="pm-label"><span>State (optional)</span><input class="pm-input" type="text" name="state" id="beta-state" maxlength="2" pattern="[A-Za-z]{2}" placeholder="CA" style="width:100%;text-transform:uppercase"></label>
+</div>
+<div style="flex:1 1 220px;min-width:0">
+<label class="pm-label"><span>Favorite restaurant (optional)</span><input class="pm-input" type="text" name="favorite_restaurant" id="beta-restaurant" placeholder="Any spot you love" style="width:100%"></label>
+</div>
+</div>
+<div style="font:400 12px/1.6 var(--font-body);color:#8A8A82">State: so we can tell you when we reach your area. Favorite restaurant: so we know where to bring PairMe next. Both are optional.</div>
 </form>
 <div style="font:500 12.5px var(--font-body);color:#8A5A18;margin-top:9px;min-height:17px"><span id="beta-note"></span></div>
 </div>
