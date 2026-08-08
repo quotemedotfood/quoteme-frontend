@@ -501,6 +501,77 @@ export async function getAdminRestaurant(id: string): Promise<ApiResponse<AdminR
   return fetchWithAuth(`/api/v1/admin/restaurants/${id}`);
 }
 
+// ============= ADMIN RESTAURANT CRAWL TRUTH =============
+// D3 restaurant-truth screen. Field names mirror the payload contract
+// (D3_restaurant_truth_payload_contract.md) EXACTLY - PR 2 (BE serializer) and
+// PR 3 (this FE screen) both code to that document. Two shaping rules from
+// the contract: (1) `fetched` identifies WHAT record this payload is about,
+// rendered first, always - a wrong binding must be visible on the screen. (2)
+// char_count / component_count / source counts are facts, never a quality
+// score - the FE must not style them as health.
+
+export interface AdminRestaurantCrawlTruthFetched {
+  restaurant_id: string; // raw UUID - behind a deliberate control only
+  reference: string; // human reference, e.g. "Rioja - Denver, CO" - the honesty check
+  website: string | null;
+  as_of: string | null; // when the server built this payload
+}
+
+export interface AdminRestaurantCrawlTruthCrawl {
+  status: string | null; // already-translated sentence; raw code never shown
+  confidence: number | null; // 0..100; null -> "not scored"
+  is_restaurant: boolean | null; // tri-state: true/false/null are three distinct states
+  source_state: string | null; // translated phrase; null -> "not recorded"
+  found_at: string | null; // null -> "not recorded"
+  data_flags: string[] | null; // [] or null -> no chips rendered
+}
+
+export interface AdminRestaurantCrawlTruthSupersededBy {
+  reference: string;
+  id: string; // raw UUID - behind a control only
+}
+
+export interface AdminRestaurantCrawlTruthSource {
+  id: string; // raw UUID - behind a control only
+  kind_label: string; // translated; unknown kind -> "Other menu"
+  kind_raw: string; // details-control only
+  is_recognized_kind: boolean;
+  provenance_label: string; // "Crawler" | "Diner photo" | "Rep upload" | "Restaurant direct"
+  host: string | null;
+  url: string | null; // behind a control / truncated; host is the default glance
+  list_date: string | null; // null -> "no date"
+  fetched_at: string | null; // null -> "not fetched"
+  status_sentence: string; // translated; raw code never shown
+  char_count: number; // FACT - 0 is a real value, shown as 0
+  truncated: boolean;
+  component_count: number; // FACT - 0 when menu_id is null (truthful, not missing)
+  is_extracted: boolean;
+  extraction_method: string | null;
+  source_state: 'active' | 'superseded';
+  superseded_at: string | null;
+  superseded_by: AdminRestaurantCrawlTruthSupersededBy | null;
+}
+
+export interface AdminRestaurantCrawlTruthSourceReporting {
+  source_count: number;
+  extracted_count: number;
+  total_char_count: number;
+  truncated_source_count: number;
+  unknown_kind_count: number;
+  coverage_note: string; // literal disclaimer - printed near the numbers
+}
+
+export interface AdminRestaurantCrawlTruth {
+  fetched: AdminRestaurantCrawlTruthFetched;
+  crawl: AdminRestaurantCrawlTruthCrawl;
+  sources: AdminRestaurantCrawlTruthSource[];
+  source_reporting: AdminRestaurantCrawlTruthSourceReporting;
+}
+
+export async function getAdminRestaurantCrawlTruth(id: string): Promise<ApiResponse<AdminRestaurantCrawlTruth>> {
+  return fetchWithAuth(`/api/v1/admin/restaurants/${id}/crawl_truth`);
+}
+
 // ============= IMPERSONATE =============
 
 export async function impersonateUser(userId: string): Promise<ApiResponse<{ token: string; user: { id: string; email: string; first_name: string; last_name: string; role: string } }>> {

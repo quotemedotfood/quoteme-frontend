@@ -25,6 +25,7 @@ import { QMAdminDistributorDetailPage } from "./pages/admin/QMAdminDistributorDe
 import { QMAdminUnassociatedReps } from "./pages/admin/QMAdminUnassociatedReps";
 import { QMAdminRestaurants } from "./pages/admin/QMAdminRestaurants";
 import { QMAdminRestaurantDetailPage } from "./pages/admin/QMAdminRestaurantDetail";
+import { QMAdminRestaurantCrawlTruth } from "./pages/admin/QMAdminRestaurantCrawlTruth";
 import { QMAdminRestaurantGroups } from "./pages/admin/QMAdminRestaurantGroups";
 import { QMAdminConferenceCommand } from "./pages/admin/QMAdminConferenceCommand";
 import { QMAdminHealth } from "./pages/admin/QMAdminHealth";
@@ -315,6 +316,7 @@ export const router = createBrowserRouter([
           { path: "unassociated-reps", Component: QMAdminUnassociatedReps },
           { path: "restaurants", Component: QMAdminRestaurants },
           { path: "restaurants/:id", Component: QMAdminRestaurantDetailPage },
+          { path: "restaurants/:id/crawl-truth", Component: QMAdminRestaurantCrawlTruth },
           { path: "restaurant-groups", Component: QMAdminRestaurantGroups },
           { path: "matching-engine", Component: QMAdminMatchingEngine },
           { path: "brands", Component: QMAdminBrands },
