@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 120" width="420" height="120" role="img" aria-label="PairMe">
+<g transform="translate(4,4) scale(0.46)">
+<path d="M100 22c-2 8-2 16 0 24" fill="none" stroke="#FFCC7D" stroke-width="7" stroke-linecap="round"></path>
+<path d="M104 30c8-10 22-14 34-13 1 12-6 24-18 27-8 2-15-2-16-9-1-2 0-4 0-5z" fill="#FFCC7D"></path>
+<path d="M100 44c-8 0-13 6-15 14-5 24-22 40-32 58-8 14-13 27-13 42a60 60 0 1 0 120 0c0-15-5-28-13-42-10-18-27-34-32-58-2-8-7-14-15-14z" fill="#FFCC7D"></path>
+<path d="M89 62h22v40c22 8 37 29 37 54a48 48 0 0 1-96 0c0-25 15-46 37-54V62z" fill="#1F2A44"></path>
+<circle cx="100" cy="158" r="19" fill="#FFCC7D"></circle>
+</g>
+<text x="120" y="78" font-family="Piazzolla, Georgia, serif" font-size="62" font-weight="600" fill="#1F2A44" letter-spacing="-1">PairMe</text>
+</svg>

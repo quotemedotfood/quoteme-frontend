@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Support · PairMe</title>
+<meta name="description" content="A person reads every message. Usually within a day, always within two.">
+<meta name="theme-color" content="#1F2A44">
+<link rel="icon" href="assets/logo-mark.svg" type="image/svg+xml">
+<meta property="og:title" content="Support · PairMe">
+<meta property="og:description" content="A person reads every message. Usually within a day, always within two.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://pairme.wine/">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Piazzolla:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div style="font-family:var(--font-body);color:#1C1C1A;background:#FBFAF7;max-width:520px;margin:0 auto;min-height:100vh">
+
+<div style="background:#1F2A44;padding:18px 22px 26px">
+<a href="/" style="display:flex;align-items:center;gap:9px;margin-bottom:18px">
+<img src="assets/logo-mark-inverse.svg" alt="PairMe" style="width:22px;height:22px">
+<span style="font:600 15px var(--font-display);color:#fff">PairMe</span>
+</a>
+<h1 style="margin:0;font:600 28px/1.2 var(--font-display);color:#fff;letter-spacing:-.01em">Support</h1>
+<p style="margin:10px 0 0;font:400 14px/1.65 var(--font-body);color:#C9D3DD">A person reads every one of these. Usually within a day, and always within two.</p>
+</div>
+
+<div style="padding:26px 22px 60px">
+
+<div style="border:1px solid #E3E1DB;background:#fff;border-radius:12px;padding:18px">
+<div style="font:600 15px var(--font-display);color:#1C1C1A;margin-bottom:4px">Write to us</div>
+<div style="font:400 12.5px/1.6 var(--font-body);color:#6B6B66;margin-bottom:14px">Tell us what happened. If it was a bad pick, tell us that too, it is the most useful thing we get.</div>
+<form name="support" method="POST" data-netlify="true" onsubmit="return pmSend(event)" style="display:flex;flex-direction:column;gap:10px">
+<label class="pm-label" style="width:100%"><span>Your email</span><input class="pm-input" type="email" name="email" id="sup-email" placeholder="you@wherever.com" required style="width:100%"></label>
+<div>
+<div style="font:600 12px var(--font-body);color:#1C1C1A;margin-bottom:6px">What's this about</div>
+<div style="display:flex;flex-wrap:wrap;gap:7px">
+<label class="pm-chip"><input type="checkbox" name="topic" value="A bad pick"><span>A bad pick</span></label>
+<label class="pm-chip"><input type="checkbox" name="topic" value="It misread a menu"><span>It misread a menu</span></label>
+<label class="pm-chip"><input type="checkbox" name="topic" value="Something broke"><span>Something broke</span></label>
+<label class="pm-chip"><input type="checkbox" name="topic" value="My account"><span>My account</span></label>
+<label class="pm-chip"><input type="checkbox" name="topic" value="Restaurants"><span>Restaurants</span></label>
+<label class="pm-chip"><input type="checkbox" name="topic" value="Something else"><span>Something else</span></label>
+</div>
+</div>
+<div>
+<div style="font:600 12px var(--font-body);color:#1C1C1A;margin-bottom:6px">Details</div>
+<textarea rows="4" placeholder="It read the list but skipped the whole rosé section." style="width:100%;box-sizing:border-box;border:1px solid #E3E1DB;border-radius:8px;padding:11px;font:400 13.5px var(--font-body);resize:vertical" name="details" id="sup-msg"></textarea>
+</div>
+<button type="button" class="pm-btn pm-btn-primary" type="submit" style="width:100%"><span id="sup-label">Send it</span></button>
+<div style="font:500 12px var(--font-body);color:#8A5A18;min-height:16px"><span id="sup-note"></span></div>
+</div>
+<div style="border-top:1px solid #E3E1DB;margin-top:16px;padding-top:14px;font:400 12.5px/1.7 var(--font-body);color:#6B6B66">
+Rather use your own mail? <a href="mailto:hello@pairme.wine">hello@pairme.wine</a>. Privacy questions to <a href="mailto:privacy@pairme.wine">privacy@pairme.wine</a>. Restaurants and reps, <a href="mailto:house@pairme.wine">house@pairme.wine</a>.
+</div>
+</div>
+
+<h2 style="margin:34px 0 12px;font:600 19px var(--font-display);color:#1C1C1A">Questions we get</h2>
+<div style="border-top:1px solid #E3E1DB;padding:16px 0">
+<div style="font:600 14.5px/1.4 var(--font-body);color:#1C1C1A">Do I need an account?</div>
+<div style="font:400 13.5px/1.7 var(--font-body);color:#6B6B66;margin-top:6px;text-wrap:pretty">No. Scan the code on your table and go. An account only exists so your taste follows you to the next restaurant.</div>
+</div>
+<div style="border-top:1px solid #E3E1DB;padding:16px 0">
+<div style="font:600 14.5px/1.4 var(--font-body);color:#1C1C1A">Do I have to answer the six questions?</div>
+<div style="font:400 13.5px/1.7 var(--font-body);color:#6B6B66;margin-top:6px;text-wrap:pretty">No, and we mean it. Every one is skippable. Skip all six and you still get a real pick, we just describe it differently. Knowing you better only lets us pair to your taste rather than to the room's.</div>
+</div>
+<div style="border-top:1px solid #E3E1DB;padding:16px 0">
+<div style="font:600 14.5px/1.4 var(--font-body);color:#1C1C1A">Can I order through PairMe?</div>
+<div style="font:400 13.5px/1.7 var(--font-body);color:#6B6B66;margin-top:6px;text-wrap:pretty">No. We suggest, your server pours. We are not a retailer and we take no cut of what you drink.</div>
+</div>
+<div style="border-top:1px solid #E3E1DB;padding:16px 0">
+<div style="font:600 14.5px/1.4 var(--font-body);color:#1C1C1A">Does a restaurant pay to be recommended?</div>
+<div style="font:400 13.5px/1.7 var(--font-body);color:#6B6B66;margin-top:6px;text-wrap:pretty">A restaurant can feature wines on its own page, and when one of those is in front of you it is marked as the house's choice. Every time. The price does not change because of it.</div>
+</div>
+<div style="border-top:1px solid #E3E1DB;padding:16px 0">
+<div style="font:600 14.5px/1.4 var(--font-body);color:#1C1C1A">The wine you picked wasn't in the cellar.</div>
+<div style="font:400 13.5px/1.7 var(--font-body);color:#6B6B66;margin-top:6px;text-wrap:pretty">Happens. Lists print faster than cellars empty. Tell us and we will fix that restaurant's list for the next person, which is usually you.</div>
+</div>
+<div style="border-top:1px solid #E3E1DB;padding:16px 0">
+<div style="font:600 14.5px/1.4 var(--font-body);color:#1C1C1A">Is there a version for restaurants?</div>
+<div style="font:400 13.5px/1.7 var(--font-body);color:#6B6B66;margin-top:6px;text-wrap:pretty">Yes, and it is free to start. Email house@pairme.wine and we will load your list and send you a code for the table.</div>
+</div>
+<div style="border-top:1px solid #E3E1DB;padding:16px 0">
+<div style="font:600 14.5px/1.4 var(--font-body);color:#1C1C1A">What about beer, sake, cocktails, or nothing at all?</div>
+<div style="font:400 13.5px/1.7 var(--font-body);color:#6B6B66;margin-top:6px;text-wrap:pretty">Wine first, the rest is coming. If you are not drinking tonight, say so and we will still pair your food from whatever the house pours.</div>
+</div>
+
+<div style="border:1px solid #FFCC7D;background:#FFF4E4;border-radius:12px;padding:15px;margin-top:26px">
+<div style="font:600 13.5px var(--font-body);color:#1C1C1A">Deleting your account</div>
+<div style="font:400 13px/1.7 var(--font-body);color:#1C1C1A;margin-top:5px">Settings, then Delete account, inside the app. Or email <a href="mailto:privacy@pairme.wine">privacy@pairme.wine</a> and we do it within thirty days. Everything goes, including your history.</div>
+</div>
+
+</div>
+
+<div style="background:#1F2A44;padding:22px;display:flex;gap:18px;flex-wrap:wrap">
+<a href="/" style="font:500 13px var(--font-body);color:#C9D3DD">Home</a>
+<a href="/privacy" style="font:500 13px var(--font-body);color:#C9D3DD">Privacy</a>
+<a href="/terms" style="font:500 13px var(--font-body);color:#C9D3DD">Terms</a>
+</div>
+
+</div>
+<script src="pairme.js"></script>
+</body>
+</html>

@@ -2,6 +2,7 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "framework": "vite",
+  "cleanUrls": true,
   "headers": [
     {
       "source": "/.well-known/apple-app-site-association",
@@ -16,12 +17,6 @@
         { "key": "Content-Type", "value": "application/json" },
         { "key": "Cache-Control", "value": "no-cache" }
       ]
-    }
-  ],
-  "rewrites": [
-    {
-      "source": "/:path((?!\\.well-known).*)",
-      "destination": "/index.html"
     }
   ]
 }
