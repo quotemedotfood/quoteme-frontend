@@ -181,3 +181,30 @@ export function fetchRulesBundle(sinceVersion) {
   const qs = sinceVersion != null ? `?since_version=${sinceVersion}` : '';
   return request(`/v1/rules/bundle${qs}`);
 }
+
+/**
+ * GET /v1/demo - LANE A entry point (/t/demo). Not in the v1 contract doc;
+ * mocked for now (see mocks/handlers.js) since the backend does not serve
+ * it yet. Returns { venue, capture_id, raw_text, rows } - a pre-seeded
+ * venue, wine list and its already-parsed rows so the /t/demo walk can run
+ * end to end without depending on the still-stubbed client wine-list
+ * parser.
+ */
+export function getDemo() {
+  return request('/v1/demo');
+}
+
+/**
+ * POST /v1/pairings - RECORDS a decision the client already made with the
+ * scoring engine (packages/pairing); it does not compute one. See "PairMe
+ * API Contract v1" section on POST /v1/pair (removed by design) vs this
+ * endpoint.
+ */
+export async function postPairing(payload) {
+  try {
+    return await request('/v1/pairings', { method: 'POST', body: payload });
+  } catch (e) {
+    if (e instanceof ApiError && e.status === 404) return { notBuilt: true };
+    throw e;
+  }
+}

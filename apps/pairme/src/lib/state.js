@@ -6,11 +6,15 @@ import {
   capture as apiCapture,
   postCaptureRows,
   getVenues,
-  pair as apiPair,
   rate as apiRate,
   fetchRulesBundle,
+  getDemo,
+  postPairing,
+  deleteAccount as apiDeleteAccount,
 } from './api.js';
 import { parseWineList, loadRulesBundle } from '../../../../packages/pairing/src/index.js';
+import { buildTables, rowToEngineWine, computeOfferings } from './pairingAdapter.js';
+import { DEMO_DISHES, DEMO_SECTIONS, DEMO_DEFAULT_PICKED } from './demoSeed.js';
 
 const NAVY="#1F2A44",PEAR="#FFCC7D",ORANGE="#F2993D",BLUED="#5C8A9C";
 
@@ -242,9 +246,18 @@ export function usePairMe(opts = {}){
     apiError:null,apiLoading:false,
     anonId:null,
     captureId:null,rawText:"",captureRows:[],
-    pairOfferings:null,pairCompromise:null,
     venueResults:[],venueMessage:null,selectedVenueId:null,
-    tableCode:null});
+    tableCode:null,
+    // LANE A (/t/demo): seeded venue/menu/wine-list + the client-side
+    // scoring engine's output. demoDishes stays null off the /t/demo path,
+    // so every other entry point keeps using Desi's static DISHES/offerSet
+    // exactly as before.
+    venueName:null,venueCity:null,
+    demoLoading:false,demoDishes:null,demoWineRows:[],
+    rulesTables:null,rulesVersion:null,
+    pairingDirection:null,pairingOfferings:null,pairingCompromise:null,
+    pairingId:null,presentLabels:[],
+    deleteConfirming:false,deleteDone:false});
   const patch = (p) => set(s => Object.assign({}, s, typeof p === 'function' ? p(s) : p));
   const bodyEl = React.useRef(null);
   const secs = React.useRef({});
@@ -263,13 +276,57 @@ export function usePairMe(opts = {}){
       } catch (err) {
         if (!cancelled) patch({ apiError: err.message || 'Could not load your saved taste. Starting fresh.' });
       }
-      // Fire and forget: not surfaced on any screen yet, just proves the
-      // 304-aware cache loader is wired per the contract (G4).
-      loadRulesBundle((sinceVersion) => fetchRulesBundle(sinceVersion)).catch(() => {});
+      // The rules bundle IS the pairing API (POST /v1/pair was removed by
+      // design; see PairMe API Contract v1). buildTables() indexes it into
+      // the shape packages/pairing's scoring core reads; computeOfferings
+      // (pairingAdapter.js) is what actually calls the engine, at the
+      // HowToDrink -> TheWine seam below.
+      try {
+        const bundle = await loadRulesBundle((sinceVersion) => fetchRulesBundle(sinceVersion));
+        if (!cancelled && bundle && bundle.tables) {
+          patch({ rulesTables: buildTables(bundle.tables), rulesVersion: bundle.version });
+        }
+      } catch (e) {
+        // Non-fatal: HowToDrink's cta guards on rulesTables being present.
+      }
     })();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // --- LANE A: /t/demo loads a seeded venue + wine list + food menu -------
+  // Only runs when the URL is /t/demo (TableCodeRoute sets tableCode from
+  // the :code param); every other route leaves demoDishes null so the rest
+  // of the app keeps using Desi's static DISHES/offerSet, unchanged.
+  React.useEffect(() => {
+    if (st.tableCode !== 'demo' || st.demoDishes || st.demoLoading) return;
+    let cancelled = false;
+    (async () => {
+      patch({ demoLoading: true });
+      try {
+        const anonId = await ensureSession();
+        if (cancelled) return;
+        const data = await getDemo();
+        if (cancelled) return;
+        patch({
+          anonId,
+          venueName: (data.venue && data.venue.name) || 'Aquitaine',
+          venueCity: data.venue && data.venue.city && data.venue.state ? `${data.venue.city}, ${data.venue.state}` : '',
+          selectedVenueId: (data.venue && data.venue.id) || null,
+          captureId: data.capture_id || null,
+          rawText: data.raw_text || '',
+          demoWineRows: data.rows || [],
+          demoDishes: DEMO_DISHES,
+          picked: DEMO_DEFAULT_PICKED,
+          demoLoading: false,
+        });
+      } catch (err) {
+        if (!cancelled) patch({ demoLoading: false, apiError: err.message || 'Could not load the demo table. Please try again.' });
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [st.tableCode, st.demoDishes, st.demoLoading]);
 
   // --- Real venue search (GET /v1/venues), replacing the hardcoded demo ---
   React.useEffect(() => {
@@ -351,7 +408,11 @@ export function usePairMe(opts = {}){
         ";--border-default:"+t.rule+";--border-strong:"+t.muted+
         ";--color-navy-50:"+t.hover2+";--color-cream-100:"+t.hover2+";--pm-accent2:"+t.accent2+";color:"+t.ink+";";
 
-      const chosen=st.picked.map(id=>DISHES.find(d=>d.id===id)).filter(Boolean);
+      // /t/demo swaps in the seeded menu (with engine-ready `components`);
+      // every other route keeps Desi's static DISHES/SECS exactly as before.
+      const dishSource=st.demoDishes||DISHES;
+      const secSource=st.demoDishes?DEMO_SECTIONS:SECS;
+      const chosen=st.picked.map(id=>dishSource.find(d=>d.id===id)).filter(Boolean);
       const blank=st.blank,conflict=st.guest==="sarah";
       const lo=Math.min(st.bMin,st.bMax),hi=Math.max(st.bMin,st.bMax);
       const ob=[null,
@@ -375,6 +436,42 @@ export function usePairMe(opts = {}){
       const presentKeys=st.present.filter(k=>offerSet.some(o=>o.k===k));
       const shownKeys=presentKeys.length?presentKeys:[offerSet[0].k];
 
+      // /t/demo: real offerings from packages/pairing's scoring engine
+      // (computed at the HowToDrink -> TheWine seam above), role-labelled
+      // house/suited/crowd, each with a reason pulled from its own fired
+      // rule and a pronunciation. Every other entry point has no
+      // pairingOfferings and falls straight back to offerSet/W above,
+      // unchanged.
+      const usingEngine=Array.isArray(st.pairingOfferings)&&st.pairingOfferings.length>0;
+      const pairingDirection=st.pairingDirection;
+      const roleColorFor=(slot)=>slot==="house"?t.blue:slot==="suited"?t.pearInk:t.muted;
+      const presentSet=new Set(st.presentLabels||[]);
+      const engineOffers=usingEngine?st.pairingOfferings.map(o=>{
+        const w=o.wine,on=presentSet.has(w.label);
+        return {
+          role:o.label||"Offering",roleColor:roleColorFor(o.slot),
+          prod:w.producer,wine:w.wine_name,meta:w.meta,say:w.say,btl:w.price,
+          glass:w.glass?"$"+w.glass_price+" glass":"bottle only",
+          why:o.why,covers:(o.covers&&o.covers.length)?o.covers.join(", "):"Everything you picked",
+          bd:on?"var(--pm-chrome)":"var(--pm-rule)",bw:on?"2px":"1px",bg:on?"var(--pm-sel)":"var(--pm-card)",
+          chip:on?"presenting":"tap to add",chipBg:on?"#FFE3BC":"var(--pm-sunken)",
+          pick:()=>patch(x=>({presentLabels:(x.presentLabels||[]).includes(w.label)?(x.presentLabels||[]).filter(y=>y!==w.label):[...(x.presentLabels||[]),w.label]})),
+          speak:()=>say(w.speak),
+          open:null, // no BottleBrief data for engine wines yet; TheWine.jsx only renders the Brief link when `open` is set
+          stockColor:"var(--pm-muted)",stockNote:"On the list tonight."};
+      }):null;
+      const engineShownLabels=presentSet.size?Array.from(presentSet):(usingEngine?[st.pairingOfferings[0].wine.label]:[]);
+      // ONE-BOTTLE MODE: the single bottle almost never fits every dish
+      // equally, so this MUST surface where it gives ground (directions.js's
+      // oneBottle() computes exactly this; here it is just shaped for
+      // display, never re-derived).
+      const compromiseNote=st.pairingCompromise?{
+        dish:st.pairingCompromise.dish,
+        text:typeof st.pairingCompromise.reason==="string"
+          ?st.pairingCompromise.reason
+          :st.pairingCompromise.reason.note+" (fit score "+st.pairingCompromise.reason.score+").",
+      }:null;
+
       return {
         themeVars,
         toggleDark:()=>patch({dark:!dark}),
@@ -383,6 +480,8 @@ export function usePairMe(opts = {}){
         darkBd:dark?PEAR:"rgba(255,255,255,.35)",darkBg:dark?PEAR:"transparent",darkFg:dark?NAVY:"#fff",
         toggleHC:()=>patch({hc:!st.hc}),
         hcBd:st.hc?PEAR:"rgba(255,255,255,.35)",hcBg:st.hc?PEAR:"transparent",hcFg:st.hc?NAVY:"#fff",
+
+        venueName:st.venueName||"Aquitaine",
 
         rail:RAIL.map((label,i)=>({label,num:i+1,go:()=>go(i),bg:i===s?"#FFF4E4":"#fff",border:i===s?NAVY:"#E3E1DB"})),
         screenNo:s+1,screenName:RAIL[s],
@@ -398,20 +497,43 @@ export function usePairMe(opts = {}){
             go(8);
           }
           : s===10 ? async()=>{
-            try{
-              const res = await apiPair({
-                dish_ids: st.picked,
-                wine_list_id: st.captureId || null,
-                profile_id: null,
-                direction: mapDirection(st),
-              });
-              if (res && !res.notBuilt && Array.isArray(res.offerings)) {
-                patch({pairOfferings:res.offerings,pairCompromise:res.compromise||null});
-              }
-              // else: /v1/pair is not built yet (item 5). offerSet above,
-              // Desi's static demo data, stays the fallback the TheWine
-              // screen renders. See TODO in the handoff report.
-            }catch(err){ patch({apiError:err.message||'Could not reach the wine list. Showing our best guess.'}); }
+            // Pairing is CLIENT-SIDE (POST /v1/pair was removed by design;
+            // GET /v1/rules/bundle IS the pairing API). Runs only when a
+            // wine list + rules bundle are actually loaded (the /t/demo
+            // path); every other entry point has no demoWineRows, so this
+            // is a no-op there and TheWine screen keeps rendering Desi's
+            // static offerSet exactly as before.
+            const direction = mapDirection(st);
+            if (st.rulesTables && st.demoWineRows.length && chosen.length) {
+              try {
+                const wines = st.demoWineRows.map(rowToEngineWine);
+                const result = computeOfferings(direction, chosen, wines, st.rulesTables);
+                patch({
+                  pairingDirection: result.direction,
+                  pairingOfferings: result.offerings,
+                  pairingCompromise: result.compromise,
+                  presentLabels: [],
+                });
+                try {
+                  // RECORDS the decision already made client-side (does not
+                  // compute one). Best-effort: a failure here should not
+                  // block the walk from reaching TheWine.
+                  const rec = await postPairing({
+                    capture_id: st.captureId,
+                    dish_ids: st.picked,
+                    direction: result.direction,
+                    rules_version: st.rulesVersion,
+                    parser_version: PARSER_VERSION,
+                    offerings: result.offerings.map(o=>({
+                      slot: o.slot,
+                      wine_row_id: o.wine.client_row_id,
+                      fired_rule_ids: (o.fired||[]).map(f=>f[0]),
+                    })),
+                  });
+                  if (rec && !rec.notBuilt && rec.pairing_id) patch({pairingId:rec.pairing_id});
+                } catch(err){ patch({apiError:err.message||'Could not record this pairing. Continuing anyway.'}); }
+              } catch(err){ patch({apiError:err.message||'Could not run the wine list against what you ordered.'}); }
+            }
             go(11);
           }
           : s===13 ? async()=>{
@@ -419,6 +541,7 @@ export function usePairMe(opts = {}){
               try{
                 await apiRate({
                   capture_id: st.captureId,
+                  pairing_id: st.pairingId || null,
                   dish: st.rate.dish, wine: st.rate.wine, pairing: st.rate.pair,
                   free_text: st.fb || null, share_with_venue: st.share,
                 });
@@ -514,8 +637,8 @@ export function usePairMe(opts = {}){
         noListLabel:st.noList?"a venue with no wine list, on":"a venue with no wine list, off",
         toggleNoList:()=>patch({noList:!st.noList}),
 
-        jumps:SECS.map(name=>({name,go:()=>jumpTo(name)})),
-        menu:SECS.map(name=>({name,ref:el=>{secs.current[name]=el;},dishes:DISHES.filter(d=>d.sec===name).map(d=>{
+        jumps:secSource.map(name=>({name,go:()=>jumpTo(name)})),
+        menu:secSource.map(name=>({name,ref:el=>{secs.current[name]=el;},dishes:dishSource.filter(d=>d.sec===name).map(d=>{
           const on=st.picked.includes(d.id);
           return {n:d.n,d:d.d,price:d.p?"$"+d.p:"mp",
             bd:on?"var(--pm-chrome)":"var(--pm-rule)",bg:on?"var(--pm-sel)":"var(--pm-card)",
@@ -556,17 +679,19 @@ export function usePairMe(opts = {}){
           label,pick:()=>patch({resolution:k}),
           bd:st.resolution===k?"var(--pm-chrome)":"var(--pm-rule)",bg:st.resolution===k?"var(--pm-sel)":"var(--pm-card)"})),
 
-        // TODO: st.pairOfferings (from POST /v1/pair) is fetched and stored
-        // above but not mapped into these cards yet. /v1/pair is NOT built
-        // server side (item 5) and the inner `wine` field shape is still
-        // undocumented, so this stays Desi's static demo data (offerSet)
-        // rather than guessing at a shape. Wire it here once item 5 ships.
-        offerTitle:blank?"Three wines, no assumptions":"Your wine",
-        offerSub:blank?"You skipped every question, so this is the honest version.":"Tap the ones you want to present. Everything here is on their list tonight.",
+        // /t/demo: usingEngine is true once HowToDrink's cta has run the
+        // scoring engine (see the s===10 branch above); otherwise this
+        // stays Desi's static offerSet/W demo data, unchanged.
+        usingEngine,
+        offerTitle:usingEngine?(pairingDirection==="one_bottle"?"One bottle for the table":"Your wine"):(blank?"Three wines, no assumptions":"Your wine"),
+        offerSub:usingEngine?(pairingDirection==="one_bottle"?"One bottle, chosen to work across everything ordered.":"Ranked for the table. Tap the ones you want to present."):(blank?"You skipped every question, so this is the honest version.":"Tap the ones you want to present. Everything here is on their list tonight."),
+        showBlankToggle:!usingEngine,
         blankLabel:blank?"we know nothing about you, on":"we know nothing about you, off",
         toggleBlank:()=>patch({blank:!blank}),
-        presentCount:presentKeys.length?presentKeys.length+" ready to present":"None chosen yet, we'll present the first one",
-        offers:offerSet.map(o=>{const w=W[o.k],on=presentKeys.includes(o.k);return {
+        presentCount:usingEngine
+          ?(presentSet.size?presentSet.size+" ready to present":"None chosen yet, we'll present the first one")
+          :(presentKeys.length?presentKeys.length+" ready to present":"None chosen yet, we'll present the first one"),
+        offers:engineOffers||offerSet.map(o=>{const w=W[o.k],on=presentKeys.includes(o.k);return {
           role:o.role,roleColor:o.roleColor,prod:w.prod,wine:w.wine,meta:w.meta,say:w.say,btl:w.btl,
           glass:w.glass?"$"+w.glass+" glass":"bottle only",why:o.why,covers:o.covers,
           bd:on?"var(--pm-chrome)":"var(--pm-rule)",bw:on?"2px":"1px",bg:on?"var(--pm-sel)":"var(--pm-card)",
@@ -576,11 +701,26 @@ export function usePairMe(opts = {}){
           open:()=>patch({s:16,bottle:o.k,back:11}),
           stockColor:w.stock<4?ORANGE:"var(--pm-muted)",
           stockNote:w.stock<4?"Only "+w.stock+" left tonight":"Plenty in the cellar"};}),
+        // ONE-BOTTLE MODE compromise: rendered on TheWine screen right under
+        // the single offering (see TheWine.jsx). null on every other
+        // direction and off the /t/demo path.
+        compromiseNote,
 
         foodRows:chosen.map(d=>({n:d.n,sec:d.sec})),
-        handoff:shownKeys.map((k,i)=>{const w=W[k];return {
-          label:shownKeys.length>1?(i===0?"Bottle one":"Bottle two"):"One bottle",
-          prod:w.prod,wine:w.wine,meta:w.meta+" . $"+w.btl,say:w.say,tip:w.tip,speak:()=>say(w.speak)};}),
+        handoff:usingEngine
+          ?engineShownLabels.map((label,i)=>{
+            const offering=st.pairingOfferings.find(o=>o.wine.label===label)||st.pairingOfferings[0];
+            const w=offering.wine;
+            return {
+              label:engineShownLabels.length>1?(i===0?"Bottle one":"Bottle two"):"One bottle",
+              prod:w.producer,wine:w.wine_name,meta:w.meta+" . $"+w.price,say:w.say,tip:w.tip,
+              speak:()=>say(w.speak),
+              compromise:(pairingDirection==="one_bottle"&&compromiseNote)?compromiseNote.text:null,
+            };
+          })
+          :shownKeys.map((k,i)=>{const w=W[k];return {
+            label:shownKeys.length>1?(i===0?"Bottle one":"Bottle two"):"One bottle",
+            prod:w.prod,wine:w.wine,meta:w.meta+" . $"+w.btl,say:w.say,tip:w.tip,speak:()=>say(w.speak),compromise:null};}),
         hasDiet:st.diet.length>0,dietLine:st.diet.length?st.diet.join(" . "):"none",
 
         rateRows:[["dish","The food"],["wine","The wine"],["pair","How they went together"]].map(([k,label])=>({
@@ -638,6 +778,25 @@ export function usePairMe(opts = {}){
         sarahLikes:["Loire whites","Sancerre","Barbaresco","a cold glass in the sun"],
         sarahNots:["bubbles","heavy oak","anything over $60"],
         sarahHistory:SARAH_HISTORY.map(([w,where,r])=>({w,where,stars:stars(r)})),
+
+        // DELETE /v1/account - genuine hard delete, no undo. Two-tap
+        // confirm, no modal: tap once to arm it, tap again to actually
+        // delete, or cancel to stand down.
+        deleteConfirming:st.deleteConfirming,deleteDone:st.deleteDone,
+        deleteAccountLabel:st.deleteDone?"Account deleted":(st.deleteConfirming?"Yes, delete everything":"Delete account"),
+        deleteAccountSub:st.deleteDone
+          ?"Your account and everything we stored about you have been permanently deleted."
+          :st.deleteConfirming
+            ?"This removes your taste profile, your history and every photo you have taken. There is no undo."
+            :"Removes your taste profile, your history and every capture. This cannot be undone.",
+        deleteAccount:st.deleteDone?()=>{}:st.deleteConfirming
+          ?async()=>{
+            try{ await apiDeleteAccount(); patch({deleteConfirming:false,deleteDone:true}); }
+            catch(err){ patch({apiError:err.message||'Could not delete your account. Please try again.'}); }
+          }
+          :()=>patch({deleteConfirming:true}),
+        cancelDelete:()=>patch({deleteConfirming:false}),
+        showCancelDelete:st.deleteConfirming&&!st.deleteDone,
 
         // Chrome-level (App.jsx), not consumed by any screen.
         apiError:st.apiError,apiLoading:st.apiLoading,
