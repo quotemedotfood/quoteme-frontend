@@ -2,6 +2,12 @@
 (function(){
   var played = false;
 
+  // This file lives in public/ so Vite copies it verbatim; it never runs
+  // through the module transform, so import.meta.env is not available here.
+  // Hardcoded to match the same production Rails API host used as the
+  // default fallback for VITE_PAIRME_API_BASE in apps/pairme/src/lib/api.js.
+  var PAIRME_API_BASE = 'https://web-production-9f6e9.up.railway.app';
+
   window.pmSay = function(){
     try{
       var sp = window.speechSynthesis;
@@ -25,22 +31,50 @@
       .catch(function(){ onDone(false); });
   }
 
+  function submitWaitlist(payload, onDone){
+    fetch(PAIRME_API_BASE + '/v1/waitlist', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    }).then(function(res){
+      return res.json().catch(function(){ return null; }).then(function(data){
+        onDone({ ok: res.ok, status: res.status, data: data });
+      });
+    }).catch(function(){
+      onDone({ ok: false, status: 0, data: null });
+    });
+  }
+
   window.pmJoin = function(ev){
     if(ev) ev.preventDefault();
-    var form = document.forms['beta'];
     var email = document.getElementById('beta-email');
+    var stateEl = document.getElementById('beta-state');
+    var restEl = document.getElementById('beta-restaurant');
     var note  = document.getElementById('beta-note');
     var label = document.getElementById('beta-label');
     if(!email || !email.value || email.value.indexOf('@') < 0 || email.value.indexOf('.') < 0){
       if(note) note.textContent = 'That address is missing something.';
       return false;
     }
+
+    var payload = { email: email.value.trim(), source: 'landing' };
+    var stateVal = stateEl && stateEl.value ? stateEl.value.trim().toUpperCase() : '';
+    if(stateVal) payload.state = stateVal;
+    var restVal = restEl && restEl.value ? restEl.value.trim() : '';
+    if(restVal) payload.favorite_restaurant = restVal;
+
     if(label) label.textContent = 'Sending';
-    post(form, function(ok){
-      if(label) label.textContent = ok ? "You're in" : 'Try again';
-      if(note) note.textContent = ok
-        ? "You're on the list. We'll be brief, and we'll be in touch before launch."
-        : "That didn't send. Email hello@pairme.wine and we'll add you by hand.";
+    submitWaitlist(payload, function(result){
+      if(result.ok){
+        if(label) label.textContent = "You're in";
+        if(note) note.textContent = "You're on the list. We'll be brief, and we'll be in touch before launch.";
+      } else if(result.status === 422 && result.data && result.data.message){
+        if(label) label.textContent = 'Try again';
+        if(note) note.textContent = result.data.message;
+      } else {
+        if(label) label.textContent = 'Try again';
+        if(note) note.textContent = "That didn't send. Email hello@pairme.wine and we'll add you by hand.";
+      }
     });
     return false;
   };
