@@ -27,6 +27,11 @@ export default defineConfig({
   },
   test: {
     environment: 'jsdom',
+    // jest-dom matchers (toBeInTheDocument, etc) used throughout the
+    // tests/e2e/demo-walk spec are registered here; without this,
+    // `@testing-library/jest-dom/vitest`'s side-effectful import in
+    // tests/setup.js never runs and every matcher call throws
+    // "Invalid Chai property".
     setupFiles: ['./tests/setup.js'],
     include: ['src/**/*.test.js', 'tests/**/*.test.{js,jsx}'],
     css: false,
