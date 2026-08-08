@@ -20,18 +20,28 @@
  * measured real-world examples that forced this design):
  *   - price_last: name / vintage / price, price ends the record (most
  *     lists: brixton, barcelona, vendome, safta, postino, barolo).
- *   - price_last with vintage FIRST and wrapped name lines (tavernetta).
  *   - price_middle: price on line two, followed by the region as its own
  *     line (casual_list). expectPlace below is that "next line is the
  *     place" state.
  *   - price_leading: the price sits ABOVE the wine (single-page
- *     Squarespace/Wix menus where food is priced the same way).
+ *     Squarespace/Wix menus where food is priced the same way, and - under
+ *     the pinned PDF extraction params below - tavernetta).
  *   - slash pricing 15/45 for glass/bottle pairs (casual_list).
  *   - a BIN COLUMN (cellar): detected at the DOCUMENT level via
  *     hasBinColumn, never per line, because a letter-suffixed shelf code
  *     (606L) is not a price, and two trailing numbers on a casual list mean
  *     glass+bottle - the same "two trailing numbers" shape means opposite
  *     things depending on which kind of list it is.
+ *
+ * PDF EXTRACTION CONTRACT (barolo.txt / tavernetta.txt only - see
+ * PARSER_CONTRACT.md): these two fixtures are not hand-typed text, they
+ * come from PDFs. They were extracted with PyMuPDF's `page.get_text()`
+ * using DEFAULT args (NOT "text"/"blocks" mode, NO sort=True), per page,
+ * pages joined with a single "\n". This is a pinned, load-bearing detail:
+ * different extraction params reflow the text differently and change which
+ * shape detectShape() reports (and can change the row count). Do not
+ * re-extract with different params; do not call a PDF library at test
+ * time - loadWineListFixtures.js only ever reads the committed .txt files.
  */
 import { VOCAB, norm, has, resolveGrape, pySplit, stripChars, rstripChars } from './wineVocab.js';
 

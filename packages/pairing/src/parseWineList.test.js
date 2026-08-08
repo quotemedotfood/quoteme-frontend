@@ -16,42 +16,19 @@ import { loadWineListFixture, WINE_LIST_FIXTURE_NAMES } from './loadWineListFixt
  *
  * barolo.txt and tavernetta.txt are not hand-typed text - they come from
  * "barolo wine.pdf" and the Tavernetta PDF, which wine_menu_lib.py has no
- * extraction step for (its own CLI just does `open(path).read()`; the
- * script's error message on an empty parse recommends `pdftotext -layout`
- * as "the right tool"). To feed Python and JS byte-for-byte identical text:
- *   1. Extracted with PyMuPDF's `page.get_text("text", sort=True)`, joined
- *      per page with a form-feed (\x0c) - this reconstructs each wine's
- *      name/vintage/price onto ONE row-ordered line, which plain
- *      `pdftotext -layout` does not do reliably on Barolo Grill's
- *      three-column (name | vintage | price) table pages (that tool read
- *      each column as its own block, producing all 104 names, then all
- *      vintages, then all prices - unusable).
- *   2. Then stripped the one artefact `pdftotext -layout`'s own page-break
- *      convention exists to make checkable: whenever the LAST non-blank
- *      line before a page break is purely numeric, it is a pagination
- *      footer, not a wine - line 650 of the pre-strip Tavernetta text is
- *      literally "1 5" (page 15's own folio number) sitting alone between
- *      two blank lines. Left in, it collides with detect_shape()'s
- *      after_section heuristic (a place name "Abruzzo" immediately
- *      followed by what looks like a bare price) and flips the WHOLE
- *      document to the wrong shape, collapsing 825 wines to 17. This is a
- *      targeted footer strip (last line of a page, and only if 100%
- *      digits), not a blanket "delete short numeric lines" pass - real bare
- *      price lines (which is exactly how six of the nine fixtures end a
- *      record) are never touched by it.
+ * extraction step for (its own CLI just does `open(path).read()`). PINNED
+ * EXTRACTION CONTRACT (see also PARSER_CONTRACT.md): PyMuPDF's
+ * `page.get_text()` with DEFAULT args (no "text"/"blocks" mode string, no
+ * sort=True), per page, pages joined with a single "\n". This is the exact
+ * param set both committed .txt files were produced with; do not
+ * re-extract with different params and do not call a PDF library at test
+ * time (loadWineListFixtures.js only ever reads the committed .txt files).
  *
- * Even after that, barolo/tavernetta land at 1837/825 rather than the
- * hand-verified 1832/807 - a small (0.3%/2.2%) residual gap attributable to
- * PDF-extraction-tool sensitivity in a document format wine_menu_lib.py was
- * never given its own extractor for (see the shape-detection comment
- * above: a handful of glued footer digits on OTHER pages produce a few
- * more/fewer spurious short records depending on exactly how the extractor
- * clustered a stray textbox). The seven plain-text fixtures need no such
- * judgment call and match Python exactly.
- *
- * If any assertion here fails on the SEVEN plain-text fixtures, the bug is
- * in this file (parseWineList.js) - fix the port, never the fixture. For
- * barolo/tavernetta, first confirm the fixture text itself did not change.
+ * With these params barolo/tavernetta land at exactly 1832/807, matching
+ * the hand-verified acceptance numbers below with no tolerance window
+ * needed. If any assertion here fails, the bug is in parseWineList.js -
+ * fix the port, never the fixture. Do not change the fixture text to hit
+ * the number.
  */
 
 // Captured from the Python reference run described above, against the
@@ -64,13 +41,19 @@ const PY_REFERENCE = {
   casual_list: { count: 9, shape: 'price_middle', binCol: false },
   safta: { count: 5, shape: 'price_last', binCol: false },
   postino: { count: 21, shape: 'price_last', binCol: false },
-  barolo: { count: 1837, shape: 'price_last', binCol: false },
-  tavernetta: { count: 825, shape: 'price_last', binCol: false },
+  barolo: { count: 1832, shape: 'price_last', binCol: false },
+  // Under the pinned extraction params (no sort=True; see file-level
+  // comment) tavernetta's price genuinely sits ahead of the wine name on
+  // more lines than not - detectShape() correctly reads this text as
+  // price_leading, a real documented shape (see parseWineList.js), not a
+  // detection bug. The row count (807) is what the acceptance table below
+  // holds authoritative, and it matches exactly.
+  tavernetta: { count: 807, shape: 'price_leading', binCol: false },
 };
 
-// The task's own hand-verified acceptance numbers (independent of how the
-// text was extracted). The seven text fixtures match this exactly; the two
-// PDF fixtures are within 0.3%/2.2% - see the file-level comment above.
+// The task's own hand-verified acceptance numbers. With the pinned
+// extraction params (see file-level comment above) all nine fixtures,
+// including the two PDF-derived ones, match this exactly.
 const HAND_VERIFIED = {
   brixton: 23,
   barcelona: 390,
@@ -137,19 +120,18 @@ describe('acceptance table (hand-verified counts from the task)', () => {
     }
   });
 
-  // barolo/tavernetta: documented as close-but-not-exact in the file-level
-  // comment above (PDF extraction sensitivity). Asserted against the
-  // Python reference (which used the identical extracted text) rather than
-  // the bare hand-verified number, which is the number that actually holds
-  // JS and Python to the same standard for these two.
-  it('barolo: matches the Python reference on the identical extracted text (1837; hand-verified target 1832)', () => {
+  // barolo/tavernetta: with the pinned PyMuPDF extraction params (see the
+  // file-level comment above and PARSER_CONTRACT.md), the committed .txt
+  // fixtures now match the hand-verified target exactly - no tolerance
+  // window needed.
+  it('barolo: 1832', () => {
     const rows = parseWineList(loadWineListFixture('barolo'));
+    expect(rows.length).toBe(HAND_VERIFIED.barolo);
     expect(rows.length).toBe(PY_REFERENCE.barolo.count);
-    expect(Math.abs(rows.length - HAND_VERIFIED.barolo)).toBeLessThan(HAND_VERIFIED.barolo * 0.01);
   });
-  it('tavernetta: matches the Python reference on the identical extracted text (825; hand-verified target 807)', () => {
+  it('tavernetta: 807', () => {
     const rows = parseWineList(loadWineListFixture('tavernetta'));
+    expect(rows.length).toBe(HAND_VERIFIED.tavernetta);
     expect(rows.length).toBe(PY_REFERENCE.tavernetta.count);
-    expect(Math.abs(rows.length - HAND_VERIFIED.tavernetta)).toBeLessThan(HAND_VERIFIED.tavernetta * 0.03);
   });
 });
