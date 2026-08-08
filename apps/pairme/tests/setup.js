@@ -1,5 +1,10 @@
-import '@testing-library/jest-dom/vitest';
-import { afterAll, afterEach, beforeAll } from 'vitest';
+// jest-dom's /vitest entry only auto-extends the GLOBAL expect, and this
+// config does not set test.globals:true (specs import expect from 'vitest'
+// explicitly), so extend that imported expect directly - otherwise
+// toBeInTheDocument throws "Invalid Chai property".
+import { afterAll, afterEach, beforeAll, expect } from 'vitest';
+import * as jestDomMatchers from '@testing-library/jest-dom/matchers';
+expect.extend(jestDomMatchers);
 import { cleanup } from '@testing-library/react';
 import { server } from './e2e/msw/server.js';
 import { resetRequestLog } from './e2e/msw/handlers.js';
