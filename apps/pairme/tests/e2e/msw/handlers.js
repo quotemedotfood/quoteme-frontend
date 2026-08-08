@@ -18,6 +18,8 @@
  */
 import { http, HttpResponse } from 'msw';
 import { BASE_URL } from '../../../src/lib/api.js';
+import { DEMO } from '../../../../../packages/pairing/src/demoFixtures.js';
+import { DEMO_VENUE, DEMO_CAPTURE_ID, buildDemoRows, buildDemoRawText } from '../../../src/lib/demoSeed.js';
 
 export const requestLog = [];
 
@@ -43,6 +45,13 @@ export const TEST_ANON_ID = 'anon_e2e_test';
 // One venue the demo table sits at, keyed to what WhereTo.jsx's copy already
 // hints at ("Type 'aqu' to see it come up.").
 const VENUES = [{ id: 'venue_aquitaine', name: 'Aquitaine', city: 'Boston', state: 'MA' }];
+
+// GET /v1/demo's rows[] (LANE A entry point via /t/:code). Built with the
+// same demoSeed.js helper the app's own dev-time mock (src/mocks/handlers.js)
+// uses, from packages/pairing's own DEMO fixture, so a fired rule in this
+// suite is the same fired rule pairing_engine.py's --selftest would report.
+const DEMO_ROWS = buildDemoRows(DEMO);
+const DEMO_RAW_TEXT = buildDemoRawText(DEMO_ROWS);
 
 // Contract shape for POST /v1/pair's 200 response: { offerings: [...],
 // compromise: {...} | null }. offerings[].slot is the "house"|"suited"|
@@ -149,6 +158,40 @@ export const handlers = [
     const body = await request.json();
     record(request, { body });
     return HttpResponse.json(buildPairResponse(body.direction));
+  }),
+
+  // GET /v1/demo - LANE A's /t/demo entry point (see api.js's own comment:
+  // not in the documented v1 contract, mocked ahead of the BE catching up).
+  http.get(`${BASE_URL}/v1/demo`, async ({ request }) => {
+    record(request);
+    return HttpResponse.json({
+      venue: DEMO_VENUE,
+      capture_id: DEMO_CAPTURE_ID,
+      raw_text: DEMO_RAW_TEXT,
+      rows: DEMO_ROWS,
+    });
+  }),
+
+  // POST /v1/pairings - RECORDS a decision already computed client-side by
+  // packages/pairing (state.js's s===10 cta handler on the /t/demo path).
+  http.post(`${BASE_URL}/v1/pairings`, async ({ request }) => {
+    const body = await request.json();
+    record(request, { body });
+    return HttpResponse.json(
+      { pairing_id: 'pairing_e2e_1', recorded_offerings: Array.isArray(body.offerings) ? body.offerings.length : 0 },
+      { status: 201 }
+    );
+  }),
+
+  // POST /v1/events - fire-and-forget instrumentation beacon (track.js).
+  // Mocked for real, same reasoning as GET /v1/rules/bundle below: every
+  // go()/skip()/cta call fires one of these, so leaving it unmocked means
+  // an "unhandled request" error on nearly every interaction in this suite
+  // even though track() itself always swallows the failure.
+  http.post(`${BASE_URL}/v1/events`, async ({ request }) => {
+    const body = await request.json();
+    record(request, { body });
+    return HttpResponse.json({ ok: true });
   }),
 
   http.post(`${BASE_URL}/v1/rating`, async ({ request }) => {

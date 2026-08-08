@@ -92,13 +92,27 @@ async function request(path, { method = 'GET', body, isMultipart = false } = {})
   return text ? JSON.parse(text) : null;
 }
 
+// In-flight POST /v1/session promise, shared across concurrent callers.
+// usePairMe's bootstrap effect and the /t/demo effect both call
+// ensureSession() on the same mount; without this, both read localStorage
+// before either write lands and each fires its own POST /v1/session.
+let sessionRequest = null;
+
 /** POST /v1/session - the only endpoint that does not require identity. */
 export async function ensureSession() {
   const existing = getAnonId();
   if (existing) return existing;
-  const data = await request('/v1/session', { method: 'POST' });
-  setAnonId(data.anon_id);
-  return data.anon_id;
+  if (sessionRequest) return sessionRequest;
+  sessionRequest = (async () => {
+    try {
+      const data = await request('/v1/session', { method: 'POST' });
+      setAnonId(data.anon_id);
+      return data.anon_id;
+    } finally {
+      sessionRequest = null;
+    }
+  })();
+  return sessionRequest;
 }
 
 export function getProfile() {

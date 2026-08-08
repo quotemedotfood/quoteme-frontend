@@ -18,14 +18,12 @@
  * are flagged TODO(A) inline; the assertions themselves (what must be true)
  * are not expected to change, only how we locate the element.
  *
- * REAL FINDINGS surfaced while writing this (see PR/report, not fixed here):
- *   - Welcome's "Skip setup", YourProfile's history-row open, and the chrome
- *     Settings gear all change `vm.s` via a raw `patch()`, bypassing `go()` -
- *     so the screen changes but the URL does not. Every other transition in
- *     this walk (venue pick, CTA advances, "Back to wine") goes through
- *     `go()` and does update the URL. This test asserts the CURRENT truth
- *     (URL unchanged) at each of those three spots rather than assuming
- *     consistency that is not there yet.
+ * REAL FINDINGS surfaced while writing this, now fixed (see FIX 3 in the
+ * integration report): Welcome's "Skip setup", YourProfile's history-row
+ * open, and the chrome Settings gear used to change `vm.s` via a raw
+ * `patch()`, bypassing `go()` - the screen changed but the URL did not.
+ * All three now go through `go()` (or an equivalent extra-patch + go()
+ * pair) and DO update the URL, same as every other transition in this walk.
  *   - RateIt's "Save it" only POSTs /v1/rating when `st.captureId` is set -
  *     i.e. only if the session went through the camera-capture pipeline.
  *     This walk deliberately takes the camera detour so that assertion is a
@@ -70,10 +68,8 @@ describe('PairMe demo walk: session -> venue -> menu -> direction -> offerings -
       // diner takes.
       await user.click(getByRole('button', { name: 'Skip setup' }));
       await findByText('Where are you eating?'); // WhereTo screen heading
-      // FINDING (see file header): this transition uses raw patch(), not
-      // go() - the URL does NOT change here, unlike every go()-backed
-      // transition later in this walk.
-      expect(currentPath()).toBe('/');
+      // FIX 3: "Skip setup" now goes through go(8), so the URL follows.
+      expect(currentPath()).toBe('/venue');
 
       // --- STEP 2: venue --------------------------------------------------
       const venueInput = getByPlaceholderText('start typing');
@@ -224,35 +220,36 @@ describe('PairMe demo walk: session -> venue -> menu -> direction -> offerings -
 
       await user.click(getByRole('button', { name: /Domaine Huet, Vouvray Sec/i }));
       await findByText('oo-AY, voo-VRAY'); // BottleBrief for this history row (bottle: 'huet')
-      // FINDING (see file header): history row open() is also a raw patch(),
-      // not go() - URL stays on /profile even though BottleBrief is showing.
-      expect(currentPath()).toBe('/profile');
+      // FIX 3: history row open() now goes through go(16), so the URL
+      // follows to BottleBrief's own route.
+      expect(currentPath()).toBe('/wines/brief');
 
       await user.click(getByRole('button', { name: 'Back to wine' }));
       await findByText('Moose'); // back on YourProfile
       expect(currentPath()).toBe('/profile'); // "Back to wine" DOES use go(), landing on the same path.
 
-      // Delete: Settings.jsx has no delete-account control today (confirmed
-      // by reading the file - Reading/Sound/Account sections only - and by
-      // api.js's own comment on deleteAccount()). Assert that current, real
-      // absence rather than assuming a control exists.
+      // Delete: A added the delete-account control to YourProfile (Profile),
+      // not Settings (confirmed by reading Settings.jsx - Reading/Sound/
+      // Account sections only, no delete control there). Two-tap confirm,
+      // no modal: tap once to arm it, tap again to actually delete.
+      await user.click(getByRole('button', { name: 'Delete account' }));
+      await findByText('Yes, delete everything');
+      await user.click(getByRole('button', { name: 'Yes, delete everything' }));
+      await waitFor(() => {
+        expect(requestLog.filter((r) => r.method === 'DELETE' && r.path === '/v1/account')).toHaveLength(1);
+      });
+      await findByText('Account deleted');
+
       await user.click(getByRole('button', { name: 'Settings' })); // chrome gear icon, aria-label="Settings"
       // Not `findByText('Settings')`: the chrome gear button itself also
       // renders the word "Settings" (its own <span>), so that query matches
       // two elements. This subtitle is unique to the Settings screen body.
       await findByText('Read it your way. Nothing here changes what we pick.');
-      expect(currentPath()).toBe('/profile'); // FINDING: goSettings is also a raw patch(), not go().
+      // FIX 3: goSettings now goes through go(17), so the URL follows.
+      expect(currentPath()).toBe('/profile/settings');
+      // Settings.jsx genuinely has no delete-account control - A put that
+      // on the Profile screen instead, exercised just above.
       expect(screen.queryByRole('button', { name: /delete/i })).not.toBeInTheDocument();
-
-      // TODO(A): once a delete-account control exists on Settings.jsx (or a
-      // future dedicated screen), replace the assertion above with:
-      //   await user.click(getByRole('button', { name: /delete/i }));
-      //   <confirm step, if Lane A adds one>
-      //   await waitFor(() => {
-      //     expect(requestLog.filter(r => r.method === 'DELETE' && r.path === '/v1/account')).toHaveLength(1);
-      //   });
-      // The DELETE /v1/account contract endpoint itself is already proven
-      // live in api-contract.test.js - only the click-through is pending.
     },
     20000
   );

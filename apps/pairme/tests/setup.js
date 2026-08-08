@@ -22,7 +22,11 @@ afterEach(() => {
   // api.js's identity (anon_id) is the only thing persisted to localStorage
   // (contract note in src/lib/api.js). Clear it between tests so each spec
   // gets a fresh POST /v1/session instead of silently reusing a stale one.
-  localStorage.clear();
+  // This setup file runs for every spec in the tree, including the plain
+  // node-environment ones (offlinePairing.noSignal.test.js sets
+  // `@vitest-environment node` since it reassigns global.XMLHttpRequest,
+  // which jsdom makes read-only) - those have no localStorage at all.
+  if (typeof localStorage !== 'undefined') localStorage.clear();
 });
 
 afterAll(() => server.close());

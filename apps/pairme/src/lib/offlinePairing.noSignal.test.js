@@ -1,3 +1,12 @@
+// @vitest-environment node
+//
+// Forced to node (the app-wide vitest.config.js default is jsdom, for the
+// RTL/jest-dom E2E walk): jsdom defines a non-configurable global
+// XMLHttpRequest, so `global.XMLHttpRequest = ...` below throws
+// "Cannot assign to read only property" under jsdom. This file needs no
+// DOM at all - it is pure state (offlinePairing.js) - so node is both
+// correct and the only environment this specific network-blocking trick
+// works in.
 /**
  * State (e), the actual proof: with every network primitive this test
  * process could plausibly reach for made to throw, pairing a dish against

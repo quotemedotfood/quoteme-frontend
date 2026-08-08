@@ -328,6 +328,19 @@ export function usePairMe(opts = {}){
   // Only runs when the URL is /t/demo (TableCodeRoute sets tableCode from
   // the :code param); every other route leaves demoDishes null so the rest
   // of the app keeps using Desi's static DISHES/offerSet, unchanged.
+  //
+  // LOOSE END, fixed: `st.demoLoading` used to be in this effect's own
+  // dependency array. patch({demoLoading:true}) below re-renders with
+  // demoLoading now true, which - because it was a dependency - re-ran
+  // this very effect. React runs the PREVIOUS invocation's cleanup first,
+  // setting that invocation's own `cancelled` to true; the in-flight
+  // `await ensureSession()` above then resumed to find its own closure's
+  // `cancelled` already true and returned before ever calling getDemo().
+  // Net effect: the /t/demo fetch self-cancelled on every load and this
+  // path silently fell back to Desi's static DISHES/offerSet. demoLoading
+  // is still read (not written) inside the effect body as a guard against
+  // a stray re-run from the two deps that remain, it just cannot also be a
+  // dependency of the same effect that sets it.
   React.useEffect(() => {
     if (st.tableCode !== 'demo' || st.demoDishes || st.demoLoading) return;
     let cancelled = false;
@@ -356,7 +369,7 @@ export function usePairMe(opts = {}){
     })();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [st.tableCode, st.demoDishes, st.demoLoading]);
+  }, [st.tableCode, st.demoDishes]);
 
   // --- Real venue search (GET /v1/venues), replacing the hardcoded demo ---
   React.useEffect(() => {
@@ -632,14 +645,20 @@ export function usePairMe(opts = {}){
           : s===15?()=>go(8):(s===16||s===17)?()=>go(st.back):s===18?()=>patch({s:9,camShot:false}):()=>go(Math.min(15,s+1)),
         hasAlt:s===0||s===1||s===11,
         altLabel:s===0?"Skip setup":s===1?"Not now":"Something else",
-        alt:s===0?()=>patch({s:8,blank:true,skipped:6,likes:[],dislikes:[],diet:[]})
+        // FIX 3: "Skip setup" was a raw patch({s:8,...}) - the URL stayed on
+        // '/' even though the screen moved to WhereTo. Split into the extra
+        // fields (still patch()) + go(8) so the route follows the screen.
+        alt:s===0?()=>{patch({blank:true,skipped:6,likes:[],dislikes:[],diet:[]});go(8);}
           :s===1?()=>go(2):()=>go(10),
         skip:()=>{
           track('skip_screen_'+(s-1)); // s is 2..7 (Q1..Q6) whenever skip is reachable.
           patch(x=>({s:Math.min(15,x.s+1),skipped:x.skipped+1}));
         },
         goMenu:()=>go(9),
-        goSettings:()=>patch({s:17,back:s===17?st.back:s}),
+        // FIX 3: was a raw patch({s:17,...}) - the URL never updated when
+        // the chrome Settings gear was tapped. Now goes through go() like
+        // every other screen transition.
+        goSettings:()=>{patch({back:s===17?st.back:s});go(17);},
         goSignIn:()=>patch({s:1,back:17}),
         s0:s===0,s1:s===1,s2:s===2,s3:s===3,s4:s===4,s5:s===5,s6:s===6,s7:s===7,s8:s===8,s9:s===9,s10:s===10,s11:s===11,s12:s===12,s13:s===13,s14:s===14,s15:s===15,s16:s===16,s17:s===17,s18:s===18,
         goCamera:()=>go(18),
@@ -853,7 +872,9 @@ export function usePairMe(opts = {}){
         myNots:st.dislikes.length?st.dislikes:["nothing on file"],
         historyCount:MY_HISTORY.length+" bottles",
         history:MY_HISTORY.map(([w,where,dish,r],i)=>({w,where,dish,stars:stars(r),
-          open:()=>patch({s:16,bottle:["huet","foil","huet","trapet","gim"][i],back:14})})),
+          // FIX 3: was a raw patch({s:16,...}) - opening a history row never
+          // updated the URL away from '/profile'. go(16) now does.
+          open:()=>{patch({bottle:["huet","foil","huet","trapet","gim"][i],back:14});go(16);}})),
         friends:[{name:"Sarah",sub:"partner . loves Loire whites, never bubbles",initial:"S",go:()=>go(14)},
           {name:"Dan",sub:"friend . Barolo, and nothing under 13%",initial:"D",go:()=>go(14)},
           {name:"Priya",sub:"colleague . riesling, no red at lunch",initial:"P",go:()=>go(14)}],
