@@ -17,22 +17,22 @@
  *      poisoned to always reject. That is the "still returns three
  *      offerings" guarantee the no-signal step is asking for.
  *
- * TODO(A)/TODO(C): today TheWine.jsx does NOT call into packages/pairing at
- * all when POST /v1/pair fails or 404s (state.js's s===10 cta handler just
- * falls through to go(11) and TheWine.jsx renders Desi's hardcoded
- * `offerSet`, not a real offline computation - see the TODO comment right
- * above `offerTitle` in state.js). Once Lane A/C wires TheWine's no-signal
- * fallback to actually call packages/pairing (rather than a hardcoded
- * demo array), promote the skipped UI-level test at the bottom of this file
- * from `it.skip` to `it`.
+ * PART 1 (done): TheWine.jsx's no-signal fallback now calls packages/pairing
+ * (via state.js's computeOfflineOfferings, s===10 cta handler's legacy-path
+ * catch) rather than falling back to Desi's hardcoded `offerSet` when POST
+ * /v1/pair fails or navigator.onLine is false. The UI-level case below is
+ * un-skipped and asserts exactly that.
  */
 import { describe, it, expect, beforeAll, beforeEach, afterEach } from 'vitest';
+import { screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { buildTables } from '../../../../packages/pairing/src/tables.js';
 import { loadLocalBundle } from '../../../../packages/pairing/src/loadLocalTables.js';
 import { DEMO, SELFTEST } from '../../../../packages/pairing/src/demoFixtures.js';
 import { pair, courseItOut, oneBottle } from '../../../../packages/pairing/src/index.js';
 import { labelPicks } from '../../../../packages/pairing/src/roles.js';
 import { ApiError, pair as apiPair, ensureSession } from '../../src/lib/api.js';
+import { renderPairMeApp } from './helpers/renderPairMeApp.jsx';
 
 let T;
 let originalFetch;
@@ -122,14 +122,69 @@ describe('no-signal: the client pairing engine (packages/pairing) still returns 
   });
 });
 
-describe('TODO(A)/TODO(C): UI-level no-signal fallback (not wired yet)', () => {
-  // Pending Lane A/C wiring TheWine.jsx's no-signal path to packages/pairing
-  // instead of Desi's hardcoded offerSet (state.js, search "TODO: st.pairOfferings").
-  // Once wired, this should render <PairMeApp/> with global.fetch poisoned the
-  // same way as above, drive to the TheWine screen, and assert 3 offer cards
-  // still render sourced from packages/pairing rather than the hardcoded array.
-  it.skip('TheWine screen still shows 3 offerings when the network is down, sourced from packages/pairing', () => {
-    // TODO(A): flip this on once TheWine.jsx/state.js call packages/pairing's
-    // pair()/courseItOut()/oneBottle() as the no-signal fallback.
+describe('PART 1: UI-level no-signal fallback (TheWine calls packages/pairing on failure)', () => {
+  // The full walk from '/', fetch poisoned from beforeEach - i.e. before
+  // this component ever mounts, so ensureSession/getProfile/fetchRulesBundle
+  // all fail too, exactly like a device that has never once had signal.
+  // TheWine's no-signal fallback (state.js's s===10 cta handler, legacy-path
+  // catch -> computeOfflineOfferings) must still compute and render 3 real
+  // offerings from packages/pairing - not a hang, not an error screen, and
+  // not Desi's hardcoded offerSet ("Three wines, no assumptions" / "Safe,
+  // and we mean that kindly" / etc, none of which should appear here).
+  //
+  // Expected top 3 are deterministic (same reasoning as the unit tests
+  // above: same dish set + same wine list + same tables => same ranked
+  // picks every time) - verified against computeOfferings() directly with
+  // the exact inputs this walk produces (chosen: a2/a5/e6/e9/s2, via
+  // OFFLINE_WINE_ROWS + OFFLINE_COMPONENTS_BY_ID, course_it_out direction):
+  // house=Trapet Gevrey-Chambertin, suited=Bouvier Marsannay, crowd=
+  // Berthet-Bondet Jura Savagnin.
+  it('TheWine screen still shows 3 offerings when the network is down, sourced from packages/pairing', async () => {
+    const user = userEvent.setup();
+    const { findByText, getByRole } = renderPairMeApp('/');
+
+    await user.click(getByRole('button', { name: 'Skip setup' }));
+    await findByText('Where are you eating?'); // WhereTo
+
+    await user.click(getByRole('button', { name: 'Continue' }));
+    await findByText(/Their menu tonight/i); // Menu
+
+    await user.click(getByRole('button', { name: 'Pair it' }));
+    await findByText('How do you want to drink?'); // HowToDrink
+
+    await user.click(getByRole('button', { name: 'Show wine' }));
+
+    // TheWine, real engine output: usingEngine flips offerTitle away from
+    // Desi's static copy and hides the "Demo state" blank-profile toggle
+    // (showBlankToggle:!usingEngine in state.js).
+    await findByText('Your wine');
+    expect(screen.queryByText('Three wines, no assumptions')).not.toBeInTheDocument();
+    expect(screen.queryByText(/Demo state:/)).not.toBeInTheDocument();
+
+    // Role labels (roles.js SLOTS), in rank order.
+    expect(screen.getByText('House suggestion')).toBeInTheDocument();
+    expect(screen.getByText('Suited to you')).toBeInTheDocument();
+    expect(screen.getByText('Crowd pleaser')).toBeInTheDocument();
+
+    // Real wines from packages/pairing scoring the actual chosen dishes,
+    // never Desi's hardcoded Gimonnet/Trapet/Foillard offerSet trio.
+    expect(screen.getByText('Trapet')).toBeInTheDocument();
+    expect(screen.getByText('Gevrey-Chambertin')).toBeInTheDocument();
+    expect(screen.getByText('Bouvier')).toBeInTheDocument();
+    expect(screen.getByText('Marsannay')).toBeInTheDocument();
+    expect(screen.getByText('Berthet-Bondet')).toBeInTheDocument();
+
+    // Pronunciation (the `say` field, rendered in TheWine.jsx's "Say it"
+    // row) present for each - proves the full wine object came through,
+    // not just a label.
+    expect(screen.getByText('zhev-RAY shom-ber-TAN')).toBeInTheDocument();
+    expect(screen.getByText('boo-vee-AY, mar-sah-NAY')).toBeInTheDocument();
+    expect(screen.getByText('ber-TAY bon-DAY, sah-vahn-YAN')).toBeInTheDocument();
+
+    // Reason (`why`), a real fired-rule sentence, not the generic fallback.
+    // House and suited share a fired rule (both pinot noir), so this is one
+    // shared sentence rendered twice, plus crowd's own distinct reason.
+    expect(screen.getAllByText(/earth and umami is what pinot is for/)).toHaveLength(2);
+    expect(screen.getByText(/a vinaigrette will out-acid anything softer and flatten it/)).toBeInTheDocument();
   });
 });

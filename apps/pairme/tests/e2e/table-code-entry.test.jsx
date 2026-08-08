@@ -33,15 +33,33 @@ describe('table code entry: GET /t/demo', () => {
     expect(sessionCalls).toHaveLength(1);
   });
 
-  // TODO(A): routes.jsx's own comment says the contract has no documented
-  // endpoint yet to resolve a table code to a venue ("TODO once the BE adds
-  // a resolver: call it here and set selectedVenueId from the result").
-  // vm.tableCode is captured today but has zero consumers anywhere in
-  // src/screens/*.jsx (grepped) - there is nothing in the DOM to assert on
-  // yet. Once a resolver lands, promote this: mock its endpoint, assert
-  // selectedVenueId gets set, and assert the Menu screen reflects that
-  // venue (title, list) rather than the static "Aquitaine" demo data.
-  it.skip('resolves the table code to a venue via the (not yet built) resolver endpoint', () => {
-    // TODO(A)
+  // PART 2: the generic resolver, GET /v1/t/:code (superset #340, not built
+  // server side yet - see lib/api.js's getTableCode). Any code other than
+  // "demo" now calls it (state.js's /t/:code effect); mocked in
+  // msw/handlers.js per the same CONTRACT this FE codes against.
+  it('resolves a generic table code to its venue via GET /v1/t/:code, feeding the /t/demo data path', async () => {
+    const { findByText, currentPath } = renderPairMeApp('/t/table-42');
+
+    // The mocked resolver's venue name replaces the "Aquitaine" fallback -
+    // proof this is real data from the resolver, not the static default.
+    await findByText('Le Petit Bistro');
+    await findByText(/Their menu tonight/i);
+    expect(currentPath()).toBe('/t/table-42');
+
+    const resolverCalls = requestLog.filter((r) => r.method === 'GET' && r.path === '/v1/t/table-42');
+    expect(resolverCalls).toHaveLength(1);
+  });
+
+  it('shows plain-language copy, never a code, when the resolver 404s (VENUE_NOT_FOUND)', async () => {
+    const { findByText, queryByText } = renderPairMeApp('/t/TABLE_CODE_NOT_FOUND');
+
+    await findByText(/We could not find that table\. Ask your server for the code, or point your camera at the wine list instead\./);
+    // Never the raw error_code or an HTTP status.
+    expect(queryByText(/VENUE_NOT_FOUND/)).not.toBeInTheDocument();
+    expect(queryByText(/404/)).not.toBeInTheDocument();
+
+    // The walk is not stuck: Menu still renders with Desi's static DISHES
+    // (the pre-resolver fallback) rather than a broken/blank screen.
+    await findByText(/Their menu tonight/i);
   });
 });

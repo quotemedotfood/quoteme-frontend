@@ -25,11 +25,18 @@ function RouteBridge({ vm, screenIndex, tableCode }) {
 function TableCodeRoute({ vm }) {
   const { code } = useParams();
   // Table QR landing. DO NOT RENAME this path: the Universal Links
-  // association file points here. The contract has no documented endpoint
-  // to resolve a table code to a venue yet, so this stores the code and
-  // renders the Menu screen (the same destination WhereTo's "scan the code"
-  // button reaches) rather than guessing at a lookup call. TODO once the BE
-  // adds a resolver: call it here and set selectedVenueId from the result.
+  // association file points here. This renders the Menu screen (the same
+  // destination WhereTo's "scan the code" button reaches) while
+  // usePairMe's own /t/:code effect (state.js) resolves `code` to a venue +
+  // wine list via GET /v1/t/:code and feeds the result into the same
+  // /t/demo data path (venueName/venueCity/selectedVenueId/demoWineRows/
+  // demoDishes).
+  //
+  // PENDING BE: GET /v1/t/:code is NOT built server side yet - it rides
+  // superset #340. This FE is coded against the contract (see
+  // lib/api.js's getTableCode doc comment) and mocked in tests until the
+  // backend catches up; `/t/demo` alone keeps using the already-built GET
+  // /v1/demo, unchanged.
   return <RouteBridge vm={vm} screenIndex={9} tableCode={code} />;
 }
 

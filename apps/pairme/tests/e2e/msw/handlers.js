@@ -172,6 +172,29 @@ export const handlers = [
     });
   }),
 
+  // GET /v1/t/:code - PART 2's generic table-code resolver (superset #340,
+  // NOT BUILT server side yet - see lib/api.js's getTableCode doc comment
+  // and routes.jsx's TableCodeRoute). Mocked here per the CONTRACT this FE
+  // codes against: 200 {venue,capture_id,raw_text,rows} (same shape as GET
+  // /v1/demo) for a known code, 404 {error_code:"VENUE_NOT_FOUND",message}
+  // for an unknown one. TABLE_CODE_NOT_FOUND is the one sentinel this suite
+  // treats as unknown; any other code resolves.
+  http.get(`${BASE_URL}/v1/t/:code`, async ({ request, params }) => {
+    record(request);
+    if (params.code === 'TABLE_CODE_NOT_FOUND') {
+      return HttpResponse.json(
+        { error_code: 'VENUE_NOT_FOUND', message: 'We could not find that table. Ask your server for the code, or point your camera at the wine list instead.' },
+        { status: 404 }
+      );
+    }
+    return HttpResponse.json({
+      venue: { id: 'venue_t_e2e', name: 'Le Petit Bistro', city: 'Cambridge', state: 'MA' },
+      capture_id: 'cap_t_e2e',
+      raw_text: DEMO_RAW_TEXT,
+      rows: DEMO_ROWS,
+    });
+  }),
+
   // POST /v1/pairings - RECORDS a decision already computed client-side by
   // packages/pairing (state.js's s===10 cta handler on the /t/demo path).
   http.post(`${BASE_URL}/v1/pairings`, async ({ request }) => {
