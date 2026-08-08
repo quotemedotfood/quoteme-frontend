@@ -181,3 +181,11 @@ export function fetchRulesBundle(sinceVersion) {
   const qs = sinceVersion != null ? `?since_version=${sinceVersion}` : '';
   return request(`/v1/rules/bundle${qs}`);
 }
+
+/** POST /v1/events - instrumentation beacon. Not in the documented v1
+ * contract (see PairMe API Contract v1); wired ahead of the BE catching up
+ * per the demo instrumentation spec. Callers should use track() in
+ * ./track.js rather than this directly, so a dropped beacon never throws. */
+export function postEvent(event, props) {
+  return request('/v1/events', { method: 'POST', body: { event, props: props || {} } });
+}

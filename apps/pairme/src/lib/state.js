@@ -5,12 +5,14 @@ import {
   putProfile,
   capture as apiCapture,
   postCaptureRows,
+  patchCorrection,
   getVenues,
   pair as apiPair,
   rate as apiRate,
   fetchRulesBundle,
 } from './api.js';
 import { parseWineList, loadRulesBundle } from '../../../../packages/pairing/src/index.js';
+import { track } from './track.js';
 
 const NAVY="#1F2A44",PEAR="#FFCC7D",ORANGE="#F2993D",BLUED="#5C8A9C";
 
@@ -106,6 +108,9 @@ const SARAH_HISTORY=[
 
 export const RAIL_LABELS = RAIL;
 export { W, BRIEF, DISHES, SECS, ACCOUNTS };
+// Exported for unit testing the PUT /v1/profile payload shape in isolation
+// (no React render needed): see lib/state.test.js.
+export { buildProfilePayload };
 
 // ---------------------------------------------------------------------------
 // Routing bridge. Index = screen number (matches SCREENS in App.jsx), value
@@ -148,6 +153,23 @@ const DIETARY_LABELS = new Set(['vegetarian','vegan','pescatarian']);
 const NOT_DRINKING_LABELS = new Set(['no alcohol for me','pregnant']);
 const PARSER_VERSION = 'pairme-web-stub/0.0.0';
 
+// Every onboarding screen's free-text box, keyed by screen, so an answer
+// with no dedicated flat slot (levelOwn/advOwn/budgetOwn) is not silently
+// dropped. Additive to the flat likes_free_text/dislikes_free_text/
+// allergies_free_text slots the contract documents, not a replacement for
+// them (see buildProfilePayload below). BE CATCH-UP: preferences.free_text
+// as a nested jsonb blob is not yet in the documented PairMe API Contract
+// v1; FE wires it ahead of the BE per the demo spec.
+function buildFreeText(st) {
+  const ft = {};
+  if (st.levelOwn) ft.knowledge = st.levelOwn;
+  if (st.advOwn) ft.adventure = st.advOwn;
+  if (st.budgetOwn) ft.budget = st.budgetOwn;
+  if (st.loveOwn || st.notOwn) ft.taste = { love: st.loveOwn || null, not: st.notOwn || null };
+  if (st.dietOwn) ft.must_know = st.dietOwn;
+  return ft;
+}
+
 function buildProfilePayload(st) {
   const allergies = st.diet.filter((d) => ALLERGY_LABELS.has(d));
   const dietary = st.diet.filter((d) => DIETARY_LABELS.has(d));
@@ -155,6 +177,7 @@ function buildProfilePayload(st) {
   const hi = Math.max(st.bMin, st.bMax);
   const somLevel = LEVEL_OPTIONS.indexOf(st.level) + 1;
   const targetLevel = WANT_OPTIONS.indexOf(st.want) + 1;
+  const freeText = buildFreeText(st);
   return {
     preferences: {
       som_level: somLevel > 0 ? somLevel : undefined,
@@ -170,6 +193,7 @@ function buildProfilePayload(st) {
       dislikes: st.dislikes,
       dislikes_free_text: st.notOwn || null,
       not_drinking: notDrinking,
+      free_text: Object.keys(freeText).length ? freeText : undefined,
     },
     safety: {
       allergies,
@@ -241,13 +265,16 @@ export function usePairMe(opts = {}){
     // Integration state (not part of Desi's original demo model).
     apiError:null,apiLoading:false,
     anonId:null,
-    captureId:null,rawText:"",captureRows:[],
+    captureId:null,rawText:"",captureRows:[],correctionsCount:0,
     pairOfferings:null,pairCompromise:null,
     venueResults:[],venueMessage:null,selectedVenueId:null,
     tableCode:null});
   const patch = (p) => set(s => Object.assign({}, s, typeof p === 'function' ? p(s) : p));
   const bodyEl = React.useRef(null);
   const secs = React.useRef({});
+  // Guards onboard_start firing once per app boot, not on every revisit of
+  // screen 2 (rail nav, in-screen back, browser back/forward all call go(2)).
+  const onboardStartFired = React.useRef(false);
 
   // --- Bootstrap: identity + profile hydrate + rules bundle warm up -------
   React.useEffect(() => {
@@ -257,6 +284,7 @@ export function usePairMe(opts = {}){
         const anonId = await ensureSession();
         if (cancelled) return;
         patch({ anonId });
+        track('launch');
         const profile = await getProfile();
         if (cancelled) return;
         patch(hydrateFromProfile(profile));
@@ -297,6 +325,14 @@ export function usePairMe(opts = {}){
   }, [st.venueQ]);
 
   const go=(n)=>{
+    // Onboarding screens are indices 2..7 (Q1Knowledge..Q6Summary); the
+    // event set numbers them screen_1..screen_6 (n-1).
+    if (n===2 && !onboardStartFired.current) {
+      onboardStartFired.current = true;
+      track('onboard_start');
+    }
+    if (n>=2 && n<=7) track('screen_'+(n-1));
+    if (n===12) track('show_server'); // Present: the wine is about to be shown to the table.
     patch({s:n});
     if(bodyEl.current)bodyEl.current.scrollTop=0;
     const path = PATH_FOR_SCREEN[n];
@@ -325,16 +361,37 @@ export function usePairMe(opts = {}){
   // Capture pipeline: POST /v1/capture -> parseWineList (stub, always [])
   // -> POST /v1/capture/:id/rows (404 expected until BE catches up, G1).
   const handleCaptureFile = async (file) => {
-    patch({ camShot: true, apiError: null });
+    // correctionsCount resets per capture: corrections_per_capture is a
+    // quality prop scoped to the capture it corrects, not a lifetime total.
+    patch({ camShot: true, apiError: null, correctionsCount: 0 });
+    track('capture_start');
     try {
       const captureRes = await apiCapture(file, st.selectedVenueId || undefined);
+      track('capture_ok', { extraction_source: captureRes.source });
       const rawText = captureRes.raw_text || captureRes.extraction || '';
       const rows = parseWineList(rawText);
+      track('parse_ok', { wines_found: rows.length, extraction_source: captureRes.source });
       await postCaptureRows(captureRes.capture_id, PARSER_VERSION, rows).catch(() => {});
       patch({ camShot: false, captureId: captureRes.capture_id, rawText, captureRows: rows });
       go(9); // -> Menu, same destination as Desi's original demo timeout.
     } catch (err) {
       patch({ camShot: false, apiError: err.message || 'We could not read that photo. Please try again.' });
+    }
+  };
+
+  // PATCH /v1/capture/:id/corrections. Not called by any screen yet (no
+  // correction UI exists, see TheWine/Menu TODOs); exposed on the hook so
+  // Lane A/B screens can wire it once that UI lands. corrections_per_capture
+  // counts corrections against the currently open capture only.
+  const submitCorrection = async (correction) => {
+    if (!st.captureId) return;
+    try {
+      await patchCorrection(st.captureId, correction);
+      const count = (st.correctionsCount || 0) + 1;
+      patch({ correctionsCount: count });
+      track('correction_made', { corrections_per_capture: count });
+    } catch (err) {
+      patch({ apiError: err.message || 'Could not save that correction.' });
     }
   };
 
@@ -398,6 +455,7 @@ export function usePairMe(opts = {}){
             go(8);
           }
           : s===10 ? async()=>{
+            track('pair_request');
             try{
               const res = await apiPair({
                 dish_ids: st.picked,
@@ -415,6 +473,7 @@ export function usePairMe(opts = {}){
             go(11);
           }
           : s===13 ? async()=>{
+            track('rate_submit', { dish: st.rate.dish, wine: st.rate.wine, pairing: st.rate.pair });
             if (st.captureId) {
               try{
                 await apiRate({
@@ -431,7 +490,10 @@ export function usePairMe(opts = {}){
         altLabel:s===0?"Skip setup":s===1?"Not now":"Something else",
         alt:s===0?()=>patch({s:8,blank:true,skipped:6,likes:[],dislikes:[],diet:[]})
           :s===1?()=>go(2):()=>go(10),
-        skip:()=>patch(x=>({s:Math.min(15,x.s+1),skipped:x.skipped+1})),
+        skip:()=>{
+          track('skip_screen_'+(s-1)); // s is 2..7 (Q1..Q6) whenever skip is reachable.
+          patch(x=>({s:Math.min(15,x.s+1),skipped:x.skipped+1}));
+        },
         goMenu:()=>go(9),
         goSettings:()=>patch({s:17,back:s===17?st.back:s}),
         goSignIn:()=>patch({s:1,back:17}),
@@ -645,6 +707,11 @@ export function usePairMe(opts = {}){
         syncFromRoute,
         tableCode:st.tableCode,
         handleCaptureFile,
+        // Instrumentation: exposed so any screen can fire a custom event,
+        // e.g. a future correction UI calling submitCorrection (below) or
+        // vm.track('correction_made', {...}) directly.
+        track,
+        submitCorrection,
       };
 
 }
