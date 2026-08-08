@@ -3,7 +3,7 @@ import { Input } from '../lib/ds';
 
 /** Screen 12 · The wine */
 export default function TheWine(vm){
-  const { fWhy, offerTitle, offerSub, blankLabel, toggleBlank, presentCount, offers } = vm;
+  const { fWhy, offerTitle, offerSub, blankLabel, toggleBlank, showBlankToggle, presentCount, offers, compromiseNote } = vm;
   return (
 <>
 <div>
@@ -12,7 +12,15 @@ export default function TheWine(vm){
 <div style={{font: "400 12.5px/1.5 var(--font-body)", color: "var(--pm-chromeSub)", marginTop: "5px"}}>{offerSub}</div>
 </div>
 <div style={{padding: "18px"}}>
+{showBlankToggle ? (
 <button onClick={toggleBlank} style={{width: "100%", textAlign: "left", border: "1px dashed var(--pm-blue)", background: "var(--pm-blueBg)", borderRadius: "10px", padding: "10px 12px", marginBottom: "12px", cursor: "pointer", font: "600 11.5px var(--font-body)", color: "var(--pm-blue)"}}>Demo state: {blankLabel}</button>
+) : null}
+{compromiseNote ? (
+<div style={{border: "1px solid var(--pm-warnBd)", background: "var(--pm-warnBg)", borderRadius: "12px", padding: "13px", marginBottom: "14px"}}>
+<div style={{font: "700 11.5px var(--font-body)", color: "var(--pm-warnInk)", letterSpacing: ".06em", textTransform: "uppercase"}}>Where this bottle gives ground</div>
+<div style={{font: "400 12.5px/1.6 var(--font-body)", color: "var(--pm-ink)", marginTop: "6px"}}>On the {compromiseNote.dish}: {compromiseNote.text}</div>
+</div>
+) : null}
 <div style={{font: "400 12px var(--font-body)", color: "var(--pm-muted)", marginBottom: "10px"}}>Tap the ones you want. {presentCount}</div>
 {(offers || []).map((w, i) => (
 <React.Fragment key={i}>
@@ -45,7 +53,7 @@ export default function TheWine(vm){
 <div style={{font: "600 10.5px var(--font-body)", color: "var(--pm-pearInk)", letterSpacing: ".06em", textTransform: "uppercase"}}>Say it</div>
 <div style={{font: "700 14px var(--font-body)", color: "var(--pm-ink)"}}>{w.say}</div>
 </div>
-<button onClick={w.open} style={{flex: "none", border: "1px solid var(--pm-rule)", background: "transparent", color: "var(--pm-accent2)", borderRadius: "999px", padding: "9px 13px", font: "600 11.5px var(--font-body)", cursor: "pointer", minHeight: "40px"}}>Brief ›</button>
+{w.open ? (<button onClick={w.open} style={{flex: "none", border: "1px solid var(--pm-rule)", background: "transparent", color: "var(--pm-accent2)", borderRadius: "999px", padding: "9px 13px", font: "600 11.5px var(--font-body)", cursor: "pointer", minHeight: "40px"}}>Brief ›</button>) : null}
 </div>
 </div>
 </React.Fragment>

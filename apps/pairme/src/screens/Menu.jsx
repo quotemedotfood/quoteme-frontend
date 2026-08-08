@@ -3,12 +3,12 @@ import { Input } from '../lib/ds';
 
 /** Screen 10 · The menu */
 export default function Menu(vm){
-  const { fUnread, jumps, menu } = vm;
+  const { fUnread, jumps, menu, venueName } = vm;
   return (
 <>
 <div>
 <div style={{background: "var(--pm-chrome)", padding: "18px"}}>
-<div style={{font: "600 20px var(--font-display)", color: "#fff"}}>Aquitaine</div>
+<div style={{font: "600 20px var(--font-display)", color: "#fff"}}>{venueName}</div>
 <div style={{font: "400 12.5px var(--font-body)", color: "var(--pm-chromeSub)", marginTop: "5px"}}>Their menu tonight. Tap everything the table is having.</div>
 </div>
 <div style={{position: "sticky", top: "0", zIndex: "3", background: "var(--pm-page)", borderBottom: "1px solid var(--pm-rule)", padding: "10px 14px", display: "flex", gap: "7px", overflowX: "auto"}}>

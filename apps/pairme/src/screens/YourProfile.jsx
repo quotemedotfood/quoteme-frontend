@@ -2,7 +2,8 @@ import React from 'react';
 
 /** Screen 15 · Your profile */
 export default function YourProfile(vm){
-  const { dietLine, connections, shareTable, shareNote, myLikes, myNots, historyCount, history, friends } = vm;
+  const { dietLine, connections, shareTable, shareNote, myLikes, myNots, historyCount, history, friends,
+    deleteAccountLabel, deleteAccountSub, deleteAccount, cancelDelete, showCancelDelete, deleteDone } = vm;
   return (
 <>
 <div>
@@ -93,6 +94,20 @@ export default function YourProfile(vm){
 </React.Fragment>
 ))}
 <div style={{border: "1px solid var(--pm-selBd)", background: "var(--pm-sel)", borderRadius: "12px", padding: "13px", marginTop: "6px", font: "400 12.5px/1.6 var(--font-body)", color: "var(--pm-ink)"}}>Your taste isn't a setting you finish. Every rating moves it a little, and you can read exactly what we think we know about you, right here.</div>
+
+<div style={{font: "600 var(--pm-sec) var(--font-body)", color: "var(--pm-muted)", letterSpacing: ".08em", textTransform: "uppercase", margin: "22px 0 9px"}}>Account</div>
+<div style={{border: "1px solid var(--pm-warnBd)", background: "var(--pm-warnBg)", borderRadius: "12px", padding: "14px"}}>
+<div style={{font: "600 13.5px var(--font-body)", color: "var(--pm-ink)"}}>{deleteDone ? "Account deleted" : "Delete account"}</div>
+<div style={{font: "400 12px/1.55 var(--font-body)", color: "var(--pm-muted)", margin: "3px 0 11px"}}>{deleteAccountSub}</div>
+{!deleteDone ? (
+<div style={{display: "flex", gap: "8px"}}>
+<button onClick={deleteAccount} style={{flex: "1", border: "1.5px solid var(--pm-warnBd)", background: "transparent", color: "var(--pm-warnInk)", borderRadius: "999px", padding: "12px", font: "600 13px var(--font-body)", cursor: "pointer", minHeight: "44px"}}>{deleteAccountLabel}</button>
+{showCancelDelete ? (
+<button onClick={cancelDelete} style={{flex: "none", border: "1px solid var(--pm-rule)", background: "var(--pm-card)", color: "var(--pm-ink)", borderRadius: "999px", padding: "12px 16px", font: "600 13px var(--font-body)", cursor: "pointer", minHeight: "44px"}}>Cancel</button>
+) : null}
+</div>
+) : null}
+</div>
 </div>
 </div>
 </>

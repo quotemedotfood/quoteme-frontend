@@ -50,6 +50,9 @@ export default function Present(vm){
 <div style={{font: "400 12.5px var(--font-body)", color: "var(--pm-muted)", marginTop: "3px"}}>{h.tip}</div>
 </div>
 </div>
+{h.compromise ? (
+<div style={{font: "400 12px/1.55 var(--font-body)", color: "var(--pm-warnInk)", marginTop: "8px"}}>One bottle, so it gives a little ground: {h.compromise}</div>
+) : null}
 </div>
 </React.Fragment>
 ))}
