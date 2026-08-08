@@ -1,0 +1,18 @@
+/* PairMe tokens. Light, dark and high-contrast are set as inline vars by usePairMe(). */
+:root{
+  --color-pear-50:#FFF7EC; --color-pear-100:#FFEDD6; --color-pear-300:#FFDCAB;
+  --color-pear-500:#FFCC7D; --color-pear-700:#E5A44F; --color-pear-900:#8A5A18;
+
+  --pm-page:#FBFAF7; --pm-card:#fff; --pm-ink:#1C1C1A; --pm-muted:#6B6B66; --pm-rule:#E3E1DB;
+  --pm-chrome:#1F2A44; --pm-chromeSub:#A5CFDD;
+  --pm-sel:#FFF4E4; --pm-selBd:#FFCC7D; --pm-sunken:#F1EFEA;
+  --pm-warnBg:#FEF3E7; --pm-warnBd:#F2993D; --pm-warnInk:#C4701A;
+  --pm-blueBg:#F4F8F9; --pm-blue:#5C8A9C; --pm-pearInk:#8A5A18;
+  --pm-dish:13.5px; --pm-desc:11.5px; --pm-sec:11px; --pm-weight:500;
+}
+input,textarea,button{font-family:var(--font-body)}
+input[type=range]{accent-color:#FFCC7D}
+input:focus,textarea:focus{outline:2px solid #FFCC7D;outline-offset:1px}
+@keyframes pmspin{to{transform:rotate(360deg)}}
+.pm-phone input:not([type=range]){padding-right:44px}
+.pm-phone textarea{padding-right:46px}
