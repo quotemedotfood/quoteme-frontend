@@ -4,7 +4,7 @@ import { parseFreeText } from '../lib/parseFreeText.js';
 import { resolveComponents } from '../lib/dishComponents.js';
 import { SEEDED_WINE_LISTS, getSeededWines } from '../lib/seededLists.js';
 import { getOfflineTables } from '../lib/offlinePairing.js';
-import { computeOfferings } from '../lib/pairingAdapter.js';
+import { computeOfferings, DIRECTION_FOR_FORMAT } from '../lib/pairingAdapter.js';
 import { useSpeech } from '../lib/useSpeech.js';
 
 /**
@@ -66,15 +66,26 @@ export default function EntryScreen() {
   const [freeText, setFreeText] = React.useState('');
   const [dishes, setDishes] = React.useState([]);
   const [selected, setSelected] = React.useState(() => new Set());
-  const [offerings, setOfferings] = React.useState(null);
+  // pairInputs holds the resolved dishes + chosen cellar; offerings is DERIVED
+  // from it plus the format, so the glass/bottle toggle re-ranks over the right
+  // pool with the right strategy (item: separate pools, not a filter) with no
+  // re-parse. `format` defaults to bottle-and-glass shortlist.
+  const [pairInputs, setPairInputs] = React.useState(null);
+  const [format, setFormat] = React.useState('both');
   const [cameraNote, setCameraNote] = React.useState('');
   const cameraInputRef = React.useRef(null);
   // Item 3: voice input for the free-text modes. A spoken answer appends to
   // whatever is already typed, so voice and keyboard compose instead of
   // clobbering. Unsupported browsers keep the plain text input (supported=false
   // hides the mic entirely).
+  const [speechHint, setSpeechHint] = React.useState('');
   const speech = useSpeech({
-    onResult: (t) => setFreeText((prev) => (prev.trim() ? `${prev.trim()} ${t}` : t)),
+    onResult: (t) => { setSpeechHint(''); setFreeText((prev) => (prev.trim() ? `${prev.trim()} ${t}` : t)); },
+    // Web Speech firing "no-speech" (or any error) IS the "returns nothing"
+    // case. There is no synchronous Whisper endpoint to fall back to (the BE
+    // one is async upload+poll, admin-scoped), so the honest fallback is the
+    // text field already on screen: say so plainly.
+    onError: () => setSpeechHint('We did not catch that. Type it instead.'),
   });
   const micButton = (
     speech.supported ? (
@@ -106,8 +117,24 @@ export default function EntryScreen() {
   const needsListPicker = venueListId === null || mode === MODE_HOME;
 
   function resetOfferings() {
-    if (offerings) setOfferings(null);
+    if (pairInputs) setPairInputs(null);
   }
+
+  // Offerings are derived: switching format re-runs the client engine with the
+  // strategy + pool that format implies (DIRECTION_FOR_FORMAT), never a filter
+  // over one ranked list. Barolo is bottle-only, so `glass` here can legitimately
+  // come back empty; the render says so rather than faking a pour.
+  const offerings = React.useMemo(() => {
+    if (!pairInputs) return null;
+    const T = getOfflineTables();
+    return computeOfferings(
+      DIRECTION_FOR_FORMAT[format] || 'several',
+      pairInputs.engineDishes,
+      pairInputs.wines,
+      T,
+      { format },
+    );
+  }, [pairInputs, format]);
 
   function pickVenueList(id) {
     setVenueListId(id);
@@ -155,19 +182,18 @@ export default function EntryScreen() {
   function pairIt() {
     const chosen = dishes.filter((d, i) => selected.has(dishKey(d, i)));
     if (!chosen.length || !venueListId) return;
+    // Keep section on each dish so coverage can speak in course terms (mains vs
+    // starters) and the glass pool can pour per course.
     const engineDishes = chosen.map((d) => ({
       n: d.name,
+      sec: d.section || null,
       components: resolveComponents(d.name, d.description),
     }));
     const wines = getSeededWines(venueListId);
-    const T = getOfflineTables();
-    // The paste/entry flow has no glass-vs-bottle direction UI, so it wants a
-    // flat table-wide shortlist (house/suited/crowd), which is `several`.
-    // `course_it_out` now means a genuine per-course pour (item 7) and would
-    // label offerings "With the <dish>" instead of the role slots this screen
-    // presents.
-    const result = computeOfferings('several', engineDishes, wines, T);
-    setOfferings(result);
+    // Offerings are derived from these inputs + the format toggle (see the
+    // useMemo above); default to the neutral shortlist until they toggle.
+    setFormat('both');
+    setPairInputs({ engineDishes, wines });
   }
 
   return (
@@ -311,6 +337,9 @@ export default function EntryScreen() {
               ) : null}
               {micButton}
             </div>
+            {speechHint ? (
+              <div style={{ font: '500 12px inherit', color: COLORS.warnInk, marginTop: 6 }}>{speechHint}</div>
+            ) : null}
             <button
               type="button"
               onClick={runParseFreeText}
@@ -351,6 +380,9 @@ export default function EntryScreen() {
               ) : null}
               {micButton}
             </div>
+            {speechHint ? (
+              <div style={{ font: '500 12px inherit', color: COLORS.warnInk, marginTop: 6 }}>{speechHint}</div>
+            ) : null}
             <button
               type="button"
               onClick={runParseFreeText}
@@ -457,21 +489,42 @@ export default function EntryScreen() {
           </section>
         ) : null}
 
-        {/* --- The 3 offerings screen ------------------------------------ */}
+        {/* --- Offerings: two pools, keyed on format --------------------- */}
         {offerings ? (
           <section aria-label="Your wine" style={{ marginTop: 26 }}>
             <h2 style={{ font: '700 18px inherit', margin: '0 0 4px' }}>Your wine</h2>
             <p style={{ font: '400 13px inherit', color: COLORS.muted, margin: '0 0 12px' }}>
-              Ranked for the table, from {SEEDED_WINE_LISTS.find((l) => l.id === venueListId)?.label}.
+              From {SEEDED_WINE_LISTS.find((l) => l.id === venueListId)?.label}.
             </p>
+
+            {/* Format toggle: switches POOL + ranking strategy, not a filter. */}
+            <div role="tablist" aria-label="Glass or bottle" style={{ display: 'flex', gap: 4, background: COLORS.rule, borderRadius: 999, padding: 4, marginBottom: 6 }}>
+              {[['glass', 'By the glass'], ['bottle', 'Single bottle'], ['both', 'Both']].map(([k, label]) => (
+                <button key={k} role="tab" aria-selected={format === k} onClick={() => setFormat(k)}
+                  style={{ flex: 1, border: 'none', cursor: 'pointer', borderRadius: 999, padding: '8px 6px', minHeight: 38, font: `${format === k ? '700' : '500'} 12px inherit`, color: format === k ? '#fff' : COLORS.ink, background: format === k ? COLORS.chrome : 'transparent' }}>
+                  {label}
+                </button>
+              ))}
+            </div>
+            <p style={{ font: '400 12px/1.4 inherit', color: COLORS.muted, margin: '0 0 12px' }}>
+              {format === 'glass' ? 'A pour for each course, ranked per dish.'
+                : format === 'bottle' ? 'One bottle across everything, and where it gives ground.'
+                : 'A table-wide shortlist to choose from together.'}
+            </p>
+
             {offerings.offerings.length === 0 ? (
               <p style={{ font: '400 14px inherit', color: COLORS.muted }}>
-                Nothing on this list cleared every hard rule for what you picked. Try picking fewer dishes, or a different list.
+                {format === 'glass'
+                  ? 'This cellar has no by-the-glass list. Try Single bottle or Both.'
+                  : 'Nothing on this list cleared every hard rule for what you picked. Try picking fewer dishes, or a different list.'}
               </p>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {offerings.offerings.map((o, i) => (
-                  <div key={o.wine.label || i} style={{ padding: '14px 16px', borderRadius: 14, border: `1.5px solid ${COLORS.rule}`, background: COLORS.card }}>
+                  // key must be unique per offering: a per-course glass pour can
+                  // repeat the same wine across courses, so o.wine.label alone
+                  // duplicates and breaks reconciliation when the pool switches.
+                  <div key={`${format}-${i}`} style={{ padding: '14px 16px', borderRadius: 14, border: `1.5px solid ${COLORS.rule}`, background: COLORS.card }}>
                     <div style={{ font: '600 12px inherit', color: COLORS.chrome, textTransform: 'uppercase', letterSpacing: '.03em', marginBottom: 2 }}>
                       {o.label || 'Offering'}
                     </div>
@@ -484,14 +537,45 @@ export default function EntryScreen() {
                     </div>
                     <div style={{ font: '400 13.5px/1.4 inherit' }}>{o.why}</div>
                     {o.covers && o.covers.length ? (
-                      <div style={{ font: '500 12px inherit', color: COLORS.muted, marginTop: 6 }}>
-                        Covers: {o.covers.join(', ')}
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 8, alignItems: 'center' }}>
+                        <span style={{ font: '400 11px inherit', color: COLORS.muted }}>Covers</span>
+                        {o.covers.map((c, ci) => (
+                          <span key={ci} style={{ font: '500 10.5px inherit', color: COLORS.ink, background: COLORS.page, border: `1px solid ${COLORS.rule}`, borderRadius: 999, padding: '3px 9px' }}>{c}</span>
+                        ))}
                       </div>
                     ) : null}
                   </div>
                 ))}
               </div>
             )}
+
+            {/* Single-bottle compromise: never silently omit where it gives ground. */}
+            {offerings.compromise ? (
+              <div style={{ marginTop: 12, border: `1px solid ${COLORS.warnBd}`, background: COLORS.warnBg, borderRadius: 12, padding: 13 }}>
+                <div style={{ font: '700 11px inherit', color: COLORS.warnInk, letterSpacing: '.06em', textTransform: 'uppercase' }}>Where this bottle gives ground</div>
+                <div style={{ font: '400 12.5px/1.5 inherit', color: COLORS.ink, marginTop: 5 }}>
+                  On the {offerings.compromise.dish}: {typeof offerings.compromise.reason === 'string' ? offerings.compromise.reason : `${offerings.compromise.reason.note} (fit score ${offerings.compromise.reason.score}).`}
+                </div>
+              </div>
+            ) : null}
+
+            {/* Coverage: every ordered dish, paired or SAID unpaired. */}
+            {offerings.coverage && offerings.coverage.length ? (
+              <div style={{ marginTop: 12, border: `1px solid ${COLORS.rule}`, background: COLORS.card, borderRadius: 12, padding: 13 }}>
+                <div style={{ font: '700 11px inherit', color: COLORS.muted, letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 8 }}>What we paired</div>
+                {offerings.coverage.map((c, i) => {
+                  const paired = c.status === 'paired';
+                  return (
+                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'baseline', padding: '3px 0' }}>
+                      <span style={{ font: '500 12.5px inherit', color: COLORS.ink }}>{c.dish}</span>
+                      <span style={{ font: `${paired ? '500' : '400'} 11.5px inherit`, color: paired ? COLORS.ink : COLORS.muted, textAlign: 'right' }}>
+                        {paired ? (c.note ? c.note : (c.wine ? `with ${c.wine.split(',')[0]}` : 'paired')) : 'goes unpaired, and that is fine'}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : null}
           </section>
         ) : null}
       </div>

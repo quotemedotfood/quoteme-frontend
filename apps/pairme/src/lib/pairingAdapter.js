@@ -19,6 +19,26 @@ import { buildTables } from '../../../../packages/pairing/src/tables.js';
 
 export { buildTables };
 
+/**
+ * The glass/bottle toggle is a switch between two SEPARATE candidate pools with
+ * two different ranking strategies, not a filter over one ranked list:
+ *
+ *   glass  -> a pour PER dish (course_it_out), over the by-the-glass pool only.
+ *             A glass is one dish, one wine, so each course is optimised alone.
+ *   bottle -> ONE wine ACROSS every dish (one_bottle), over the whole list.
+ *             A bottle is the table's compromise, so it optimises the sum and
+ *             names where it gives ground.
+ *   both   -> a neutral table-wide shortlist (several).
+ *
+ * Ranking one pool and filtering it would give the bottle answer wearing a
+ * glass price; keeping the pools and strategies separate is the point.
+ */
+export const DIRECTION_FOR_FORMAT = {
+  glass: 'course_it_out',
+  bottle: 'one_bottle',
+  both: 'several',
+};
+
 /** A mocked GET /v1/demo row -> the plain wine object the scoring engine
  * reads (label/grape_head/region_head/price/glass), with display-only extras
  * (producer/wine_name/say/speak/tip/meta/client_row_id) passed through
@@ -101,12 +121,14 @@ function structuralWhy(wine) {
  */
 export function computeOfferings(direction, dishes, wines, T, opts = {}) {
   const { format = 'both' } = opts;
-  const pool = format === 'glass' ? wines.filter((w) => w.glass) : wines;
-  // If the glass filter empties the pool (a list with no by-the-glass wines),
-  // fall back to the full pool rather than returning zero offerings: better to
-  // show bottles and let the toggle read as "none by the glass" upstream than
-  // to leave the diner with a blank screen.
-  wines = pool.length ? pool : wines;
+  // The by-the-glass POOL is genuinely a different candidate set, not a view of
+  // the bottle set: only wines the venue actually pours by the glass. If that
+  // set is empty (a bottle-only cellar like Barolo Grill), we return zero
+  // offerings and let the UI SAY "no by-the-glass list" - never fall back to
+  // bottles wearing a glass price, which would be the bottle answer in
+  // disguise. See DIRECTION_FOR_FORMAT: glass ranks per dish, bottle ranks
+  // across dishes, so the two formats are separate rankings, not a filter.
+  wines = format === 'glass' ? wines.filter((w) => w.glass) : wines;
   const engineDishes = dishes.map(dishToEngineDish);
   const dishNames = engineDishes.map((d) => d.name);
 
