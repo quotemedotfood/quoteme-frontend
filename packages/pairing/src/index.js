@@ -1,4 +1,5 @@
 export { parseWineList } from './parseWineList.js';
+export { parseMenu } from './parseMenu.js';
 export { loadRulesBundle, getCachedRulesBundle, clearRulesBundleCache } from './rulesBundle.js';
 
 // Scoring engine (deterministic wine pairing, ported from pairing_engine.py
