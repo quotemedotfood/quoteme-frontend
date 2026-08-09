@@ -71,12 +71,12 @@ function withOfflineComponents(dish) {
  * @param {Array} chosenDishes - the table's already-picked dishes.
  * @param {Array} alreadyLoadedWineRows - st.demoWineRows, may be empty.
  */
-function computeOfflineOfferings(direction, chosenDishes, alreadyLoadedWineRows) {
+function computeOfflineOfferings(direction, chosenDishes, alreadyLoadedWineRows, opts = {}) {
   const T = getOfflineTables();
   const rows = alreadyLoadedWineRows && alreadyLoadedWineRows.length ? alreadyLoadedWineRows : OFFLINE_WINE_ROWS;
   const wines = rows.map(rowToEngineWine);
   const dishes = chosenDishes.map(withOfflineComponents);
-  return computeOfferings(direction, dishes, wines, T);
+  return computeOfferings(direction, dishes, wines, T, opts);
 }
 
 const NAVY="#1F2A44",PEAR="#FFCC7D",ORANGE="#F2993D",BLUED="#5C8A9C";
@@ -290,12 +290,17 @@ function hydrateFromProfile(profile) {
 }
 
 function mapDirection(st) {
-  // POST /v1/pair's `direction` enum is course_it_out | one_bottle | several.
-  // Desi's UI asks glass-vs-bottle then a sub choice; this is a best effort
-  // mapping until item 5 (the pairing engine) ships and we can verify it.
-  if (st.mode === 'glass') return 'several';
+  // Maps HowToDrink's glass-vs-bottle + sub choice onto the engine's four
+  // framings. The three the demo walks (item 7):
+  //   glass  + coursed -> course_it_out  (a pour per course, in course order)
+  //   glass  + mains   -> mains_only     (one pour for the mains; starters SAID unpaired)
+  //   bottle + single  -> one_bottle     (one wine across everything, compromise shown)
+  // bottle + coursed is also course_it_out (a bottle per course). No sub yet
+  // chosen falls back to `several`, a flat table-wide shortlist.
   if (st.sub === 'single') return 'one_bottle';
-  return 'course_it_out';
+  if (st.sub === 'mains') return 'mains_only';
+  if (st.sub === 'coursed') return 'course_it_out';
+  return 'several';
 }
 
 /**
@@ -324,8 +329,8 @@ export function usePairMe(opts = {}){
     levelOwn:"",advOwn:"",budgetOwn:"",loveOwn:"",notOwn:"",dietOwn:"",unreadable:"",why:"",
     guestName:"",rel:null,added:[],
     venueQ:"",noList:false,blank:false,picked:["a2","a5","e6","e9","s2"],
-    mode:null,sub:null,scope:null,present:["gim","trapet"],
-    guest:"me",resolution:null,rate:{dish:4,wine:5,pair:4},fb:"",share:true,listening:null,skipped:0,
+    mode:null,sub:null,scope:null,present:["gim","trapet"],wineFormat:"both",
+    guest:"me",guestDrawerOpen:false,guestShareNote:null,resolution:null,rate:{dish:4,wine:5,pair:4},fb:"",share:true,listening:null,skipped:0,
     linked:["Vivino"],account:null,bottle:"trapet",back:11,saved:false,shared:null,
     // Integration state (not part of Desi's original demo model).
     apiError:null,apiLoading:false,
@@ -340,6 +345,11 @@ export function usePairMe(opts = {}){
     pairOfferings:null,pairCompromise:null,
     venueResults:[],venueMessage:null,selectedVenueId:null,
     tableCode:null,
+    // ITEM 8b: the "Demo state" toggles (blank profile, no-wine-list) are debug
+    // controls that were sitting in the live diner flow. Gate them behind a
+    // ?debug query param so a real diner never sees them; a demo driver adds
+    // ?debug to the URL to get them back.
+    debug:(typeof window!=="undefined"&&window.location&&window.location.search)?new URLSearchParams(window.location.search).has("debug"):false,
     // LANE A (/t/demo): seeded venue/menu/wine-list + the client-side
     // scoring engine's output. demoDishes stays null off the /t/demo path,
     // so every other entry point keeps using Desi's static DISHES/offerSet
@@ -347,7 +357,7 @@ export function usePairMe(opts = {}){
     venueName:null,venueCity:null,
     demoLoading:false,demoDishes:null,demoWineRows:[],
     rulesTables:null,rulesVersion:null,
-    pairingDirection:null,pairingOfferings:null,pairingCompromise:null,
+    pairingDirection:null,pairingOfferings:null,pairingCompromise:null,pairingCoverage:null,
     pairingId:null,presentLabels:[],
     deleteConfirming:false,deleteDone:false});
   const patch = (p) => set(s => Object.assign({}, s, typeof p === 'function' ? p(s) : p));
@@ -618,6 +628,9 @@ export function usePairMe(opts = {}){
           prod:w.producer,wine:w.wine_name,meta:w.meta,say:w.say,btl:w.price,
           glass:w.glass?"$"+w.glass_price+" glass":"bottle only",
           why:o.why,covers:(o.covers&&o.covers.length)?o.covers.join(", "):"Everything you picked",
+          // ITEM 5: covers as one chip per dish this wine pairs with, so the
+          // difference between the two wines is visible at a glance.
+          coversChips:(o.covers&&o.covers.length)?o.covers:[],
           bd:on?"var(--pm-chrome)":"var(--pm-rule)",bw:on?"2px":"1px",bg:on?"var(--pm-sel)":"var(--pm-card)",
           chip:on?"presenting":"tap to add",chipBg:on?"#FFE3BC":"var(--pm-sunken)",
           pick:()=>patch(x=>({presentLabels:(x.presentLabels||[]).includes(w.label)?(x.presentLabels||[]).filter(y=>y!==w.label):[...(x.presentLabels||[]),w.label]})),
@@ -626,6 +639,40 @@ export function usePairMe(opts = {}){
           stockColor:"var(--pm-muted)",stockNote:"On the list tonight."};
       }):null;
       const engineShownLabels=presentSet.size?Array.from(presentSet):(usingEngine?[st.pairingOfferings[0].wine.label]:[]);
+      // ITEM 6: glass / bottle / both toggle on TheWine. Re-ranks in place
+      // (no navigation) by re-running the SAME client engine over the pool the
+      // format implies - 'glass' drops bottle-only wines so we never name a
+      // glass pour you cannot actually get by the glass. Recording (postPairing)
+      // is deliberately not re-fired here: this is the diner re-shaping the same
+      // question, not a new decision.
+      const runFormat=(fmt)=>{
+        const dir=st.pairingDirection||mapDirection(st);
+        if(st.rulesTables&&st.demoWineRows.length&&chosen.length){
+          const result=computeOfferings(dir,chosen,st.demoWineRows.map(rowToEngineWine),st.rulesTables,{format:fmt});
+          patch({wineFormat:fmt,pairingDirection:result.direction,pairingOfferings:result.offerings,pairingCompromise:result.compromise,pairingCoverage:result.coverage,presentLabels:[]});
+        }else if(st.demoWineRows&&st.demoWineRows.length){
+          const offline=computeOfflineOfferings(dir,chosen,st.demoWineRows,{format:fmt});
+          patch({wineFormat:fmt,pairingDirection:offline.direction,pairingOfferings:offline.offerings,pairingCompromise:offline.compromise,pairingCoverage:offline.coverage,presentLabels:[]});
+        }else{
+          patch({wineFormat:fmt});
+        }
+      };
+      const formatTabs=[["glass","By the glass"],["bottle","Bottles"],["both","Both"]].map(([k,label])=>({
+        k,label,active:st.wineFormat===k,pick:()=>runFormat(k)}));
+      // ITEM 7: coverage strip. Every ordered dish is listed with what it is
+      // paired with, or SAID to go unpaired. No dish is ever silently omitted,
+      // which is the whole point of the three directions.
+      const coverageRows=(usingEngine&&Array.isArray(st.pairingCoverage))?st.pairingCoverage.map(c=>{
+        const paired=c.status==="paired";
+        const shortWine=c.wine?c.wine.split(",")[0]:"";
+        return {
+          dish:c.dish,sec:c.sec||"",paired,
+          text:paired?(c.note?c.note:(shortWine?"with "+shortWine:"paired")):"goes unpaired, and that's fine",
+          color:paired?"var(--pm-ink)":"var(--pm-muted)"};
+      }):null;
+      const coverageTitle=pairingDirection==="mains_only"?"One pour for the mains"
+        :pairingDirection==="course_it_out"?"A pour for each course"
+        :pairingDirection==="one_bottle"?"One bottle, across everything":null;
       // ONE-BOTTLE MODE: the single bottle almost never fits every dish
       // equally, so this MUST surface where it gives ground (directions.js's
       // oneBottle() computes exactly this; here it is just shaped for
@@ -674,11 +721,12 @@ export function usePairMe(opts = {}){
             if (st.rulesTables && st.demoWineRows.length && chosen.length) {
               try {
                 const wines = st.demoWineRows.map(rowToEngineWine);
-                const result = computeOfferings(direction, chosen, wines, st.rulesTables);
+                const result = computeOfferings(direction, chosen, wines, st.rulesTables, {format:st.wineFormat});
                 patch({
                   pairingDirection: result.direction,
                   pairingOfferings: result.offerings,
                   pairingCompromise: result.compromise,
+                  pairingCoverage: result.coverage,
                   presentLabels: [],
                 });
                 try {
@@ -718,11 +766,12 @@ export function usePairMe(opts = {}){
               // lib/offlinePairing.js falls back to - see
               // computeOfflineOfferings above.
               const runOffline = () => {
-                const offline = computeOfflineOfferings(direction, chosen, st.demoWineRows);
+                const offline = computeOfflineOfferings(direction, chosen, st.demoWineRows, {format:st.wineFormat});
                 patch({
                   pairingDirection: offline.direction,
                   pairingOfferings: offline.offerings,
                   pairingCompromise: offline.compromise,
+                  pairingCoverage: offline.coverage,
                   presentLabels: [],
                 });
               };
@@ -860,6 +909,7 @@ export function usePairMe(opts = {}){
         noList:st.noList,hasList:!st.noList,
         noListLabel:st.noList?"a venue with no wine list, on":"a venue with no wine list, off",
         toggleNoList:()=>patch({noList:!st.noList}),
+        showNoListToggle:st.debug,
 
         jumps:secSource.map(name=>({name,go:()=>jumpTo(name)})),
         menu:secSource.map(name=>({name,ref:el=>{secs.current[name]=el;},dishes:dishSource.filter(d=>d.sec===name).map(d=>{
@@ -893,9 +943,30 @@ export function usePairMe(opts = {}){
           :st.sub==="coursed"?"Two bottles, one to start and one for the mains."
           :st.sub==="single"?(st.scope?"One bottle, "+(st.scope==="dinner"?"across the whole dinner.":"pointed at the mains.")+" We'll tell you what it gives up.":"One bottle. For what, though.")
           :"Bottle it is. Now, how many.",
-        guests:[["me","Just me"],["sarah","+ Sarah"],["add","+ add someone"]].map(([k,label])=>({
-          label,pick:()=>patch({guest:k}),
+        // ITEM 4: "+ Guest" opens a bottom drawer instead of silently setting a
+        // state; the other pills stay simple picks.
+        guests:[["me","Just me"],["sarah","+ Sarah"],["add","+ Guest"]].map(([k,label])=>({
+          label,pick:k==="add"?()=>patch({guestDrawerOpen:true}):()=>patch({guest:k}),
           bd:st.guest===k?"var(--pm-chrome)":"var(--pm-rule)",bg:st.guest===k?"var(--pm-sel)":"var(--pm-card)"})),
+        // The drawer. "Fill us in later" is the primary, one-tap fast path.
+        guestDrawer:{
+          open:st.guestDrawerOpen,
+          note:st.guestShareNote,
+          close:()=>patch({guestDrawerOpen:false}),
+          choices:[
+            {k:"later",primary:true,h:"Fill us in later",b:"Start now with your taste. Add them any time at the table.",
+              pick:()=>patch({guest:"later",guestDrawerOpen:false,guestShareNote:null})},
+            {k:"share",primary:false,h:"Share a link",b:"Send it over so they tell us their own taste.",
+              pick:()=>{
+                const url=(typeof window!=="undefined"&&window.location)?window.location.origin+"/entry":"pairme.wine";
+                if(typeof navigator!=="undefined"&&navigator.share){navigator.share({title:"PairMe",text:"Tell PairMe what you like",url}).catch(()=>{});patch({guest:"add",guestDrawerOpen:false});}
+                else if(typeof navigator!=="undefined"&&navigator.clipboard){navigator.clipboard.writeText(url).catch(()=>{});patch({guest:"add",guestDrawerOpen:false,guestShareNote:"Link copied. Send it to them."});}
+                else{patch({guest:"add",guestDrawerOpen:false,guestShareNote:url});}
+              }},
+            {k:"tell",primary:false,h:"Tell us about them",b:"Answer the six for them yourself, right now.",
+              pick:()=>{patch({guest:"add",guestDrawerOpen:false});go(14);}},
+          ],
+        },
         conflict,
         resolutions:[["hers","Sarah gets her way tonight, skip the bubbles"],
           ["glass","Champagne by the glass for me, a bottle we both like for the table"],
@@ -907,9 +978,11 @@ export function usePairMe(opts = {}){
         // scoring engine (see the s===10 branch above); otherwise this
         // stays Desi's static offerSet/W demo data, unchanged.
         usingEngine,
+        showFormatTabs:usingEngine,formatTabs,
+        showCoverage:!!(coverageRows&&coverageRows.length),coverageTitle,coverage:coverageRows,
         offerTitle:usingEngine?(pairingDirection==="one_bottle"?"One bottle for the table":"Your wine"):(blank?"Three wines, no assumptions":"Your wine"),
         offerSub:usingEngine?(pairingDirection==="one_bottle"?"One bottle, chosen to work across everything ordered.":"Ranked for the table. Tap the ones you want to present."):(blank?"You skipped every question, so this is the honest version.":"Tap the ones you want to present. Everything here is on their list tonight."),
-        showBlankToggle:!usingEngine,
+        showBlankToggle:!usingEngine&&st.debug,
         blankLabel:blank?"we know nothing about you, on":"we know nothing about you, off",
         toggleBlank:()=>patch({blank:!blank}),
         presentCount:usingEngine

@@ -12,7 +12,7 @@
  * (packages/pairing/src/directions.js's oneBottle already computes exactly
  * that; this file only shapes it for display).
  */
-import { dishProfile, scoreWine } from '../../../../packages/pairing/src/scoring.js';
+import { dishProfile, scoreWine, pair } from '../../../../packages/pairing/src/scoring.js';
 import { SLOTS } from '../../../../packages/pairing/src/roles.js';
 import { oneBottle, several } from '../../../../packages/pairing/src/directions.js';
 import { buildTables } from '../../../../packages/pairing/src/tables.js';
@@ -87,15 +87,37 @@ function structuralWhy(wine) {
 }
 
 /**
- * @param {'course_it_out'|'one_bottle'|'several'} direction
+ * @param {'course_it_out'|'mains_only'|'one_bottle'|'several'} direction
  * @param {Array} dishes - demo dish objects (id/n/sec/components/...)
  * @param {Array} wines - engine wine objects (rowToEngineWine output)
  * @param {ReturnType<typeof buildTables>} T
+ * @param {{format?: 'glass'|'bottle'|'both'}} [opts] - `format:'glass'`
+ *   restricts the candidate pool to wines the venue actually pours by the
+ *   glass, so the glass/bottle toggle on TheWine re-ranks over the right set
+ *   rather than recommending a bottle-only wine you cannot get a glass of.
+ *   'bottle' and 'both' leave the pool intact (every wine comes as a bottle);
+ *   they differ only in what price the card leads with, which is display.
  * @returns {{direction, offerings: Array, compromise: object|null}}
  */
-export function computeOfferings(direction, dishes, wines, T) {
+export function computeOfferings(direction, dishes, wines, T, opts = {}) {
+  const { format = 'both' } = opts;
+  const pool = format === 'glass' ? wines.filter((w) => w.glass) : wines;
+  // If the glass filter empties the pool (a list with no by-the-glass wines),
+  // fall back to the full pool rather than returning zero offerings: better to
+  // show bottles and let the toggle read as "none by the glass" upstream than
+  // to leave the diner with a blank screen.
+  wines = pool.length ? pool : wines;
   const engineDishes = dishes.map(dishToEngineDish);
   const dishNames = engineDishes.map((d) => d.name);
+
+  // Original dish objects carry section + display name; engineDishes is the
+  // components-only shape the scoring core wants. `secOf` bridges the two so
+  // coverage can speak in course/section terms (Starters, Mains, ...).
+  const MAINS = 'Mains';
+  const secOf = (name) => {
+    const src = dishes.find((d) => (d.n || d.name) === name);
+    return src ? src.sec || null : null;
+  };
 
   function coversFor(wine) {
     return engineDishes
@@ -106,13 +128,28 @@ export function computeOfferings(direction, dishes, wines, T) {
       .map((d) => d.name);
   }
 
+  // ---- one_bottle: one wine across everything, name where it gives ground ----
   if (direction === 'one_bottle') {
     const result = oneBottle(engineDishes, wines, T);
     if (!result.wine) {
-      return { direction, offerings: [], compromise: null };
+      return {
+        direction,
+        offerings: [],
+        compromise: null,
+        coverage: engineDishes.map((d) => ({ dish: d.name, sec: secOf(d.name), status: 'unpaired', wine: null })),
+      };
     }
     const best = result.perDish.reduce((top, x) => (x.score > top.score ? x : top));
     const why = headlineWhy(best.fired, result.wine);
+    // Every dish is covered by construction (the bottle qualified against all
+    // of them). The compromise dish is flagged, never silently dropped.
+    const coverage = result.perDish.map((pd) => ({
+      dish: pd.dish,
+      sec: secOf(pd.dish),
+      status: 'paired',
+      wine: result.wine.label,
+      note: result.compromise && pd.dish === result.compromise.dish ? 'gives the most ground here' : undefined,
+    }));
     return {
       direction,
       offerings: [
@@ -124,20 +161,57 @@ export function computeOfferings(direction, dishes, wines, T) {
           fired: best.fired,
           bestForDish: best.dish,
           score: result.totalScore,
-          covers: dishNames, // a qualifying one-bottle pick is eligible for every dish, by construction
+          covers: dishNames, // a qualifying one-bottle pick is eligible for every dish
         },
       ],
       compromise: result.compromise,
+      coverage,
     };
   }
 
-  // course_it_out and several both surface a table-wide shortlist here (the
-  // per-course split course_it_out implies is a further UI refinement not
-  // built in this lane; both directions get the same three ranked,
-  // role-labelled offerings for now). several() is used rather than pair()
-  // because pair()'s picks are grape-deduped for its single-dish discovery
-  // mechanic (see directions.js), which is the wrong shape for "best across
-  // everything ordered".
+  // ---- course_it_out / mains_only: a pour per course ----
+  // course_it_out pairs EVERY dish in course order; mains_only pairs only the
+  // mains and SAYS which dishes go unpaired (silent omission is the failure
+  // mode: a diner must never wonder whether we forgot their starter).
+  if (direction === 'course_it_out' || direction === 'mains_only') {
+    const target =
+      direction === 'mains_only' ? engineDishes.filter((d) => secOf(d.name) === MAINS) : engineDishes;
+    // mains_only with no identifiable main pairs everything rather than pairing
+    // nothing (still honest: coverage below reflects what actually happened).
+    const toPair = target.length ? target : engineDishes;
+    const offerings = toPair
+      .map((d) => {
+        const res = pair(d.name, d.components, wines, T, { n: 1 });
+        const top = res.picks[0];
+        if (!top) return null;
+        return {
+          wine: top.wine,
+          slot: 'house',
+          label: `With the ${d.name.toLowerCase()}`,
+          why: headlineWhy(top.fired, top.wine),
+          fired: top.fired,
+          forDish: d.name,
+          forSec: secOf(d.name),
+          bestForDish: d.name,
+          score: top.score,
+          covers: [d.name],
+        };
+      })
+      .filter(Boolean);
+    const pairedNames = new Set(offerings.map((o) => o.forDish));
+    const coverage = engineDishes.map((d) => ({
+      dish: d.name,
+      sec: secOf(d.name),
+      status: pairedNames.has(d.name) ? 'paired' : 'unpaired',
+      wine: pairedNames.has(d.name) ? offerings.find((o) => o.forDish === d.name).wine.label : null,
+    }));
+    return { direction, offerings, compromise: null, coverage };
+  }
+
+  // ---- several (default): a table-wide shortlist to choose from together ----
+  // several() is used rather than pair() because pair()'s picks are
+  // grape-deduped for its single-dish discovery mechanic (see directions.js),
+  // which is the wrong shape for "best across everything ordered".
   const shortlist = several(engineDishes, wines, T, { n: 3 });
   const offerings = shortlist.map((entry, i) => {
     const dish = engineDishes.find((d) => d.name === entry.bestForDish) || { components: [] };
@@ -155,6 +229,10 @@ export function computeOfferings(direction, dishes, wines, T) {
       covers: coversFor(entry.wine),
     };
   });
+  const coverage = engineDishes.map((d) => {
+    const cov = offerings.find((o) => o.covers.includes(d.name));
+    return { dish: d.name, sec: secOf(d.name), status: cov ? 'paired' : 'unpaired', wine: cov ? cov.wine.label : null };
+  });
 
-  return { direction, offerings, compromise: null };
+  return { direction, offerings, compromise: null, coverage };
 }

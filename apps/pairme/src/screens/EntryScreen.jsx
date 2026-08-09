@@ -5,6 +5,7 @@ import { resolveComponents } from '../lib/dishComponents.js';
 import { SEEDED_WINE_LISTS, getSeededWines } from '../lib/seededLists.js';
 import { getOfflineTables } from '../lib/offlinePairing.js';
 import { computeOfferings } from '../lib/pairingAdapter.js';
+import { useSpeech } from '../lib/useSpeech.js';
 
 /**
  * EntryScreen: the four diner entry points (paste-first) on ONE screen,
@@ -68,6 +69,35 @@ export default function EntryScreen() {
   const [offerings, setOfferings] = React.useState(null);
   const [cameraNote, setCameraNote] = React.useState('');
   const cameraInputRef = React.useRef(null);
+  // Item 3: voice input for the free-text modes. A spoken answer appends to
+  // whatever is already typed, so voice and keyboard compose instead of
+  // clobbering. Unsupported browsers keep the plain text input (supported=false
+  // hides the mic entirely).
+  const speech = useSpeech({
+    onResult: (t) => setFreeText((prev) => (prev.trim() ? `${prev.trim()} ${t}` : t)),
+  });
+  const micButton = (
+    speech.supported ? (
+      <button
+        type="button"
+        onClick={() => (speech.listening ? speech.stop() : speech.start())}
+        aria-label={speech.listening ? 'Stop listening' : 'Tell us what you are having'}
+        aria-pressed={speech.listening}
+        style={{
+          flex: 'none', width: 44, height: 44, borderRadius: 999, cursor: 'pointer',
+          border: `1.5px solid ${speech.listening ? COLORS.chrome : COLORS.accentBd}`,
+          background: speech.listening ? COLORS.chrome : COLORS.card,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}
+      >
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={speech.listening ? '#fff' : COLORS.ink} strokeWidth="1.8" strokeLinecap="round">
+          <rect x="9" y="2" width="6" height="11" rx="3"></rect>
+          <path d="M5 11a7 7 0 0 0 14 0"></path>
+          <line x1="12" y1="18" x2="12" y2="22"></line>
+        </svg>
+      </button>
+    ) : null
+  );
 
   // "At home" has no restaurant venue by construction, so it always shows
   // the picker, even if a venue list was already chosen on another tab -
@@ -131,7 +161,12 @@ export default function EntryScreen() {
     }));
     const wines = getSeededWines(venueListId);
     const T = getOfflineTables();
-    const result = computeOfferings('course_it_out', engineDishes, wines, T);
+    // The paste/entry flow has no glass-vs-bottle direction UI, so it wants a
+    // flat table-wide shortlist (house/suited/crowd), which is `several`.
+    // `course_it_out` now means a genuine per-course pour (item 7) and would
+    // label offerings "With the <dish>" instead of the role slots this screen
+    // presents.
+    const result = computeOfferings('several', engineDishes, wines, T);
     setOfferings(result);
   }
 
@@ -251,24 +286,31 @@ export default function EntryScreen() {
         {mode === MODE_TYPE ? (
           <section aria-label="Type what you are having">
             <label htmlFor="pm-type-input" style={{ display: 'block', font: '600 13.5px inherit', marginBottom: 6 }}>
-              What are you having?
+              {speech.supported ? 'Start typing, or tell us' : 'What are you having?'}
             </label>
-            <input
-              id="pm-type-input"
-              type="text"
-              value={freeText}
-              onChange={(e) => setFreeText(e.target.value)}
-              placeholder="roast chicken, potatoes, green beans"
-              style={{
-                width: '100%',
-                boxSizing: 'border-box',
-                fontSize: 16,
-                padding: '12px 14px',
-                borderRadius: 10,
-                border: `1.5px solid ${COLORS.rule}`,
-                fontFamily: 'inherit',
-              }}
-            />
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <input
+                id="pm-type-input"
+                type="text"
+                value={freeText}
+                onChange={(e) => setFreeText(e.target.value)}
+                placeholder={speech.listening ? 'Listening...' : 'roast chicken, potatoes, green beans'}
+                style={{
+                  flex: 1,
+                  minWidth: 0,
+                  boxSizing: 'border-box',
+                  fontSize: 16,
+                  padding: '12px 14px',
+                  borderRadius: 10,
+                  border: `1.5px solid ${COLORS.rule}`,
+                  fontFamily: 'inherit',
+                }}
+              />
+              {speech.supported ? (
+                <span aria-hidden="true" style={{ flex: 'none', font: '600 18px inherit', color: COLORS.muted, transform: speech.listening ? 'none' : 'translateX(2px)' }}>&rarr;</span>
+              ) : null}
+              {micButton}
+            </div>
             <button
               type="button"
               onClick={runParseFreeText}
@@ -284,24 +326,31 @@ export default function EntryScreen() {
         {mode === MODE_HOME ? (
           <section aria-label="At home">
             <label htmlFor="pm-home-input" style={{ display: 'block', font: '600 13.5px inherit', marginBottom: 6 }}>
-              What are you cooking, or ordering in?
+              {speech.supported ? 'Start typing, or tell us what you are cooking' : 'What are you cooking, or ordering in?'}
             </label>
-            <input
-              id="pm-home-input"
-              type="text"
-              value={freeText}
-              onChange={(e) => setFreeText(e.target.value)}
-              placeholder="roast chicken, potatoes, green beans"
-              style={{
-                width: '100%',
-                boxSizing: 'border-box',
-                fontSize: 16,
-                padding: '12px 14px',
-                borderRadius: 10,
-                border: `1.5px solid ${COLORS.rule}`,
-                fontFamily: 'inherit',
-              }}
-            />
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <input
+                id="pm-home-input"
+                type="text"
+                value={freeText}
+                onChange={(e) => setFreeText(e.target.value)}
+                placeholder={speech.listening ? 'Listening...' : 'roast chicken, potatoes, green beans'}
+                style={{
+                  flex: 1,
+                  minWidth: 0,
+                  boxSizing: 'border-box',
+                  fontSize: 16,
+                  padding: '12px 14px',
+                  borderRadius: 10,
+                  border: `1.5px solid ${COLORS.rule}`,
+                  fontFamily: 'inherit',
+                }}
+              />
+              {speech.supported ? (
+                <span aria-hidden="true" style={{ flex: 'none', font: '600 18px inherit', color: COLORS.muted }}>&rarr;</span>
+              ) : null}
+              {micButton}
+            </div>
             <button
               type="button"
               onClick={runParseFreeText}
