@@ -330,7 +330,7 @@ export function usePairMe(opts = {}){
     guestName:"",rel:null,added:[],
     venueQ:"",noList:false,blank:false,picked:["a2","a5","e6","e9","s2"],
     mode:null,sub:null,scope:null,present:["gim","trapet"],wineFormat:"both",
-    guest:"me",resolution:null,rate:{dish:4,wine:5,pair:4},fb:"",share:true,listening:null,skipped:0,
+    guest:"me",guestDrawerOpen:false,guestShareNote:null,resolution:null,rate:{dish:4,wine:5,pair:4},fb:"",share:true,listening:null,skipped:0,
     linked:["Vivino"],account:null,bottle:"trapet",back:11,saved:false,shared:null,
     // Integration state (not part of Desi's original demo model).
     apiError:null,apiLoading:false,
@@ -943,9 +943,30 @@ export function usePairMe(opts = {}){
           :st.sub==="coursed"?"Two bottles, one to start and one for the mains."
           :st.sub==="single"?(st.scope?"One bottle, "+(st.scope==="dinner"?"across the whole dinner.":"pointed at the mains.")+" We'll tell you what it gives up.":"One bottle. For what, though.")
           :"Bottle it is. Now, how many.",
-        guests:[["me","Just me"],["sarah","+ Sarah"],["add","+ add someone"]].map(([k,label])=>({
-          label,pick:()=>patch({guest:k}),
+        // ITEM 4: "+ Guest" opens a bottom drawer instead of silently setting a
+        // state; the other pills stay simple picks.
+        guests:[["me","Just me"],["sarah","+ Sarah"],["add","+ Guest"]].map(([k,label])=>({
+          label,pick:k==="add"?()=>patch({guestDrawerOpen:true}):()=>patch({guest:k}),
           bd:st.guest===k?"var(--pm-chrome)":"var(--pm-rule)",bg:st.guest===k?"var(--pm-sel)":"var(--pm-card)"})),
+        // The drawer. "Fill us in later" is the primary, one-tap fast path.
+        guestDrawer:{
+          open:st.guestDrawerOpen,
+          note:st.guestShareNote,
+          close:()=>patch({guestDrawerOpen:false}),
+          choices:[
+            {k:"later",primary:true,h:"Fill us in later",b:"Start now with your taste. Add them any time at the table.",
+              pick:()=>patch({guest:"later",guestDrawerOpen:false,guestShareNote:null})},
+            {k:"share",primary:false,h:"Share a link",b:"Send it over so they tell us their own taste.",
+              pick:()=>{
+                const url=(typeof window!=="undefined"&&window.location)?window.location.origin+"/entry":"pairme.wine";
+                if(typeof navigator!=="undefined"&&navigator.share){navigator.share({title:"PairMe",text:"Tell PairMe what you like",url}).catch(()=>{});patch({guest:"add",guestDrawerOpen:false});}
+                else if(typeof navigator!=="undefined"&&navigator.clipboard){navigator.clipboard.writeText(url).catch(()=>{});patch({guest:"add",guestDrawerOpen:false,guestShareNote:"Link copied. Send it to them."});}
+                else{patch({guest:"add",guestDrawerOpen:false,guestShareNote:url});}
+              }},
+            {k:"tell",primary:false,h:"Tell us about them",b:"Answer the six for them yourself, right now.",
+              pick:()=>{patch({guest:"add",guestDrawerOpen:false});go(14);}},
+          ],
+        },
         conflict,
         resolutions:[["hers","Sarah gets her way tonight, skip the bubbles"],
           ["glass","Champagne by the glass for me, a bottle we both like for the table"],

@@ -2,7 +2,7 @@ import React from 'react';
 
 /** Screen 11 · How to drink */
 export default function HowToDrink(vm){
-  const { chosen, dishCount, modes, showSub, subLabel, subs, showScope, scopes, dirSummary, guests, conflict, resolutions } = vm;
+  const { chosen, dishCount, modes, showSub, subLabel, subs, showScope, scopes, dirSummary, guests, conflict, resolutions, guestDrawer } = vm;
   return (
 <>
 <div>
@@ -85,6 +85,22 @@ export default function HowToDrink(vm){
 </div>
 </div>
 </div>
+{guestDrawer && guestDrawer.open ? (
+<div onClick={guestDrawer.close} style={{position: "fixed", inset: "0", background: "rgba(15,20,30,.45)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 50}}>
+<div onClick={(e) => e.stopPropagation()} role="dialog" aria-label="Add a guest" style={{width: "100%", maxWidth: "390px", background: "var(--pm-card)", borderTopLeftRadius: "18px", borderTopRightRadius: "18px", padding: "18px 16px 22px", boxShadow: "0 -10px 30px -12px rgba(15,20,30,.5)"}}>
+<div style={{width: "38px", height: "4px", borderRadius: "999px", background: "var(--pm-rule)", margin: "0 auto 14px"}}></div>
+<div style={{font: "700 16px var(--font-display)", color: "var(--pm-ink)"}}>Add a guest</div>
+<div style={{font: "400 12.5px/1.55 var(--font-body)", color: "var(--pm-muted)", margin: "4px 0 14px"}}>We'll find wine that works for both of you, not just whoever is holding the phone.</div>
+{(guestDrawer.choices || []).map((c, i) => (
+<button key={i} onClick={c.pick} style={{width: "100%", textAlign: "left", cursor: "pointer", borderRadius: "12px", padding: "13px", marginBottom: "9px", border: `1.5px solid ${c.primary ? "var(--pm-chrome)" : "var(--pm-rule)"}`, background: c.primary ? "var(--pm-sel)" : "var(--pm-card)"}}>
+<div style={{font: "600 13.5px var(--font-body)", color: "var(--pm-ink)"}}>{c.h}</div>
+<div style={{font: "400 12px/1.5 var(--font-body)", color: "var(--pm-muted)", marginTop: "3px"}}>{c.b}</div>
+</button>
+))}
+{guestDrawer.note ? (<div style={{font: "500 11.5px var(--font-body)", color: "var(--pm-pearInk)", marginTop: "4px"}}>{guestDrawer.note}</div>) : null}
+</div>
+</div>
+) : null}
 </>
   );
 }
