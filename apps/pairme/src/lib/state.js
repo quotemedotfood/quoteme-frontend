@@ -14,6 +14,8 @@ import {
   getTableCode,
   postPairing,
   deleteAccount as apiDeleteAccount,
+  getStoredAuthToken,
+  setAuthSession as apiSetAuthSession,
 } from './api.js';
 import { parseWineList, loadRulesBundle } from '../../../../packages/pairing/src/index.js';
 import { DEMO as OFFLINE_DEMO_WINES } from '../../../../packages/pairing/src/demoFixtures.js';
@@ -327,6 +329,12 @@ export function usePairMe(opts = {}){
     // Integration state (not part of Desi's original demo model).
     apiError:null,apiLoading:false,
     anonId:null,
+    // AUTH CONTRACT (locked, feat/pairme-accounts-be): read once at mount
+    // from the same localStorage key api.js's setAuthSession()/isLoggedIn()
+    // use, so a page reload keeps a diner logged in. Login is ALWAYS
+    // optional (see goLogin/setAuthenticated below and screens/Login.jsx) -
+    // nothing in the /t/:code walk reads or waits on this.
+    authToken:getStoredAuthToken(),
     captureId:null,rawText:"",captureRows:[],correctionsCount:0,
     pairOfferings:null,pairCompromise:null,
     venueResults:[],venueMessage:null,selectedVenueId:null,
@@ -1012,6 +1020,22 @@ export function usePairMe(opts = {}){
         syncFromRoute,
         tableCode:st.tableCode,
         handleCaptureFile,
+
+        // AUTH CONTRACT (locked, feat/pairme-accounts-be). goLogin is the
+        // chrome-level top-right "Log in" entry point (App.jsx); it is
+        // reachable from every screen and never fires on its own - nothing
+        // in this file calls it, no wall. setAuthenticated is called by
+        // screens/Login.jsx after a successful POST /v1/auth/signup or
+        // POST /v1/auth/login: it persists {token,anon_id} (api.js's
+        // setAuthSession) and mirrors both into vm state so the chrome
+        // button and anonId-dependent calls update immediately, without a
+        // reload.
+        isLoggedIn:!!st.authToken,
+        goLogin:()=>{ if(navigate) navigate('/login',{state:{from:PATH_FOR_SCREEN[s]}}); },
+        setAuthenticated:({token,anon_id})=>{
+          apiSetAuthSession({token,anon_id});
+          patch(x=>({authToken:token||null,anonId:anon_id||x.anonId}));
+        },
         // Instrumentation: exposed so any screen can fire a custom event,
         // e.g. a future correction UI calling submitCorrection (below) or
         // vm.track('correction_made', {...}) directly.

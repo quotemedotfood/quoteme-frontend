@@ -2,6 +2,7 @@ import React from 'react';
 import { Routes, Route, useNavigate, useParams } from 'react-router-dom';
 import { usePairMe } from './lib/state';
 import { Phone } from './App';
+import Login from './screens/Login';
 
 /**
  * Syncs the URL -> vm.s on mount and whenever the matched route's screen
@@ -104,6 +105,19 @@ export default function PairMeApp() {
         <Route path="/profile" element={<RouteBridge vm={vm} screenIndex={14} />} />
         <Route path="/profile/friend" element={<RouteBridge vm={vm} screenIndex={15} />} />
         <Route path="/profile/settings" element={<RouteBridge vm={vm} screenIndex={17} />} />
+        {/*
+          AUTH CONTRACT (locked, feat/pairme-accounts-be). A real,
+          bookmarkable route, NOT one of the phone-frame SCREENS above - it
+          renders its own full-page layout, not <Phone>. Because `vm` is
+          created once in PairMeApp (above) and this <Route> is a sibling of
+          the phone-frame routes inside the SAME <Routes>, navigating here
+          and back does not remount usePairMe: onboarding progress, the
+          picked dishes, everything, survives the round trip.
+          NO WALL: nothing above navigates here on its own; this is only
+          reached via the top-right "Log in" chrome button (vm.goLogin,
+          App.jsx) or a direct visit.
+        */}
+        <Route path="/login" element={<Login vm={vm} />} />
         <Route path="*" element={<RouteBridge vm={vm} screenIndex={0} />} />
       </Routes>
     </>

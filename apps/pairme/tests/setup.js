@@ -7,7 +7,7 @@ import * as jestDomMatchers from '@testing-library/jest-dom/matchers';
 expect.extend(jestDomMatchers);
 import { cleanup } from '@testing-library/react';
 import { server } from './e2e/msw/server.js';
-import { resetRequestLog } from './e2e/msw/handlers.js';
+import { resetRequestLog, resetAuthFixtures } from './e2e/msw/handlers.js';
 
 // Global MSW lifecycle for every spec in this app's test tree, mirroring the
 // standard MSW node testing setup. onUnhandledRequest: 'error' means a spec
@@ -24,6 +24,7 @@ afterEach(() => {
   cleanup();
   server.resetHandlers();
   resetRequestLog();
+  resetAuthFixtures();
   // api.js's identity (anon_id) is the only thing persisted to localStorage
   // (contract note in src/lib/api.js). Clear it between tests so each spec
   // gets a fresh POST /v1/session instead of silently reusing a stale one.
