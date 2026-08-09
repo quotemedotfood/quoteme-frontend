@@ -3,7 +3,7 @@ import { Input } from '../lib/ds';
 
 /** Screen 12 · The wine */
 export default function TheWine(vm){
-  const { fWhy, offerTitle, offerSub, blankLabel, toggleBlank, showBlankToggle, presentCount, offers, compromiseNote } = vm;
+  const { fWhy, offerTitle, offerSub, blankLabel, toggleBlank, showBlankToggle, presentCount, offers, compromiseNote, showFormatTabs, formatTabs } = vm;
   return (
 <>
 <div>
@@ -12,6 +12,13 @@ export default function TheWine(vm){
 <div style={{font: "400 12.5px/1.5 var(--font-body)", color: "var(--pm-chromeSub)", marginTop: "5px"}}>{offerSub}</div>
 </div>
 <div style={{padding: "18px"}}>
+{showFormatTabs ? (
+<div role="tablist" aria-label="Glass or bottle" style={{display: "flex", gap: "4px", background: "var(--pm-sunken)", borderRadius: "999px", padding: "4px", marginBottom: "14px"}}>
+{(formatTabs || []).map((tb) => (
+<button key={tb.k} role="tab" aria-selected={tb.active} onClick={tb.pick} style={{flex: "1", border: "none", cursor: "pointer", borderRadius: "999px", padding: "9px 8px", minHeight: "38px", font: `${tb.active ? "700" : "500"} 12px var(--font-body)`, color: tb.active ? "#fff" : "var(--pm-muted)", background: tb.active ? "var(--pm-chrome)" : "transparent"}}>{tb.label}</button>
+))}
+</div>
+) : null}
 {showBlankToggle ? (
 <button onClick={toggleBlank} style={{width: "100%", textAlign: "left", border: "1px dashed var(--pm-blue)", background: "var(--pm-blueBg)", borderRadius: "10px", padding: "10px 12px", marginBottom: "12px", cursor: "pointer", font: "600 11.5px var(--font-body)", color: "var(--pm-blue)"}}>Demo state: {blankLabel}</button>
 ) : null}

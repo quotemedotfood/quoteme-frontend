@@ -91,9 +91,22 @@ function structuralWhy(wine) {
  * @param {Array} dishes - demo dish objects (id/n/sec/components/...)
  * @param {Array} wines - engine wine objects (rowToEngineWine output)
  * @param {ReturnType<typeof buildTables>} T
+ * @param {{format?: 'glass'|'bottle'|'both'}} [opts] - `format:'glass'`
+ *   restricts the candidate pool to wines the venue actually pours by the
+ *   glass, so the glass/bottle toggle on TheWine re-ranks over the right set
+ *   rather than recommending a bottle-only wine you cannot get a glass of.
+ *   'bottle' and 'both' leave the pool intact (every wine comes as a bottle);
+ *   they differ only in what price the card leads with, which is display.
  * @returns {{direction, offerings: Array, compromise: object|null}}
  */
-export function computeOfferings(direction, dishes, wines, T) {
+export function computeOfferings(direction, dishes, wines, T, opts = {}) {
+  const { format = 'both' } = opts;
+  const pool = format === 'glass' ? wines.filter((w) => w.glass) : wines;
+  // If the glass filter empties the pool (a list with no by-the-glass wines),
+  // fall back to the full pool rather than returning zero offerings: better to
+  // show bottles and let the toggle read as "none by the glass" upstream than
+  // to leave the diner with a blank screen.
+  wines = pool.length ? pool : wines;
   const engineDishes = dishes.map(dishToEngineDish);
   const dishNames = engineDishes.map((d) => d.name);
 

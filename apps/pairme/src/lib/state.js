@@ -71,12 +71,12 @@ function withOfflineComponents(dish) {
  * @param {Array} chosenDishes - the table's already-picked dishes.
  * @param {Array} alreadyLoadedWineRows - st.demoWineRows, may be empty.
  */
-function computeOfflineOfferings(direction, chosenDishes, alreadyLoadedWineRows) {
+function computeOfflineOfferings(direction, chosenDishes, alreadyLoadedWineRows, opts = {}) {
   const T = getOfflineTables();
   const rows = alreadyLoadedWineRows && alreadyLoadedWineRows.length ? alreadyLoadedWineRows : OFFLINE_WINE_ROWS;
   const wines = rows.map(rowToEngineWine);
   const dishes = chosenDishes.map(withOfflineComponents);
-  return computeOfferings(direction, dishes, wines, T);
+  return computeOfferings(direction, dishes, wines, T, opts);
 }
 
 const NAVY="#1F2A44",PEAR="#FFCC7D",ORANGE="#F2993D",BLUED="#5C8A9C";
@@ -324,7 +324,7 @@ export function usePairMe(opts = {}){
     levelOwn:"",advOwn:"",budgetOwn:"",loveOwn:"",notOwn:"",dietOwn:"",unreadable:"",why:"",
     guestName:"",rel:null,added:[],
     venueQ:"",noList:false,blank:false,picked:["a2","a5","e6","e9","s2"],
-    mode:null,sub:null,scope:null,present:["gim","trapet"],
+    mode:null,sub:null,scope:null,present:["gim","trapet"],wineFormat:"both",
     guest:"me",resolution:null,rate:{dish:4,wine:5,pair:4},fb:"",share:true,listening:null,skipped:0,
     linked:["Vivino"],account:null,bottle:"trapet",back:11,saved:false,shared:null,
     // Integration state (not part of Desi's original demo model).
@@ -626,6 +626,26 @@ export function usePairMe(opts = {}){
           stockColor:"var(--pm-muted)",stockNote:"On the list tonight."};
       }):null;
       const engineShownLabels=presentSet.size?Array.from(presentSet):(usingEngine?[st.pairingOfferings[0].wine.label]:[]);
+      // ITEM 6: glass / bottle / both toggle on TheWine. Re-ranks in place
+      // (no navigation) by re-running the SAME client engine over the pool the
+      // format implies - 'glass' drops bottle-only wines so we never name a
+      // glass pour you cannot actually get by the glass. Recording (postPairing)
+      // is deliberately not re-fired here: this is the diner re-shaping the same
+      // question, not a new decision.
+      const runFormat=(fmt)=>{
+        const dir=st.pairingDirection||mapDirection(st);
+        if(st.rulesTables&&st.demoWineRows.length&&chosen.length){
+          const result=computeOfferings(dir,chosen,st.demoWineRows.map(rowToEngineWine),st.rulesTables,{format:fmt});
+          patch({wineFormat:fmt,pairingDirection:result.direction,pairingOfferings:result.offerings,pairingCompromise:result.compromise,presentLabels:[]});
+        }else if(st.demoWineRows&&st.demoWineRows.length){
+          const offline=computeOfflineOfferings(dir,chosen,st.demoWineRows,{format:fmt});
+          patch({wineFormat:fmt,pairingDirection:offline.direction,pairingOfferings:offline.offerings,pairingCompromise:offline.compromise,presentLabels:[]});
+        }else{
+          patch({wineFormat:fmt});
+        }
+      };
+      const formatTabs=[["glass","By the glass"],["bottle","Bottles"],["both","Both"]].map(([k,label])=>({
+        k,label,active:st.wineFormat===k,pick:()=>runFormat(k)}));
       // ONE-BOTTLE MODE: the single bottle almost never fits every dish
       // equally, so this MUST surface where it gives ground (directions.js's
       // oneBottle() computes exactly this; here it is just shaped for
@@ -674,7 +694,7 @@ export function usePairMe(opts = {}){
             if (st.rulesTables && st.demoWineRows.length && chosen.length) {
               try {
                 const wines = st.demoWineRows.map(rowToEngineWine);
-                const result = computeOfferings(direction, chosen, wines, st.rulesTables);
+                const result = computeOfferings(direction, chosen, wines, st.rulesTables, {format:st.wineFormat});
                 patch({
                   pairingDirection: result.direction,
                   pairingOfferings: result.offerings,
@@ -718,7 +738,7 @@ export function usePairMe(opts = {}){
               // lib/offlinePairing.js falls back to - see
               // computeOfflineOfferings above.
               const runOffline = () => {
-                const offline = computeOfflineOfferings(direction, chosen, st.demoWineRows);
+                const offline = computeOfflineOfferings(direction, chosen, st.demoWineRows, {format:st.wineFormat});
                 patch({
                   pairingDirection: offline.direction,
                   pairingOfferings: offline.offerings,
@@ -907,6 +927,7 @@ export function usePairMe(opts = {}){
         // scoring engine (see the s===10 branch above); otherwise this
         // stays Desi's static offerSet/W demo data, unchanged.
         usingEngine,
+        showFormatTabs:usingEngine,formatTabs,
         offerTitle:usingEngine?(pairingDirection==="one_bottle"?"One bottle for the table":"Your wine"):(blank?"Three wines, no assumptions":"Your wine"),
         offerSub:usingEngine?(pairingDirection==="one_bottle"?"One bottle, chosen to work across everything ordered.":"Ranked for the table. Tap the ones you want to present."):(blank?"You skipped every question, so this is the honest version.":"Tap the ones you want to present. Everything here is on their list tonight."),
         showBlankToggle:!usingEngine,
