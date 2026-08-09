@@ -21,7 +21,7 @@ import { parseWineList, loadRulesBundle } from '../../../../packages/pairing/src
 import { DEMO as OFFLINE_DEMO_WINES } from '../../../../packages/pairing/src/demoFixtures.js';
 import { errorCopy } from './errors.js';
 import { track } from './track.js';
-import { buildTables, rowToEngineWine, computeOfferings } from './pairingAdapter.js';
+import { buildTables, rowToEngineWine, computeOfferings, DIRECTION_FOR_FORMAT } from './pairingAdapter.js';
 import { getOfflineTables } from './offlinePairing.js';
 import { DEMO_DISHES, DEMO_SECTIONS, DEMO_DEFAULT_PICKED, buildDemoRows } from './demoSeed.js';
 import { getBaroloTableData } from './baroloSeed.js';
@@ -646,7 +646,10 @@ export function usePairMe(opts = {}){
       // is deliberately not re-fired here: this is the diner re-shaping the same
       // question, not a new decision.
       const runFormat=(fmt)=>{
-        const dir=st.pairingDirection||mapDirection(st);
+        // Format picks the ranking STRATEGY + pool, not a filter: glass ranks
+        // per dish over the by-the-glass pool, bottle ranks one wine across all
+        // dishes, both is the neutral shortlist. See DIRECTION_FOR_FORMAT.
+        const dir=DIRECTION_FOR_FORMAT[fmt]||'several';
         if(st.rulesTables&&st.demoWineRows.length&&chosen.length){
           const result=computeOfferings(dir,chosen,st.demoWineRows.map(rowToEngineWine),st.rulesTables,{format:fmt});
           patch({wineFormat:fmt,pairingDirection:result.direction,pairingOfferings:result.offerings,pairingCompromise:result.compromise,pairingCoverage:result.coverage,presentLabels:[]});
