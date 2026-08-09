@@ -46,7 +46,45 @@ export function dishToEngineDish(dish) {
   return { name: dish.n, components: dish.components || [] };
 }
 
-const FALLBACK_WHY = (dishName) => `Best overall fit for the ${dishName.toLowerCase()}.`;
+// `match_weight` fires for almost every same-weight wine, so its text
+// ("{wine} sits at the same weight as the plate.") reads identically across
+// offerings. It is a structural tie-breaker, never the defensible reason a
+// diner repeats at the pour. Any rule id in here is demoted below a
+// wine-specific fired rule when choosing the ONE headline sentence.
+const GENERIC_RULE_IDS = new Set(['match_weight', 'pen_neutral_dish']);
+
+/**
+ * The single reason sentence a card leads with. A pairing must be defensible
+ * and it must vary by wine, so this prefers the most wine-specific rule that
+ * fired for THIS wine over the generic weight tie-breaker, and never falls
+ * back to a per-dish label (two wines cannot share one reason). When nothing
+ * wine-specific fired, it says so honestly, in terms of THIS wine's own
+ * identity (its appellation or grape), rather than pretending confidence.
+ *
+ * @param {Array<[string,string]>} fired - [rule_id, why] pairs from scoreWine
+ * @param {object} wine - engine wine (has label/region_head/grape_head)
+ */
+function headlineWhy(fired, wine) {
+  const specific = fired.find(([id]) => !GENERIC_RULE_IDS.has(id));
+  if (specific) return specific[1];
+  // Only the generic weight tie-breaker fired (or nothing): there is no
+  // wine-specific claim the rules support, so say that honestly in terms of
+  // this wine's own identity rather than repeating one templated sentence
+  // across every card.
+  return structuralWhy(wine);
+}
+
+/** Per-wine honest fallback when no rule fired: references this wine's own
+ * region or grape so it can never read the same as another offering, and
+ * makes no claim the rules did not support. */
+function structuralWhy(wine) {
+  const id = wine.region_head || wine.grape_head;
+  if (id) {
+    const nice = id.charAt(0).toUpperCase() + id.slice(1);
+    return `${nice} is a safe structural fit for what you ordered, though nothing on this plate calls for it specifically.`;
+  }
+  return `A safe structural fit for what you ordered, though nothing on this plate calls for it specifically.`;
+}
 
 /**
  * @param {'course_it_out'|'one_bottle'|'several'} direction
@@ -74,7 +112,7 @@ export function computeOfferings(direction, dishes, wines, T) {
       return { direction, offerings: [], compromise: null };
     }
     const best = result.perDish.reduce((top, x) => (x.score > top.score ? x : top));
-    const why = best.fired.length ? best.fired[0][1] : FALLBACK_WHY(best.dish);
+    const why = headlineWhy(best.fired, result.wine);
     return {
       direction,
       offerings: [
@@ -105,7 +143,7 @@ export function computeOfferings(direction, dishes, wines, T) {
     const dish = engineDishes.find((d) => d.name === entry.bestForDish) || { components: [] };
     const { profile } = dishProfile(dish.components, T);
     const scored = scoreWine(entry.wine, profile, dish.components, T);
-    const why = scored.fired.length ? scored.fired[0][1] : FALLBACK_WHY(entry.bestForDish);
+    const why = headlineWhy(scored.fired, entry.wine);
     return {
       wine: entry.wine,
       slot: SLOTS[i]?.slot ?? null,
