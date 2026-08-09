@@ -113,7 +113,72 @@ function buildPairResponse(direction) {
   };
 }
 
+// AUTH CONTRACT (locked, feat/pairme-accounts-be, mocked here since that
+// backend may not be deployed yet). One fixed test account so login.test.jsx
+// can exercise the "wrong password" error path deterministically; any other
+// email/password on POST /v1/auth/login succeeds so a spec doesn't have to
+// pre-seed a signup first. anon_id returned is deliberately different from
+// TEST_ANON_ID above - proves the caller adopts the RETURNED anon_id rather
+// than keeping the one that was already in localStorage.
+export const TEST_AUTH_TOKEN = 'auth_token_e2e_test';
+export const TEST_AUTH_ANON_ID = 'anon_after_auth_e2e_test';
+const KNOWN_ACCOUNT_EMAIL = 'diner@example.com';
+const KNOWN_ACCOUNT_PASSWORD = 'correct-password';
+const SIGNED_UP_EMAILS = new Set();
+
+export function resetAuthFixtures() {
+  SIGNED_UP_EMAILS.clear();
+}
+
 export const handlers = [
+  http.post(`${BASE_URL}/v1/auth/signup`, async ({ request }) => {
+    const body = await request.json().catch(() => ({}));
+    record(request, { body });
+    if (body.email && SIGNED_UP_EMAILS.has(body.email)) {
+      return HttpResponse.json(
+        { error_code: 'EMAIL_TAKEN', message: 'An account already exists for that email. Try logging in instead.' },
+        { status: 422 }
+      );
+    }
+    if (body.email) SIGNED_UP_EMAILS.add(body.email);
+    return HttpResponse.json(
+      {
+        token: TEST_AUTH_TOKEN,
+        anon_id: TEST_AUTH_ANON_ID,
+        user: { id: 'user_e2e_1', email: body.email, role: 'diner' },
+      },
+      { status: 201 }
+    );
+  }),
+
+  http.post(`${BASE_URL}/v1/auth/login`, async ({ request }) => {
+    const body = await request.json().catch(() => ({}));
+    record(request, { body });
+    if (body.email === KNOWN_ACCOUNT_EMAIL && body.password !== KNOWN_ACCOUNT_PASSWORD) {
+      return HttpResponse.json(
+        { error_code: 'INVALID_CREDENTIALS', message: 'That email and password do not match. Please try again.' },
+        { status: 401 }
+      );
+    }
+    return HttpResponse.json({
+      token: TEST_AUTH_TOKEN,
+      anon_id: TEST_AUTH_ANON_ID,
+      user: { id: 'user_e2e_1', email: body.email, role: 'diner' },
+    });
+  }),
+
+  http.get(`${BASE_URL}/v1/auth/me`, async ({ request }) => {
+    record(request);
+    const authHeader = request.headers.get('Authorization') || '';
+    if (!authHeader.startsWith('Bearer ')) {
+      return HttpResponse.json({ error_code: 'NO_IDENTITY', message: 'Please log in again.' }, { status: 401 });
+    }
+    return HttpResponse.json({
+      user: { id: 'user_e2e_1', email: KNOWN_ACCOUNT_EMAIL, role: 'diner' },
+      anon_id: TEST_AUTH_ANON_ID,
+    });
+  }),
+
   http.post(`${BASE_URL}/v1/session`, async ({ request }) => {
     record(request);
     return HttpResponse.json({ anon_id: TEST_ANON_ID }, { status: 201 });

@@ -16,6 +16,11 @@
  */
 
 const ANON_STORAGE_KEY = 'pairme:anon_id';
+// AUTH CONTRACT (locked, feat/pairme-accounts-be): the Bearer token from
+// POST /v1/auth/signup or POST /v1/auth/login. Kept separately from
+// ANON_STORAGE_KEY - anon_id is a diner's history key even when signed out,
+// this is only added on top once they sign in. See setAuthSession() below.
+const AUTH_TOKEN_STORAGE_KEY = 'pairme:auth_token';
 
 export const BASE_URL =
   (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_PAIRME_API_BASE) ||
@@ -47,6 +52,23 @@ function setAnonId(id) {
   }
 }
 
+function getAuthToken() {
+  try {
+    return localStorage.getItem(AUTH_TOKEN_STORAGE_KEY);
+  } catch (e) {
+    return null;
+  }
+}
+
+function setAuthToken(token) {
+  try {
+    if (token) localStorage.setItem(AUTH_TOKEN_STORAGE_KEY, token);
+    else localStorage.removeItem(AUTH_TOKEN_STORAGE_KEY);
+  } catch (e) {
+    // Storage disabled - same tradeoff as setAnonId above.
+  }
+}
+
 async function parseErrorBody(res) {
   try {
     const body = await res.json();
@@ -59,8 +81,13 @@ async function parseErrorBody(res) {
 
 async function request(path, { method = 'GET', body, isMultipart = false } = {}) {
   const anonId = getAnonId();
+  const authToken = getAuthToken();
   const headers = {};
+  // Contract: keep sending X-PairMe-Anon even once signed in (anon_id stays
+  // the diner's history key; a signed-in Bearer token is additive, not a
+  // replacement for it).
   if (anonId) headers['X-PairMe-Anon'] = anonId;
+  if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
   if (!isMultipart && body !== undefined) headers['Content-Type'] = 'application/json';
 
   let res;
@@ -231,6 +258,67 @@ export function getDemo() {
  */
 export function getTableCode(code) {
   return request(`/v1/t/${encodeURIComponent(code)}`);
+}
+
+// ---------------------------------------------------------------------------
+// AUTH CONTRACT (locked, from the accounts BE's feat/pairme-accounts-be):
+//   POST /v1/auth/signup { email, password } (sends X-PairMe-Anon = the
+//     current anon_id, same as every other request() call above) ->
+//     201 { token, anon_id, user:{id,email,role} }
+//   POST /v1/auth/login  { email, password } -> 200 { token, anon_id, user }
+//   GET  /v1/auth/me     (Bearer token)      -> 200 { user, anon_id }
+// Errors are the same { error_code, message } envelope as every other
+// endpoint; callers should render message via lib/errors.js's errorCopy(),
+// never error_code.
+//
+// This endpoint may not be deployed yet (accounts BE lands on its own
+// branch); a network failure or 404 surfaces as the usual ApiError from
+// request() above, same as any other not-yet-built endpoint. Diner login is
+// ALWAYS optional (see screens/Login.jsx and the /t/:code walk in state.js,
+// which never calls any of these three), so a failure here never blocks the
+// walk to a wine recommendation.
+// ---------------------------------------------------------------------------
+
+/** POST /v1/auth/signup. Diner gives an email + password only (no name). */
+export function signup(email, password) {
+  return request('/v1/auth/signup', { method: 'POST', body: { email, password } });
+}
+
+/** POST /v1/auth/login. */
+export function login(email, password) {
+  return request('/v1/auth/login', { method: 'POST', body: { email, password } });
+}
+
+/** GET /v1/auth/me - confirms/re-hydrates a stored session. Callers should
+ * treat a failure as "not logged in", not a fatal error. */
+export function getMe() {
+  return request('/v1/auth/me');
+}
+
+/**
+ * Persist the two identity artifacts a signup/login response carries: the
+ * Bearer token for authed calls, and anon_id. The RETURNED anon_id becomes
+ * this account's history key going forward, overwriting whatever this tab
+ * already had in localStorage - that is how a returning diner on a NEW
+ * device gets their server-side history back (the whole point of the
+ * account layer). Every subsequent request() call above picks up both
+ * automatically.
+ */
+export function setAuthSession({ token, anon_id } = {}) {
+  setAuthToken(token || null);
+  if (anon_id) setAnonId(anon_id);
+}
+
+export function clearAuthSession() {
+  setAuthToken(null);
+}
+
+export function isLoggedIn() {
+  return !!getAuthToken();
+}
+
+export function getStoredAuthToken() {
+  return getAuthToken();
 }
 
 /**

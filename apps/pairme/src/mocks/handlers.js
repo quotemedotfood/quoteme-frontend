@@ -38,6 +38,29 @@ function uuid() {
 }
 
 export const handlers = [
+  // AUTH CONTRACT (locked, feat/pairme-accounts-be): mocked for local dev
+  // the same way GET /v1/demo etc are, in case that backend is not deployed
+  // yet. Always succeeds; there is no dev-time need to exercise the error
+  // paths this app's E2E suite covers separately (tests/e2e/msw/handlers.js).
+  http.post('*/v1/auth/signup', async ({ request }) => {
+    const body = await request.json().catch(() => ({}));
+    return HttpResponse.json(
+      { token: `dev_token_${uuid()}`, anon_id: uuid(), user: { id: uuid(), email: body.email, role: 'diner' } },
+      { status: 201 }
+    );
+  }),
+  http.post('*/v1/auth/login', async ({ request }) => {
+    const body = await request.json().catch(() => ({}));
+    return HttpResponse.json({
+      token: `dev_token_${uuid()}`,
+      anon_id: uuid(),
+      user: { id: uuid(), email: body.email, role: 'diner' },
+    });
+  }),
+  http.get('*/v1/auth/me', () =>
+    HttpResponse.json({ user: { id: uuid(), email: 'dev@example.com', role: 'diner' }, anon_id: uuid() })
+  ),
+
   http.post('*/v1/session', () =>
     HttpResponse.json({ anon_id: uuid(), created_at: new Date().toISOString() }, { status: 201 })
   ),

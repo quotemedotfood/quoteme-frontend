@@ -42,6 +42,16 @@ const SERVER_CODES = new Set([
   // side yet - see lib/api.js's getTableCode). Its 404 message is already
   // plain language per the contract this FE codes against.
   'VENUE_NOT_FOUND',
+  // AUTH CONTRACT (locked, feat/pairme-accounts-be) - POST /v1/auth/signup
+  // and POST /v1/auth/login's error envelope is the same {error_code,
+  // message} shape as every other endpoint above. These are the anticipated
+  // codes for that endpoint (wrong password, an email already in use, a
+  // malformed email), added ahead of the accounts BE actually shipping -
+  // same pattern as VENUE_NOT_FOUND just above.
+  'INVALID_CREDENTIALS',
+  'EMAIL_TAKEN',
+  'INVALID_EMAIL',
+  'WEAK_PASSWORD',
 ]);
 
 // Fallback copy for every known code, used when a caller passes a bare code
@@ -61,6 +71,10 @@ const CODE_COPY = {
   EXTRACTION_TRUNCATED: 'The wine list was too long to read in full. We used what we could find.',
   EMPTY_RESULT: 'We could not find anything to read in that. Please try again with a clearer photo.',
   VENUE_NOT_FOUND: "We could not find that table. Ask your server for the code, or point your camera at the wine list instead.",
+  INVALID_CREDENTIALS: 'That email and password do not match. Please try again.',
+  EMAIL_TAKEN: 'An account already exists for that email. Try logging in instead.',
+  INVALID_EMAIL: 'Please enter a valid email address.',
+  WEAK_PASSWORD: 'Please choose a longer password.',
   NETWORK_ERROR: 'We could not reach the server. Please check your connection and try again.',
   UNKNOWN: 'Something went wrong. Please try again.',
 };
