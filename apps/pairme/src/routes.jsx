@@ -3,6 +3,7 @@ import { Routes, Route, useNavigate, useParams } from 'react-router-dom';
 import { usePairMe } from './lib/state';
 import { Phone } from './App';
 import Login from './screens/Login';
+import EntryScreen from './screens/EntryScreen';
 
 /**
  * Syncs the URL -> vm.s on mount and whenever the matched route's screen
@@ -85,6 +86,15 @@ export default function PairMeApp() {
         onChange={handleFileChosen}
       />
       <Routes>
+        {/*
+          Entry-points brief: the four diner entry points (paste-first) live
+          on ONE standalone screen, full-viewport, NOT inside the 390x800
+          Phone mockup card every other route below renders into (that card
+          is a desktop-preview frame for Desi's onboarding walk, not
+          something a real phone browser should be squeezed into for this
+          feature). See screens/EntryScreen.jsx.
+        */}
+        <Route path="/entry" element={<EntryScreen />} />
         <Route path="/" element={<RouteBridge vm={vm} screenIndex={0} />} />
         <Route path="/signin" element={<RouteBridge vm={vm} screenIndex={1} />} />
         <Route path="/setup/1" element={<RouteBridge vm={vm} screenIndex={2} />} />

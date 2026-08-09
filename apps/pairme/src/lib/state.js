@@ -24,6 +24,7 @@ import { track } from './track.js';
 import { buildTables, rowToEngineWine, computeOfferings } from './pairingAdapter.js';
 import { getOfflineTables } from './offlinePairing.js';
 import { DEMO_DISHES, DEMO_SECTIONS, DEMO_DEFAULT_PICKED, buildDemoRows } from './demoSeed.js';
+import { getBaroloTableData } from './baroloSeed.js';
 
 // ---------------------------------------------------------------------------
 // PART 1: UI-level no-signal / offline fallback for TheWine.
@@ -428,7 +429,16 @@ export function usePairMe(opts = {}){
       try {
         const anonId = await ensureSession();
         if (cancelled) return;
-        const data = st.tableCode === 'demo' ? await getDemo() : await getTableCode(st.tableCode);
+        // /t/barolo: the entry-points brief's seeded second venue - a real
+        // committed wine-list fixture (packages/pairing/data/wine_list_
+        // fixtures/barolo.txt, ~1832 rows via parseWineList, see
+        // baroloSeed.js), parsed client-side with zero network, fed into
+        // this SAME data path /t/demo's GET /v1/demo response already
+        // feeds. No BE call for this code, unlike the generic GET
+        // /v1/t/:code resolver below (superset #340, not built yet).
+        const data = st.tableCode === 'demo' ? await getDemo()
+          : st.tableCode === 'barolo' ? await getBaroloTableData()
+          : await getTableCode(st.tableCode);
         if (cancelled) return;
         patch({
           anonId,
