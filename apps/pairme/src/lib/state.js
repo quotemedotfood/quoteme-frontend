@@ -345,6 +345,11 @@ export function usePairMe(opts = {}){
     pairOfferings:null,pairCompromise:null,
     venueResults:[],venueMessage:null,selectedVenueId:null,
     tableCode:null,
+    // ITEM 8b: the "Demo state" toggles (blank profile, no-wine-list) are debug
+    // controls that were sitting in the live diner flow. Gate them behind a
+    // ?debug query param so a real diner never sees them; a demo driver adds
+    // ?debug to the URL to get them back.
+    debug:(typeof window!=="undefined"&&window.location&&window.location.search)?new URLSearchParams(window.location.search).has("debug"):false,
     // LANE A (/t/demo): seeded venue/menu/wine-list + the client-side
     // scoring engine's output. demoDishes stays null off the /t/demo path,
     // so every other entry point keeps using Desi's static DISHES/offerSet
@@ -623,6 +628,9 @@ export function usePairMe(opts = {}){
           prod:w.producer,wine:w.wine_name,meta:w.meta,say:w.say,btl:w.price,
           glass:w.glass?"$"+w.glass_price+" glass":"bottle only",
           why:o.why,covers:(o.covers&&o.covers.length)?o.covers.join(", "):"Everything you picked",
+          // ITEM 5: covers as one chip per dish this wine pairs with, so the
+          // difference between the two wines is visible at a glance.
+          coversChips:(o.covers&&o.covers.length)?o.covers:[],
           bd:on?"var(--pm-chrome)":"var(--pm-rule)",bw:on?"2px":"1px",bg:on?"var(--pm-sel)":"var(--pm-card)",
           chip:on?"presenting":"tap to add",chipBg:on?"#FFE3BC":"var(--pm-sunken)",
           pick:()=>patch(x=>({presentLabels:(x.presentLabels||[]).includes(w.label)?(x.presentLabels||[]).filter(y=>y!==w.label):[...(x.presentLabels||[]),w.label]})),
@@ -901,6 +909,7 @@ export function usePairMe(opts = {}){
         noList:st.noList,hasList:!st.noList,
         noListLabel:st.noList?"a venue with no wine list, on":"a venue with no wine list, off",
         toggleNoList:()=>patch({noList:!st.noList}),
+        showNoListToggle:st.debug,
 
         jumps:secSource.map(name=>({name,go:()=>jumpTo(name)})),
         menu:secSource.map(name=>({name,ref:el=>{secs.current[name]=el;},dishes:dishSource.filter(d=>d.sec===name).map(d=>{
@@ -952,7 +961,7 @@ export function usePairMe(opts = {}){
         showCoverage:!!(coverageRows&&coverageRows.length),coverageTitle,coverage:coverageRows,
         offerTitle:usingEngine?(pairingDirection==="one_bottle"?"One bottle for the table":"Your wine"):(blank?"Three wines, no assumptions":"Your wine"),
         offerSub:usingEngine?(pairingDirection==="one_bottle"?"One bottle, chosen to work across everything ordered.":"Ranked for the table. Tap the ones you want to present."):(blank?"You skipped every question, so this is the honest version.":"Tap the ones you want to present. Everything here is on their list tonight."),
-        showBlankToggle:!usingEngine,
+        showBlankToggle:!usingEngine&&st.debug,
         blankLabel:blank?"we know nothing about you, on":"we know nothing about you, off",
         toggleBlank:()=>patch({blank:!blank}),
         presentCount:usingEngine

@@ -3,7 +3,7 @@ import { Button, Input } from '../lib/ds';
 
 /** Screen 9 · Where to */
 export default function WhereTo(vm){
-  const { goMenu, goCamera, fVenue, venueHits, noList, hasList, noListLabel, toggleNoList, menu } = vm;
+  const { goMenu, goCamera, fVenue, venueHits, noList, hasList, noListLabel, toggleNoList, showNoListToggle, menu } = vm;
   return (
 <>
 <div>
@@ -12,7 +12,7 @@ export default function WhereTo(vm){
 <div style={{font: "400 12.5px var(--font-body)", color: "var(--pm-chromeSub)", marginTop: "5px"}}>No account, no address book. Just the room you're in.</div>
 </div>
 <div style={{padding: "18px"}}>
-<button onClick={toggleNoList} style={{width: "100%", textAlign: "left", border: "1px dashed var(--pm-blue)", background: "var(--pm-blueBg)", borderRadius: "10px", padding: "10px 12px", marginBottom: "12px", cursor: "pointer", font: "600 11.5px var(--font-body)", color: "var(--pm-blue)"}}>Demo state: {noListLabel}</button>
+{showNoListToggle ? (<button onClick={toggleNoList} style={{width: "100%", textAlign: "left", border: "1px dashed var(--pm-blue)", background: "var(--pm-blueBg)", borderRadius: "10px", padding: "10px 12px", marginBottom: "12px", cursor: "pointer", font: "600 11.5px var(--font-body)", color: "var(--pm-blue)"}}>Demo state: {noListLabel}</button>) : null}
 {hasList ? (<>
 <div>
 <button onClick={goMenu} style={{width: "100%", textAlign: "left", border: "1.5px solid var(--pm-accent2)", background: "var(--pm-sel)", borderRadius: "12px", padding: "15px", marginBottom: "9px", cursor: "pointer"}}>

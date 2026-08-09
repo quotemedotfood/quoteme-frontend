@@ -60,7 +60,16 @@ export default function TheWine(vm){
 </div>
 </div>
 <div style={{font: "400 12.5px/1.65 var(--font-body)", color: "var(--pm-ink)", marginTop: "10px"}}>{w.why}</div>
+{(w.coversChips && w.coversChips.length) ? (
+<div style={{display: "flex", flexWrap: "wrap", gap: "5px", marginTop: "9px", alignItems: "center"}}>
+<span style={{font: "400 11px var(--font-body)", color: "var(--pm-muted)"}}>Covers</span>
+{w.coversChips.map((c, ci) => (
+<span key={ci} style={{font: "500 10.5px var(--font-body)", color: "var(--pm-ink)", background: "var(--pm-sunken)", border: "1px solid var(--pm-rule)", borderRadius: "999px", padding: "3px 9px"}}>{c}</span>
+))}
+</div>
+) : (
 <div style={{font: "400 11.5px var(--font-body)", color: "var(--pm-muted)", marginTop: "8px"}}>Covers: {w.covers}</div>
+)}
 <div style={{font: "600 11.5px var(--font-body)", color: w.stockColor, marginTop: "7px"}}>{w.stockNote}</div>
 </button>
 <div style={{display: "flex", alignItems: "center", gap: "9px", marginTop: "11px", paddingTop: "10px", borderTop: "1px solid var(--pm-rule)"}}>
