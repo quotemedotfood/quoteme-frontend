@@ -131,7 +131,12 @@ export default function EntryScreen() {
     }));
     const wines = getSeededWines(venueListId);
     const T = getOfflineTables();
-    const result = computeOfferings('course_it_out', engineDishes, wines, T);
+    // The paste/entry flow has no glass-vs-bottle direction UI, so it wants a
+    // flat table-wide shortlist (house/suited/crowd), which is `several`.
+    // `course_it_out` now means a genuine per-course pour (item 7) and would
+    // label offerings "With the <dish>" instead of the role slots this screen
+    // presents.
+    const result = computeOfferings('several', engineDishes, wines, T);
     setOfferings(result);
   }
 

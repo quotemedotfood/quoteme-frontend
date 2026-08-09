@@ -290,12 +290,17 @@ function hydrateFromProfile(profile) {
 }
 
 function mapDirection(st) {
-  // POST /v1/pair's `direction` enum is course_it_out | one_bottle | several.
-  // Desi's UI asks glass-vs-bottle then a sub choice; this is a best effort
-  // mapping until item 5 (the pairing engine) ships and we can verify it.
-  if (st.mode === 'glass') return 'several';
+  // Maps HowToDrink's glass-vs-bottle + sub choice onto the engine's four
+  // framings. The three the demo walks (item 7):
+  //   glass  + coursed -> course_it_out  (a pour per course, in course order)
+  //   glass  + mains   -> mains_only     (one pour for the mains; starters SAID unpaired)
+  //   bottle + single  -> one_bottle     (one wine across everything, compromise shown)
+  // bottle + coursed is also course_it_out (a bottle per course). No sub yet
+  // chosen falls back to `several`, a flat table-wide shortlist.
   if (st.sub === 'single') return 'one_bottle';
-  return 'course_it_out';
+  if (st.sub === 'mains') return 'mains_only';
+  if (st.sub === 'coursed') return 'course_it_out';
+  return 'several';
 }
 
 /**
@@ -347,7 +352,7 @@ export function usePairMe(opts = {}){
     venueName:null,venueCity:null,
     demoLoading:false,demoDishes:null,demoWineRows:[],
     rulesTables:null,rulesVersion:null,
-    pairingDirection:null,pairingOfferings:null,pairingCompromise:null,
+    pairingDirection:null,pairingOfferings:null,pairingCompromise:null,pairingCoverage:null,
     pairingId:null,presentLabels:[],
     deleteConfirming:false,deleteDone:false});
   const patch = (p) => set(s => Object.assign({}, s, typeof p === 'function' ? p(s) : p));
@@ -636,16 +641,30 @@ export function usePairMe(opts = {}){
         const dir=st.pairingDirection||mapDirection(st);
         if(st.rulesTables&&st.demoWineRows.length&&chosen.length){
           const result=computeOfferings(dir,chosen,st.demoWineRows.map(rowToEngineWine),st.rulesTables,{format:fmt});
-          patch({wineFormat:fmt,pairingDirection:result.direction,pairingOfferings:result.offerings,pairingCompromise:result.compromise,presentLabels:[]});
+          patch({wineFormat:fmt,pairingDirection:result.direction,pairingOfferings:result.offerings,pairingCompromise:result.compromise,pairingCoverage:result.coverage,presentLabels:[]});
         }else if(st.demoWineRows&&st.demoWineRows.length){
           const offline=computeOfflineOfferings(dir,chosen,st.demoWineRows,{format:fmt});
-          patch({wineFormat:fmt,pairingDirection:offline.direction,pairingOfferings:offline.offerings,pairingCompromise:offline.compromise,presentLabels:[]});
+          patch({wineFormat:fmt,pairingDirection:offline.direction,pairingOfferings:offline.offerings,pairingCompromise:offline.compromise,pairingCoverage:offline.coverage,presentLabels:[]});
         }else{
           patch({wineFormat:fmt});
         }
       };
       const formatTabs=[["glass","By the glass"],["bottle","Bottles"],["both","Both"]].map(([k,label])=>({
         k,label,active:st.wineFormat===k,pick:()=>runFormat(k)}));
+      // ITEM 7: coverage strip. Every ordered dish is listed with what it is
+      // paired with, or SAID to go unpaired. No dish is ever silently omitted,
+      // which is the whole point of the three directions.
+      const coverageRows=(usingEngine&&Array.isArray(st.pairingCoverage))?st.pairingCoverage.map(c=>{
+        const paired=c.status==="paired";
+        const shortWine=c.wine?c.wine.split(",")[0]:"";
+        return {
+          dish:c.dish,sec:c.sec||"",paired,
+          text:paired?(c.note?c.note:(shortWine?"with "+shortWine:"paired")):"goes unpaired, and that's fine",
+          color:paired?"var(--pm-ink)":"var(--pm-muted)"};
+      }):null;
+      const coverageTitle=pairingDirection==="mains_only"?"One pour for the mains"
+        :pairingDirection==="course_it_out"?"A pour for each course"
+        :pairingDirection==="one_bottle"?"One bottle, across everything":null;
       // ONE-BOTTLE MODE: the single bottle almost never fits every dish
       // equally, so this MUST surface where it gives ground (directions.js's
       // oneBottle() computes exactly this; here it is just shaped for
@@ -699,6 +718,7 @@ export function usePairMe(opts = {}){
                   pairingDirection: result.direction,
                   pairingOfferings: result.offerings,
                   pairingCompromise: result.compromise,
+                  pairingCoverage: result.coverage,
                   presentLabels: [],
                 });
                 try {
@@ -743,6 +763,7 @@ export function usePairMe(opts = {}){
                   pairingDirection: offline.direction,
                   pairingOfferings: offline.offerings,
                   pairingCompromise: offline.compromise,
+                  pairingCoverage: offline.coverage,
                   presentLabels: [],
                 });
               };
@@ -928,6 +949,7 @@ export function usePairMe(opts = {}){
         // stays Desi's static offerSet/W demo data, unchanged.
         usingEngine,
         showFormatTabs:usingEngine,formatTabs,
+        showCoverage:!!(coverageRows&&coverageRows.length),coverageTitle,coverage:coverageRows,
         offerTitle:usingEngine?(pairingDirection==="one_bottle"?"One bottle for the table":"Your wine"):(blank?"Three wines, no assumptions":"Your wine"),
         offerSub:usingEngine?(pairingDirection==="one_bottle"?"One bottle, chosen to work across everything ordered.":"Ranked for the table. Tap the ones you want to present."):(blank?"You skipped every question, so this is the honest version.":"Tap the ones you want to present. Everything here is on their list tonight."),
         showBlankToggle:!usingEngine,

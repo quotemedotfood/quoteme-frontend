@@ -3,7 +3,7 @@ import { Input } from '../lib/ds';
 
 /** Screen 12 · The wine */
 export default function TheWine(vm){
-  const { fWhy, offerTitle, offerSub, blankLabel, toggleBlank, showBlankToggle, presentCount, offers, compromiseNote, showFormatTabs, formatTabs } = vm;
+  const { fWhy, offerTitle, offerSub, blankLabel, toggleBlank, showBlankToggle, presentCount, offers, compromiseNote, showFormatTabs, formatTabs, showCoverage, coverageTitle, coverage } = vm;
   return (
 <>
 <div>
@@ -16,6 +16,17 @@ export default function TheWine(vm){
 <div role="tablist" aria-label="Glass or bottle" style={{display: "flex", gap: "4px", background: "var(--pm-sunken)", borderRadius: "999px", padding: "4px", marginBottom: "14px"}}>
 {(formatTabs || []).map((tb) => (
 <button key={tb.k} role="tab" aria-selected={tb.active} onClick={tb.pick} style={{flex: "1", border: "none", cursor: "pointer", borderRadius: "999px", padding: "9px 8px", minHeight: "38px", font: `${tb.active ? "700" : "500"} 12px var(--font-body)`, color: tb.active ? "#fff" : "var(--pm-muted)", background: tb.active ? "var(--pm-chrome)" : "transparent"}}>{tb.label}</button>
+))}
+</div>
+) : null}
+{showCoverage ? (
+<div style={{border: "1px solid var(--pm-rule)", background: "var(--pm-card)", borderRadius: "12px", padding: "13px", marginBottom: "14px"}}>
+{coverageTitle ? (<div style={{font: "700 11px var(--font-body)", color: "var(--pm-muted)", letterSpacing: ".06em", textTransform: "uppercase", marginBottom: "9px"}}>{coverageTitle}</div>) : null}
+{(coverage || []).map((c, i) => (
+<div key={i} style={{display: "flex", justifyContent: "space-between", gap: "12px", alignItems: "baseline", padding: "3px 0"}}>
+<span style={{font: "500 12.5px var(--font-body)", color: "var(--pm-ink)"}}>{c.dish}</span>
+<span style={{font: `${c.paired ? "500" : "400"} 11.5px var(--font-body)`, color: c.color, textAlign: "right", flex: "none"}}>{c.text}</span>
+</div>
 ))}
 </div>
 ) : null}
