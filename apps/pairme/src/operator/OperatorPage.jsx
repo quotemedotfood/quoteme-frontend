@@ -50,7 +50,7 @@ const COLORS = {
   rule: '#E3E1DB',
   chrome: '#1F2A44',
   chromeSub: '#A5CFDD',
-  sel: '#FFF4E4',
+  sel: '#FCF1E1',
   selBd: '#EFB96B',
   accent: '#EFB96B',
   accentBd: '#E5A44F',
@@ -58,7 +58,7 @@ const COLORS = {
   warnBd: '#F2993D',
   warnInk: '#C4701A',
   removedBg: '#F1EFEA',
-  pushBg: '#FFF4E4',
+  pushBg: '#FCF1E1',
   pushBd: '#EFB96B',
 };
 
