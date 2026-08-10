@@ -120,7 +120,7 @@ function structuralWhy(wine) {
  * @returns {{direction, offerings: Array, compromise: object|null}}
  */
 export function computeOfferings(direction, dishes, wines, T, opts = {}) {
-  const { format = 'both' } = opts;
+  const { format = 'both', budget = null } = opts;
   // The by-the-glass POOL is genuinely a different candidate set, not a view of
   // the bottle set: only wines the venue actually pours by the glass. If that
   // set is empty (a bottle-only cellar like Barolo Grill), we return zero
@@ -129,6 +129,20 @@ export function computeOfferings(direction, dishes, wines, T, opts = {}) {
   // disguise. See DIRECTION_FOR_FORMAT: glass ranks per dish, bottle ranks
   // across dishes, so the two formats are separate rankings, not a filter.
   wines = format === 'glass' ? wines.filter((w) => w.glass) : wines;
+
+  // BUDGET as a RANGE, not a ceiling. The max is a hard ceiling ("we never show
+  // you what you didn't ask to see"); a max at/above the top of the UI range
+  // (400) means "no ceiling". The min is a SOFT FLOOR: a bottle under it still
+  // appears but loses score, because a diner who set a floor is telling us they
+  // do not want the cheapest bottle on the list - the behaviour we break.
+  const ceil = budget && budget.max && budget.max < 400 ? budget.max : null;
+  if (ceil) wines = wines.filter((w) => w.price == null || w.price <= ceil);
+  const FLOOR_PENALTY = 25;
+  const floorPenalty = (price) =>
+    budget && budget.min && price != null && price < budget.min
+      ? Math.round((FLOOR_PENALTY * (budget.min - price)) / budget.min)
+      : 0;
+
   const engineDishes = dishes.map(dishToEngineDish);
   const dishNames = engineDishes.map((d) => d.name);
 
@@ -234,7 +248,13 @@ export function computeOfferings(direction, dishes, wines, T, opts = {}) {
   // several() is used rather than pair() because pair()'s picks are
   // grape-deduped for its single-dish discovery mechanic (see directions.js),
   // which is the wrong shape for "best across everything ordered".
-  const shortlist = several(engineDishes, wines, T, { n: 3 });
+  // Pull a deeper shortlist so the soft floor can DEMOTE below-floor bottles out
+  // of the top three rather than merely reorder a fixed three - a cheap bottle
+  // that fits well should still lose to an in-budget one.
+  const shortlist = several(engineDishes, wines, T, { n: 8 })
+    .map((entry) => ({ ...entry, adjScore: entry.bestScore - floorPenalty(entry.wine.price) }))
+    .sort((a, b) => b.adjScore - a.adjScore)
+    .slice(0, 3);
   const offerings = shortlist.map((entry, i) => {
     const dish = engineDishes.find((d) => d.name === entry.bestForDish) || { components: [] };
     const { profile } = dishProfile(dish.components, T);
@@ -247,7 +267,7 @@ export function computeOfferings(direction, dishes, wines, T, opts = {}) {
       why,
       fired: scored.fired,
       bestForDish: entry.bestForDish,
-      score: entry.bestScore,
+      score: entry.adjScore,
       covers: coversFor(entry.wine),
     };
   });

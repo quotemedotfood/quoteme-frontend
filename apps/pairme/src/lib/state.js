@@ -71,6 +71,12 @@ function withOfflineComponents(dish) {
  * @param {Array} chosenDishes - the table's already-picked dishes.
  * @param {Array} alreadyLoadedWineRows - st.demoWineRows, may be empty.
  */
+/** The budget as a {min,max} range for the engine: min is a soft floor
+ * (penalises cheaper bottles, does not exclude), max is the ceiling. */
+function budgetOf(st) {
+  return { min: Math.min(st.bMin, st.bMax), max: Math.max(st.bMin, st.bMax) };
+}
+
 function computeOfflineOfferings(direction, chosenDishes, alreadyLoadedWineRows, opts = {}) {
   const T = getOfflineTables();
   const rows = alreadyLoadedWineRows && alreadyLoadedWineRows.length ? alreadyLoadedWineRows : OFFLINE_WINE_ROWS;
@@ -240,6 +246,7 @@ function buildProfilePayload(st) {
   const dietary = st.diet.filter((d) => DIETARY_LABELS.has(d));
   const notDrinking = st.diet.some((d) => NOT_DRINKING_LABELS.has(d));
   const hi = Math.max(st.bMin, st.bMax);
+  const lo = Math.min(st.bMin, st.bMax);
   const somLevel = LEVEL_OPTIONS.indexOf(st.level) + 1;
   const targetLevel = WANT_OPTIONS.indexOf(st.want) + 1;
   const freeText = buildFreeText(st);
@@ -248,10 +255,14 @@ function buildProfilePayload(st) {
       som_level: somLevel > 0 ? somLevel : undefined,
       target_level: targetLevel > 0 ? targetLevel : undefined,
       adventure: st.adv || undefined,
-      // Desi's UI collects a floor and a ceiling; the contract only has one
-      // `budget` int. We send the ceiling: it is what "we never show you
-      // what you didn't ask to see" is protecting.
+      // Desi's UI collects a floor and a ceiling and BOTH are real signal: the
+      // ceiling protects "we never show you what you didn't ask to see", and the
+      // floor says the diner does not want the cheapest bottle on the list. Send
+      // the range; the client engine treats the floor as a soft penalty, not an
+      // exclusion. `budget` stays the ceiling for backward compatibility.
       budget: hi || undefined,
+      budget_min: lo || undefined,
+      budget_max: hi || undefined,
       celebration_flag: !!st.bump,
       likes: st.likes,
       likes_free_text: st.loveOwn || null,
@@ -651,10 +662,10 @@ export function usePairMe(opts = {}){
         // dishes, both is the neutral shortlist. See DIRECTION_FOR_FORMAT.
         const dir=DIRECTION_FOR_FORMAT[fmt]||'several';
         if(st.rulesTables&&st.demoWineRows.length&&chosen.length){
-          const result=computeOfferings(dir,chosen,st.demoWineRows.map(rowToEngineWine),st.rulesTables,{format:fmt});
+          const result=computeOfferings(dir,chosen,st.demoWineRows.map(rowToEngineWine),st.rulesTables,{format:fmt,budget:budgetOf(st)});
           patch({wineFormat:fmt,pairingDirection:result.direction,pairingOfferings:result.offerings,pairingCompromise:result.compromise,pairingCoverage:result.coverage,presentLabels:[]});
         }else if(st.demoWineRows&&st.demoWineRows.length){
-          const offline=computeOfflineOfferings(dir,chosen,st.demoWineRows,{format:fmt});
+          const offline=computeOfflineOfferings(dir,chosen,st.demoWineRows,{format:fmt,budget:budgetOf(st)});
           patch({wineFormat:fmt,pairingDirection:offline.direction,pairingOfferings:offline.offerings,pairingCompromise:offline.compromise,pairingCoverage:offline.coverage,presentLabels:[]});
         }else{
           patch({wineFormat:fmt});
@@ -724,7 +735,7 @@ export function usePairMe(opts = {}){
             if (st.rulesTables && st.demoWineRows.length && chosen.length) {
               try {
                 const wines = st.demoWineRows.map(rowToEngineWine);
-                const result = computeOfferings(direction, chosen, wines, st.rulesTables, {format:st.wineFormat});
+                const result = computeOfferings(direction, chosen, wines, st.rulesTables, {format:st.wineFormat,budget:budgetOf(st)});
                 patch({
                   pairingDirection: result.direction,
                   pairingOfferings: result.offerings,
@@ -769,7 +780,7 @@ export function usePairMe(opts = {}){
               // lib/offlinePairing.js falls back to - see
               // computeOfflineOfferings above.
               const runOffline = () => {
-                const offline = computeOfflineOfferings(direction, chosen, st.demoWineRows, {format:st.wineFormat});
+                const offline = computeOfflineOfferings(direction, chosen, st.demoWineRows, {format:st.wineFormat,budget:budgetOf(st)});
                 patch({
                   pairingDirection: offline.direction,
                   pairingOfferings: offline.offerings,
@@ -880,10 +891,12 @@ export function usePairMe(opts = {}){
         fUnread:field("unreadable"),fVenue:field("venueQ"),fWhy:field("why"),
         fFb:field("fb"),fGuestName:field("guestName"),
 
-        bMin:lo,bMax:hi,bMaxLabel:hi>=400?"400+":hi,
-        setBMin:e=>patch({bMin:Math.min(+e.target.value,st.bMax)}),
-        setBMax:e=>patch({bMax:Math.max(+e.target.value,st.bMin)}),
-        bLeft:((lo-20)/380*100)+"%",bRight:(100-(hi-20)/380*100)+"%",
+        // The two dots ARE the control now (a real two-handle range slider);
+        // setBMin/setBMax take a dollar value, snap to the step, and clamp so
+        // the low handle cannot cross the high handle.
+        bMin:lo,bMax:hi,bMaxLabel:hi>=400?"400+":hi,bFloor:20,bCeil:400,bStep:10,
+        setBMin:v=>patch({bMin:Math.min(Math.max(20,Math.round(v/10)*10),st.bMax)}),
+        setBMax:v=>patch({bMax:Math.max(Math.min(400,Math.round(v/10)*10),st.bMin)}),
         bumps:[10,20,30].map(p=>({pct:"+"+p+"%",to:Math.round(hi*(1+p/100)),
           pick:()=>patch({bump:st.bump===p?null:p}),
           bd:st.bump===p?"var(--pm-chrome)":"var(--pm-rule)",bg:st.bump===p?"var(--pm-sel)":"var(--pm-card)"})),
