@@ -1,0 +1,47 @@
+rule_id,kind,trigger_type,trigger,wine_condition,weight,why_template,status,source,version
+hf_artichoke,hard_fail,component,artichoke,oak<=1 and tannin<=2,0,"{wine} because artichoke contains cynarin, which makes the next sip taste sweet and metallic. Unoaked and untannic is the defence.",active,classic,1
+hf_artichoke_soft,penalty,component,artichoke,oak<=2,-30,"Some oak here, so it is a compromise rather than a clean answer.",active,classic,1
+hf_asparagus,penalty,component,asparagus,oak<=2,-25,"Asparagus is sulfurous, so oak is the wrong direction.",active,classic,1
+boost_asparagus_sauv,boost,component,asparagus,grape==sauvignon blanc,25,"{wine} because asparagus and sauvignon is the reliably safe category.",active,classic,1
+hf_heat,hard_fail,axis,heat>=4,alcohol<=3 and tannin<=2,0,"{wine} because real heat amplifies alcohol and tannin. This one has neither.",active,classic,1
+hf_heat_soft,penalty,axis,heat>=3,alcohol<=4 and tannin<=3,-20,"There is some heat on the plate, so the grip is a risk.",active,classic,1
+req_sweet_blue,hard_fail,component,blue cheese,sweetness>=3,0,"{wine} because blue cheese and sweet wine is a rule, not a preference.",active,classic,1
+req_sweet_roquefort,hard_fail,component,roquefort,sweetness>=3,0,"{wine} because Roquefort needs residual sugar to sit against the salt.",active,classic,1
+req_sweet_sweet,require,axis,sweetness>=4,sweetness>=2,0,"{wine} because the dish is already sweet and a bone-dry wine fights it.",active,classic,1
+req_acid_vinaigrette,require,component,vinaigrette,acid>=4,0,"{wine} because a vinaigrette will out-acid anything softer and flatten it.",active,classic,1
+req_acid_preserved,require,component,preserved lemon,acid>=5,0,"{wine} because preserved lemon is brutal on wine and only high acid survives it.",active,classic,1
+req_acid_general,require,axis,acid>=4,acid>=4,0,"{wine} matches the acid on the plate.",active,classic,1
+req_tannin_fat,penalty,axis,tannin_wine>=4,fat>=3,-18,"{wine} because tannin needs fat to soften against, and this dish has it.",active,classic,1
+pen_tannin_nofat,penalty,axis,fat<=2,tannin<=3,-25,"Not much fat here, so heavy tannin would sit exposed.",active,classic,1
+pen_tannin_bitter,penalty,axis,bitter>=4,tannin<=3,-20,"The dish is already bitter and tannin compounds it.",active,classic,1
+pen_tannin_raw,penalty,component,tuna,tannin<=2,-20,"Raw fish and tannin is a bad meeting.",active,classic,1
+pen_tannin_egg,penalty,component,jammy egg,tannin<=3,-15,"Egg yolk coats, which flattens tannin.",active,classic,1
+boost_umami_pinot,boost,axis,umami>=4,grape==pinot noir,20,"{wine} because earth and umami is what pinot is for.",active,classic,1
+boost_mushroom_pinot,boost,component,mushroom,grape==pinot noir,25,"{wine} because mushroom and Burgundy is the most reliable pairing in wine.",active,classic,1
+boost_morel_jura,boost,component,morel,grape==savagnin,30,"{wine} because morels and oxidative Jura white is a regional truth, not a stunt.",active,classic,1
+boost_truffle_jura,boost,component,truffle,grape==savagnin,25,"{wine} because truffle and oxidative white is a genuine affinity.",active,classic,1
+boost_truffle_nebbiolo,boost,component,truffle,grape==nebbiolo,25,"{wine} because truffle and nebbiolo is the Piedmontese answer.",active,classic,1
+boost_truffle_pinot,boost,component,truffle,grape==pinot noir,20,"{wine} because truffle and pinot is the classic affinity.",active,classic,1
+boost_pepper_syrah,boost,component,peppercorn,grape==syrah,30,"{wine} because cracked pepper and syrah share a compound. The pairing tastes deliberate.",active,classic,1
+boost_pepper_blau,boost,component,peppercorn,grape==blaufrankisch,20,"{wine} because blaufrankisch is peppery in the same register.",active,classic,1
+boost_goat_sancerre,boost,component,goat cheese,grape==sauvignon blanc,30,"{wine} because warm goat cheese and Loire sauvignon is the textbook, and the textbook is right.",active,classic,1
+boost_walnut_oxidative,boost,component,walnut,oak>=2 and acid>=4,20,"{wine} because walnut and an oxidative white is the deeper answer.",active,classic,1
+boost_shellfish_muscadet,boost,component,mussel,grape==melon de bourgogne,30,"{wine} because Muscadet sur lie and mussels is the oldest correct answer in France.",active,classic,1
+boost_oily_fish_acid,boost,component,sardine,acid>=5,25,"{wine} because oily fish and salt need a wine built of acid and salinity.",active,classic,1
+boost_fried_sparkling,boost,axis,fat>=4,texture==sparkling,25,"{wine} because nothing clears fat and salt as cleanly as bubbles.",active,classic,1
+boost_salmon_pinot,boost,component,salmon,grape==pinot noir,20,"{wine} because salmon takes red, and earth meets earth.",active,classic,1
+boost_beet_pinot,boost,component,smoked beet,grape==pinot noir,20,"{wine} because smoked beet and pinot is earth to earth.",active,classic,1
+boost_liver_sweet,boost,component,chicken liver,sweetness>=2,20,"{wine} because liver fat wants a little sweetness.",active,classic,1
+boost_liver_gamay,boost,component,chicken liver,grape==gamay,20,"{wine} because gamay has the fruit for the confiture and the acid for the fat, with no tannin to fight the mustard.",active,classic,1
+boost_anise_chenin,boost,component,anise,grape==chenin blanc,15,"{wine} because anise and chenin's waxy fruit is a better conversation than anise and chardonnay.",active,classic,1
+boost_dill_riesling,boost,component,dill,grape==riesling,15,"{wine} because riesling meets herbs where chardonnay sits underneath them.",active,classic,1
+boost_tarragon_sauv,boost,component,tarragon,grape==sauvignon blanc,20,"{wine} because tarragon and sauvignon is the obvious right answer.",active,classic,1
+boost_bitter_rose,boost,axis,bitter>=4,texture==rose,15,"{wine} because a rosé with grip handles bitterness where a lighter one vanishes.",active,classic,1
+boost_port_pecan,boost,component,pecan,sweetness>=4,25,"{wine} because sweetness matched, not exceeded.",active,classic,1
+bridge_ingredient_wine,bridge,component,sherry,region==jerez,35,"{wine} because the dish already contains it. Echoing the cooking wine is the least clever and most reliable move available.",active,classic,1
+bridge_cooked_in,bridge,component,sauvignon blanc,grape==sauvignon blanc,35,"{wine} because the dish is cooked in it. Pour what is in the pot.",active,classic,1
+match_weight,score,axis,weight,abs(body-weight)<=1,20,"{wine} sits at the same weight as the plate.",active,classic,1
+match_salt_acid,boost,axis,salt>=4,acid>=4,15,"{wine} because salt wants acid.",active,classic,1
+pen_neutral_dish,note,axis,weight<=2,,0,"A light plate. Follow whatever else the table is drinking.",active,classic,1
+pen_light_on_heavy,penalty,axis,weight>=4,texture==still,-30,"A big savoury plate and a light wine leaves the plate winning.",active,classic,1
+boost_bigmeat_tannin,boost,axis,fat>=4,tannin>=3,18,"{wine} because char and fat want tannin to push against.",active,classic,1
