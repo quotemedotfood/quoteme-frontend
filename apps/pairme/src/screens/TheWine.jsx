@@ -3,13 +3,16 @@ import { Input } from '../lib/ds';
 
 /** Screen 12 · The wine */
 export default function TheWine(vm){
-  const { fWhy, offerTitle, offerSub, blankLabel, toggleBlank, showBlankToggle, presentCount, offers, compromiseNote, showFormatTabs, formatTabs, showCoverage, coverageTitle, coverage, showFeatured, featured } = vm;
+  const { fWhy, offerTitle, offerSub, blankLabel, toggleBlank, showBlankToggle, presentCount, offers, compromiseNote, showFormatTabs, formatTabs, showCoverage, coverageTitle, coverage, showFeatured, featured, goWineList } = vm;
   return (
 <>
 <div>
 <div style={{background: "var(--pm-chrome)", padding: "18px"}}>
 <div style={{font: "600 20px var(--font-display)", color: "#fff"}}>{offerTitle}</div>
 <div style={{font: "400 12.5px/1.5 var(--font-body)", color: "var(--pm-chromeSub)", marginTop: "5px"}}>{offerSub}</div>
+{goWineList ? (
+<button onClick={goWineList} style={{marginTop: "12px", border: "1px solid rgba(255,255,255,.3)", background: "transparent", color: "#fff", borderRadius: "999px", padding: "9px 14px", font: "600 12px var(--font-body)", cursor: "pointer"}}>Browse the full list</button>
+) : null}
 </div>
 <div style={{padding: "18px"}}>
 {showFeatured ? (
