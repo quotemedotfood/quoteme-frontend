@@ -24,6 +24,41 @@ function escapeRegExp(s) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+// Words that LOOK plural but are singular ingredients/preparations - never
+// singularise these. Explicit by design; it will grow. Multi-word entries are
+// split to tokens so "fines herbes" protects "herbes".
+const SINGULAR_EXCEPTION_PHRASES = [
+  'fines herbes', 'frites', 'pommes', 'greens', 'asparagus', 'hummus',
+  'couscous', 'bordelaise', 'mayonnaise', 'bearnaise', 'hollandaise', 'escabeche',
+];
+const SINGULAR_EXCEPTIONS = new Set(
+  SINGULAR_EXCEPTION_PHRASES.flatMap((p) => p.split(/\s+/)),
+);
+
+/**
+ * Singularise ONE word before lookup. First rule that matches wins, mirroring
+ * the resolver spec:
+ *   ies->y, ves->f, oes->o, ses/xes/zes/ches/shes->strip es,
+ *   trailing s->strip (only if 4+ chars and not ending ss/us).
+ * Exception words are returned unchanged.
+ */
+export function singularize(w) {
+  if (!w || SINGULAR_EXCEPTIONS.has(w)) return w;
+  if (/ies$/.test(w)) return `${w.slice(0, -3)}y`;
+  if (/ves$/.test(w)) return `${w.slice(0, -3)}f`;
+  if (/oes$/.test(w)) return w.slice(0, -2);
+  if (/(ses|xes|zes|ches|shes)$/.test(w)) return w.slice(0, -2);
+  if (/s$/.test(w) && w.length >= 4 && !/(ss|us)$/.test(w)) return w.slice(0, -1);
+  return w;
+}
+
+/** A copy of the text with every word singularised, so plural menu terms
+ * ("mussels", "shallots", "snap peas") match the singular corpus keys. Runs
+ * alongside the original text so multi-word keys still match as phrases. */
+function singularizeText(text) {
+  return text.replace(/[a-z]+/g, (w) => singularize(w));
+}
+
 /** Longest key first, so "chicken liver" is tested as a whole phrase before
  * its substring "chicken" also matches (both matching is harmless - dishProfile
  * takes the MAX across components - this just keeps the specific match). */
@@ -47,9 +82,13 @@ export function vocabPatterns(T) {
 export function resolveComponents(name, description = '', T) {
   const text = `${name || ''} ${description || ''}`.toLowerCase().trim();
   if (!text) return [];
+  // Match keys against the original text (so multi-word keys hit as phrases)
+  // AND a singularised copy (so plural menu terms hit the singular keys). Union
+  // the two; dishProfile takes the MAX across components so duplicates are safe.
+  const singular = singularizeText(text);
   const hits = [];
   for (const { key, re } of vocabPatterns(T)) {
-    if (re.test(text)) hits.push(key);
+    if (re.test(text) || re.test(singular)) hits.push(key);
   }
   return hits;
 }
