@@ -895,6 +895,15 @@ export function usePairMe(opts = {}){
         fLove:field("loveOwn"),fNot:field("notOwn"),fDiet:field("dietOwn"),
         fUnread:field("unreadable"),fVenue:field("venueQ"),fWhy:field("why"),
         fFb:field("fb"),fGuestName:field("guestName"),
+        // Speech bridge for the field mics: the app-level useSpeech (App.jsx)
+        // drives these off st.listening. A spoken result appends to whatever the
+        // active field already holds, then clears listening (single-shot capture,
+        // matching useSpeech's interimResults:false). stopListening() is the
+        // error/cancel path. This is what turns the field mics from a "Listening"
+        // hint that captured nothing into a real control.
+        listening:st.listening,
+        appendToListening:(text)=>patch(x=>{const k=x.listening;if(!k)return{listening:null};const cur=x[k]||"";return {[k]:cur.trim()?cur.trim()+" "+text:text,listening:null};}),
+        stopListening:()=>patch({listening:null}),
 
         // The two dots ARE the control now (a real two-handle range slider);
         // setBMin/setBMax take a dollar value, snap to the step, and clamp so

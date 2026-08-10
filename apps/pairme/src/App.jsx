@@ -1,4 +1,5 @@
 import React from 'react';
+import { useSpeech } from './lib/useSpeech.js';
 
 import Welcome from './screens/Welcome';
 import SignIn from './screens/SignIn';
@@ -49,6 +50,15 @@ export function Phone({ vm }) {
     const id = setInterval(() => setClock(statusBarTime(new Date())), 30000);
     return () => clearInterval(id);
   }, []);
+  // Field mics: one useSpeech, driven off vm.listening (set by any field's mic
+  // button). A spoken result appends to that field via vm.appendToListening.
+  // This is the real capture behind every field mic - see BUTTON_AUDIT.md.
+  const speech = useSpeech({ onResult: vm.appendToListening, onError: vm.stopListening });
+  React.useEffect(() => {
+    if (vm.listening) speech.start();
+    else speech.stop();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vm.listening]);
   return (
     <div
       className="pm-phone"

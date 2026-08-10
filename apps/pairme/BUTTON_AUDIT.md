@@ -10,10 +10,12 @@ Found on the demo walks. Update this as controls are added or fixed.
 |---|---|---|---|---|
 | Budget range dots | Q3 Budget | yes (two dots on a range) | **now yes** | FIXED - the two dots are a real two-handle range slider (drag + keyboard); the explainer sliders under it are deleted |
 | Entry mic (Type / At home) | Entry | yes (mic icon) | yes | wired to Web Speech API with a text fallback |
-| Field mics (budget free-text, "None of these", the setup questions) | Q3/Q others, The Wine | yes (mic icon, toggles a "Listening" hint) | **no** | only toggles a hint; no capture. FOLLOW-UP: route these through the same useSpeech hook the entry mic uses |
-| Cellar connectors | (venue connect) | yes (look tappable) | **no** | flagged on the demo walk; needs wiring or a non-interactive treatment |
+| Field mics (budget free-text, "None of these", the setup questions) | Q3 / Q others / The Wine | yes (mic icon) | **now yes** | FIXED - routed through the app-level useSpeech (App.jsx Phone) off st.listening; a spoken result appends to the field via vm.appendToListening. Same hook as the entry mic |
+| Cellar connectors | Welcome / Your profile / Sign in | **now no (visibly disabled)** | n/a | FIXED by the honest-connect change: none connect yet, so they ship visibly disabled ("coming soon" / "not yet connected"), not as tappable fictions. The only live control is the "I don't use any of these" escape hatch |
 
-## Rule
-When adding any control, fill BOTH columns before it ships. If it looks
-interactive it must be interactive, or it must be restyled so it does not look
-interactive. No exceptions - the list above is what happens otherwise.
+## The rule (hard)
+A control ships with BOTH columns yes, or it ships VISIBLY DISABLED. There is no
+third state - no control that looks interactive but does nothing. When adding a
+control, fill both columns before it ships; if it cannot be made interactive yet,
+render it disabled (greyed, a "coming soon" / "not yet" label), never as a live
+button. Every row above is what happens when this rule is skipped.
