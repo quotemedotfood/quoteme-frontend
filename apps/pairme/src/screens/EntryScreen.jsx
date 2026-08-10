@@ -53,7 +53,7 @@ const COLORS = {
   card: '#fff',
   rule: '#E3E1DB',
   chrome: '#1F2A44',
-  sel: '#FFF4E4',
+  sel: '#FCF1E1',
   selBd: '#EFB96B',
   accent: '#EFB96B',
   accentBd: '#E5A44F',

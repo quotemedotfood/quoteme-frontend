@@ -1,11 +1,11 @@
 /* PairMe tokens. Light, dark and high-contrast are set as inline vars by usePairMe(). */
 :root{
-  --color-pear-50:#FFF7EC; --color-pear-100:#FFEDD6; --color-pear-300:#FFDCAB;
+  --color-pear-50:#FDF8F0; --color-pear-100:#FCF1E1; --color-pear-300:#F6D6A9;
   --color-pear-500:#EFB96B; --color-pear-700:#E5A44F; --color-pear-900:#8A5A18;
 
   --pm-page:#FBFAF7; --pm-card:#fff; --pm-ink:#1C1C1A; --pm-muted:#6B6B66; --pm-rule:#E3E1DB;
   --pm-chrome:#1F2A44; --pm-chromeSub:#A5CFDD;
-  --pm-sel:#FFF4E4; --pm-selBd:#EFB96B; --pm-sunken:#F1EFEA;
+  --pm-sel:#FCF1E1; --pm-selBd:#EFB96B; --pm-sunken:#F1EFEA;
   --pm-warnBg:#FEF3E7; --pm-warnBd:#F2993D; --pm-warnInk:#C4701A;
   --pm-blueBg:#F4F8F9; --pm-blue:#5C8A9C; --pm-pearInk:#8A5A18;
   --pm-dish:13.5px; --pm-desc:11.5px; --pm-sec:11px; --pm-weight:500;
