@@ -132,13 +132,14 @@ describe('PART 1: UI-level no-signal fallback (TheWine calls packages/pairing on
   // not Desi's hardcoded offerSet ("Three wines, no assumptions" / "Safe,
   // and we mean that kindly" / etc, none of which should appear here).
   //
-  // Expected top 3 are deterministic (same reasoning as the unit tests
-  // above: same dish set + same wine list + same tables => same ranked
-  // picks every time) - verified against computeOfferings() directly with
-  // the exact inputs this walk produces (chosen: a2/a5/e6/e9/s2, via
-  // OFFLINE_WINE_ROWS + OFFLINE_COMPONENTS_BY_ID, course_it_out direction):
-  // house=Trapet Gevrey-Chambertin, suited=Bouvier Marsannay, crowd=
-  // Berthet-Bondet Jura Savagnin.
+  // Expected top 3 are deterministic (same dish set + wine list + tables =>
+  // same ranked picks every time), verified against computeOfferings() with
+  // the exact inputs this walk produces (chosen a2/a5/e6/e9/s2, several
+  // direction). The diner skipped setup, so the DEFAULT budget applies
+  // (bMin 60, bMax 140), and the ceiling is a real constraint: Trapet
+  // Gevrey-Chambertin ($234) is now correctly excluded as over-ceiling, and
+  // the in-budget top three are house=Bouvier Marsannay ($115), suited=
+  // Berthet-Bondet Jura Savagnin ($118), crowd=Gimonnet Blanc de Blancs ($138).
   it('TheWine screen still shows 3 offerings when the network is down, sourced from packages/pairing', async () => {
     const user = userEvent.setup();
     const { findByText, getByRole } = renderPairMeApp('/');
@@ -167,24 +168,24 @@ describe('PART 1: UI-level no-signal fallback (TheWine calls packages/pairing on
     expect(screen.getByText('Crowd pleaser')).toBeInTheDocument();
 
     // Real wines from packages/pairing scoring the actual chosen dishes,
-    // never Desi's hardcoded Gimonnet/Trapet/Foillard offerSet trio.
-    expect(screen.getByText('Trapet')).toBeInTheDocument();
-    expect(screen.getByText('Gevrey-Chambertin')).toBeInTheDocument();
+    // budget-aware: all within the default $140 ceiling, and Trapet (over it)
+    // is gone.
+    expect(screen.queryByText('Trapet')).not.toBeInTheDocument();
     expect(screen.getByText('Bouvier')).toBeInTheDocument();
     expect(screen.getByText('Marsannay')).toBeInTheDocument();
     expect(screen.getByText('Berthet-Bondet')).toBeInTheDocument();
+    expect(screen.getByText('Gimonnet')).toBeInTheDocument();
 
     // Pronunciation (the `say` field, rendered in TheWine.jsx's "Say it"
     // row) present for each - proves the full wine object came through,
     // not just a label.
-    expect(screen.getByText('zhev-RAY shom-ber-TAN')).toBeInTheDocument();
     expect(screen.getByText('boo-vee-AY, mar-sah-NAY')).toBeInTheDocument();
     expect(screen.getByText('ber-TAY bon-DAY, sah-vahn-YAN')).toBeInTheDocument();
+    expect(screen.getByText('zhee-moh-NAY')).toBeInTheDocument();
 
-    // Reason (`why`), a real fired-rule sentence, not the generic fallback.
-    // House and suited share a fired rule (both pinot noir), so this is one
-    // shared sentence rendered twice, plus crowd's own distinct reason.
-    expect(screen.getAllByText(/earth and umami is what pinot is for/)).toHaveLength(2);
+    // Reason (`why`), real fired-rule sentences, not the generic fallback.
+    expect(screen.getByText(/earth and umami is what pinot is for/)).toBeInTheDocument();
     expect(screen.getByText(/a vinaigrette will out-acid anything softer and flatten it/)).toBeInTheDocument();
+    expect(screen.getByText(/nothing clears fat and salt as cleanly as bubbles/)).toBeInTheDocument();
   });
 });
