@@ -22,7 +22,7 @@ import { parseWineList, loadRulesBundle } from '../../../../packages/pairing/src
 import { DEMO as OFFLINE_DEMO_WINES } from '../../../../packages/pairing/src/demoFixtures.js';
 import { errorCopy } from './errors.js';
 import { track } from './track.js';
-import { buildTables, rowToEngineWine, computeOfferings, DIRECTION_FOR_FORMAT } from './pairingAdapter.js';
+import { buildTables, rowToEngineWine, dishToEngineDish, computeOfferings, DIRECTION_FOR_FORMAT } from './pairingAdapter.js';
 import { getOfflineTables } from './offlinePairing.js';
 import { DEMO_DISHES, DEMO_SECTIONS, DEMO_DEFAULT_PICKED, buildDemoRows } from './demoSeed.js';
 import { getBaroloTableData } from './baroloSeed.js';
@@ -613,6 +613,12 @@ export function usePairMe(opts = {}){
       const dishSource=st.demoDishes||DISHES;
       const secSource=st.demoDishes?DEMO_SECTIONS:SECS;
       const chosen=st.picked.map(id=>dishSource.find(d=>d.id===id)).filter(Boolean);
+      // BROWSE THE FULL LIST (Moose's demo screen, screens/WineList.jsx via
+      // /wines/list - see routes.jsx): same "already-loaded wine rows"
+      // preference OFFLINE_WINE_ROWS/computeOfflineOfferings use above, so a
+      // direct visit before any pairing has run is never blank.
+      const wineListWines=(st.demoWineRows&&st.demoWineRows.length)?st.demoWineRows:OFFLINE_WINE_ROWS;
+      const wineListPickedDishes=chosen.map(dishToEngineDish);
       const blank=st.blank,conflict=st.guest==="sarah";
       const lo=Math.min(st.bMin,st.bMax),hi=Math.max(st.bMin,st.bMax);
       const ob=[null,
@@ -854,6 +860,14 @@ export function usePairMe(opts = {}){
           patch(x=>({s:Math.min(15,x.s+1),skipped:x.skipped+1}));
         },
         goMenu:()=>go(9),
+        // BROWSE THE FULL LIST: a standalone route (not one of the Phone
+        // screen-index SCREENS - see routes.jsx), so this navigates
+        // directly rather than through go()/PATH_FOR_SCREEN, same pattern
+        // goLogin already uses below for the other standalone route.
+        goWineList:()=>{ if(navigate) navigate('/wines/list'); },
+        wineListWines,wineListPickedDishes,
+        wineListTables:st.rulesTables||getOfflineTables(),
+        wineListSay:say,
         // FIX 3: was a raw patch({s:17,...}) - the URL never updated when
         // the chrome Settings gear was tapped. Now goes through go() like
         // every other screen transition.

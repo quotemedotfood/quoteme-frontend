@@ -71,7 +71,12 @@ export function dishToEngineDish(dish) {
 // offerings. It is a structural tie-breaker, never the defensible reason a
 // diner repeats at the pour. Any rule id in here is demoted below a
 // wine-specific fired rule when choosing the ONE headline sentence.
-const GENERIC_RULE_IDS = new Set(['match_weight', 'pen_neutral_dish']);
+//
+// Exported so the wine-list browse view (lib/wineListEngine.js) can hold
+// its "Pairs with X" badges to the same bar this file's own cards hold
+// themselves to - a badge and an offering card must never disagree about
+// whether a rule fired for a "real" (wine-specific) reason.
+export const GENERIC_RULE_IDS = new Set(['match_weight', 'pen_neutral_dish']);
 
 /**
  * The single reason sentence a card leads with. A pairing must be defensible
@@ -81,10 +86,15 @@ const GENERIC_RULE_IDS = new Set(['match_weight', 'pen_neutral_dish']);
  * wine-specific fired, it says so honestly, in terms of THIS wine's own
  * identity (its appellation or grape), rather than pretending confidence.
  *
+ * Exported: lib/wineListEngine.js reuses this verbatim for its "pairs with"
+ * badge reasons, so a wine's badge on the browse screen and its "why" on
+ * TheWine's offering card are never two different sentences about the same
+ * fired rule.
+ *
  * @param {Array<[string,string]>} fired - [rule_id, why] pairs from scoreWine
  * @param {object} wine - engine wine (has label/region_head/grape_head)
  */
-function headlineWhy(fired, wine) {
+export function headlineWhy(fired, wine) {
   const specific = fired.find(([id]) => !GENERIC_RULE_IDS.has(id));
   if (specific) return specific[1];
   // Only the generic weight tie-breaker fired (or nothing): there is no

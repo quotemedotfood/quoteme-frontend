@@ -4,6 +4,7 @@ import { usePairMe } from './lib/state';
 import { Phone } from './App';
 import Login from './screens/Login';
 import EntryScreen from './screens/EntryScreen';
+import WineList from './screens/WineList';
 import OperatorPage from './operator/OperatorPage';
 
 /**
@@ -23,6 +24,26 @@ function RouteBridge({ vm, screenIndex, tableCode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [screenIndex, tableCode]);
   return <Phone vm={vm} />;
+}
+
+/**
+ * Browse the full wine list. Standalone full-page route, NOT one of the
+ * Phone-mockup SCREENS (same category as /login and /entry above) - a wine
+ * list wants the whole width of a real screen. Reads whatever wine rows +
+ * picked dishes are already in memory (vm.wineListWines/wineListPickedDishes,
+ * see state.js), zero network at this seam.
+ */
+function WineListRoute({ vm }) {
+  const navigate = useNavigate();
+  return (
+    <WineList
+      wines={vm.wineListWines}
+      pickedDishes={vm.wineListPickedDishes}
+      tables={vm.wineListTables}
+      say={vm.wineListSay}
+      onBack={() => navigate('/wines')}
+    />
+  );
 }
 
 function TableCodeRoute({ vm }) {
@@ -118,6 +139,7 @@ export default function PairMeApp() {
         <Route path="/menu" element={<RouteBridge vm={vm} screenIndex={9} />} />
         <Route path="/direction" element={<RouteBridge vm={vm} screenIndex={10} />} />
         <Route path="/wines" element={<RouteBridge vm={vm} screenIndex={11} />} />
+        <Route path="/wines/list" element={<WineListRoute vm={vm} />} />
         <Route path="/wines/brief" element={<RouteBridge vm={vm} screenIndex={16} />} />
         <Route path="/server" element={<RouteBridge vm={vm} screenIndex={12} />} />
         <Route path="/rate" element={<RouteBridge vm={vm} screenIndex={13} />} />
