@@ -7,7 +7,7 @@ export default function Welcome(vm){
 <>
 <div>
 <div style={{background: "var(--pm-chrome)", padding: "56px 24px 44px", textAlign: "center"}}>
-<div style={{font: "700 42px var(--font-display)", color: "#FFCC7D", letterSpacing: "-.02em"}}>PairMe</div>
+<div style={{font: "700 42px var(--font-display)", color: "#EFB96B", letterSpacing: "-.02em"}}>PairMe</div>
 <div style={{font: "400 15px/1.5 var(--font-body)", color: "#fff", marginTop: "10px"}}>Know what to order. Every time.</div>
 <div style={{font: "400 13.5px/1.6 var(--font-body)", color: "var(--pm-chromeSub)", marginTop: "20px", maxWidth: "250px", marginLeft: "auto", marginRight: "auto"}}>Nobody should feel stupid reading a wine list. That includes you, tonight.</div>
 </div>

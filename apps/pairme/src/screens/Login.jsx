@@ -61,7 +61,7 @@ export default function Login({ vm }) {
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--pm-page)', padding: '24px 16px' }}>
       <div style={{ width: '100%', maxWidth: 390, background: 'var(--pm-card)', border: '1px solid var(--pm-rule)', borderRadius: 20, overflow: 'hidden', boxShadow: '0 8px 28px -12px rgba(31,42,68,.28)' }}>
         <div style={{ background: 'var(--pm-chrome)', padding: '34px 22px 26px', textAlign: 'center' }}>
-          <div style={{ font: '700 20px var(--font-display)', color: '#FFCC7D', letterSpacing: '-.02em' }}>PairMe</div>
+          <div style={{ font: '700 20px var(--font-display)', color: '#EFB96B', letterSpacing: '-.02em' }}>PairMe</div>
           <div style={{ font: '600 20px var(--font-display)', color: '#fff', marginTop: 12 }}>
             {isSignup ? 'Save your taste' : 'Log in'}
           </div>
@@ -104,7 +104,7 @@ export default function Login({ vm }) {
           <button
             type="submit"
             disabled={loading}
-            style={{ width: '100%', background: '#FFCC7D', color: '#1F2A44', border: '1px solid #E5A44F', borderRadius: 999, padding: 15, font: '700 14.5px var(--font-body)', cursor: loading ? 'default' : 'pointer', opacity: loading ? 0.7 : 1 }}
+            style={{ width: '100%', background: '#EFB96B', color: '#1F2A44', border: '1px solid #E5A44F', borderRadius: 999, padding: 15, font: '700 14.5px var(--font-body)', cursor: loading ? 'default' : 'pointer', opacity: loading ? 0.7 : 1 }}
           >
             {loading ? 'Please wait' : isSignup ? 'Create account' : 'Log in'}
           </button>

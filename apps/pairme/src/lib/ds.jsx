@@ -15,7 +15,7 @@ export function Button({ variant = 'primary', size = 'md', style, children, ...r
   if (B) return <B variant={variant} size={size} style={style} {...rest}>{children}</B>;
   const pad = { sm: '9px 14px', md: '12px 18px', lg: '15px 22px' }[size] || '12px 18px';
   const skin = variant === 'primary'
-    ? { background: '#FFCC7D', color: '#1F2A44', border: '1px solid #E5A44F' }
+    ? { background: '#EFB96B', color: '#1F2A44', border: '1px solid #E5A44F' }
     : variant === 'secondary'
       ? { background: 'transparent', color: 'var(--pm-accent2, #1F2A44)', border: '1.5px solid var(--pm-accent2, #1F2A44)' }
       : { background: 'transparent', color: 'var(--pm-ink, #1C1C1A)', border: '1px solid transparent' };
