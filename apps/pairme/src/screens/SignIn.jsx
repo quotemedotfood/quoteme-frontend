@@ -27,13 +27,13 @@ export default function SignIn(vm){
 <span style={{font: "500 11px var(--font-body)", color: "var(--pm-muted)"}}>or bring your history with you</span>
 <span style={{flex: "1", height: "1px", background: "var(--pm-rule)"}}></span>
 </div>
-<button onClick={signInVivino} style={{width: "100%", display: "flex", alignItems: "center", gap: "12px", border: "1.5px solid var(--pm-selBd)", background: "var(--pm-sel)", borderRadius: "999px", padding: "14px 18px", cursor: "pointer", minHeight: "52px"}}>
-<span style={{flex: "none", width: "22px", textAlign: "center", font: "700 15px var(--font-display)", color: "var(--pm-ink)"}}>V</span>
-<div style={{textAlign: "left"}}>
-<div style={{font: "600 14.5px var(--font-body)", color: "var(--pm-ink)"}}>Continue with Vivino</div>
-<div style={{font: "400 11.5px var(--font-body)", color: "var(--pm-muted)", marginTop: "1px"}}>Brings your ratings across</div>
+<div aria-disabled="true" style={{width: "100%", display: "flex", alignItems: "center", gap: "12px", border: "1px dashed var(--pm-rule)", background: "var(--pm-sunken)", borderRadius: "999px", padding: "14px 18px", minHeight: "52px"}}>
+<span style={{flex: "none", width: "22px", textAlign: "center", font: "700 15px var(--font-display)", color: "var(--pm-muted)"}}>V</span>
+<div style={{textAlign: "left", flex: "1"}}>
+<div style={{font: "600 14.5px var(--font-body)", color: "var(--pm-muted)"}}>Continue with Vivino</div>
+<div style={{font: "400 11.5px var(--font-body)", color: "var(--pm-muted)", marginTop: "1px"}}>Coming soon</div>
 </div>
-</button>
+</div>
 <div style={{font: "400 11.5px/1.6 var(--font-body)", color: "var(--pm-muted)", marginTop: "16px"}}>{signInNote}</div>
 </div>
 </div>
