@@ -16,3 +16,19 @@ input:focus,textarea:focus{outline:2px solid #EFB96B;outline-offset:1px}
 @keyframes pmspin{to{transform:rotate(360deg)}}
 .pm-phone input:not([type=range]){padding-right:44px}
 .pm-phone textarea{padding-right:46px}
+
+/*
+ * Full-bleed on mobile (demo feedback item 2): a bordered 390x800 card
+ * reads as "a phone inside a phone" on an actual phone screen. Below
+ * 480px the shell IS the viewport - no outer border, no rounded card,
+ * fill the real width/height. Above that width (desktop / tablet), keep
+ * the framed device-preview look set inline in App.jsx's Phone component.
+ */
+@media (max-width: 480px){
+  .pm-phone{
+    position:fixed; inset:0;
+    width:100vw !important; height:100dvh !important;
+    max-width:none !important; max-height:none !important;
+    border:none !important; border-radius:0 !important; box-shadow:none !important;
+  }
+}

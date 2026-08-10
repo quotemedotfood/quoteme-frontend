@@ -28,6 +28,14 @@ export const SCREENS = [
   YourProfile, FriendProfile, BottleBrief, Settings, Camera,
 ];
 
+/** "8:41"-style status-bar time: 12-hour, no leading zero on the hour. */
+function statusBarTime(d) {
+  let h = d.getHours() % 12;
+  if (h === 0) h = 12;
+  const m = String(d.getMinutes()).padStart(2, '0');
+  return `${h}:${m}`;
+}
+
 /**
  * Phone chrome: status bar, an integration error banner, the scroll body,
  * and the sticky action bar. Screens never draw any of this (Desi's
@@ -36,6 +44,11 @@ export const SCREENS = [
  */
 export function Phone({ vm }) {
   const Screen = SCREENS[vm.screenNo - 1] || Welcome;
+  const [clock, setClock] = React.useState(() => statusBarTime(new Date()));
+  React.useEffect(() => {
+    const id = setInterval(() => setClock(statusBarTime(new Date())), 30000);
+    return () => clearInterval(id);
+  }, []);
   return (
     <div
       className="pm-phone"
@@ -48,7 +61,7 @@ export function Phone({ vm }) {
       }}
     >
       <div style={{ flex: 'none', background: 'var(--pm-chrome)', padding: '7px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-        <span style={{ font: '600 11px var(--font-body)', color: 'var(--pm-chromeSub)', letterSpacing: '.04em' }}>8:41</span>
+        <span style={{ font: '600 11px var(--font-body)', color: 'var(--pm-chromeSub)', letterSpacing: '.04em' }}>{clock}</span>
         {/*
           AUTH CONTRACT (locked, feat/pairme-accounts-be): the top-right
           entry point into /login, reachable from every screen this chrome
