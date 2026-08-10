@@ -23,44 +23,20 @@
  * same vocabulary, or dish_axes.csv is regenerated from the corpus itself.
  */
 import { getOfflineTables } from './offlinePairing.js';
-
-let _vocab = null;
-
-function escapeRegExp(s) {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
-/** Longest component name first, so "chicken liver" is tested as a whole
- * phrase before its substring "chicken" would also independently match -
- * both ending up in the result is harmless (dishProfile takes the MAX
- * across matched components), this just keeps the more specific match from
- * being crowded out by a coincidence of ordering. */
-function vocabPatterns(T) {
-  if (_vocab) return _vocab;
-  const keys = Object.keys((T && T.dish) || {});
-  _vocab = keys
-    .slice()
-    .sort((a, b) => b.length - a.length)
-    .map((key) => ({ key, re: new RegExp(`\\b${escapeRegExp(key)}\\b`, 'i') }));
-  return _vocab;
-}
+import { resolveComponents as resolveComponentsPure } from '../../../../packages/pairing/src/resolveComponents.js';
 
 /**
+ * App wrapper: same "dish text in, dish_axes-vocabulary strings out" contract,
+ * with the default T bound to the zero-network offline tables so callers pass
+ * just (name, description). The resolver itself is the pure, Node-safe module in
+ * packages/pairing (so the quality harness and any test can run it without the
+ * browser-only `?raw` table bundle).
+ *
  * @param {string} name
  * @param {string} [description]
  * @param {ReturnType<import('../../../../packages/pairing/src/tables.js').buildTables>} [T]
- *   Defaults to the zero-network offline tables (packages/pairing/data/*.csv
- *   shipped in this app's bundle) - the same source offlinePairing.js's
- *   no-signal fallback uses, so this resolver works even with no server
- *   rules bundle loaded yet.
  * @returns {string[]} dish_axes-vocabulary component names, may be empty.
  */
 export function resolveComponents(name, description = '', T = getOfflineTables()) {
-  const text = `${name || ''} ${description || ''}`.toLowerCase().trim();
-  if (!text) return [];
-  const hits = [];
-  for (const { key, re } of vocabPatterns(T)) {
-    if (re.test(text)) hits.push(key);
-  }
-  return hits;
+  return resolveComponentsPure(name, description, T);
 }
