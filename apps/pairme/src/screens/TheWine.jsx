@@ -3,7 +3,7 @@ import { Input } from '../lib/ds';
 
 /** Screen 12 · The wine */
 export default function TheWine(vm){
-  const { fWhy, offerTitle, offerSub, blankLabel, toggleBlank, showBlankToggle, presentCount, offers, compromiseNote, showFormatTabs, formatTabs, showCoverage, coverageTitle, coverage } = vm;
+  const { fWhy, offerTitle, offerSub, blankLabel, toggleBlank, showBlankToggle, presentCount, offers, compromiseNote, showFormatTabs, formatTabs, showCoverage, coverageTitle, coverage, showFeatured, featured } = vm;
   return (
 <>
 <div>
@@ -12,6 +12,36 @@ export default function TheWine(vm){
 <div style={{font: "400 12.5px/1.5 var(--font-body)", color: "var(--pm-chromeSub)", marginTop: "5px"}}>{offerSub}</div>
 </div>
 <div style={{padding: "18px"}}>
+{showFeatured ? (
+<div style={{border: "1.5px solid var(--pm-selBd)", background: "var(--pm-sel)", borderRadius: "12px", padding: "14px", marginBottom: "14px"}}>
+<div style={{font: "700 11px var(--font-body)", color: "var(--pm-pearInk)", letterSpacing: ".06em", textTransform: "uppercase"}}>Featured by the venue</div>
+<div style={{font: "400 12px/1.55 var(--font-body)", color: "var(--pm-muted)", margin: "4px 0 10px"}}>These are the venue's own picks tonight. You are not paying more for the suggestion, and we are telling you it is one.</div>
+{(featured || []).map((f, i) => (
+<React.Fragment key={i}>
+<div style={{borderTop: i ? "1px solid var(--pm-rule)" : "none", paddingTop: i ? "10px" : "0", marginTop: i ? "10px" : "0"}}>
+<div style={{display: "flex", justifyContent: "space-between", gap: "12px", alignItems: "flex-start"}}>
+<div>
+<div style={{font: "700 14.5px var(--font-body)", color: "var(--pm-ink)"}}>{f.prod}</div>
+<div style={{font: "400 12.5px var(--font-body)", color: "var(--pm-ink)", marginTop: "1px"}}>{f.wine}</div>
+<div style={{font: "400 11.5px var(--font-body)", color: "var(--pm-muted)", marginTop: "3px"}}>{f.meta}</div>
+{f.dishes && f.dishes.length ? (<div style={{font: "500 11.5px var(--font-body)", color: "var(--pm-pearInk)", marginTop: "4px"}}>With the {f.dishes.join(", ")}</div>) : null}
+</div>
+<div style={{textAlign: "right", flex: "none"}}>
+<div style={{font: "700 14px var(--font-body)", color: "var(--pm-ink)", fontVariantNumeric: "tabular-nums"}}>{f.btl ? "$" + f.btl : ""}</div>
+<div style={{font: "400 11.5px var(--font-body)", color: "var(--pm-muted)"}}>{f.glass}</div>
+</div>
+</div>
+<div style={{display: "flex", alignItems: "center", gap: "9px", marginTop: "9px"}}>
+<button onClick={f.speak} style={{flex: "none", width: "36px", height: "36px", borderRadius: "999px", border: "1.5px solid var(--pm-accent2)", background: "var(--pm-card)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center"}} aria-label="Say it out loud">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--pm-ink)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M11 5 L6 9 H3 v6 h3 l5 4 Z"></path><path d="M15.5 8.5a5 5 0 0 1 0 7"></path></svg>
+</button>
+<div style={{font: "700 13px var(--font-body)", color: "var(--pm-ink)"}}>{f.say}</div>
+</div>
+</div>
+</React.Fragment>
+))}
+</div>
+) : null}
 {showFormatTabs ? (
 <div role="tablist" aria-label="Glass or bottle" style={{display: "flex", gap: "4px", background: "var(--pm-sunken)", borderRadius: "999px", padding: "4px", marginBottom: "14px"}}>
 {(formatTabs || []).map((tb) => (

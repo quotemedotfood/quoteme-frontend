@@ -12,6 +12,7 @@ import {
   fetchRulesBundle,
   getDemo,
   getTableCode,
+  getVenuePairings,
   postPairing,
   deleteAccount as apiDeleteAccount,
   getStoredAuthToken,
@@ -371,7 +372,7 @@ export function usePairMe(opts = {}){
     // so every other entry point keeps using Desi's static DISHES/offerSet
     // exactly as before.
     venueName:null,venueCity:null,
-    demoLoading:false,demoDishes:null,demoWineRows:[],
+    demoLoading:false,demoDishes:null,demoWineRows:[],venuePushed:[],
     rulesTables:null,rulesVersion:null,
     pairingDirection:null,pairingOfferings:null,pairingCompromise:null,pairingCoverage:null,
     pairingId:null,presentLabels:[],
@@ -478,6 +479,14 @@ export function usePairMe(opts = {}){
           picked: DEMO_DEFAULT_PICKED,
           demoLoading: false,
         });
+        // Close the operator loop: the diner reads what this venue pushed, so an
+        // operator's featured picks reach the person they were for. Best-effort
+        // and always DISCLOSED downstream (a pushed wine is never hidden and
+        // never costs the diner more). Never blocks the walk if it fails.
+        try {
+          const vp = await getVenuePairings(st.tableCode);
+          if (!cancelled) patch({ venuePushed: Array.isArray(vp.pushed) ? vp.pushed : [] });
+        } catch (e) { /* no featured section if this venue has none / fetch fails */ }
       } catch (err) {
         // errorCopy() renders the server's own plain-language 404 message
         // for VENUE_NOT_FOUND verbatim, and a client-safe sentence (never a
@@ -1008,6 +1017,16 @@ export function usePairMe(opts = {}){
         // scoring engine (see the s===10 branch above); otherwise this
         // stays Desi's static offerSet/W demo data, unchanged.
         usingEngine,
+        // ITEM 4: wines the venue pushed (from GET /v1/venues/:code/pairings),
+        // surfaced to the diner FIRST and always DISCLOSED as featured - a
+        // pushed wine is never hidden and never costs the diner more. Matched to
+        // the loaded wine rows for full display (producer, price, pronunciation).
+        showFeatured:(st.venuePushed||[]).length>0,
+        featured:(()=>{const byLabel=new Map();(st.venuePushed||[]).forEach(p=>{if(!p||!p.wine)return;const cur=byLabel.get(p.wine)||{dishes:[]};if(p.dish&&!cur.dishes.includes(p.dish))cur.dishes.push(p.dish);byLabel.set(p.wine,cur);});
+          return Array.from(byLabel.keys()).map(label=>{const r=(st.demoWineRows||[]).find(x=>x.label===label)||{};return {
+            label,prod:r.producer||label,wine:r.wine_name||"",meta:r.meta||"",btl:r.price,
+            glass:r.glass_price?"$"+r.glass_price+" glass":"bottle only",say:r.say||"",
+            dishes:byLabel.get(label).dishes,speak:()=>say(r.speak||label)};});})(),
         showFormatTabs:usingEngine,formatTabs,
         showCoverage:!!(coverageRows&&coverageRows.length),coverageTitle,coverage:coverageRows,
         offerTitle:usingEngine?(pairingDirection==="one_bottle"?"One bottle for the table":"Your wine"):(blank?"Three wines, no assumptions":"Your wine"),
