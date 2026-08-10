@@ -47,7 +47,16 @@ function anyWord(normalizedText, words) {
  * @returns {'White'|'Red'|'Rose'|'Sparkling'|'Orange'|'Dessert'|''} '' when
  *   nothing - not even the vocabulary - resolves a color for this wine.
  */
+// Grapes the wine vocab has no colour for, but that a diner would expect in a
+// definite tab. Small and explicit; grows as real lists surface gaps.
+const GRAPE_COLOR_FALLBACK = { aligote: 'White', poulsard: 'Red', gamay: 'Red' };
+const STYLE_COLORS = new Set(['Sparkling', 'Dessert', 'Rose', 'Orange']);
+
 export function deriveColor(row) {
+  // 1. A real parsed row already carries an authoritative colour (parseWineList
+  //    computes it from the menu text); trust it.
+  if (row.color) return row.color;
+  // 2. Explicit words in the wine's own name.
   const text = norm([row.wine_name, row.label].filter(Boolean).join(' '));
   if (text) {
     if (anyWord(text, ROSE_WORDS)) return 'Rose';
@@ -56,11 +65,18 @@ export function deriveColor(row) {
     if (anyWord(text, DESSERT_WORDS)) return 'Dessert';
   }
   const regionHead = String(row.region_head || row.region || '').toLowerCase();
-  const fromRegion = regionHead && VOCAB.colorFor(regionHead);
-  if (fromRegion) return fromRegion;
   const grapeHead = String(row.grape_head || row.grape || '').toLowerCase();
-  const fromGrape = grapeHead && VOCAB.colorFor(grapeHead);
+  const fromRegion = regionHead && VOCAB.colorFor(regionHead);
+  // 3. STYLE (sparkling/dessert/rose/orange) is defined by the appellation, not
+  //    the grape - Champagne is sparkling whatever the grape, Porto is dessert.
+  if (fromRegion && STYLE_COLORS.has(fromRegion)) return fromRegion;
+  // 4. Red vs White is defined by the GRAPE far more reliably than by a region
+  //    that spans several colours (Languedoc makes red AND white; Picpoul is
+  //    white). Grape wins here, with a small explicit fallback.
+  const fromGrape = (grapeHead && VOCAB.colorFor(grapeHead)) || GRAPE_COLOR_FALLBACK[grapeHead];
   if (fromGrape) return fromGrape;
+  // 5. Fall back to whatever the region says.
+  if (fromRegion) return fromRegion;
   return '';
 }
 
