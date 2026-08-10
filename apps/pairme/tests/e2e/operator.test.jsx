@@ -64,11 +64,14 @@ describe('OperatorPage (/operator): paste -> build -> review -> confirm/push/rem
     expect(preview.getByText('Featured tonight')).toBeInTheDocument();
     expect(preview.getByText(/We disclose this to the guest|The venue chose to feature this wine tonight/)).toBeInTheDocument();
 
-    // QR section: enter a venue code, see the /t/:code target URL and the
-    // honest "no qr lib yet" note, never a silently broken image tag.
+    // QR section: enter a venue code, see the /t/:code target URL, a real QR
+    // canvas, and a print-resolution PNG download. (jsdom has no canvas 2d
+    // context, so the QR pixels are not drawn under test; the element, URL and
+    // download control are what we assert.)
     await user.type(screen.getByLabelText('Venue code'), 'aquitaine-01');
     expect(screen.getByText('https://demo.pairme.wine/t/aquitaine-01')).toBeInTheDocument();
-    expect(screen.getByText('QR code renders here once a qr lib is added.')).toBeInTheDocument();
+    expect(screen.getByLabelText('QR code for https://demo.pairme.wine/t/aquitaine-01')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Download QR (PNG)' })).toBeInTheDocument();
   });
 
   it('supports uploading a .txt menu instead of pasting', async () => {
