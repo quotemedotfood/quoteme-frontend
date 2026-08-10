@@ -23,8 +23,12 @@ import { DEMO_VENUE, DEMO_CAPTURE_ID, buildDemoRows, buildDemoRawText } from '..
 
 export const requestLog = [];
 
+// In-memory operator venue-pairings store (GET/PUT /v1/venues/:code/pairings).
+export const venuePairingsStore = new Map();
+
 export function resetRequestLog() {
   requestLog.length = 0;
+  venuePairingsStore.clear();
 }
 
 function record(req, extra) {
@@ -204,6 +208,23 @@ export const handlers = [
     }
     const venues = VENUES.filter((v) => v.name.toLowerCase().includes(q));
     return HttpResponse.json({ venues });
+  }),
+
+  // Operator venue-pairings persistence, in-memory so a spec can round-trip
+  // (PUT then GET). Keyed by :code, mirroring V1::VenuePairingsController.
+  http.get(`${BASE_URL}/v1/venues/:code/pairings`, async ({ request, params }) => {
+    record(request);
+    const saved = venuePairingsStore.get(params.code) || { confirmed: [], pushed: [] };
+    return HttpResponse.json({ code: params.code, confirmed: saved.confirmed, pushed: saved.pushed });
+  }),
+
+  http.put(`${BASE_URL}/v1/venues/:code/pairings`, async ({ request, params }) => {
+    record(request);
+    const body = await request.json().catch(() => ({}));
+    const confirmed = Array.isArray(body.confirmed) ? body.confirmed : [];
+    const pushed = Array.isArray(body.pushed) ? body.pushed : [];
+    venuePairingsStore.set(params.code, { confirmed, pushed });
+    return HttpResponse.json({ code: params.code, confirmed, pushed });
   }),
 
   http.post(`${BASE_URL}/v1/capture`, async ({ request }) => {

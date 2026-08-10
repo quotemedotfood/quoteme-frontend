@@ -3,6 +3,7 @@ import QRCode from 'qrcode';
 import { parseMenu } from '../../../../packages/pairing/src/index.js';
 import { SEEDED_WINE_LISTS, getSeededWines } from '../lib/seededLists.js';
 import { getOfflineTables } from '../lib/offlinePairing.js';
+import { getVenuePairings, putVenuePairings } from '../lib/api.js';
 import {
   buildResolvedDish,
   rankWinesForDish,
@@ -31,16 +32,12 @@ import {
  * onboarding view-model) is not touched, so this cannot collide with any
  * other work landing there.
  *
- * BE PERSISTENCE SEAM (TODO, follow-up, not this build): every "confirmed"
- * pairing and every "pushed" star below lives ONLY in this tab's memory.
- * When a real operator-facing contract exists (something like
- * POST /v1/venues/:code/pairings, keyed on the venue code entered in the QR
- * section), `persistPairings()` near the bottom of this file is where that
- * call goes - it currently only logs its intent, on purpose, so this is
- * never mistaken for already wired up. Until then, a diner hitting
- * /t/:code (routes.jsx's TableCodeRoute) does NOT receive anything
- * confirmed or pushed here; the "Diner preview" section is a preview, not a
- * publish.
+ * BE PERSISTENCE: once a venue code is set, every confirm/swap/remove and every
+ * pushed star is saved to PUT /v1/venues/:code/pairings (via the effect below),
+ * so the operator's work survives a reload. "Load saved pairings" re-applies
+ * them onto a freshly rebuilt menu (GET /v1/venues/:code/pairings). Follow-up:
+ * the diner at /t/:code does not yet READ these (TableCodeRoute would need to
+ * fetch and surface the pushed wines); that consumption is the next step.
  */
 
 const COLORS = {
@@ -194,15 +191,10 @@ export default function OperatorPage() {
 
   function confirmSlot(dishIdx, slotIdx) {
     updateSlot(dishIdx, slotIdx, { action: 'confirmed' });
-    // BE PERSISTENCE SEAM: see the file-level comment above. This is the
-    // exact moment a real build would fire
-    // POST /v1/venues/:code/pairings { confirm: {...} } - it does not here.
-    persistPairings('confirm', dishIdx, slotIdx);
   }
 
   function removeSlot(dishIdx, slotIdx) {
     updateSlot(dishIdx, slotIdx, { action: 'removed', pushed: false });
-    persistPairings('remove', dishIdx, slotIdx);
   }
 
   function restoreSlot(dishIdx, slotIdx) {
@@ -216,7 +208,6 @@ export default function OperatorPage() {
       next[dishIdx][slotIdx] = { ...cur, pushed: !cur.pushed };
       return next;
     });
-    persistPairings('push', dishIdx, slotIdx);
   }
 
   function swapSlot(dishIdx, slotIdx, wineLabel) {
@@ -229,15 +220,62 @@ export default function OperatorPage() {
     updateSlot(dishIdx, slotIdx, { wine: found.wine, why: found.why, fired: found.fired, score: found.score, action: 'pending', pushed: false });
   }
 
-  /**
-   * BE PERSISTENCE SEAM. Intentionally a no-op besides a console note: no
-   * operator-pairings endpoint exists yet. Wiring this to a real POST is a
-   * follow-up, not this build - see the file-level comment above for the
-   * shape it would need (venue code + confirm/remove/push per dish+wine).
-   */
-  function persistPairings(kind, dishIdx, slotIdx) {
-    // eslint-disable-next-line no-console
-    console.debug('[operator] local-only action, not persisted to BE yet:', kind, { dishIdx, slotIdx });
+  // Serialise the operator's decisions to the persistence shape: confirmed
+  // pairings and pushed (always disclosed) wines, keyed by dish + wine label so
+  // they can be re-applied after a reload once the menu is rebuilt.
+  function serializePairings(rows) {
+    const confirmed = [];
+    const pushed = [];
+    (rows || []).forEach((slots, dishIdx) => {
+      const dishName = dishes[dishIdx] && dishes[dishIdx].name;
+      slots.forEach((s) => {
+        if (!s.wine) return;
+        if (s.action === 'confirmed') confirmed.push({ dish: dishName, wine: s.wine.label, slot: s.slot || null, why: s.why || null });
+        if (s.pushed) pushed.push({ dish: dishName, wine: s.wine.label });
+      });
+    });
+    return { confirmed, pushed };
+  }
+
+  // Persist on every change once a venue code is set (fire-and-forget; the
+  // operator's work must survive a reload). An effect avoids the stale-closure
+  // trap of persisting from inside each mutation handler.
+  React.useEffect(() => {
+    const code = venueCode.trim();
+    if (!code || !pairings || !dishes) return;
+    putVenuePairings(code, serializePairings(pairings)).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pairings, venueCode]);
+
+  // Re-apply saved confirmed/pushed marks onto the freshly-built pairings after
+  // a reload: the operator re-pastes the menu, enters the same code, and taps
+  // "Load saved".
+  const [loadNote, setLoadNote] = React.useState('');
+  async function loadSaved() {
+    const code = venueCode.trim();
+    if (!code || !pairings) return;
+    let saved;
+    try {
+      saved = await getVenuePairings(code);
+    } catch (err) {
+      setLoadNote(err && err.message ? err.message : 'Could not load saved pairings.');
+      return;
+    }
+    const isConfirmed = (dishName, label) => (saved.confirmed || []).some((c) => c.dish === dishName && c.wine === label);
+    const isPushed = (dishName, label) => (saved.pushed || []).some((p) => p.dish === dishName && p.wine === label);
+    setPairings((prev) => prev.map((slots, dishIdx) => {
+      const dishName = dishes[dishIdx] && dishes[dishIdx].name;
+      return slots.map((s) => {
+        if (!s.wine) return s;
+        return {
+          ...s,
+          action: isConfirmed(dishName, s.wine.label) ? 'confirmed' : s.action,
+          pushed: isPushed(dishName, s.wine.label) || s.pushed,
+        };
+      });
+    }));
+    const count = (saved.confirmed || []).length + (saved.pushed || []).length;
+    setLoadNote(count ? 'Loaded your saved pairings.' : 'Nothing saved for this code yet.');
   }
 
   const tableUrl = buildTableUrl(venueCode);
@@ -534,6 +572,22 @@ export default function OperatorPage() {
             placeholder="aquitaine-01"
             style={{ width: '100%', boxSizing: 'border-box', fontSize: 16, padding: '10px 12px', borderRadius: 10, border: `1.5px solid ${COLORS.rule}`, fontFamily: 'inherit' }}
           />
+          {pairings ? (
+            <div style={{ marginTop: 8 }}>
+              <button
+                type="button"
+                onClick={loadSaved}
+                disabled={!venueCode.trim()}
+                style={{ minHeight: 40, borderRadius: 999, border: `1px solid ${COLORS.rule}`, background: COLORS.card, color: COLORS.chrome, font: '600 12.5px inherit', cursor: venueCode.trim() ? 'pointer' : 'default', padding: '0 16px' }}
+              >
+                Load saved pairings
+              </button>
+              <span style={{ font: '400 12px inherit', color: COLORS.muted, marginLeft: 10 }}>
+                Confirms and pushes save automatically once a code is set.
+              </span>
+              {loadNote ? <div style={{ font: '500 12px inherit', color: COLORS.chrome, marginTop: 6 }}>{loadNote}</div> : null}
+            </div>
+          ) : null}
           {tableUrl ? (
             <>
               <div
