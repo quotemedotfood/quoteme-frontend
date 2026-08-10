@@ -4,6 +4,7 @@ import { usePairMe } from './lib/state';
 import { Phone } from './App';
 import Login from './screens/Login';
 import EntryScreen from './screens/EntryScreen';
+import OperatorPage from './operator/OperatorPage';
 
 /**
  * Syncs the URL -> vm.s on mount and whenever the matched route's screen
@@ -95,6 +96,14 @@ export default function PairMeApp() {
           feature). See screens/EntryScreen.jsx.
         */}
         <Route path="/entry" element={<EntryScreen />} />
+        {/*
+          Restaurant OPERATOR flow (restaurant_admin), standalone and
+          full-viewport like /entry above, NOT the Phone mockup frame. See
+          operator/OperatorPage.jsx for the client-side-only build note and
+          the BE persistence seam (confirmed/pushed pairings do not reach a
+          diner at /t/:code yet - that is a follow-up, not this build).
+        */}
+        <Route path="/operator" element={<OperatorPage />} />
         <Route path="/" element={<RouteBridge vm={vm} screenIndex={0} />} />
         <Route path="/signin" element={<RouteBridge vm={vm} screenIndex={1} />} />
         <Route path="/setup/1" element={<RouteBridge vm={vm} screenIndex={2} />} />
