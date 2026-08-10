@@ -82,10 +82,10 @@ function computeOfflineOfferings(direction, chosenDishes, alreadyLoadedWineRows,
 const NAVY="#1F2A44",PEAR="#EFB96B",ORANGE="#F2993D",BLUED="#5C8A9C";
 
 const THEME={
- light:{page:"#FBFAF7",card:"#fff",ink:"#1C1C1A",muted:"#6B6B66",rule:"#E3E1DB",chrome:"#1F2A44",chromeSub:"#A5CFDD",sel:"#FFF4E4",selBd:"#EFB96B",sunken:"#F1EFEA",warnBg:"#FEF3E7",warnBd:"#F2993D",warnInk:"#C4701A",blueBg:"#F4F8F9",blue:"#5C8A9C",pearInk:"#8A5A18",accent2:"#1F2A44",hover2:"#F4F2EC"},
+ light:{page:"#FBFAF7",card:"#fff",ink:"#1C1C1A",muted:"#6B6B66",rule:"#E3E1DB",chrome:"#1F2A44",chromeSub:"#A5CFDD",sel:"#FCF1E1",selBd:"#EFB96B",sunken:"#F1EFEA",warnBg:"#FEF3E7",warnBd:"#F2993D",warnInk:"#C4701A",blueBg:"#F4F8F9",blue:"#5C8A9C",pearInk:"#8A5A18",accent2:"#1F2A44",hover2:"#F4F2EC"},
  dark:{page:"#151A29",card:"#1E2438",ink:"#F3F1EB",muted:"#9EA2AE",rule:"#303A55",chrome:"#0E1320",chromeSub:"#8FB6C4",sel:"#2E2618",selBd:"#8A6A2A",sunken:"#222941",warnBg:"#3A2A18",warnBd:"#F2993D",warnInk:"#F2993D",blueBg:"#1A2731",blue:"#7FAFC0",pearInk:"#F2C889",accent2:"#EFB96B",hover2:"#2A3350"}};
 const HC={
- light:{ink:"#000",muted:"#33332F",rule:"#8C8C86",sel:"#FFEBCE",selBd:"#8A5A18",pearInk:"#6E4610",warnInk:"#8A3E00",accent2:"#0F1729"},
+ light:{ink:"#000",muted:"#33332F",rule:"#8C8C86",sel:"#FCF1E1",selBd:"#8A5A18",pearInk:"#6E4610",warnInk:"#8A3E00",accent2:"#0F1729"},
  dark:{ink:"#FFFFFF",muted:"#DEDED8",rule:"#8E9AB5",sel:"#3D3220",selBd:"#F2C889",pearInk:"#FFDDAE",accent2:"#FFE0AE"}};
 
 const DISHES=[
@@ -632,7 +632,7 @@ export function usePairMe(opts = {}){
           // difference between the two wines is visible at a glance.
           coversChips:(o.covers&&o.covers.length)?o.covers:[],
           bd:on?"var(--pm-chrome)":"var(--pm-rule)",bw:on?"2px":"1px",bg:on?"var(--pm-sel)":"var(--pm-card)",
-          chip:on?"presenting":"tap to add",chipBg:on?"#FFE3BC":"var(--pm-sunken)",
+          chip:on?"presenting":"tap to add",chipBg:on?"#F9E4C7":"var(--pm-sunken)",
           pick:()=>patch(x=>({presentLabels:(x.presentLabels||[]).includes(w.label)?(x.presentLabels||[]).filter(y=>y!==w.label):[...(x.presentLabels||[]),w.label]})),
           speak:()=>say(w.speak),
           open:null, // no BottleBrief data for engine wines yet; TheWine.jsx only renders the Brief link when `open` is set
@@ -698,7 +698,7 @@ export function usePairMe(opts = {}){
 
         venueName:st.venueName||"Aquitaine",
 
-        rail:RAIL.map((label,i)=>({label,num:i+1,go:()=>go(i),bg:i===s?"#FFF4E4":"#fff",border:i===s?NAVY:"#E3E1DB"})),
+        rail:RAIL.map((label,i)=>({label,num:i+1,go:()=>go(i),bg:i===s?"#FCF1E1":"#fff",border:i===s?NAVY:"#E3E1DB"})),
         screenNo:s+1,screenName:RAIL[s],
         back:()=>go(Math.max(0,s-1)),fwd:()=>go(Math.min(17,s+1)),
         bodyRef:el=>{bodyEl.current=el;},
@@ -995,7 +995,7 @@ export function usePairMe(opts = {}){
           role:o.role,roleColor:o.roleColor,prod:w.prod,wine:w.wine,meta:w.meta,say:w.say,btl:w.btl,
           glass:w.glass?"$"+w.glass+" glass":"bottle only",why:o.why,covers:o.covers,
           bd:on?"var(--pm-chrome)":"var(--pm-rule)",bw:on?"2px":"1px",bg:on?"var(--pm-sel)":"var(--pm-card)",
-          chip:on?"presenting":"tap to add",chipBg:on?"#FFE3BC":"var(--pm-sunken)",
+          chip:on?"presenting":"tap to add",chipBg:on?"#F9E4C7":"var(--pm-sunken)",
           pick:()=>patch(x=>({present:x.present.includes(o.k)?x.present.filter(y=>y!==o.k):[...x.present,o.k]})),
           speak:()=>say(w.speak),
           open:()=>patch({s:16,bottle:o.k,back:11}),

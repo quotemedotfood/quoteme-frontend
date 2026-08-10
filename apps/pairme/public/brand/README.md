@@ -22,6 +22,21 @@ Retired and swept from both apps + the landing: `#E8D24A` (old token), `#F8C800`
 (AI asset gold), `#FFCC7D` (old landing pear). `#EFB96B` clears ~7.6:1 with navy
 text, so the primary Present button passes AA + AAA for large text.
 
-Follow-up (Desi, optional): the lighter pear TINT ramp (`--color-pear-50/100/300`
-and the cream selected-states `#FFF4E4`/`#FFE3BC`) still carries its old peach
-steps. They harmonise with `#EFB96B` but were not regenerated from it.
+## Pear tint ramp (regenerated from #EFB96B)
+Five tint steps plus the base, all `#EFB96B` mixed with white, so tinted
+backgrounds never drift. Use these everywhere a tinted background appears:
+
+  pear-50  #FDF8F0
+  pear-100 #FCF1E1
+  pear-200 #F9E4C7
+  pear-300 #F6D6A9
+  pear-400 #F2C789
+  pear-500 #EFB96B  (base)
+
+The old peach tints (`#FFF7EC/#FFEDD6/#FFDCAB/#FFF4E4/#FFE3BC/#FFEBCE`) are
+retired and swept from both apps. Defined as `--color-pear-*` in the landing
+:root; the diner app's theme carries the same values.
+
+## Feature graphic typeface
+Uses Piazzolla Bold - the same display font Desi's landing loads
+(`--font-display:'Piazzolla'`). The DejaVu Serif stand-in is gone.

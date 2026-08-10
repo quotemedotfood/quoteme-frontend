@@ -3,8 +3,11 @@
   --font-body:'Figtree',system-ui,-apple-system,'Segoe UI',sans-serif;
   --font-display:'Piazzolla',Georgia,'Times New Roman',serif;
 
-  --color-pear-50:#FFF7EC; --color-pear-100:#FFEDD6; --color-pear-300:#FFDCAB;
-  --color-pear-500:#EFB96B; --color-pear-700:#E5A44F; --color-pear-900:#8A5A18;
+  /* Pear tint ramp, all derived from the canonical #EFB96B (pear-500) mixed
+     with white. Use these for any tinted background so tints never drift. */
+  --color-pear-50:#FDF8F0; --color-pear-100:#FCF1E1; --color-pear-200:#F9E4C7;
+  --color-pear-300:#F6D6A9; --color-pear-400:#F2C789; --color-pear-500:#EFB96B;
+  --color-pear-700:#E5A44F; --color-pear-900:#8A5A18;
   --color-navy-700:#1F2A44; --color-navy-900:#132038;
   --ink:#1C1C1A; --muted:#6B6B66; --rule:#E3E1DB; --paper:#FBFAF7;
 }
@@ -29,21 +32,21 @@ input:focus-visible,textarea:focus-visible,button:focus-visible,a:focus-visible{
 .pm-btn-primary{background:#EFB96B;color:#1F2A44;border:1px solid #E5A44F}
 .pm-btn-primary:hover{background:#F7BC63}
 .pm-btn-secondary{background:transparent;color:#1F2A44;border:1.5px solid #1F2A44}
-.pm-btn-secondary:hover{background:#FFF4E4}
+.pm-btn-secondary:hover{background:#FCF1E1}
 
 .pm-chip{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--rule);background:#fff;
   border-radius:999px;padding:9px 14px;font:500 12.5px var(--font-body);color:var(--ink);cursor:pointer;min-height:40px}
 .pm-chip:hover{border-color:#1F2A44}
 .pm-chip input{accent-color:#EFB96B;width:15px;height:15px;margin:0}
-.pm-chip:has(input:checked){background:#FFF4E4;border-color:#1F2A44}
+.pm-chip:has(input:checked){background:#FCF1E1;border-color:#1F2A44}
 
 textarea{width:100%;border:1px solid var(--rule);border-radius:8px;padding:12px;
   font:400 13.5px var(--font-body);background:#fff;color:var(--ink);resize:vertical}
 
 /* Hover states lifted out of the source markup. */
 .h1:hover{background:#F7BC63}
-.h2:hover{background:#FFEDD6}
-.h3:hover{background:#FFEDD6}
+.h2:hover{background:#FCF1E1}
+.h3:hover{background:#FCF1E1}
 
 /* The stacking steps need a scroll runway; collapse it where sticky would trap content. */
 @media (prefers-reduced-motion:reduce){
