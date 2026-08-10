@@ -15,7 +15,7 @@ export default function Q3Budget(vm){
 </div>
 <div style={{position: "relative", height: "22px", margin: "0 6px 4px"}}>
 <div style={{position: "absolute", left: "0", right: "0", top: "9px", height: "5px", borderRadius: "3px", background: "var(--pm-rule)"}}></div>
-<div style={{position: "absolute", top: "9px", height: "5px", borderRadius: "3px", background: "#FFCC7D", left: bLeft, right: bRight}}></div>
+<div style={{position: "absolute", top: "9px", height: "5px", borderRadius: "3px", background: "#EFB96B", left: bLeft, right: bRight}}></div>
 <div style={{position: "absolute", top: "2px", width: "19px", height: "19px", borderRadius: "999px", background: "var(--pm-card)", border: "2.5px solid var(--pm-accent2)", left: bLeft, transform: "translateX(-9px)"}}></div>
 <div style={{position: "absolute", top: "2px", width: "19px", height: "19px", borderRadius: "999px", background: "var(--pm-card)", border: "2.5px solid var(--pm-accent2)", right: bRight, transform: "translateX(9px)"}}></div>
 </div>

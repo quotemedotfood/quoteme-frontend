@@ -94,7 +94,7 @@ export function Phone({ vm }) {
             <button onClick={vm.alt} style={{ width: '100%', background: 'transparent', color: 'var(--pm-accent2)', border: '1.5px solid var(--pm-accent2)', borderRadius: 999, padding: 14, font: '600 14px var(--font-body)', cursor: 'pointer' }}>{vm.altLabel}</button>
           </div>
         ) : null}
-        <button onClick={vm.cta} style={{ width: '100%', background: '#FFCC7D', color: '#1F2A44', border: '1px solid #E5A44F', borderRadius: 999, padding: 16, font: '700 15px var(--font-body)', cursor: 'pointer', boxShadow: '0 8px 20px -6px rgba(31,42,68,.45)' }}>{vm.ctaLabel}</button>
+        <button onClick={vm.cta} style={{ width: '100%', background: '#EFB96B', color: '#1F2A44', border: '1px solid #E5A44F', borderRadius: 999, padding: 16, font: '700 15px var(--font-body)', cursor: 'pointer', boxShadow: '0 8px 20px -6px rgba(31,42,68,.45)' }}>{vm.ctaLabel}</button>
       </div>
     </div>
   );

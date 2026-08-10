@@ -7,7 +7,7 @@ export default function BottleBrief(vm){
 <>
 <div>
 <div style={{background: "var(--pm-chrome)", padding: "20px 18px 22px"}}>
-<div style={{font: "600 10.5px var(--font-body)", color: "#FFCC7D", letterSpacing: ".09em", textTransform: "uppercase"}}>Bottle brief</div>
+<div style={{font: "600 10.5px var(--font-body)", color: "#EFB96B", letterSpacing: ".09em", textTransform: "uppercase"}}>Bottle brief</div>
 <div style={{font: "700 25px/1.2 var(--font-display)", color: "#fff", marginTop: "7px"}}>{bb.prod}</div>
 <div style={{font: "400 16px/1.3 var(--font-body)", color: "#fff", marginTop: "3px"}}>{bb.wine}</div>
 <div style={{font: "400 12.5px var(--font-body)", color: "var(--pm-chromeSub)", marginTop: "6px"}}>{bb.meta}</div>

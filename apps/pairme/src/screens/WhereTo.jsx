@@ -20,7 +20,7 @@ export default function WhereTo(vm){
 <div style={{font: "400 12px var(--font-body)", color: "var(--pm-muted)", marginTop: "3px"}}>Fastest. No typing.</div>
 </button>
 <button onClick={goCamera} style={{width: "100%", display: "flex", gap: "13px", alignItems: "center", border: "1.5px solid var(--pm-accent2)", background: "var(--pm-card)", borderRadius: "12px", padding: "15px", marginBottom: "10px", cursor: "pointer", textAlign: "left"}}>
-<span style={{flex: "none", width: "42px", height: "42px", borderRadius: "999px", background: "#FFCC7D", display: "flex", alignItems: "center", justifyContent: "center"}}>
+<span style={{flex: "none", width: "42px", height: "42px", borderRadius: "999px", background: "#EFB96B", display: "flex", alignItems: "center", justifyContent: "center"}}>
 <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#1F2A44" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 8h3l1.5-2.5h7L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"></path><circle cx="12" cy="13.5" r="3.8"></circle></svg>
 </span>
 <span>

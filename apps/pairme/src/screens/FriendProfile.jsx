@@ -9,7 +9,7 @@ export default function FriendProfile(vm){
 <div>
 <div style={{background: "var(--pm-chrome)", padding: "20px 18px"}}>
 <div style={{display: "flex", gap: "14px", alignItems: "center"}}>
-<div style={{flex: "none", width: "52px", height: "52px", borderRadius: "999px", background: "#FFCC7D", color: "#1F2A44", font: "700 20px var(--font-display)", display: "flex", alignItems: "center", justifyContent: "center"}}>S</div>
+<div style={{flex: "none", width: "52px", height: "52px", borderRadius: "999px", background: "#EFB96B", color: "#1F2A44", font: "700 20px var(--font-display)", display: "flex", alignItems: "center", justifyContent: "center"}}>S</div>
 <div>
 <div style={{font: "600 20px var(--font-display)", color: "#fff"}}>Sarah</div>
 <div style={{font: "400 12.5px var(--font-body)", color: "var(--pm-chromeSub)", marginTop: "2px"}}>partner · at 7 of your tables</div>

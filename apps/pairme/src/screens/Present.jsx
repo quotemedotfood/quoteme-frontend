@@ -14,7 +14,7 @@ export default function Present(vm){
 <div style={{border: "2.5px solid var(--pm-accent2)", background: "var(--pm-card)", borderRadius: "14px", overflow: "hidden"}}>
 <div style={{background: "var(--pm-chrome)", padding: "11px 16px", display: "flex", justifyContent: "space-between", alignItems: "center"}}>
 <span style={{font: "700 13px var(--font-body)", color: "#fff", letterSpacing: ".1em", textTransform: "uppercase"}}>For the table</span>
-<span style={{font: "600 12px var(--font-body)", color: "#FFCC7D"}}>Table 12 · 8:40</span>
+<span style={{font: "600 12px var(--font-body)", color: "#EFB96B"}}>Table 12 · 8:40</span>
 </div>
 <div style={{padding: "16px"}}>
 <div style={{font: "600 12px var(--font-body)", color: "var(--pm-muted)", letterSpacing: ".06em", textTransform: "uppercase", marginBottom: "8px"}}>Food</div>

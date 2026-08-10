@@ -79,11 +79,11 @@ function computeOfflineOfferings(direction, chosenDishes, alreadyLoadedWineRows,
   return computeOfferings(direction, dishes, wines, T, opts);
 }
 
-const NAVY="#1F2A44",PEAR="#FFCC7D",ORANGE="#F2993D",BLUED="#5C8A9C";
+const NAVY="#1F2A44",PEAR="#EFB96B",ORANGE="#F2993D",BLUED="#5C8A9C";
 
 const THEME={
- light:{page:"#FBFAF7",card:"#fff",ink:"#1C1C1A",muted:"#6B6B66",rule:"#E3E1DB",chrome:"#1F2A44",chromeSub:"#A5CFDD",sel:"#FFF4E4",selBd:"#FFCC7D",sunken:"#F1EFEA",warnBg:"#FEF3E7",warnBd:"#F2993D",warnInk:"#C4701A",blueBg:"#F4F8F9",blue:"#5C8A9C",pearInk:"#8A5A18",accent2:"#1F2A44",hover2:"#F4F2EC"},
- dark:{page:"#151A29",card:"#1E2438",ink:"#F3F1EB",muted:"#9EA2AE",rule:"#303A55",chrome:"#0E1320",chromeSub:"#8FB6C4",sel:"#2E2618",selBd:"#8A6A2A",sunken:"#222941",warnBg:"#3A2A18",warnBd:"#F2993D",warnInk:"#F2993D",blueBg:"#1A2731",blue:"#7FAFC0",pearInk:"#F2C889",accent2:"#FFCC7D",hover2:"#2A3350"}};
+ light:{page:"#FBFAF7",card:"#fff",ink:"#1C1C1A",muted:"#6B6B66",rule:"#E3E1DB",chrome:"#1F2A44",chromeSub:"#A5CFDD",sel:"#FFF4E4",selBd:"#EFB96B",sunken:"#F1EFEA",warnBg:"#FEF3E7",warnBd:"#F2993D",warnInk:"#C4701A",blueBg:"#F4F8F9",blue:"#5C8A9C",pearInk:"#8A5A18",accent2:"#1F2A44",hover2:"#F4F2EC"},
+ dark:{page:"#151A29",card:"#1E2438",ink:"#F3F1EB",muted:"#9EA2AE",rule:"#303A55",chrome:"#0E1320",chromeSub:"#8FB6C4",sel:"#2E2618",selBd:"#8A6A2A",sunken:"#222941",warnBg:"#3A2A18",warnBd:"#F2993D",warnInk:"#F2993D",blueBg:"#1A2731",blue:"#7FAFC0",pearInk:"#F2C889",accent2:"#EFB96B",hover2:"#2A3350"}};
 const HC={
  light:{ink:"#000",muted:"#33332F",rule:"#8C8C86",sel:"#FFEBCE",selBd:"#8A5A18",pearInk:"#6E4610",warnInk:"#8A3E00",accent2:"#0F1729"},
  dark:{ink:"#FFFFFF",muted:"#DEDED8",rule:"#8E9AB5",sel:"#3D3220",selBd:"#F2C889",pearInk:"#FFDDAE",accent2:"#FFE0AE"}};
@@ -1059,7 +1059,7 @@ export function usePairMe(opts = {}){
           {k:"hc",label:"High contrast",sub:"Heavier type, stronger edges, bigger dish names on the menu.",on:st.hc,pick:()=>patch({hc:!st.hc})}
         ].map(r=>({label:r.label,sub:r.sub,pick:r.pick,
           bd:r.on?"var(--pm-selBd)":"var(--pm-rule)",bg:r.on?"var(--pm-sel)":"var(--pm-card)",
-          trackBg:r.on?"#FFCC7D":"var(--pm-sunken)",trackBd:r.on?"#E5A44F":"var(--pm-rule)",
+          trackBg:r.on?"#EFB96B":"var(--pm-sunken)",trackBd:r.on?"#E5A44F":"var(--pm-rule)",
           knobX:r.on?"22px":"2px",knobBg:r.on?"#1F2A44":"var(--pm-muted)"})),
         demoSpeak:()=>say("Zhev ray shom ber tan. You said that perfectly."),
         acctTitle:st.account?"Signed in with "+st.account:"Not signed in",

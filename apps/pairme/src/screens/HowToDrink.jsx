@@ -32,7 +32,7 @@ export default function HowToDrink(vm){
 ))}
 </div>
 {showSub ? (<>
-<div style={{borderLeft: "2px solid #FFCC7D", paddingLeft: "12px", marginTop: "14px"}}>
+<div style={{borderLeft: "2px solid #EFB96B", paddingLeft: "12px", marginTop: "14px"}}>
 <div style={{font: "600 var(--pm-sec) var(--font-body)", color: "var(--pm-muted)", letterSpacing: ".08em", textTransform: "uppercase", marginBottom: "8px"}}>{subLabel}</div>
 {(subs || []).map((o, i) => (
 <React.Fragment key={i}>
@@ -44,7 +44,7 @@ export default function HowToDrink(vm){
 </React.Fragment>
 ))}
 {showScope ? (<>
-<div style={{borderLeft: "2px solid #FFCC7D", paddingLeft: "12px"}}>
+<div style={{borderLeft: "2px solid #EFB96B", paddingLeft: "12px"}}>
 <div style={{font: "600 var(--pm-sec) var(--font-body)", color: "var(--pm-muted)", letterSpacing: ".08em", textTransform: "uppercase", marginBottom: "8px"}}>One bottle for what</div>
 {(scopes || []).map((o, i) => (
 <React.Fragment key={i}>
