@@ -6,6 +6,7 @@ import { SEEDED_WINE_LISTS, getSeededWines } from '../lib/seededLists.js';
 import { getOfflineTables } from '../lib/offlinePairing.js';
 import { computeOfferings, DIRECTION_FOR_FORMAT } from '../lib/pairingAdapter.js';
 import { useSpeech } from '../lib/useSpeech.js';
+import { capture as apiCapture } from '../lib/api.js';
 
 /**
  * EntryScreen: the four diner entry points (paste-first) on ONE screen,
@@ -19,8 +20,15 @@ import { useSpeech } from '../lib/useSpeech.js';
  * the scoring engine + zero-network tables) READ ONLY - no file under
  * packages/pairing is edited by this screen.
  *
- * No BE call anywhere in this file. No vision call either (CAMERA is a
- * stub - see MODE_CAMERA below).
+ * CAMERA (MODE_CAMERA below) is the one BE call in this file: it uploads
+ * the shot to POST /v1/capture (lib/api.js's capture()) and, on success,
+ * runs the returned raw_text through the SAME parseMenu -> pick -> pair
+ * pipeline PASTE uses (this screen has no venue_id from the BE's
+ * PairmeVenue table, only a local fixture id from seededLists.js, so it
+ * never sends venue_id and always takes the extractor path). A failure
+ * (network, typed extraction error, or no text found) falls back to Paste
+ * with a plain-language note - it never surfaces an error code or a raw
+ * exception message.
  */
 
 const MODE_PASTE = 'paste';
@@ -73,6 +81,11 @@ export default function EntryScreen() {
   const [pairInputs, setPairInputs] = React.useState(null);
   const [format, setFormat] = React.useState('both');
   const [cameraNote, setCameraNote] = React.useState('');
+  // Shown inside the Camera tab itself (busy state + success note), distinct
+  // from cameraNote above (which is the fallback-to-Paste banner rendered in
+  // the Paste section once a photo could not be read).
+  const [cameraBusy, setCameraBusy] = React.useState(false);
+  const [cameraStatus, setCameraStatus] = React.useState('');
   const cameraInputRef = React.useRef(null);
   // Item 3: voice input for the free-text modes. A spoken answer appends to
   // whatever is already typed, so voice and keyboard compose instead of
@@ -165,16 +178,42 @@ export default function EntryScreen() {
     resetOfferings();
   }
 
-  function handleCameraFile(e) {
+  // Uploads the shot to POST /v1/capture (image-hash cache and venue
+  // short-circuit both live server-side, untouched here) and, on success,
+  // runs the extracted text through the exact same parseMenu -> pick -> pair
+  // pipeline the Paste tab uses. No BE venue concept exists on this screen
+  // (venueListId is a local seededLists.js fixture id, not a PairmeVenue
+  // uuid), so this never sends venue_id - every capture from here takes the
+  // extractor path unless the same photo was already captured (image_cache).
+  async function handleCameraFile(e) {
     const file = e.target.files && e.target.files[0];
     e.target.value = '';
     if (!file) return;
-    // STUB, on purpose (no vision call in this build): there is no OCR
-    // here, so this cannot fill the textarea with the photo's actual text.
-    // What it CAN do honestly: hand off to the same paste -> parse -> pair
-    // pipeline PASTE already uses, so the walk still finishes tonight.
-    setCameraNote('Photo captured. We cannot read photos yet - paste or type what is on the plate below and we will take it from there.');
-    setMode(MODE_PASTE);
+    setCameraStatus('');
+    setCameraBusy(true);
+    try {
+      const result = await apiCapture(file);
+      const rawText = (result && result.raw_text) || '';
+      if (!rawText.trim()) {
+        throw new Error('We could not find any text in that photo. Try a clearer photo, or paste the menu below.');
+      }
+      setPasteText(rawText);
+      const parsed = parseMenu(rawText);
+      setDishes(parsed);
+      setSelected(new Set());
+      resetOfferings();
+      setCameraStatus('Got it. Pick what you are having below.');
+    } catch (err) {
+      // Every failure here (network, a typed extraction error off the BE, or
+      // the empty-text case above) already carries a plain-language message
+      // per lib/api.js's ApiError contract - render it as-is and fall back
+      // to Paste so the walk never gets stuck on a photo we could not read.
+      const message = (err && err.message) || 'We could not read that photo. Please try again.';
+      setCameraNote(message);
+      setMode(MODE_PASTE);
+    } finally {
+      setCameraBusy(false);
+    }
   }
 
   const canPair = dishes.length > 0 && selected.size > 0 && !!venueListId;
@@ -394,8 +433,10 @@ export default function EntryScreen() {
           </section>
         ) : null}
 
-        {/* A: CAMERA - stub. Native file picker, not a live stream, so the
-            phone's own flash/focus/HDR still work in a dark room. */}
+        {/* A: CAMERA. Native file picker, not a live stream, so the phone's
+            own flash/focus/HDR still work in a dark room. Wired to POST
+            /v1/capture; a failure falls back to Paste (see cameraNote in
+            the Paste section above). */}
         {mode === MODE_CAMERA ? (
           <section aria-label="Camera">
             <input
@@ -409,12 +450,17 @@ export default function EntryScreen() {
             <button
               type="button"
               onClick={() => cameraInputRef.current && cameraInputRef.current.click()}
-              style={{ width: '100%', minHeight: 48, borderRadius: 999, border: `1px solid ${COLORS.accentBd}`, background: COLORS.accent, color: COLORS.chrome, font: '700 15px inherit', cursor: 'pointer' }}
+              disabled={cameraBusy}
+              style={{ width: '100%', minHeight: 48, borderRadius: 999, border: `1px solid ${COLORS.accentBd}`, background: COLORS.accent, color: COLORS.chrome, font: '700 15px inherit', cursor: cameraBusy ? 'default' : 'pointer', opacity: cameraBusy ? 0.7 : 1 }}
             >
-              Take a photo of the menu
+              {cameraBusy ? 'Reading the menu' : 'Take a photo of the menu'}
             </button>
             <p style={{ font: '400 12px inherit', color: COLORS.muted, marginTop: 8 }}>
-              We do not read photos yet in this build. After you shoot one we will send you to Paste or Type so nothing gets stuck.
+              {cameraBusy
+                ? 'Give us a moment to read the list.'
+                : cameraStatus
+                  ? cameraStatus
+                  : 'Corner to corner works best. We will read the menu and you can pick your dishes below.'}
             </p>
           </section>
         ) : null}
