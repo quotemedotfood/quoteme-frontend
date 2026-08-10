@@ -156,11 +156,16 @@ const BRIEF={
   bridge:"If this lands, a dry Savennieres is the next step up the same road.",
   yours:"Your highest rated bottle. Five stars, twice, at Aquitaine and once at home."}};
 
+// None of these connect yet: there is no built integration. CellarTracker has a
+// real (password-based) path so it reads "not yet connected"; the others have no
+// usable public API today (Vivino's shut down ~2020, Wine.com's deprecated 2017,
+// Delectable has none) so they are "coming soon". No fake "connected" state, and
+// nothing is default-linked - an App Store reviewer tapping a fiction is a reject.
 const ACCOUNTS=[
- {k:"Vivino",on:"137 ratings read . you rate Loire whites a full point higher than anything else",off:"Ratings and your scanned bottles"},
- {k:"CellarTracker",on:"Cellar and tasting notes read",off:"Your cellar and tasting notes"},
- {k:"Wine.com",on:"Order history read",off:"What you've bought, and repeat orders"},
- {k:"Delectable",on:"Saved bottles read",off:"Saved bottles and follows"}];
+ {k:"CellarTracker",status:"available",sub:"Read your cellar and tasting notes"},
+ {k:"Vivino",status:"coming_soon",sub:"Read your ratings"},
+ {k:"Wine.com",status:"coming_soon",sub:"Read your order history"},
+ {k:"Delectable",status:"coming_soon",sub:"Read your saved bottles"}];
 
 const RAIL=["Welcome","Sign in","1 . Knowledge","2 . Adventure","3 . Budget","4 . Taste","5 . Must know","6 . That's it","Where to","The menu","How to drink","The wine","Present","How was it","Your profile","Sarah's profile","Bottle brief","Settings","Camera"];
 const CTA=["Get going","Set my taste","Next","Next","Next","Next","Next","Find table","Continue","Pair it","Show wine","Present","Rate it","Save it","Her list","New table","Back to wine","Done","Use this"];
@@ -342,7 +347,7 @@ export function usePairMe(opts = {}){
     venueQ:"",noList:false,blank:false,picked:["a2","a5","e6","e9","s2"],
     mode:null,sub:null,scope:null,present:["gim","trapet"],wineFormat:"both",
     guest:"me",guestDrawerOpen:false,guestShareNote:null,resolution:null,rate:{dish:4,wine:5,pair:4},fb:"",share:true,listening:null,skipped:0,
-    linked:["Vivino"],account:null,bottle:"trapet",back:11,saved:false,shared:null,
+    linked:[],connectSkipped:false,account:null,bottle:"trapet",back:11,saved:false,shared:null,
     // Integration state (not part of Desi's original demo model).
     apiError:null,apiLoading:false,
     anonId:null,
@@ -1043,17 +1048,21 @@ export function usePairMe(opts = {}){
         shareBd:st.share?"var(--pm-chrome)":"var(--pm-rule)",shareBg:st.share?"var(--pm-sel)":"var(--pm-card)",
         toggleShare:()=>patch({share:!st.share}),
 
-        connectPills:ACCOUNTS.map(a=>{const on=st.linked.includes(a.k);return {
-          label:a.k,tick:on?"check":"+",tickColor:on?"var(--pm-pearInk)":"var(--pm-muted)",
-          bd:on?"var(--pm-chrome)":"var(--pm-rule)",bg:on?"var(--pm-card)":"var(--pm-card)",
-          pick:()=>patch(x=>({linked:x.linked.includes(a.k)?x.linked.filter(y=>y!==a.k):[...x.linked,a.k]}))};}),
-        connectNote:st.linked.length
-          ? st.linked.join(" and ")+" connected. That's "+(st.linked.length*137)+" bottles we don't have to ask you about."
-          : "Or skip it and start fresh. We'll catch up over a few dinners.",
-        connections:ACCOUNTS.map(a=>{const on=st.linked.includes(a.k);return {
-          label:a.k,sub:on?a.on:a.off,action:on?"Disconnect":"Connect",
-          bd:on?"var(--pm-selBd)":"var(--pm-rule)",bg:on?"var(--pm-sel)":"var(--pm-card)",
-          pick:()=>patch(x=>({linked:x.linked.includes(a.k)?x.linked.filter(y=>y!==a.k):[...x.linked,a.k]}))};}),
+        // Visibly disabled, honestly labelled: none connect yet, so no pill is a
+        // tappable fiction (see BUTTON_AUDIT.md: looks interactive must BE
+        // interactive, or ship disabled). The only interactive control here is
+        // the escape hatch below.
+        connectPills:ACCOUNTS.map(a=>({
+          label:a.k, disabled:true,
+          note:a.status==="available"?"not yet connected":"coming soon"})),
+        connectSkipped:!!st.connectSkipped,
+        skipConnect:()=>patch({connectSkipped:true}),
+        connectNote:st.connectSkipped
+          ? "Starting fresh. We'll learn your taste over a few dinners."
+          : "None of these connect yet. Most people don't use any, and that's the fast path.",
+        connections:ACCOUNTS.map(a=>({
+          label:a.k, sub:a.sub, disabled:true,
+          status:a.status==="available"?"Not yet connected":"Coming soon"})),
         shareTable:()=>patch({shared:"table"}),
         shareNote:st.shared==="table"?"Sharing sheet open. Text it, and whoever taps it joins your table with their own taste, not a copy of yours."
           :"Send your table to someone. They answer the six themselves, and then we can pair for both of you.",

@@ -2,7 +2,7 @@ import React from 'react';
 
 /** Screen 1 · Welcome */
 export default function Welcome(vm){
-  const { connectPills, connectNote } = vm;
+  const { connectPills, connectNote, skipConnect, connectSkipped } = vm;
   return (
 <>
 <div>
@@ -19,13 +19,14 @@ export default function Welcome(vm){
 <div style={{display: "flex", flexWrap: "wrap", gap: "7px"}}>
 {(connectPills || []).map((c, i) => (
 <React.Fragment key={i}>
-<button onClick={c.pick} style={{border: `1px solid ${c.bd}`, background: c.bg, color: "var(--pm-ink)", borderRadius: "999px", padding: "9px 13px", font: "500 12px var(--font-body)", cursor: "pointer", minHeight: "40px", display: "flex", alignItems: "center", gap: "6px"}}>
-<span style={{font: "700 11px var(--font-body)", color: c.tickColor}}>{c.tick}</span>
+<span aria-disabled="true" style={{border: "1px dashed var(--pm-rule)", background: "var(--pm-sunken)", color: "var(--pm-muted)", borderRadius: "999px", padding: "9px 13px", font: "500 12px var(--font-body)", minHeight: "40px", display: "inline-flex", alignItems: "center", gap: "6px"}}>
 <span>{c.label}</span>
-</button>
+<span style={{font: "600 10px var(--font-body)", color: "var(--pm-muted)", textTransform: "uppercase", letterSpacing: ".04em"}}>{c.note}</span>
+</span>
 </React.Fragment>
 ))}
 </div>
+<button onClick={skipConnect} style={{width: "100%", marginTop: "12px", border: `1.5px solid var(--pm-chrome)`, background: "var(--pm-sel)", color: "var(--pm-ink)", borderRadius: "12px", padding: "13px", font: "700 13.5px var(--font-body)", cursor: "pointer", minHeight: "48px"}}>I don't use any of these</button>
 <div style={{font: "500 12px/1.6 var(--font-body)", color: "var(--pm-pearInk)", marginTop: "10px"}}>{connectNote}</div>
 </div>
 </div>
