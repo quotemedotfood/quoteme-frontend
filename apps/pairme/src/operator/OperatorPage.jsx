@@ -1,4 +1,5 @@
 import React from 'react';
+import QRCode from 'qrcode';
 import { parseMenu } from '../../../../packages/pairing/src/index.js';
 import { SEEDED_WINE_LISTS, getSeededWines } from '../lib/seededLists.js';
 import { getOfflineTables } from '../lib/offlinePairing.js';
@@ -240,6 +241,28 @@ export default function OperatorPage() {
   }
 
   const tableUrl = buildTableUrl(venueCode);
+
+  // Render the table-code QR to an on-screen canvas whenever the URL changes.
+  const qrCanvasRef = React.useRef(null);
+  React.useEffect(() => {
+    const canvas = qrCanvasRef.current;
+    if (!canvas || !tableUrl) return;
+    QRCode.toCanvas(canvas, tableUrl, { width: 200, margin: 2, color: { dark: COLORS.chrome, light: '#FFFFFF' } }, () => {});
+  }, [tableUrl]);
+
+  // Download a print-resolution PNG (1024px) an operator can drop on a table tent.
+  function downloadQrPng() {
+    if (!tableUrl) return;
+    QRCode.toDataURL(tableUrl, { width: 1024, margin: 2, color: { dark: COLORS.chrome, light: '#FFFFFF' } }, (err, dataUrl) => {
+      if (err || !dataUrl) return;
+      const a = document.createElement('a');
+      a.href = dataUrl;
+      a.download = `pairme-${(venueCode || 'table').trim().replace(/\s+/g, '')}-qr.png`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    });
+  }
 
   const confirmedCards = [];
   if (dishes && pairings) {
@@ -516,21 +539,25 @@ export default function OperatorPage() {
               <div
                 style={{
                   marginTop: 10,
-                  border: `1.5px dashed ${COLORS.chrome}`,
+                  border: `1.5px solid ${COLORS.rule}`,
                   borderRadius: 12,
-                  padding: 14,
+                  padding: 16,
                   textAlign: 'center',
                   background: COLORS.card,
                 }}
               >
-                <div style={{ font: '600 12px inherit', color: COLORS.muted, marginBottom: 6 }}>
-                  QR code renders here once a qr lib is added.
-                </div>
-                <div style={{ font: '700 13px inherit', color: COLORS.chrome, wordBreak: 'break-all' }}>{tableUrl}</div>
+                <canvas ref={qrCanvasRef} width="200" height="200" style={{ width: 200, height: 200 }} aria-label={`QR code for ${tableUrl}`} />
+                <div style={{ font: '600 12.5px inherit', color: COLORS.chrome, wordBreak: 'break-all', marginTop: 8 }}>{tableUrl}</div>
+                <button
+                  type="button"
+                  onClick={downloadQrPng}
+                  style={{ marginTop: 12, minHeight: 44, borderRadius: 999, border: `1px solid ${COLORS.accentBd}`, background: COLORS.accent, color: COLORS.chrome, font: '700 13.5px inherit', cursor: 'pointer', padding: '0 20px' }}
+                >
+                  Download QR (PNG)
+                </button>
               </div>
               <p style={{ font: '400 12px/1.5 inherit', color: COLORS.muted, marginTop: 6 }}>
-                A guest who scans a printed QR code with this URL lands on this table's menu and pairings once the
-                BE side of table codes is live.
+                Print it on a table tent. A guest who scans it lands on this table's menu and pairings.
               </p>
             </>
           ) : (
