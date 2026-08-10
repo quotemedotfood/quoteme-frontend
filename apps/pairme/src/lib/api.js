@@ -260,6 +260,24 @@ export function getTableCode(code) {
   return request(`/v1/t/${encodeURIComponent(code)}`);
 }
 
+/**
+ * Operator venue pairings persistence (BE feat/pairme-operator-persistence):
+ *   GET /v1/venues/:code/pairings -> { code, confirmed: [...], pushed: [...] }
+ *   PUT /v1/venues/:code/pairings { confirmed, pushed } -> same shape
+ * Keyed by the /t/:code venue code, so an operator's confirmed pairings and
+ * pushed wines survive a reload.
+ */
+export function getVenuePairings(code) {
+  return request(`/v1/venues/${encodeURIComponent(code)}/pairings`);
+}
+
+export function putVenuePairings(code, { confirmed, pushed }) {
+  return request(`/v1/venues/${encodeURIComponent(code)}/pairings`, {
+    method: 'PUT',
+    body: { confirmed, pushed },
+  });
+}
+
 // ---------------------------------------------------------------------------
 // AUTH CONTRACT (locked, from the accounts BE's feat/pairme-accounts-be):
 //   POST /v1/auth/signup { email, password } (sends X-PairMe-Anon = the

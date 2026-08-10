@@ -11,6 +11,7 @@ import { describe, it, expect } from 'vitest';
 import { screen, within, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderPairMeApp } from './helpers/renderPairMeApp.jsx';
+import { requestLog } from './msw/handlers.js';
 
 const MENU = [
   'MAINS',
@@ -72,6 +73,30 @@ describe('OperatorPage (/operator): paste -> build -> review -> confirm/push/rem
     expect(screen.getByText('https://demo.pairme.wine/t/aquitaine-01')).toBeInTheDocument();
     expect(screen.getByLabelText('QR code for https://demo.pairme.wine/t/aquitaine-01')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Download QR (PNG)' })).toBeInTheDocument();
+  });
+
+  it('persists confirmed + pushed to the BE once a venue code is set, and loads them back', async () => {
+    const user = userEvent.setup();
+    renderPairMeApp('/operator');
+    await user.click(screen.getByLabelText('Paste your menu'));
+    await user.paste(MENU);
+    await user.click(screen.getByRole('button', { name: 'Build pairings' }));
+    await screen.findByRole('heading', { name: '3. Review each dish' });
+    const review = within(reviewSection());
+    await user.click(review.getAllByRole('button', { name: 'Confirm' })[0]);
+    await user.click(review.getAllByRole('checkbox', { name: /Push to guest \(disclosed\)/ })[0]);
+
+    // Setting the code triggers the save effect: a PUT to the venue endpoint.
+    await user.type(screen.getByLabelText('Venue code'), 'aquitaine-01');
+    await waitFor(() =>
+      expect(
+        requestLog.some((r) => r.method === 'PUT' && r.path === '/v1/venues/aquitaine-01/pairings'),
+      ).toBe(true),
+    );
+
+    // Loading pulls the saved decisions back (proves the round-trip persisted).
+    await user.click(screen.getByRole('button', { name: 'Load saved pairings' }));
+    expect(await screen.findByText('Loaded your saved pairings.')).toBeInTheDocument();
   });
 
   it('supports uploading a .txt menu instead of pasting', async () => {
