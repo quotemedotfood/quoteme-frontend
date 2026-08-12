@@ -4,6 +4,7 @@ import { usePairMe } from './lib/state';
 import { Phone } from './App';
 import Login from './screens/Login';
 import EntryScreen from './screens/EntryScreen';
+import TellUsScreen from './screens/TellUsScreen';
 import WineList from './screens/WineList';
 import OperatorPage from './operator/OperatorPage';
 
@@ -117,6 +118,14 @@ export default function PairMeApp() {
           feature). See screens/EntryScreen.jsx.
         */}
         <Route path="/entry" element={<EntryScreen />} />
+        {/*
+          WhereTo's fourth path (item 6/7/8): "Just tell us here", the
+          at-home / no-menu case. Standalone and full-viewport like /entry
+          above, NOT the Phone mockup frame - extraction, correction, and a
+          three-way choice do not fit inside that 390x800 card any better
+          than EntryScreen's own walk does. See screens/TellUsScreen.jsx.
+        */}
+        <Route path="/tell-us" element={<TellUsScreen />} />
         {/*
           Restaurant OPERATOR flow (restaurant_admin), standalone and
           full-viewport like /entry above, NOT the Phone mockup frame. See
