@@ -41,8 +41,18 @@ export const DIRECTION_FOR_FORMAT = {
 
 /** A mocked GET /v1/demo row -> the plain wine object the scoring engine
  * reads (label/grape_head/region_head/price/glass), with display-only extras
- * (producer/wine_name/say/speak/tip/meta/client_row_id) passed through
- * untouched since scoreWine/wineProfile only look at the axis-relevant keys. */
+ * (producer/wine_name/say/speak/tip/meta/client_row_id/binNo) passed through
+ * untouched since scoreWine/wineProfile only look at the axis-relevant keys.
+ *
+ * ITEM 4 (Amy interview): a bin number lets a guest say "I want wine 902"
+ * without the pronunciation anxiety a long producer/appellation name causes
+ * - the SAME anxiety `say`/`speak` already address, solved a second way.
+ * packages/pairing's parseWineList.js sets this as `bin` on parsed rows
+ * (see BIN_START there); demo/seed rows never carry it (most cellars have
+ * no bin system), a pasted cellar list sometimes does. Read either key so a
+ * caller handing this a row already shaped `binNo` (rather than a raw
+ * parseWineList row) still passes through cleanly.
+ */
 export function rowToEngineWine(row) {
   return {
     label: row.label || [row.producer, row.wine_name].filter(Boolean).join(', '),
@@ -57,6 +67,7 @@ export function rowToEngineWine(row) {
     say: row.say,
     speak: row.speak,
     tip: row.tip,
+    binNo: row.binNo || row.bin || null,
     client_row_id: row.client_row_id,
   };
 }
@@ -114,6 +125,111 @@ function structuralWhy(wine) {
     return `${nice} is a safe structural fit for what you ordered, though nothing on this plate calls for it specifically.`;
   }
   return `A safe structural fit for what you ordered, though nothing on this plate calls for it specifically.`;
+}
+
+function median(sortedNums) {
+  const n = sortedNums.length;
+  if (!n) return null;
+  return n % 2 === 1 ? sortedNums[(n - 1) / 2] : (sortedNums[n / 2 - 1] + sortedNums[n / 2]) / 2;
+}
+
+/**
+ * ITEM 3 (Amy interview): SPREAD the several-offerings across price points
+ * rather than surfacing whichever three score highest, which tend to
+ * cluster near each other in price. Amy sells on the floor by throwing out
+ * two price points and reading which one the guest is more comfortable
+ * with - the diner's pick is comfort information a clustered top-3 throws
+ * away before the guest ever gets to reveal it.
+ *
+ * `ranked` is already both (a) restricted to genuinely-qualifying wines -
+ * several()'s own per-dish eligibility gate already ran - and (b) sorted
+ * desc by adjScore. This function only SELECTS among those already-
+ * qualifying entries by price bracket; it never promotes an ineligible
+ * wine just to fill a bracket, and the score ranking that established
+ * quality is preserved for the final 3 (see the sort at the end).
+ *
+ * Brackets: low = below the midpoint, high = the top quarter of the range
+ * (near budget.max / the priciest candidates), mid = everything between.
+ * When a two-handle budget range is present (budget.min AND budget.max),
+ * the midpoint is the diner's own range midpoint - "below what you asked
+ * for" should mean below what they actually asked for, not below the
+ * shortlist's median. When no budget range exists, the bracket boundaries
+ * fall back to the shortlist's OWN price distribution (min/median/max).
+ *
+ * @param {Array<{wine: object, bestScore: number, bestForDish: string, adjScore: number}>} ranked
+ * @param {{min?: number, max?: number}|null} budget
+ * @returns {Array} up to 3 entries from `ranked`, one per bracket where a
+ *   qualifying candidate exists there, sorted back to score order.
+ */
+function selectAcrossPriceBrackets(ranked, budget) {
+  if (ranked.length <= 3) return ranked.slice(0, 3);
+
+  const priced = ranked.filter((e) => e.wine.price != null);
+  // Not enough price data to bracket meaningfully - fall back to pure score
+  // rank rather than inventing brackets from one or zero data points.
+  if (priced.length < 2) return ranked.slice(0, 3);
+
+  const sortedPrices = priced.map((e) => e.wine.price).sort((a, b) => a - b);
+  const distMin = sortedPrices[0];
+  const distMax = sortedPrices[sortedPrices.length - 1];
+  const distMedian = median(sortedPrices);
+
+  const hasBudgetRange = !!(budget && budget.min != null && budget.max != null);
+  // Same "max at/above 400 means no ceiling" convention this file already
+  // uses above (see `ceil`): an uncapped budget.max is not a real top-of-
+  // range for bracketing, the shortlist's own priciest candidate is.
+  const rangeMin = budget && budget.min != null ? budget.min : distMin;
+  const rangeMax = budget && budget.max != null && budget.max < 400 ? budget.max : distMax;
+  const mid = hasBudgetRange ? (budget.min + budget.max) / 2 : distMedian;
+  const highStart = rangeMax > rangeMin ? rangeMin + (rangeMax - rangeMin) * 0.75 : mid;
+
+  const bracketOf = (entry) => {
+    const p = entry.wine.price;
+    if (p == null) return 'unknown';
+    if (p >= highStart) return 'high';
+    if (p < mid) return 'low';
+    return 'mid';
+  };
+
+  const used = new Set();
+  const pick = (bracket) => {
+    const hit = ranked.find((e) => !used.has(e.wine.label) && bracketOf(e) === bracket);
+    if (hit) used.add(hit.wine.label);
+    return hit;
+  };
+
+  // High first: it is typically the narrowest, least-populated bracket (a
+  // top-quarter-of-range slice), so claim its occupant before a fallback
+  // fill from another bracket could take it.
+  let high = pick('high');
+  let low = pick('low');
+  let mid_ = pick('mid');
+
+  // Graceful fallback: an empty bracket (no qualifying candidate landed in
+  // it) fills from the next-best UNUSED qualifying candidate rather than
+  // shorting the offering count or throwing - "genuine qualifying pick"
+  // stays true (it always comes from `ranked`), only the "clean bracket
+  // spread" ideal is what gives way when the shortlist can't support it.
+  const fallback = () => ranked.find((e) => !used.has(e.wine.label));
+  if (!high) {
+    high = fallback();
+    if (high) used.add(high.wine.label);
+  }
+  if (!low) {
+    low = fallback();
+    if (low) used.add(low.wine.label);
+  }
+  if (!mid_) {
+    mid_ = fallback();
+    if (mid_) used.add(mid_.wine.label);
+  }
+
+  const chosen = [low, mid_, high].filter(Boolean);
+  // Slot assignment (house/suited/crowd) still reads top-to-bottom by
+  // quality among the three CHOSEN wines, same as the pre-Item-3 behaviour -
+  // price-bracket selection changed WHICH three get shown, not how the
+  // three that were chosen get ordered into slots.
+  return chosen.sort((a, b) => b.adjScore - a.adjScore);
 }
 
 /**
@@ -259,12 +375,14 @@ export function computeOfferings(direction, dishes, wines, T, opts = {}) {
   // grape-deduped for its single-dish discovery mechanic (see directions.js),
   // which is the wrong shape for "best across everything ordered".
   // Pull a deeper shortlist so the soft floor can DEMOTE below-floor bottles out
-  // of the top three rather than merely reorder a fixed three - a cheap bottle
-  // that fits well should still lose to an in-budget one.
-  const shortlist = several(engineDishes, wines, T, { n: 8 })
+  // of the top three, AND so ITEM 3's price-bracket selection below has enough
+  // genuinely-qualifying candidates to spread across price points rather than
+  // three that happen to cluster together near the top of the score ranking.
+  const SEVERAL_POOL_N = 12;
+  const ranked = several(engineDishes, wines, T, { n: SEVERAL_POOL_N })
     .map((entry) => ({ ...entry, adjScore: entry.bestScore - floorPenalty(entry.wine.price) }))
-    .sort((a, b) => b.adjScore - a.adjScore)
-    .slice(0, 3);
+    .sort((a, b) => b.adjScore - a.adjScore);
+  const shortlist = selectAcrossPriceBrackets(ranked, budget);
   const offerings = shortlist.map((entry, i) => {
     const dish = engineDishes.find((d) => d.name === entry.bestForDish) || { components: [] };
     const { profile } = dishProfile(dish.components, T);

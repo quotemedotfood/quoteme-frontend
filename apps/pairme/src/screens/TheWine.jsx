@@ -113,6 +113,7 @@ export default function TheWine(vm){
 <div style={{font: "600 10.5px var(--font-body)", color: "var(--pm-pearInk)", letterSpacing: ".06em", textTransform: "uppercase"}}>Say it</div>
 <div style={{font: "700 14px var(--font-body)", color: "var(--pm-ink)"}}>{w.say}</div>
 </div>
+{(w.bin || w.binNo) ? (<span style={{flex: "none", font: "700 10.5px var(--font-body)", color: "#1F2A44", background: "var(--pm-sel)", border: "1px solid var(--pm-selBd)", borderRadius: "999px", padding: "4px 9px"}}>Bin {w.bin || w.binNo}</span>) : null}
 {w.open ? (<button onClick={w.open} style={{flex: "none", border: "1px solid var(--pm-rule)", background: "transparent", color: "var(--pm-accent2)", borderRadius: "999px", padding: "9px 13px", font: "600 11.5px var(--font-body)", cursor: "pointer", minHeight: "40px"}}>Brief ›</button>) : null}
 </div>
 </div>

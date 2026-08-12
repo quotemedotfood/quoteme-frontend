@@ -67,6 +67,24 @@ function dishKey(dish, i) {
   return `${i}:${dish.name}`;
 }
 
+/** Same window.speechSynthesis pattern state.js's own `say()` uses for
+ * TheWine's "Say it" button - kept local here (rather than exported from
+ * state.js, which this branch does not touch) since it is a two-line
+ * wrapper, not shared logic. */
+function speakText(text) {
+  try {
+    const sp = window.speechSynthesis;
+    if (!sp || !text) return;
+    sp.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.rate = 0.82;
+    u.pitch = 1;
+    sp.speak(u);
+  } catch {
+    /* no speech synthesis available; the printed "say" text is the fallback */
+  }
+}
+
 export default function EntryScreen() {
   const [mode, setMode] = React.useState(MODE_PASTE);
   const [venueListId, setVenueListId] = React.useState(null);
@@ -588,6 +606,32 @@ export default function EntryScreen() {
                         {o.covers.map((c, ci) => (
                           <span key={ci} style={{ font: '500 10.5px inherit', color: COLORS.ink, background: COLORS.page, border: `1px solid ${COLORS.rule}`, borderRadius: 999, padding: '3px 9px' }}>{c}</span>
                         ))}
+                      </div>
+                    ) : null}
+                    {/* ITEM 4: pronunciation ("say it") and, when the wine list carried
+                        one, its cellar bin number - two different fixes for the same
+                        anxiety (a long name you're not sure how to say out loud). Bin
+                        only renders when the parsed row actually had one. */}
+                    {o.wine.say || o.wine.binNo ? (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 9, paddingTop: 9, borderTop: `1px solid ${COLORS.rule}` }}>
+                        {o.wine.say ? (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => speakText(o.wine.speak || o.wine.say)}
+                              aria-label="Say it out loud"
+                              style={{ flex: 'none', width: 32, height: 32, borderRadius: 999, border: `1.5px solid ${COLORS.accentBd}`, background: COLORS.card, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                            >
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={COLORS.chrome} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M11 5 L6 9 H3 v6 h3 l5 4 Z" /><path d="M15.5 8.5a5 5 0 0 1 0 7" /></svg>
+                            </button>
+                            <span style={{ font: '600 12px inherit', color: COLORS.ink }}>{o.wine.say}</span>
+                          </>
+                        ) : null}
+                        {o.wine.binNo ? (
+                          <span style={{ font: '700 10.5px inherit', color: COLORS.chrome, background: COLORS.sel, border: `1px solid ${COLORS.selBd}`, borderRadius: 999, padding: '3px 9px', marginLeft: o.wine.say ? 'auto' : 0 }}>
+                            Bin {o.wine.binNo}
+                          </span>
+                        ) : null}
                       </div>
                     ) : null}
                   </div>
