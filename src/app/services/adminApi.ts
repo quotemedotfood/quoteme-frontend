@@ -185,6 +185,17 @@ export interface AdminRestaurant {
   admin_user_name: string | null;
   restaurant_admin_id: string | null;
   restaurant_admin_name: string | null;
+  address_line_1: string | null;
+  address_line_2: string | null;
+  zip: string | null;
+  website: string | null;
+  google_place_id: string | null;
+  // Not yet populated by the crawler; may be null.
+  source_state: string | null;
+  // e.g. "place_id_conflict"; may be null.
+  data_flags: string | null;
+  // Menu kinds present among CURRENT menu sources, e.g. ["wine","dinner"].
+  menu_coverage: string[];
 }
 
 export interface ConferenceLead {
