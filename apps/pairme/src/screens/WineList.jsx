@@ -36,15 +36,24 @@ function SpeakerIcon() {
   );
 }
 
-function WineRow({ wine, isBest, expanded, onToggle, onSpeak }) {
+/** Descriptive, non-ranking badge text: what a wine pairs with and how
+ * much of what was picked, never a claim that it beats another wine.
+ * See wineListEngine.js's file header for why there is no single winner. */
+function badgeLabel(wine) {
+  const n = wine.pairsWith.length;
+  if (n > 1) return `Pairs with ${n} dishes`;
+  return `Pairs with ${wine.pairsWith[0].dish}`;
+}
+
+function WineRow({ wine, expanded, onToggle, onSpeak }) {
   const bottle = fmtPrice(wine.price);
   const glass = fmtPrice(wine.glassPrice);
   return (
     <div
       data-testid="wine-row"
       style={{
-        border: `${isBest ? '2px' : '1px'} solid ${isBest ? NAVY : 'var(--pm-rule)'}`,
-        background: isBest ? 'var(--pm-sel)' : 'var(--pm-card)',
+        border: '1px solid var(--pm-rule)',
+        background: 'var(--pm-card)',
         borderRadius: 12,
         padding: '12px 14px',
         marginBottom: 8,
@@ -55,21 +64,21 @@ function WineRow({ wine, isBest, expanded, onToggle, onSpeak }) {
         aria-expanded={expanded}
         style={{ display: 'block', width: '100%', textAlign: 'left', border: 'none', background: 'transparent', padding: 0, cursor: 'pointer' }}
       >
-        {isBest || wine.hasBadge ? (
+        {wine.hasBadge ? (
           <div style={{ marginBottom: 6 }}>
             <span
               style={{
                 font: '700 10px var(--font-body)',
-                color: isBest ? NAVY : 'var(--pm-ink)',
-                background: isBest ? PEAR : 'var(--pm-sunken)',
-                border: isBest ? 'none' : '1px solid var(--pm-rule)',
+                color: 'var(--pm-ink)',
+                background: 'var(--pm-sunken)',
+                border: '1px solid var(--pm-rule)',
                 borderRadius: 999,
                 padding: '3px 9px',
                 letterSpacing: '.04em',
                 textTransform: 'uppercase',
               }}
             >
-              {isBest ? 'Best match' : `Pairs with ${wine.pairsWith[0].dish}`}
+              {badgeLabel(wine)}
             </span>
           </div>
         ) : null}
@@ -110,7 +119,24 @@ function WineRow({ wine, isBest, expanded, onToggle, onSpeak }) {
               <div style={{ font: '600 10.5px var(--font-body)', color: 'var(--pm-pearInk)', letterSpacing: '.06em', textTransform: 'uppercase' }}>
                 Say it
               </div>
-              <div style={{ font: '700 13.5px var(--font-body)', color: 'var(--pm-ink)' }}>{wine.pronunciation || wine.wineName}</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
+                <div style={{ font: '700 13.5px var(--font-body)', color: 'var(--pm-ink)' }}>{wine.pronunciation || wine.wineName}</div>
+                {wine.binNo ? (
+                  <span
+                    data-testid="bin-chip"
+                    style={{
+                      font: '700 10.5px var(--font-body)',
+                      color: NAVY,
+                      background: PEAR,
+                      borderRadius: 999,
+                      padding: '2px 8px',
+                      letterSpacing: '.02em',
+                    }}
+                  >
+                    Bin {wine.binNo}
+                  </span>
+                ) : null}
+              </div>
             </div>
           </div>
 
@@ -237,15 +263,6 @@ export default function WineList({ wines, pickedDishes, tables, say, onBack }) {
                 <div style={{ font: '700 12px var(--font-body)', color: 'var(--pm-muted)', letterSpacing: '.06em', textTransform: 'uppercase', margin: '14px 0 8px' }}>
                   {cg.country}
                 </div>
-                {cg.topPick ? (
-                  <WineRow
-                    wine={cg.topPick}
-                    isBest
-                    expanded={expandedKey === cg.topPick.key}
-                    onToggle={() => setExpandedKey(expandedKey === cg.topPick.key ? null : cg.topPick.key)}
-                    onSpeak={() => speak(cg.topPick.speak)}
-                  />
-                ) : null}
                 {cg.regions.map((rg) => (
                   <div key={rg.region}>
                     <div style={{ font: '600 11px var(--font-body)', color: 'var(--pm-muted)', margin: '10px 0 6px' }}>{rg.region}</div>

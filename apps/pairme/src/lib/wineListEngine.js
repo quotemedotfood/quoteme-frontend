@@ -9,6 +9,17 @@
  * TheWine's own offering cards hold themselves to, so a "Pairs with X"
  * badge here and the "why" on an offering card for the same wine+dish are
  * never two different claims about the same fired rule.
+ *
+ * There is deliberately NO single "best match" crown. A working sommelier
+ * does not assert one defensible winner across a whole cellar - "one dish
+ * can have 20 wine pairings ... I just explain what those two wines are and
+ * let them see what they think is more interesting" (Amy, restaurant
+ * sommelier interview). So every wine that defensibly pairs with at least
+ * one picked dish gets the SAME kind of descriptive badge (which dishes, how
+ * many) - none is ever singled out as THE best match. Within a region, wines
+ * that pair with more of what was picked simply list first (a coverage
+ * sort, not a ranking claim) so that useful signal survives without
+ * crowning a champion.
  */
 import { dishProfile, scoreWine } from '../../../../packages/pairing/src/scoring.js';
 import { VOCAB } from '../../../../packages/pairing/src/wineVocab.js';
@@ -26,10 +37,11 @@ function titleCase(s) {
 /**
  * A wine's pairing against every picked dish. `pairs` only counts a dish
  * where the wine is eligible AND a wine-specific (non-generic) rule fired -
- * the same bar an offering card's headline reason holds itself to. `bestScore`
- * is the highest score among those defensible pairs only, so a wine that
- * merely scores well without ever firing anything wine-specific can never
- * become the ONE badged "Best match".
+ * the same bar an offering card's headline reason holds itself to. A wine
+ * that merely scores well without ever firing anything wine-specific gets no
+ * pairs and no badge at all; among wines that DO get pairs, none is ranked
+ * above another here - this returns a plain list of (dish, why), in picked-
+ * dish order, never a score used to crown a winner.
  *
  * @param {Record<string, any>} engineWine
  * @param {Array<{name: string, components: string[]}>} pickedDishes
@@ -37,7 +49,6 @@ function titleCase(s) {
  */
 function scoreAgainstPicked(engineWine, pickedDishes, T) {
   const pairs = [];
-  let bestScore = null;
   for (const dish of pickedDishes) {
     const components = dish.components || [];
     const { profile } = dishProfile(components, T);
@@ -46,15 +57,14 @@ function scoreAgainstPicked(engineWine, pickedDishes, T) {
     const hasSpecific = scored.fired.some(([id]) => !GENERIC_RULE_IDS.has(id));
     if (hasSpecific) {
       pairs.push({ dish: dish.name, why: headlineWhy(scored.fired, engineWine) });
-      if (bestScore === null || scored.score > bestScore) bestScore = scored.score;
     }
   }
-  return { pairs, bestScore };
+  return pairs;
 }
 
 /**
  * @param {Array<Record<string, any>>} wines - raw wine rows (producer/
- *   wine_name/label/vintage/region_head/grape_head/glass_price/price/...).
+ *   wine_name/label/vintage/region_head/grape_head/glass_price/price/bin/...).
  * @param {Array<{name: string, components: string[]}>} pickedDishes - []
  *   when the diner has picked nothing yet (no badges, no re-sort, see below).
  * @param {ReturnType<import('../../../../packages/pairing/src/tables.js').buildTables>} tables
@@ -74,10 +84,10 @@ export function buildWineListModel(wines, pickedDishes, tables) {
       const pronunciation = row.say || VOCAB.pronunciation(regionHead) || VOCAB.pronunciation(grapeHead) || '';
       const displayName = [row.producer, row.wine_name].filter(Boolean).join(', ') || row.label || '';
       const speak = row.speak || pronunciation || displayName;
-      // Every wine gets scored the same way regardless of tab/color - a
-      // badge is about the pairing, not about which tab the wine happens
-      // to sit in - so "best match" below is a genuinely GLOBAL comparison.
-      const scoring = hasPicks ? scoreAgainstPicked(engineWine, pickedDishes, tables) : { pairs: [], bestScore: null };
+      // Every wine is scored against every picked dish the same way, no
+      // matter which tab/color it sits in - but the result is a plain list
+      // of defensible pairs, never a global ranking (see file header).
+      const pairsWith = hasPicks ? scoreAgainstPicked(engineWine, pickedDishes, tables) : [];
       return {
         key: row.client_row_id != null ? String(row.client_row_id) : `wine-${i}`,
         producer: row.producer || '',
@@ -90,10 +100,15 @@ export function buildWineListModel(wines, pickedDishes, tables) {
         glassPrice: row.glass_price != null ? row.glass_price : null,
         price: row.price != null ? row.price : null,
         pronunciation,
+        // A bin number lets a guest order by number ("I want wine 902")
+        // instead of having to pronounce the name - the SAME anxiety
+        // pronunciation solves, a second way (Amy). Only present when the
+        // parsed list actually had one (parseWineList.js's `bin`); never
+        // fabricated when absent.
+        binNo: row.bin || row.binNo || null,
         speak,
-        pairsWith: scoring.pairs,
-        matchScore: scoring.bestScore,
-        hasBadge: hasPicks && scoring.pairs.length > 0,
+        pairsWith,
+        hasBadge: hasPicks && pairsWith.length > 0,
       };
     })
     // A wine with no derivable color has nowhere honest to sit in a
@@ -102,21 +117,6 @@ export function buildWineListModel(wines, pickedDishes, tables) {
     // neither an explicit color word, nor a placed region, nor a known
     // grape).
     .filter((w) => w.color);
-
-  // GLOBAL best match: the single highest matchScore among badge-eligible
-  // wines (score, eligibility and "fired something wine-specific" all
-  // already folded into hasBadge/matchScore above). Ties keep whichever
-  // wine was encountered first, for a deterministic result.
-  let bestKey = null;
-  if (hasPicks) {
-    let best = -Infinity;
-    for (const w of rows) {
-      if (w.hasBadge && w.matchScore > best) {
-        best = w.matchScore;
-        bestKey = w.key;
-      }
-    }
-  }
 
   const presentColors = COLOR_TAB_ORDER.filter((c) => rows.some((w) => w.color === c));
 
@@ -134,24 +134,28 @@ export function buildWineListModel(wines, pickedDishes, tables) {
     });
     const countries = countryNames.map((country) => {
       const countryWines = colorWines.filter((w) => w.country === country);
-      // The one global best match, if it lives in this country, sorts to
-      // the top of the group (its own line, ahead of the region grouping) -
-      // it never gets ALSO left inside a region list further down.
-      const topPick = countryWines.find((w) => w.key === bestKey) || null;
-      const rest = countryWines.filter((w) => w.key !== bestKey);
-      const regionNames = Array.from(new Set(rest.map((w) => w.region || 'Other region'))).sort((a, b) =>
+      const regionNames = Array.from(new Set(countryWines.map((w) => w.region || 'Other region'))).sort((a, b) =>
         a.localeCompare(b)
       );
       const regions = regionNames.map((region) => ({
         region,
-        wines: rest
+        // Coverage sort, not a ranking claim: a wine that pairs with more
+        // of what was picked lists first within its own region, ties break
+        // alphabetically. No wine is singled out as THE best match (see
+        // file header) - this only orders an already-honest grouping.
+        wines: countryWines
           .filter((w) => (w.region || 'Other region') === region)
-          .sort((a, b) => a.producer.localeCompare(b.producer) || a.wineName.localeCompare(b.wineName)),
+          .sort(
+            (a, b) =>
+              b.pairsWith.length - a.pairsWith.length ||
+              a.producer.localeCompare(b.producer) ||
+              a.wineName.localeCompare(b.wineName)
+          ),
       }));
-      return { country, topPick, regions };
+      return { country, regions };
     });
     byColor[color] = { countries };
   }
 
-  return { colors: presentColors, byColor, bestKey, hasPicks };
+  return { colors: presentColors, byColor, hasPicks };
 }
