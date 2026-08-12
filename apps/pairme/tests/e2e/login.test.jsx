@@ -19,7 +19,9 @@ import { requestLog, TEST_ANON_ID } from './msw/handlers.js';
 describe('AUTH CONTRACT: /login (login + signup toggle)', () => {
   it('the top-right chrome "Log in" button reaches /login', async () => {
     const { findByText, getByRole, currentPath } = renderPairMeApp('/');
-    await findByText('PairMe');
+    // Confirms Welcome rendered (the PairMe wordmark there is now the logo
+    // image, not a text node - see the item-2 brand-mark conversion).
+    await findByText('Know what to order. Every time.');
 
     await userEvent.click(getByRole('button', { name: 'Log in' }));
     await findByText('Welcome back. Your taste and history pick up right where you left them.');
@@ -104,7 +106,7 @@ describe('AUTH CONTRACT: /login (login + signup toggle)', () => {
   it('"Not now" leaves without logging in, and login never runs unless a diner opts in', async () => {
     const user = userEvent.setup();
     const { findByText, getByRole, currentPath } = renderPairMeApp('/');
-    await findByText('PairMe');
+    await findByText('Know what to order. Every time.');
 
     await user.click(getByRole('button', { name: 'Log in' }));
     await findByText('Welcome back. Your taste and history pick up right where you left them.');

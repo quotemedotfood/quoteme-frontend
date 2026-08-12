@@ -6,7 +6,7 @@ import { buildProfilePayload } from './state.js';
 function baseState(overrides = {}) {
   return Object.assign(
     {
-      level: '2 . I know what I like',
+      level: '2. I know what I like',
       want: 'I want to learn more',
       adv: 3,
       bMin: 60,
