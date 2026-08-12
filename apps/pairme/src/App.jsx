@@ -59,6 +59,16 @@ export function Phone({ vm }) {
     else speech.stop();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [vm.listening]);
+  // On scroll DOWN, only the logo stays in the header - Log in and the gear are
+  // not what a diner mid-scroll needs; they come back on scroll UP.
+  const [hideChrome, setHideChrome] = React.useState(false);
+  const lastY = React.useRef(0);
+  const onBodyScroll = (e) => {
+    const y = e.target.scrollTop;
+    if (y > lastY.current && y > 24) setHideChrome(true);
+    else if (y < lastY.current) setHideChrome(false);
+    lastY.current = y;
+  };
   return (
     <div
       className="pm-phone"
@@ -71,24 +81,25 @@ export function Phone({ vm }) {
       }}
     >
       <div style={{ flex: 'none', background: 'var(--pm-chrome)', padding: '7px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-        <span style={{ font: '600 11px var(--font-body)', color: 'var(--pm-chromeSub)', letterSpacing: '.04em' }}>{clock}</span>
+        {/* The logo is the one thing that always stays in the header. */}
+        <div style={{ flex: 'none', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <img src="/brand/pear-mark.svg" alt="PairMe" width="18" height="22" style={{ display: 'block' }} />
+          <span style={{ font: '600 11px var(--font-body)', color: 'var(--pm-chromeSub)', letterSpacing: '.04em' }}>{clock}</span>
+        </div>
         {/*
-          AUTH CONTRACT (locked, feat/pairme-accounts-be): the top-right
-          entry point into /login, reachable from every screen this chrome
-          wraps. Only rendered when signed out - it never blocks anything
-          underneath it, it is just another chrome affordance next to
-          Settings. See vm.goLogin/vm.isLoggedIn (state.js) and
-          screens/Login.jsx.
+          AUTH CONTRACT (locked, feat/pairme-accounts-be): the top-right entry
+          into /login, plus the Settings gear. Both are chrome affordances, not
+          what a diner mid-scroll needs, so they hide on scroll DOWN (only the
+          logo stays) and return on scroll UP. Settings is the gear alone now.
         */}
-        <div style={{ flex: 'none', display: 'flex', alignItems: 'center', gap: 6 }}>
+        <div data-testid="header-controls" aria-hidden={hideChrome} style={{ flex: 'none', display: 'flex', alignItems: 'center', gap: 6, transition: 'opacity .18s ease', opacity: hideChrome ? 0 : 1, pointerEvents: hideChrome ? 'none' : 'auto' }}>
           {!vm.isLoggedIn ? (
             <button onClick={vm.goLogin} aria-label="Log in" style={{ border: '1px solid rgba(255,255,255,.3)', background: 'transparent', color: '#fff', borderRadius: 999, padding: '5px 11px', font: '600 10.5px var(--font-body)', cursor: 'pointer' }}>
               Log in
             </button>
           ) : null}
-          <button onClick={vm.goSettings} aria-label="Settings" style={{ border: '1px solid rgba(255,255,255,.3)', background: 'transparent', color: '#fff', borderRadius: 999, padding: '5px 11px', font: '600 10.5px var(--font-body)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2v.2a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-3-1.2l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0-1.2-2.9H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.2-3l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 2.9-1.2V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 3 1.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0 1.2 2.9h.2a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.6 1z" /></svg>
-            <span>Settings</span>
+          <button onClick={vm.goSettings} aria-label="Settings" style={{ border: '1px solid rgba(255,255,255,.3)', background: 'transparent', color: '#fff', borderRadius: 999, padding: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2v.2a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-3-1.2l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0-1.2-2.9H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.2-3l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 2.9-1.2V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 3 1.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0 1.2 2.9h.2a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.6 1z" /></svg>
           </button>
         </div>
       </div>
@@ -106,7 +117,7 @@ export function Phone({ vm }) {
         </button>
       ) : null}
 
-      <div ref={vm.bodyRef} style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
+      <div ref={vm.bodyRef} onScroll={onBodyScroll} style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
         {vm.onboarding ? OnboardingHeader(vm) : null}
         {Screen(vm)}
       </div>

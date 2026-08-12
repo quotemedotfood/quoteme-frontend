@@ -3,7 +3,7 @@ import { Button, Input } from '../lib/ds';
 
 /** Screen 9 · Where to */
 export default function WhereTo(vm){
-  const { goMenu, goCamera, fVenue, venueHits, noList, hasList, noListLabel, toggleNoList, showNoListToggle, menu } = vm;
+  const { goMenu, goCamera, fVenue, venueHits, noList, hasList, noListLabel, toggleNoList, showNoListToggle, menu, fEatText, goTellUs } = vm;
   return (
 <>
 <div>
@@ -42,6 +42,19 @@ export default function WhereTo(vm){
 </React.Fragment>
 ))}
 <div style={{font: "400 11.5px var(--font-body)", color: "var(--pm-muted)", marginTop: "8px"}}>Type "aqu" to see it come up.</div>
+</div>
+<div style={{border: "1px solid var(--pm-rule)", background: "var(--pm-card)", borderRadius: "12px", padding: "14px", marginTop: "10px"}}>
+<div style={{font: "600 13.5px var(--font-body)", color: "var(--pm-ink)", marginBottom: "4px"}}>Or what are you eating?</div>
+<div style={{font: "400 12px/1.45 var(--font-body)", color: "var(--pm-muted)", marginBottom: "9px"}}>No menu on hand? Type it or tell us, and we will take it from there.</div>
+<div style={{position: "relative"}}>
+<Input value={fEatText.v} onChange={fEatText.set} placeholder="roast chicken, potatoes, green beans" aria-label="What are you eating" style={{width: "100%"}}></Input>
+<button onClick={fEatText.mic} aria-label="Tell us what you are eating" style={{position: "absolute", right: "5px", top: "5px", width: "34px", height: "34px", borderRadius: "999px", border: `1.5px solid ${fEatText.bd}`, background: fEatText.bg, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center"}}>
+<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--pm-ink)" strokeWidth="1.8" strokeLinecap="round"><rect x="9" y="2" width="6" height="11" rx="3"></rect><path d="M5 11a7 7 0 0 0 14 0"></path><line x1="12" y1="18" x2="12" y2="22"></line></svg>
+</button>
+</div>
+<div style={{marginTop: "10px"}}>
+<Button variant="primary" size="md" onClick={goTellUs} disabled={!fEatText.v.trim()} style={{width: "100%", opacity: fEatText.v.trim() ? 1 : 0.55}}>Just tell us here</Button>
+</div>
 </div>
 </div>
 </>) : null}

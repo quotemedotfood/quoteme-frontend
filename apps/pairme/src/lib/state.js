@@ -345,10 +345,10 @@ export function usePairMe(opts = {}){
     likes:["Burgundy","Loire whites","Beaujolais"],dislikes:["heavy oak"],diet:["shellfish"],
     levelOwn:"",advOwn:"",budgetOwn:"",loveOwn:"",notOwn:"",dietOwn:"",unreadable:"",why:"",
     guestName:"",rel:null,added:[],
-    venueQ:"",noList:false,blank:false,picked:["a2","a5","e6","e9","s2"],
+    venueQ:"",eatText:"",noList:false,blank:false,picked:["a2","a5","e6","e9","s2"],
     mode:null,sub:null,scope:null,present:["gim","trapet"],wineFormat:"both",
     guest:"me",guestDrawerOpen:false,guestShareNote:null,resolution:null,rate:{dish:4,wine:5,pair:4},fb:"",share:true,listening:null,skipped:0,
-    linked:[],connectSkipped:false,account:null,bottle:"trapet",back:11,saved:false,shared:null,
+    linked:[],connectionsOpen:false,account:null,bottle:"trapet",back:11,saved:false,shared:null,
     // Integration state (not part of Desi's original demo model).
     apiError:null,apiLoading:false,
     anonId:null,
@@ -865,6 +865,17 @@ export function usePairMe(opts = {}){
         // directly rather than through go()/PATH_FOR_SCREEN, same pattern
         // goLogin already uses below for the other standalone route.
         goWineList:()=>{ if(navigate) navigate('/wines/list'); },
+        // "Just tell us here" (WhereTo's fourth path, item 6/7): the at-home
+        // / no-menu case. Extraction + correction + the three offerings
+        // choices need their own full-viewport flow (parsed dishes to edit,
+        // a paste-your-wine-list step, an offerings screen), which is a
+        // different shape from every other Phone-frame screen here, so this
+        // is a standalone route too - same navigate-direct pattern as
+        // goWineList/goLogin above, not go()/PATH_FOR_SCREEN. The typed/
+        // spoken text travels via router state; TellUsScreen.jsx parses it
+        // on mount with the same parseFreeText EntryScreen's TYPE/AT HOME
+        // tabs use.
+        goTellUs:()=>{ if(navigate) navigate('/tell-us',{state:{text:st.eatText}}); },
         wineListWines,wineListPickedDishes,
         wineListTables:st.rulesTables||getOfflineTables(),
         wineListSay:say,
@@ -916,7 +927,7 @@ export function usePairMe(opts = {}){
 
         fLevel:field("levelOwn"),fAdv:field("advOwn"),fBudget:field("budgetOwn"),
         fLove:field("loveOwn"),fNot:field("notOwn"),fDiet:field("dietOwn"),
-        fUnread:field("unreadable"),fVenue:field("venueQ"),fWhy:field("why"),
+        fUnread:field("unreadable"),fVenue:field("venueQ"),fWhy:field("why"),fEatText:field("eatText"),
         fFb:field("fb"),fGuestName:field("guestName"),
         // Speech bridge for the field mics: the app-level useSpeech (App.jsx)
         // drives these off st.listening. A spoken result appends to whatever the
@@ -1094,17 +1105,14 @@ export function usePairMe(opts = {}){
         // tappable fiction (see BUTTON_AUDIT.md: looks interactive must BE
         // interactive, or ship disabled). The only interactive control here is
         // the escape hatch below.
-        connectPills:ACCOUNTS.map(a=>({
-          label:a.k, disabled:true,
-          note:a.status==="available"?"not yet connected":"coming soon"})),
-        connectSkipped:!!st.connectSkipped,
-        skipConnect:()=>patch({connectSkipped:true}),
-        connectNote:st.connectSkipped
-          ? "Starting fresh. We'll learn your taste over a few dinners."
-          : "None of these connect yet. Most people don't use any, and that's the fast path.",
+        // Connections now live in Settings under an expandable section, not in
+        // onboarding - nobody at a table wants to link a cellar app first. All
+        // four read the same "Coming soon"; none connect yet (one label, no
+        // special case). Visibly disabled, so no looks-but-isn't control.
         connections:ACCOUNTS.map(a=>({
-          label:a.k, sub:a.sub, disabled:true,
-          status:a.status==="available"?"Not yet connected":"Coming soon"})),
+          label:a.k, sub:a.sub, disabled:true, status:"Coming soon"})),
+        connectionsOpen:!!st.connectionsOpen,
+        toggleConnections:()=>patch({connectionsOpen:!st.connectionsOpen}),
         shareTable:()=>patch({shared:"table"}),
         shareNote:st.shared==="table"?"Sharing sheet open. Text it, and whoever taps it joins your table with their own taste, not a copy of yours."
           :"Send your table to someone. They answer the six themselves, and then we can pair for both of you.",
