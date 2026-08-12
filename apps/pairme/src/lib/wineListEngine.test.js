@@ -54,49 +54,59 @@ describe('buildWineListModel - country grouping', () => {
   });
 });
 
-describe('buildWineListModel - badges with picked dishes', () => {
-  it('(c) badges the single best-across-picked-dishes match distinctly and sorts it to the top of its country group', () => {
+describe('buildWineListModel - badges with picked dishes, no single winner', () => {
+  it('(c) never crowns one wine as THE best match: no bestKey/topPick surface exists, and multiple wines can carry a defensible badge', () => {
     const picked = [dish('e6'), dish('e9')]; // Chicken roti + Steak frites Aquitaine, the app's own default demo picks
     const model = buildWineListModel(SEEDED_ROWS, picked, T);
-    expect(model.bestKey).toBeTruthy();
 
-    // Find the country group that actually holds the best-match wine and
-    // confirm it is exposed as that group's topPick (i.e. sorted ahead of
-    // the region-grouped rest, not buried inside a region list).
-    let found = null;
+    // The model must not expose any single-winner concept at all.
+    expect(model.bestKey).toBeUndefined();
+
+    let badgedCount = 0;
     for (const color of model.colors) {
       for (const cg of model.byColor[color].countries) {
-        if (cg.topPick && cg.topPick.key === model.bestKey) found = cg;
+        expect(cg.topPick).toBeUndefined();
+        for (const r of cg.regions) {
+          for (const w of r.wines) {
+            // Every badged wine's pairing is a genuine (non-generic)
+            // fired-rule pairing - defensible, never a ranking claim.
+            if (w.hasBadge) {
+              expect(w.pairsWith.length).toBeGreaterThan(0);
+              badgedCount += 1;
+            }
+            expect(w.matchScore).toBeUndefined();
+            expect(w.bestScore).toBeUndefined();
+          }
+        }
       }
     }
-    expect(found).toBeTruthy();
-    expect(found.topPick.hasBadge).toBe(true);
-    expect(found.topPick.pairsWith.length).toBeGreaterThan(0);
-    // The best-match wine must not ALSO appear a second time inside its
-    // own country's region-grouped list.
-    const dupeInRegions = found.regions.some((r) => r.wines.some((w) => w.key === model.bestKey));
-    expect(dupeInRegions).toBe(false);
+    // The seeded list + these two picked dishes defensibly pairs with more
+    // than one wine - proving badges are not artificially collapsed down to
+    // a single champion.
+    expect(badgedCount).toBeGreaterThan(1);
+  });
 
-    // Every OTHER wine carrying a badge must be a genuine (non-generic)
-    // fired-rule pairing, and must never itself claim to be the best match.
+  it('(c2) within a region, wines that pair with more of what was picked list first (a coverage sort, not a ranking claim)', () => {
+    const picked = [dish('e6'), dish('e9')];
+    const model = buildWineListModel(SEEDED_ROWS, picked, T);
     for (const color of model.colors) {
       for (const cg of model.byColor[color].countries) {
-        const all = (cg.topPick ? [cg.topPick] : []).concat(cg.regions.flatMap((r) => r.wines));
-        for (const w of all) {
-          if (w.hasBadge) expect(w.pairsWith.length).toBeGreaterThan(0);
-          if (w.key !== model.bestKey) expect(w.key === model.bestKey).toBe(false);
+        for (const r of cg.regions) {
+          for (let i = 1; i < r.wines.length; i++) {
+            expect(r.wines[i - 1].pairsWith.length).toBeGreaterThanOrEqual(r.wines[i].pairsWith.length);
+          }
         }
       }
     }
   });
 
-  it('(d) with no picked dishes, no wine gets a badge and nothing is promoted to the top', () => {
+  it('(d) with no picked dishes, no wine gets a badge and grouping is unaffected', () => {
     const model = buildWineListModel(SEEDED_ROWS, [], T);
-    expect(model.bestKey).toBeNull();
+    expect(model.bestKey).toBeUndefined();
     expect(model.hasPicks).toBe(false);
     for (const color of model.colors) {
       for (const cg of model.byColor[color].countries) {
-        expect(cg.topPick).toBeNull();
+        expect(cg.topPick).toBeUndefined();
         for (const r of cg.regions) {
           for (const w of r.wines) {
             expect(w.hasBadge).toBe(false);
@@ -105,5 +115,31 @@ describe('buildWineListModel - badges with picked dishes', () => {
         }
       }
     }
+  });
+});
+
+describe('buildWineListModel - bin number pass-through', () => {
+  it('(f) passes a parsed bin number through onto the wine object as binNo, next to whatever pronunciation carries', () => {
+    const rowsWithBin = SEEDED_ROWS.map((r, i) => (i === 0 ? { ...r, bin: '902' } : r));
+    const model = buildWineListModel(rowsWithBin, [], T);
+    const all = model.colors.flatMap((c) =>
+      model.byColor[c].countries.flatMap((cg) => cg.regions.flatMap((r) => r.wines))
+    );
+    const binned = all.find((w) => w.key === SEEDED_ROWS[0].client_row_id);
+    expect(binned.binNo).toBe('902');
+
+    // A wine with no bin in the source row never fabricates one.
+    const unbinned = all.find((w) => w.key === SEEDED_ROWS[1].client_row_id);
+    expect(unbinned.binNo).toBeFalsy();
+  });
+
+  it('(g) a bin with a letter suffix (cellar-location style, e.g. "606L") passes through unchanged', () => {
+    const rowsWithBin = SEEDED_ROWS.map((r, i) => (i === 0 ? { ...r, bin: '606L' } : r));
+    const model = buildWineListModel(rowsWithBin, [], T);
+    const all = model.colors.flatMap((c) =>
+      model.byColor[c].countries.flatMap((cg) => cg.regions.flatMap((r) => r.wines))
+    );
+    const binned = all.find((w) => w.key === SEEDED_ROWS[0].client_row_id);
+    expect(binned.binNo).toBe('606L');
   });
 });

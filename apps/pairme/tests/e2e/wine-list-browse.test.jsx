@@ -5,11 +5,15 @@
  * spelled out in the build spec:
  *   (a) only colors present in the seeded list get a tab
  *   (b) tabs group into country sections
- *   (c) with picked dishes, exactly one wine is badged "Best match" and it
- *       renders ahead of its country's region-grouped wines
- *   (d) with no picked dishes, no badge/best-match markup renders at all
+ *   (c) with picked dishes, wines that defensibly pair get a descriptive
+ *       "Pairs with..." badge - never a "Best match" crown, never a single
+ *       winner (Amy, restaurant sommelier interview: a sommelier explains
+ *       options, it never asserts one defensible winner)
+ *   (d) with no picked dishes, no badge markup renders at all
  *   (e) tapping a row expands it to show pronunciation, the "Say it" button,
  *       and both the glass and bottle price
+ *   (f) a wine with a parsed bin number shows "Bin ###" next to its
+ *       pronunciation when expanded; a wine with none shows no bin chip
  *
  * Grouping/scoring correctness itself is proved at the unit level in
  * src/lib/wineListEngine.test.js; this file proves the SCREEN renders that
@@ -54,18 +58,19 @@ describe('WineList screen - rendering the seeded list', () => {
     expect(screen.queryByText(/^Pairs with /)).not.toBeInTheDocument();
   });
 
-  it('(c) with picked dishes, exactly one wine is badged Best match and it renders before its country\'s other wines', async () => {
+  it('(c) with picked dishes, no wine is ever badged "Best match" - defensible pairs get a descriptive badge instead, and more than one wine can carry one', async () => {
     const user = userEvent.setup();
     render(<WineList wines={SEEDED_ROWS} pickedDishes={[dish('e6'), dish('e9')]} tables={T} />);
 
-    // Exactly one "Best match" badge across the whole list, on whichever
-    // tab it happens to live on - switch tabs until it's found.
-    let bestBadgeCount = 0;
+    // "Best match" must never appear, on any tab.
+    let descriptiveBadgeCount = 0;
     for (const tab of screen.getAllByRole('tab')) {
       await user.click(tab);
-      bestBadgeCount += screen.queryAllByText('Best match').length;
+      expect(screen.queryByText('Best match')).not.toBeInTheDocument();
+      descriptiveBadgeCount += screen.queryAllByText(/^Pairs with /).length;
     }
-    expect(bestBadgeCount).toBe(1);
+    // More than one wine gets a "Pairs with..." badge - no single winner.
+    expect(descriptiveBadgeCount).toBeGreaterThan(1);
   });
 
   it('(e) tapping a wine row expands it to show pronunciation, a Say it button, and both prices', async () => {
@@ -95,6 +100,30 @@ describe('WineList screen - rendering the seeded list', () => {
     await user.click(within(rows[0]).getAllByRole('button')[0]);
     const speakBtn = within(rows[0]).getByLabelText('Say it out loud');
     expect(() => fireEvent.click(speakBtn)).not.toThrow();
+  });
+
+  it('(f) a wine with a parsed bin number shows "Bin ###" next to its pronunciation once expanded; one with none shows no bin chip', async () => {
+    const user = userEvent.setup();
+    // A minimal, explicit fixture (rather than the seeded demo list) so this
+    // test does not depend on where a wine happens to land after sorting.
+    const wines = [
+      { client_row_id: 'bin-yes', producer: 'Test Winery', wine_name: 'Reserve Red', color: 'Red', price: 40, say: 'test-say', bin: '902' },
+      { client_row_id: 'bin-no', producer: 'Other Winery', wine_name: 'House Red', color: 'Red', price: 20, say: 'other-say' },
+    ];
+    render(<WineList wines={wines} pickedDishes={[]} tables={T} />);
+    const rows = screen.getAllByTestId('wine-row');
+    const binRow = rows.find((r) => within(r).queryByText('Test Winery'));
+    const noBinRow = rows.find((r) => within(r).queryByText('Other Winery'));
+
+    // No bin chip renders anywhere while every row is collapsed.
+    expect(screen.queryByTestId('bin-chip')).not.toBeInTheDocument();
+
+    await user.click(within(binRow).getAllByRole('button')[0]);
+    expect(within(binRow).getByTestId('bin-chip')).toHaveTextContent('Bin 902');
+    expect(within(binRow).getByText('Say it')).toBeInTheDocument();
+
+    await user.click(within(noBinRow).getAllByRole('button')[0]);
+    expect(within(noBinRow).queryByTestId('bin-chip')).not.toBeInTheDocument();
   });
 });
 
