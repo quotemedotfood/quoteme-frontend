@@ -11,7 +11,8 @@ Found on the demo walks. Update this as controls are added or fixed.
 | Budget range dots | Q3 Budget | yes (two dots on a range) | **now yes** | FIXED - the two dots are a real two-handle range slider (drag + keyboard); the explainer sliders under it are deleted |
 | Entry mic (Type / At home) | Entry | yes (mic icon) | yes | wired to Web Speech API with a text fallback |
 | Field mics (budget free-text, "None of these", the setup questions) | Q3 / Q others / The Wine | yes (mic icon) | **now yes** | FIXED - routed through the app-level useSpeech (App.jsx Phone) off st.listening; a spoken result appends to the field via vm.appendToListening. Same hook as the entry mic |
-| Cellar connectors | Welcome / Your profile / Sign in | **now no (visibly disabled)** | n/a | FIXED by the honest-connect change: none connect yet, so they ship visibly disabled ("coming soon" / "not yet connected"), not as tappable fictions. The only live control is the "I don't use any of these" escape hatch |
+| Cellar connectors | Settings > Connections | **no (visibly disabled)** | n/a | Moved OUT of onboarding into Settings > Connections (expandable). All four read "Coming soon", visibly disabled - not tappable fictions. Not an onboarding question |
+| "I don't use any of these" escape hatch | Welcome (was) | yes | **was no** | RESOLVED by removal: the connectors left onboarding for Settings, so there is no step to skip and no dangling do-nothing button. It did nothing perceptible when tapped (only changed a note); it is gone |
 
 ## The rule (hard)
 A control ships with BOTH columns yes, or it ships VISIBLY DISABLED. There is no

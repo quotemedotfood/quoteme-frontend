@@ -348,7 +348,7 @@ export function usePairMe(opts = {}){
     venueQ:"",noList:false,blank:false,picked:["a2","a5","e6","e9","s2"],
     mode:null,sub:null,scope:null,present:["gim","trapet"],wineFormat:"both",
     guest:"me",guestDrawerOpen:false,guestShareNote:null,resolution:null,rate:{dish:4,wine:5,pair:4},fb:"",share:true,listening:null,skipped:0,
-    linked:[],connectSkipped:false,account:null,bottle:"trapet",back:11,saved:false,shared:null,
+    linked:[],connectionsOpen:false,account:null,bottle:"trapet",back:11,saved:false,shared:null,
     // Integration state (not part of Desi's original demo model).
     apiError:null,apiLoading:false,
     anonId:null,
@@ -1094,17 +1094,14 @@ export function usePairMe(opts = {}){
         // tappable fiction (see BUTTON_AUDIT.md: looks interactive must BE
         // interactive, or ship disabled). The only interactive control here is
         // the escape hatch below.
-        connectPills:ACCOUNTS.map(a=>({
-          label:a.k, disabled:true,
-          note:a.status==="available"?"not yet connected":"coming soon"})),
-        connectSkipped:!!st.connectSkipped,
-        skipConnect:()=>patch({connectSkipped:true}),
-        connectNote:st.connectSkipped
-          ? "Starting fresh. We'll learn your taste over a few dinners."
-          : "None of these connect yet. Most people don't use any, and that's the fast path.",
+        // Connections now live in Settings under an expandable section, not in
+        // onboarding - nobody at a table wants to link a cellar app first. All
+        // four read the same "Coming soon"; none connect yet (one label, no
+        // special case). Visibly disabled, so no looks-but-isn't control.
         connections:ACCOUNTS.map(a=>({
-          label:a.k, sub:a.sub, disabled:true,
-          status:a.status==="available"?"Not yet connected":"Coming soon"})),
+          label:a.k, sub:a.sub, disabled:true, status:"Coming soon"})),
+        connectionsOpen:!!st.connectionsOpen,
+        toggleConnections:()=>patch({connectionsOpen:!st.connectionsOpen}),
         shareTable:()=>patch({shared:"table"}),
         shareNote:st.shared==="table"?"Sharing sheet open. Text it, and whoever taps it joins your table with their own taste, not a copy of yours."
           :"Send your table to someone. They answer the six themselves, and then we can pair for both of you.",
