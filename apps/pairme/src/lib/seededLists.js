@@ -38,7 +38,7 @@ function demoWines() {
 // sauvignon/champagne/sauvignon blanc), so the scoring engine reasons about
 // these exactly like a real bottle - it just displays as a style, not a
 // producer, because there is no producer to show.
-const GENERIC_STYLE_WINES = [
+export const GENERIC_STYLE_WINES = [
   { label: 'A crisp, high-acid white', grape_head: 'sauvignon blanc', region_head: '', price: 0, glass: true },
   { label: 'A rounder, richer white', grape_head: 'chardonnay', region_head: '', price: 0, glass: true },
   { label: 'Something with bubbles', grape_head: 'champagne', region_head: '', price: 0, glass: true },
