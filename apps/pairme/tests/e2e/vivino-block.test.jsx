@@ -1,31 +1,32 @@
 /**
- * The connect-your-accounts block is honest now: nothing is fake-connected, the
- * services without a usable API read "coming soon", CellarTracker (a real path)
- * reads "not yet connected", the fake "137 bottles" success line is gone, and
- * the prominent escape hatch actually skips the step.
+ * Connections are no longer an onboarding question: Welcome shows no connector
+ * pills and no "I don't use any of these" escape hatch. They live in Settings
+ * under an expandable "Connections" section, all four labelled "Coming soon"
+ * (one label, no special case), visibly disabled, with no fake connection.
  */
 import { describe, it, expect } from 'vitest';
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderPairMeApp } from './helpers/renderPairMeApp.jsx';
 
-describe('connect-accounts block (the Vivino block)', () => {
-  it('shows honest status, no fake connection, and a working escape hatch', async () => {
+describe('connections moved into Settings', () => {
+  it('Welcome no longer asks to connect; Settings > Connections lists all four as Coming soon', async () => {
     const user = userEvent.setup();
     renderPairMeApp('/');
 
-    // The fiction is gone.
+    // Welcome: no connector fiction, no escape hatch, no onboarding connect step.
     expect(screen.queryByText(/bottles we don't have to ask/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/Vivino connected/i)).not.toBeInTheDocument();
+    expect(screen.queryByText("I don't use any of these")).not.toBeInTheDocument();
 
-    // Honest labels: no-API services are "coming soon", CellarTracker is a real
-    // path labelled "not yet connected".
-    expect(screen.getAllByText(/coming soon/i).length).toBeGreaterThan(0);
-    expect(screen.getByText(/not yet connected/i)).toBeInTheDocument();
+    // Into Settings via the gear, then expand Connections.
+    await user.click(screen.getByRole('button', { name: 'Settings' }));
+    await screen.findByText('Connections');
+    await user.click(screen.getByRole('button', { name: /Link a wine app/i }));
 
-    // The escape hatch is present and actually does something.
-    const skip = screen.getByRole('button', { name: "I don't use any of these" });
-    await user.click(skip);
-    expect(screen.getByText(/Starting fresh/i)).toBeInTheDocument();
+    // All four connectors, one label, visibly informational (no "not yet connected").
+    expect(screen.getAllByText(/coming soon/i).length).toBeGreaterThanOrEqual(4);
+    expect(screen.getByText('CellarTracker')).toBeInTheDocument();
+    expect(screen.getByText('Vivino')).toBeInTheDocument();
+    expect(screen.queryByText(/not yet connected/i)).not.toBeInTheDocument();
   });
 });
