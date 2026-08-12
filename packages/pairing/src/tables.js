@@ -8,8 +8,19 @@
 
 // Order matters for nothing here, but keep it identical to Python's
 // AXES_WINE / AXES_DISH so a future column addition is obvious to diff.
-export const AXES_WINE = ['body', 'acid', 'tannin', 'sweetness', 'alcohol', 'oak'];
-export const AXES_DISH = ['weight', 'fat', 'acid', 'sweetness', 'heat', 'salt', 'umami', 'bitter'];
+//
+// `richness` is the axis that lets the engine MATCH intensity, not only cut it
+// (fat-on-fat: a buttery Montrachet to a foie gras raviolo). It is deliberately
+// NOT body - Chablis is body 2 / richness 1, Meursault is body 4 / richness 5,
+// same grape; the difference is texture from oak, lees, malolactic and glycerol.
+// If a value ever looks derivable from body+oak, it is wrong. It is declared
+// here AHEAD of the data so the pending wine_axes/dish_axes drop (real richness
+// columns) plus Amy's three rules (amy_rich_on_rich / amy_rich_dessert /
+// amy_thin_on_rich) is a pure data landing, not a code change. Until that data
+// arrives toInt() defaults the missing column to a neutral value and no rule
+// reads it, so scoring output is unchanged.
+export const AXES_WINE = ['body', 'acid', 'tannin', 'sweetness', 'alcohol', 'oak', 'richness'];
+export const AXES_DISH = ['weight', 'fat', 'acid', 'sweetness', 'heat', 'salt', 'umami', 'bitter', 'richness'];
 
 /**
  * Port of Python's `_i(v, d=1)`: cast to int if `v` is an exact integer
