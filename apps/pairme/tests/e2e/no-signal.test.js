@@ -132,14 +132,20 @@ describe('PART 1: UI-level no-signal fallback (TheWine calls packages/pairing on
   // not Desi's hardcoded offerSet ("Three wines, no assumptions" / "Safe,
   // and we mean that kindly" / etc, none of which should appear here).
   //
-  // Expected top 3 are deterministic (same dish set + wine list + tables =>
-  // same ranked picks every time), verified against computeOfferings() with
-  // the exact inputs this walk produces (chosen a2/a5/e6/e9/s2, several
+  // Expected 3 are deterministic (same dish set + wine list + tables =>
+  // same picks every time), verified against computeOfferings() with the
+  // exact inputs this walk produces (chosen a2/a5/e6/e9/s2, several
   // direction). The diner skipped setup, so the DEFAULT budget applies
   // (bMin 60, bMax 140), and the ceiling is a real constraint: Trapet
-  // Gevrey-Chambertin ($234) is now correctly excluded as over-ceiling, and
-  // the in-budget top three are house=Bouvier Marsannay ($115), suited=
-  // Berthet-Bondet Jura Savagnin ($118), crowd=Gimonnet Blanc de Blancs ($138).
+  // Gevrey-Chambertin ($234) is correctly excluded as over-ceiling.
+  //
+  // The three are now SPREAD ACROSS PRICE POINTS, not clustered (Amy's floor
+  // tactic: offer a low, a mid and a high and let the guest's pick reveal
+  // their comfort). Bouvier Marsannay ($115, mid) and Gimonnet Blanc de
+  // Blancs ($138, high) stay; the old suited pick Berthet-Bondet ($118) sat
+  // right on top of them, so the spread now surfaces Red Tail Ridge
+  // Blaufrankisch ($72) into the LOW bracket instead. All three remain real,
+  // in-budget, fired-rule picks - this test guards the spread, not just "3".
   it('TheWine screen still shows 3 offerings when the network is down, sourced from packages/pairing', async () => {
     const user = userEvent.setup();
     const { findByText, getByRole } = renderPairMeApp('/');
@@ -173,19 +179,27 @@ describe('PART 1: UI-level no-signal fallback (TheWine calls packages/pairing on
     expect(screen.queryByText('Trapet')).not.toBeInTheDocument();
     expect(screen.getByText('Bouvier')).toBeInTheDocument();
     expect(screen.getByText('Marsannay')).toBeInTheDocument();
-    expect(screen.getByText('Berthet-Bondet')).toBeInTheDocument();
+    expect(screen.getByText('Red Tail Ridge')).toBeInTheDocument();
+    expect(screen.getByText('Blaufrankisch')).toBeInTheDocument();
     expect(screen.getByText('Gimonnet')).toBeInTheDocument();
+
+    // Price spread (item 3): a low ($72), a mid ($115) and a high ($138),
+    // not three bunched together. This is the assertion that would have
+    // caught a regression back to a clustered top-three.
+    expect(screen.getByText('$72')).toBeInTheDocument();
+    expect(screen.getByText('$115')).toBeInTheDocument();
+    expect(screen.getByText('$138')).toBeInTheDocument();
 
     // Pronunciation (the `say` field, rendered in TheWine.jsx's "Say it"
     // row) present for each - proves the full wine object came through,
     // not just a label.
     expect(screen.getByText('boo-vee-AY, mar-sah-NAY')).toBeInTheDocument();
-    expect(screen.getByText('ber-TAY bon-DAY, sah-vahn-YAN')).toBeInTheDocument();
+    expect(screen.getByText('BLOW-frahn-kish')).toBeInTheDocument();
     expect(screen.getByText('zhee-moh-NAY')).toBeInTheDocument();
 
     // Reason (`why`), real fired-rule sentences, not the generic fallback.
     expect(screen.getByText(/earth and umami is what pinot is for/)).toBeInTheDocument();
-    expect(screen.getByText(/a vinaigrette will out-acid anything softer and flatten it/)).toBeInTheDocument();
+    expect(screen.getByText(/salt wants acid/)).toBeInTheDocument();
     expect(screen.getByText(/nothing clears fat and salt as cleanly as bubbles/)).toBeInTheDocument();
   });
 });
