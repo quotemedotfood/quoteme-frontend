@@ -19,7 +19,9 @@ describe('header scroll behaviour', () => {
   it('the logo stays; Log in + gear hide on scroll down and return on scroll up', () => {
     render(<MemoryRouter initialEntries={['/']}><PairMeApp /></MemoryRouter>);
     const controls = screen.getByTestId('header-controls');
-    const logo = screen.getByAltText('PairMe');
+    // The chrome header's own logo, not Welcome's hero wordmark-turned-logo
+    // (both now render alt="PairMe" images; chrome renders first in the DOM).
+    const logo = screen.getAllByAltText('PairMe')[0];
 
     expect(controls).toHaveAttribute('aria-hidden', 'false');
     expect(logo).toBeInTheDocument();

@@ -61,7 +61,7 @@ export default function Login({ vm }) {
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--pm-page)', padding: '24px 16px' }}>
       <div style={{ width: '100%', maxWidth: 390, background: 'var(--pm-card)', border: '1px solid var(--pm-rule)', borderRadius: 20, overflow: 'hidden', boxShadow: '0 8px 28px -12px rgba(31,42,68,.28)' }}>
         <div style={{ background: 'var(--pm-chrome)', padding: '34px 22px 26px', textAlign: 'center' }}>
-          <div style={{ font: '700 20px var(--font-display)', color: '#EFB96B', letterSpacing: '-.02em' }}>PairMe</div>
+          <img src="/brand/pear-mark.svg" alt="PairMe" style={{ height: '26px', width: 'auto', display: 'block', marginLeft: 'auto', marginRight: 'auto' }} />
           <div style={{ font: '600 20px var(--font-display)', color: '#fff', marginTop: 12 }}>
             {isSignup ? 'Save your taste' : 'Log in'}
           </div>

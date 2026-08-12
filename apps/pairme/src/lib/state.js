@@ -168,7 +168,7 @@ const ACCOUNTS=[
  {k:"Wine.com",status:"coming_soon",sub:"Read your order history"},
  {k:"Delectable",status:"coming_soon",sub:"Read your saved bottles"}];
 
-const RAIL=["Welcome","Sign in","1 . Knowledge","2 . Adventure","3 . Budget","4 . Taste","5 . Must know","6 . That's it","Where to","The menu","How to drink","The wine","Present","How was it","Your profile","Sarah's profile","Bottle brief","Settings","Camera"];
+const RAIL=["Welcome","Sign in","1. Knowledge","2. Adventure","3. Budget","4. Taste","5. Must know","6. That's it","Where to","The menu","How to drink","The wine","Present","How was it","Your profile","Sarah's profile","Bottle brief","Settings","Camera"];
 const CTA=["Get going","Set my taste","Next","Next","Next","Next","Next","Find table","Continue","Pair it","Show wine","Present","Rate it","Save it","Her list","New table","Back to wine","Done","Use this"];
 
 const MY_HISTORY=[
@@ -223,7 +223,7 @@ const PATH_FOR_SCREEN = [
 // slot for several of the API's fields (or vice versa). See the mapping
 // notes inline; the seam is also called out in the handoff report.
 // ---------------------------------------------------------------------------
-const LEVEL_OPTIONS = ["1 . Just point at something","2 . I know what I like","3 . I read the list","4 . I could write the list"];
+const LEVEL_OPTIONS = ["1. Just point at something","2. I know what I like","3. I read the list","4. I could write the list"];
 const WANT_OPTIONS = ["Happy where I am","I want to learn more","Take me all the way"];
 const ALLERGY_LABELS = new Set(['shellfish','nuts','dairy','gluten','egg','sulfite sensitive']);
 const DIETARY_LABELS = new Set(['vegetarian','vegan','pescatarian']);
@@ -337,10 +337,30 @@ function mapDirection(st) {
  * @param {() => void} [opts.openCamera] - opens the capture=environment file input.
  * @param {() => void} [opts.openGallery] - opens the plain file input.
  */
+
+// SignIn.jsx renders these directly as {p.icon} inside a fixed-width centered
+// span. Apple/Google are official brand marks (approved copy, fixed colors
+// per each brand's guidelines: white Apple glyph on black, four-color Google
+// "G" on white, neither ever recolored). Email is not a brand mark, just a
+// neutral envelope outline in the ink color.
+const APPLE_MARK = React.createElement('svg', {width: 14, height: 18, viewBox: "0 0 384 512", 'aria-hidden': 'true', style: {display: 'block'}},
+  React.createElement('path', {fill: '#fff', d: "M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5c0 26.2 4.8 53.3 14.4 81.2 12.8 37.7 59 130.2 107.2 128.7 25.2-.7 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-85.5 102.6-123.3-65.2-30.7-61.7-90-61.7-91.4zm-90.5-157.5c24.4-29 22.1-55.4 21.4-64.9-21.5 1.2-46.4 14.7-60.3 31.1-15.3 17.6-24.3 39.4-22.4 63.6 22.9-.9 42.1-14.7 61.3-29.8z"})
+);
+const GOOGLE_MARK = React.createElement('svg', {width: 20, height: 20, viewBox: "0 0 18 18", 'aria-hidden': 'true', style: {display: 'block'}}, [
+  React.createElement('path', {key: 'blue', fill: '#4285F4', d: "M17.64 9.2045c0-.6381-.0573-1.2518-.1636-1.8409H9v3.4814h4.8436c-.2086 1.125-.8427 2.0782-1.7959 2.7164v2.2581h2.9087c1.7018-1.5668 2.6836-3.874 2.6836-6.615z"}),
+  React.createElement('path', {key: 'green', fill: '#34A853', d: "M9 18c2.43 0 4.4673-.806 5.9564-2.1805l-2.9087-2.2581c-.8059.54-1.8368.859-3.0477.859-2.3436 0-4.3282-1.5831-5.036-3.7104H.9573v2.3318C2.4382 15.9832 5.4818 18 9 18z"}),
+  React.createElement('path', {key: 'yellow', fill: '#FBBC05', d: "M3.964 10.71c-.18-.54-.2822-1.1168-.2822-1.71s.1022-1.17.2823-1.71V4.9582H.9573C.3477 6.1732 0 7.5477 0 9s.3477 2.8268.9573 4.0418L3.964 10.71z"}),
+  React.createElement('path', {key: 'red', fill: '#EA4335', d: "M9 3.5795c1.3214 0 2.5077.4541 3.4405 1.346l2.5814-2.5814C13.4632.8918 11.426 0 9 0 5.4818 0 2.4382 2.0168.9573 4.9582L3.964 7.29C4.6718 5.1627 6.6564 3.5795 9 3.5795z"}),
+]);
+const EMAIL_MARK = React.createElement('svg', {width: 18, height: 18, viewBox: "0 0 24 24", fill: "none", stroke: "var(--pm-ink)", strokeWidth: 1.8, strokeLinecap: "round", strokeLinejoin: "round", 'aria-hidden': 'true'}, [
+  React.createElement('rect', {key: 'body', x: 3, y: 5, width: 18, height: 14, rx: 2}),
+  React.createElement('path', {key: 'flap', d: "M4 7l8 6 8-6"}),
+]);
+
 export function usePairMe(opts = {}){
   const { navigate, openCamera, openGallery } = opts;
   const [st, set] = React.useState({s:0,dark:false,hc:false,
-    level:"2 . I know what I like",want:"I want to learn more",adv:3,
+    level:"2. I know what I like",want:"I want to learn more",adv:3,
     bMin:60,bMax:140,bump:null,
     likes:["Burgundy","Loire whites","Beaujolais"],dislikes:["heavy oak"],diet:["shellfish"],
     levelOwn:"",advOwn:"",budgetOwn:"",loveOwn:"",notOwn:"",dietOwn:"",unreadable:"",why:"",
@@ -901,19 +921,18 @@ export function usePairMe(opts = {}){
         onboarding:s>=2&&s<=7,step:s-1,obTitle:ob?ob.t:"",obSub:ob?ob.s:"",
 
         signIns:[
-          {k:"Apple",label:"Continue with Apple",icon:"",fg:"#fff",bg:"#000",bd:"#000"},
-          {k:"Google",label:"Continue with Google",icon:"G",fg:"var(--pm-ink)",bg:"var(--pm-card)",bd:"var(--pm-rule)"},
-          {k:"Email",label:"Continue with email",icon:"@",fg:"var(--pm-ink)",bg:"var(--pm-card)",bd:"var(--pm-rule)"}
+          {k:"Apple",label:"Continue with Apple",icon:APPLE_MARK,fg:"#fff",bg:"#000",bd:"#000"},
+          {k:"Google",label:"Continue with Google",icon:GOOGLE_MARK,fg:"var(--pm-ink)",bg:"var(--pm-card)",bd:"var(--pm-rule)"},
+          {k:"Email",label:"Continue with email",icon:EMAIL_MARK,fg:"var(--pm-ink)",bg:"var(--pm-card)",bd:"var(--pm-rule)"}
         ].map(o=>Object.assign({},o,{pick:()=>patch({account:o.k,s:st.back===17?17:2})})),
         // No auth endpoint exists in the API contract v1 (identity is
         // anon_id only, "no login, no merge"). These sign-in affordances
         // stay local-only demo state until the backend adds one.
-        signInVivino:()=>patch({account:"Vivino",linked:st.linked.includes("Vivino")?st.linked:[...st.linked,"Vivino"],s:st.back===17?17:2}),
         signInNote:st.account?"Signed in with "+st.account+". Your taste travels with you now."
           :"No password, ever. We ask for a name and an email and nothing else. Skip it and you can still use every part of this, we just forget you when you close the app.",
         glassH:glassH,glassY:38-glassH,
 
-        levelPills:pills(["1 . Just point at something","2 . I know what I like","3 . I read the list","4 . I could write the list"],"level"),
+        levelPills:pills(["1. Just point at something","2. I know what I like","3. I read the list","4. I could write the list"],"level"),
         wantPills:pills(["Happy where I am","I want to learn more","Take me all the way"],"want"),
         advRows:["Stick to a colour I know","Stick to grapes I know","Open to anything","I'd love a grape I've never heard of","Surprise me completely"].map((label,i)=>({
           label,n:i+1,pick:()=>patch({adv:i+1}),
