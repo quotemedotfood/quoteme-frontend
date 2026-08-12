@@ -12,6 +12,14 @@ import {
   wineMetaLine,
   parsePastedWineList,
   buildTableUrl,
+  computeWineCoverage,
+  coverageCountMap,
+  wineColor,
+  wineCountry,
+  DRAWER_SORT_OPTIONS,
+  DEFAULT_DRAWER_SORT,
+  sortDrawerCandidates,
+  areScoresClose,
 } from './operatorEngine.js';
 
 /**
@@ -60,7 +68,15 @@ const COLORS = {
   pushBd: '#EFB96B',
 };
 
-const RANK_LABELS = ['Top pick', 'Second pick', 'Third pick'];
+// Amy the sommelier's core objection to "Top pick / Second pick / Third
+// pick": it asserts a defensible winner she would never claim - "one dish
+// can have twenty pairings, it depends what the guest likes." These are
+// DESCRIPTIVE, not ranked: no 1st/2nd/3rd, and slotIdx below is display
+// order only (still whatever order the engine returned, just not read as a
+// hierarchy). When two options are close in score (areScoresClose, see
+// operatorEngine.js), the UI additionally shows a "these are close" note
+// rather than trying to break the tie - see closeCallNote below.
+const RANK_LABELS = ['A good option for this dish', 'Another good option', 'A third good option'];
 
 function makeSlot(ranked) {
   return {
@@ -131,6 +147,154 @@ function DinerCard({ dishName, wine, why, pushed }) {
   );
 }
 
+// How many rows of the wine-to-dishes coverage view render before the "show
+// more" note - the full list still SORTS correctly underneath, this just
+// keeps a 1,800-wine cellar (Barolo Grill) from painting an enormous DOM.
+const COVERAGE_DISPLAY_CAP = 30;
+
+/** ITEM 6 - the coverage view: rows = every candidate wine, sorted by how
+ * many menu dishes it covers (coveredCount desc, see computeWineCoverage).
+ * This is Amy's own model made visible: a wine programme IS a wine-by-dish
+ * grid, promoted here to a primary tab next to the dish-centric view, not a
+ * byproduct panel under it. Coverage is disclosed as eligibility, honestly -
+ * never dressed up as "the best wine for every dish it lists". */
+function CoverageView({ coverageRows }) {
+  if (!coverageRows.length) {
+    return (
+      <p style={{ font: '400 14px inherit', color: COLORS.muted }}>No candidate wines to show coverage for yet.</p>
+    );
+  }
+  const shown = coverageRows.slice(0, COVERAGE_DISPLAY_CAP);
+  return (
+    <div>
+      <p style={{ font: '400 12.5px/1.5 inherit', color: COLORS.muted, margin: '0 0 12px' }}>
+        Sorted by how many menu items each wine covers. "Covers" means the wine is eligible for that
+        dish under the same rules the per-dish view uses - not a claim that it is the single best
+        match for each one. Fewer wines, each covering more of the menu, is how a buyer actually
+        builds a list.
+      </p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {shown.map((row) => (
+          <div key={row.wine.label} style={{ border: `1.5px solid ${COLORS.rule}`, borderRadius: 12, padding: 12, background: COLORS.card }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
+              <span style={{ font: '700 15px inherit' }}>
+                {row.wine.producer || row.wine.label}
+                {row.wine.wine_name ? `, ${row.wine.wine_name}` : ''}
+              </span>
+              <span style={{ font: '700 11px inherit', color: COLORS.chrome, background: COLORS.accent, borderRadius: 999, padding: '3px 10px', flex: 'none' }}>
+                Covers {row.coveredCount} dish{row.coveredCount === 1 ? '' : 'es'}
+              </span>
+            </div>
+            <div style={{ font: '400 12.5px inherit', color: COLORS.muted, margin: '2px 0 8px' }}>
+              {[wineColor(row.wine), wineCountry(row.wine), wineMetaLine(row.wine), row.wine.price ? `$${row.wine.price}` : null]
+                .filter(Boolean)
+                .join(' . ')}
+            </div>
+            {row.coveredDishNames.length ? (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, alignItems: 'center' }}>
+                {row.coveredDishNames.map((n) => (
+                  <Chip key={n}>{n}</Chip>
+                ))}
+              </div>
+            ) : (
+              <span style={{ font: '400 12px inherit', color: COLORS.muted }}>Not eligible for any dish on this menu.</span>
+            )}
+          </div>
+        ))}
+      </div>
+      {coverageRows.length > COVERAGE_DISPLAY_CAP ? (
+        <p style={{ font: '400 12px inherit', color: COLORS.muted, marginTop: 10 }}>
+          Showing the top {COVERAGE_DISPLAY_CAP} of {coverageRows.length} wines by coverage.
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+/** ITEM 5 - the add-a-wine drawer: the SAME eligible-for-this-dish pool the
+ * old swap `<select>` offered (a swap can never recommend a wine this
+ * dish's hard gates would reject), now sortable. Coverage first and default
+ * (Amy's model: a buyer optimises for how much of the menu a wine carries),
+ * then colour / country / price bracket. */
+function AddWineDrawer({ dishName, candidates, currentLabel, sort, coverageMap, onSort, onPick, onClose }) {
+  const sorted = sortDrawerCandidates(candidates, sort, coverageMap);
+  return (
+    <div
+      aria-label={`Add a wine for ${dishName}`}
+      style={{ marginTop: 10, border: `1.5px solid ${COLORS.chrome}`, borderRadius: 12, padding: 12, background: COLORS.page }}
+    >
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8, gap: 8 }}>
+        <span style={{ font: '700 12.5px inherit', color: COLORS.chrome }}>Add a wine for {dishName}</span>
+        <button type="button" onClick={onClose} style={secondaryButtonStyle}>
+          Close
+        </button>
+      </div>
+      <div role="tablist" aria-label="Sort candidate wines" style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
+        {DRAWER_SORT_OPTIONS.map((opt) => (
+          <button
+            key={opt.id}
+            type="button"
+            role="tab"
+            onClick={() => onSort(opt.id)}
+            aria-selected={sort === opt.id}
+            aria-pressed={sort === opt.id}
+            style={tabStyle(sort === opt.id)}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 320, overflowY: 'auto' }}>
+        {sorted.map((c) => {
+          const covered = (coverageMap && coverageMap.get(c.wine.label)) || 0;
+          const active = c.wine.label === currentLabel;
+          return (
+            <button
+              key={c.wine.label}
+              type="button"
+              onClick={() => onPick(c.wine.label)}
+              aria-pressed={active}
+              style={{
+                textAlign: 'left',
+                border: `1.5px solid ${active ? COLORS.chrome : COLORS.rule}`,
+                borderRadius: 10,
+                padding: '8px 10px',
+                background: active ? COLORS.sel : COLORS.card,
+                cursor: 'pointer',
+              }}
+            >
+              <div style={{ font: '700 13px inherit' }}>
+                {c.wine.producer || c.wine.label}
+                {c.wine.wine_name ? `, ${c.wine.wine_name}` : ''}
+              </div>
+              <div style={{ font: '400 11.5px inherit', color: COLORS.muted }}>
+                {[wineColor(c.wine), wineCountry(c.wine), c.wine.price ? `$${c.wine.price}` : null].filter(Boolean).join(' . ')}
+                {' . '}Covers {covered} menu item{covered === 1 ? '' : 's'}
+              </div>
+            </button>
+          );
+        })}
+        {!sorted.length ? (
+          <span style={{ font: '400 12px inherit', color: COLORS.muted }}>No eligible wines for this dish on the current list.</span>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+/** ITEM 2 - Amy's tiebreaker is not to break the tie: when two (or more)
+ * still-active slots for a dish score within CLOSE_SCORE_THRESHOLD of each
+ * other, say so honestly instead of implying one is the winner. */
+function closeCallNote(slots) {
+  const active = (slots || []).filter((s) => s.action !== 'removed');
+  if (active.length < 2) return null;
+  const scores = active.map((s) => s.score);
+  const hi = Math.max(...scores);
+  const lo = Math.min(...scores);
+  if (!areScoresClose(hi, lo)) return null;
+  return 'These options are close in fit for this dish. Both are defensible - explain each and let the guest decide rather than presenting one as the winner.';
+}
+
 export default function OperatorPage() {
   const [menuText, setMenuText] = React.useState('');
   const [wineSourceMode, setWineSourceMode] = React.useState('seeded'); // 'seeded' | 'paste'
@@ -138,9 +302,27 @@ export default function OperatorPage() {
   const [pastedWineText, setPastedWineText] = React.useState('');
   const [dishes, setDishes] = React.useState(null); // array of resolvedDish, +eligible
   const [pairings, setPairings] = React.useState(null); // array (per dish) of arrays of up to 3 slots
+  const [wines, setWines] = React.useState(null); // the full candidate pool pairings were built from
   const [buildError, setBuildError] = React.useState('');
   const [venueCode, setVenueCode] = React.useState('');
+  // Amy's model is additive, not a replacement: the existing per-dish view
+  // stays the default, and "By wine (coverage)" sits alongside it as a
+  // primary, equally-reachable tab - not a byproduct panel bolted under it.
+  const [dishViewMode, setDishViewMode] = React.useState('byDish'); // 'byDish' | 'coverage'
+  // Add-a-wine drawer: which slot it is open for (null when closed) + its
+  // own sort, defaulting to coverage per item 5.
+  const [drawer, setDrawer] = React.useState(null); // { dishIdx, slotIdx, sort } | null
   const fileInputRef = React.useRef(null);
+
+  // Whole-menu coverage, recomputed only when the built dishes/wines
+  // actually change (both item 6's coverage view and item 5's drawer sort
+  // read this SAME table, so a wine's "covers N dishes" count never
+  // disagrees between the two surfaces).
+  const coverageRows = React.useMemo(
+    () => (dishes && wines ? computeWineCoverage(dishes, wines) : []),
+    [dishes, wines]
+  );
+  const coverageMap = React.useMemo(() => coverageCountMap(coverageRows), [coverageRows]);
 
   function handleFileChosen(e) {
     const file = e.target.files && e.target.files[0];
@@ -179,6 +361,8 @@ export default function OperatorPage() {
     const nextPairings = resolved.map((rd) => rankWinesForDish(rd, wines, T).map(makeSlot));
     setDishes(resolved);
     setPairings(nextPairings);
+    setWines(wines);
+    setDrawer(null);
   }
 
   function updateSlot(dishIdx, slotIdx, patch) {
@@ -218,6 +402,25 @@ export default function OperatorPage() {
     // under its new wine, so it resets to pending and un-pushes rather than
     // silently carrying a confirm/push over from the wine it replaced.
     updateSlot(dishIdx, slotIdx, { wine: found.wine, why: found.why, fired: found.fired, score: found.score, action: 'pending', pushed: false });
+  }
+
+  // --- Add-a-wine drawer (item 5): browse the SAME eligible pool the old
+  // swap picker offered - a swap can never recommend a wine this dish's own
+  // hard gates would reject - now sortable, defaulting to whole-menu
+  // coverage (Amy's model: what a buyer optimises for).
+  function openDrawer(dishIdx, slotIdx) {
+    setDrawer({ dishIdx, slotIdx, sort: DEFAULT_DRAWER_SORT });
+  }
+  function closeDrawer() {
+    setDrawer(null);
+  }
+  function setDrawerSort(sortId) {
+    setDrawer((prev) => (prev ? { ...prev, sort: sortId } : prev));
+  }
+  function pickFromDrawer(wineLabel) {
+    if (!drawer) return;
+    swapSlot(drawer.dishIdx, drawer.slotIdx, wineLabel);
+    closeDrawer();
   }
 
   // Serialise the operator's decisions to the persistence shape: confirmed
@@ -445,6 +648,36 @@ export default function OperatorPage() {
         {dishes && pairings ? (
           <section aria-label="Dishes and pairings" style={{ marginBottom: 26 }}>
             <h2 style={{ font: '600 16px inherit', margin: '0 0 8px' }}>3. Review each dish</h2>
+            <p style={{ font: '400 13px/1.5 inherit', color: COLORS.muted, margin: '0 0 12px' }}>
+              Review dish by dish, or switch to by-wine coverage to see how many menu items each wine on
+              the list can carry - fewer wines doing more work, the way a buyer actually builds a list.
+            </p>
+            <div role="tablist" aria-label="Review view" style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+              <button
+                type="button"
+                role="tab"
+                onClick={() => setDishViewMode('byDish')}
+                aria-selected={dishViewMode === 'byDish'}
+                aria-pressed={dishViewMode === 'byDish'}
+                style={tabStyle(dishViewMode === 'byDish')}
+              >
+                By dish
+              </button>
+              <button
+                type="button"
+                role="tab"
+                onClick={() => setDishViewMode('coverage')}
+                aria-selected={dishViewMode === 'coverage'}
+                aria-pressed={dishViewMode === 'coverage'}
+                style={tabStyle(dishViewMode === 'coverage')}
+              >
+                By wine (coverage)
+              </button>
+            </div>
+
+            {dishViewMode === 'coverage' ? (
+              <CoverageView coverageRows={coverageRows} />
+            ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               {dishes.map((dish, dishIdx) => (
                 <div key={`${dishIdx}:${dish.name}`} style={{ border: `1.5px solid ${COLORS.rule}`, borderRadius: 14, padding: 14, background: COLORS.card }}>
@@ -478,7 +711,13 @@ export default function OperatorPage() {
                     </p>
                   ) : null}
 
-                  {/* Ranked pairing rows */}
+                  {/* Descriptive (non-ranked) pairing rows - see RANK_LABELS'
+                      comment for why there is no 1st/2nd/3rd here. */}
+                  {closeCallNote(pairings[dishIdx]) ? (
+                    <p style={{ font: '500 12px/1.5 inherit', color: COLORS.warnInk, background: COLORS.warnBg, border: `1px solid ${COLORS.warnBd}`, borderRadius: 10, padding: '8px 10px', marginTop: 12, marginBottom: 0 }}>
+                      {closeCallNote(pairings[dishIdx])}
+                    </p>
+                  ) : null}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 12 }}>
                     {pairings[dishIdx].map((slot, slotIdx) => (
                       <div
@@ -521,19 +760,14 @@ export default function OperatorPage() {
                                 <input type="checkbox" checked={slot.pushed} onChange={() => togglePush(dishIdx, slotIdx)} />
                                 Push to guest (disclosed)
                               </label>
-                              <select
-                                aria-label={`Swap the ${RANK_LABELS[slotIdx] || 'pick'} for ${dish.name}`}
-                                value={slot.wine.label}
-                                onChange={(e) => swapSlot(dishIdx, slotIdx, e.target.value)}
-                                style={{ font: '500 12px inherit', padding: '6px 8px', borderRadius: 8, border: `1px solid ${COLORS.rule}` }}
+                              <button
+                                type="button"
+                                onClick={() => (drawer && drawer.dishIdx === dishIdx && drawer.slotIdx === slotIdx ? closeDrawer() : openDrawer(dishIdx, slotIdx))}
+                                aria-expanded={!!(drawer && drawer.dishIdx === dishIdx && drawer.slotIdx === slotIdx)}
+                                style={secondaryButtonStyle}
                               >
-                                {dish.eligible.map((c) => (
-                                  <option key={c.wine.label} value={c.wine.label}>
-                                    {c.wine.producer || c.wine.label}
-                                    {c.wine.wine_name ? `, ${c.wine.wine_name}` : ''}
-                                  </option>
-                                ))}
-                              </select>
+                                {drawer && drawer.dishIdx === dishIdx && drawer.slotIdx === slotIdx ? 'Close' : 'Add a wine'}
+                              </button>
                               <button type="button" onClick={() => removeSlot(dishIdx, slotIdx)} style={secondaryButtonStyle}>
                                 Remove
                               </button>
@@ -549,12 +783,25 @@ export default function OperatorPage() {
                             We disclose this to the guest. Pushing a wine is never hidden.
                           </p>
                         ) : null}
+                        {drawer && drawer.dishIdx === dishIdx && drawer.slotIdx === slotIdx ? (
+                          <AddWineDrawer
+                            dishName={dish.name}
+                            candidates={dish.eligible}
+                            currentLabel={slot.wine.label}
+                            sort={drawer.sort}
+                            coverageMap={coverageMap}
+                            onSort={setDrawerSort}
+                            onPick={pickFromDrawer}
+                            onClose={closeDrawer}
+                          />
+                        ) : null}
                       </div>
                     ))}
                   </div>
                 </div>
               ))}
             </div>
+            )}
           </section>
         ) : null}
 
