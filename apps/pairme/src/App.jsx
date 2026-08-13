@@ -55,6 +55,21 @@ export function Phone({ vm }) {
   // This is the real capture behind every field mic - see BUTTON_AUDIT.md.
   const speech = useSpeech({ onResult: vm.appendToListening, onError: vm.stopListening });
   React.useEffect(() => {
+    // PM-MIC (temporary diagnostic instrumentation): trace the trigger that
+    // flips vm.listening into a start()/stop() call, so Moose's console
+    // output shows the button-press-to-recognizer sequence end to end. See
+    // the PM-MIC header comment in useSpeech.js. Remove with the mic fix.
+    try {
+      if (typeof console !== 'undefined' && typeof console.log === 'function') {
+        const t =
+          typeof performance !== 'undefined' && typeof performance.now === 'function'
+            ? performance.now().toFixed(1)
+            : Date.now();
+        console.log(`[PM-MIC] t=${t}ms App effect fired, vm.listening=${vm.listening}`);
+      }
+    } catch {
+      /* diagnostic logging must never throw */
+    }
     if (vm.listening) speech.start();
     else speech.stop();
     // eslint-disable-next-line react-hooks/exhaustive-deps
