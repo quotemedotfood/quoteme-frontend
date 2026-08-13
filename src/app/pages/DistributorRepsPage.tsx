@@ -181,9 +181,22 @@ export function DistributorRepsPage() {
     setImpersonateError(null);
     const res = await impersonateRep(rep.id);
     if (res.data?.token) {
+      const returnedUser = res.data.user;
+      // Never trust the clicked row: the URL param is the rep PROFILE id,
+      // not the user id, so verify the token the server actually issued
+      // matches the user account this row is known to belong to before
+      // touching any storage. A null rep.user_id (never-accepted invite)
+      // can never match and correctly aborts too.
+      if (!returnedUser || returnedUser.id !== rep.user_id) {
+        setImpersonateError('Impersonation target mismatch; not switching.');
+        setImpersonating(null);
+        return;
+      }
       // Store the distributor admin's original token so they can restore it later
       localStorage.setItem('quoteme_admin_token', localStorage.getItem('quoteme_token') || '');
-      const displayName = [rep.first_name, rep.last_name].filter(Boolean).join(' ') || rep.email;
+      const displayName =
+        [returnedUser.first_name, returnedUser.last_name].filter(Boolean).join(' ') ||
+        returnedUser.email;
       localStorage.setItem('quoteme_impersonating', displayName);
       localStorage.setItem('quoteme_token', res.data.token);
       window.location.href = '/';
