@@ -11,6 +11,18 @@
   --pm-dish:13.5px; --pm-desc:11.5px; --pm-sec:11px; --pm-weight:500;
 }
 input,textarea,button{font-family:var(--font-body)}
+
+/*
+ * STANDING RULE (Moose): no persistent scrollbar chrome on ANY page. Mobile
+ * first - a lingering scrollbar breaks the phone-frame illusion on desktop and
+ * never shows on touch anyway. Hide the scrollbar visuals app-wide while every
+ * container stays fully scrollable (wheel, touch, trackpad, keyboard). A true
+ * show-on-scroll-then-fade needs per-container JS and is not portable across
+ * Windows/Linux persistent scrollbars, so we hide the chrome instead.
+ */
+*{scrollbar-width:none;-ms-overflow-style:none;}
+*::-webkit-scrollbar{width:0;height:0;display:none;}
+
 input[type=range]{accent-color:#EFB96B}
 input:focus,textarea:focus{outline:2px solid #EFB96B;outline-offset:1px}
 @keyframes pmspin{to{transform:rotate(360deg)}}
