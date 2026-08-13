@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { stripSeedPrefix, formatColdLandingArtifact, stripBracketWrap } from './format';
+import { stripSeedPrefix, formatColdLandingArtifact, stripBracketWrap, formatStructuredEntry } from './format';
 
 describe('stripSeedPrefix', () => {
   it('strips the "[SEED] " prefix from a seed label', () => {
@@ -99,5 +99,46 @@ describe('formatColdLandingArtifact', () => {
 
   it('returns empty string for undefined artifact name', () => {
     expect(formatColdLandingArtifact('standing_page', undefined)).toBe('');
+  });
+});
+
+describe('formatStructuredEntry', () => {
+  it('passes plain strings through untouched', () => {
+    expect(formatStructuredEntry('rocket = arugula')).toBe('rocket = arugula');
+  });
+
+  it('renders empty string for null and undefined', () => {
+    expect(formatStructuredEntry(null)).toBe('');
+    expect(formatStructuredEntry(undefined)).toBe('');
+  });
+
+  it('renders non-string primitives via String()', () => {
+    expect(formatStructuredEntry(42)).toBe('42');
+    expect(formatStructuredEntry(true)).toBe('true');
+  });
+
+  it('renders a rule object as "type: ingredient_pattern"', () => {
+    expect(formatStructuredEntry({ type: 'synonym', ingredient_pattern: 'rocket' })).toBe('synonym: rocket');
+  });
+
+  it('falls back through canonical_name then sauce_name for the label', () => {
+    expect(formatStructuredEntry({ type: 'canonical', canonical_name: 'arugula' })).toBe('canonical: arugula');
+    expect(formatStructuredEntry({ type: 'sauce', sauce_name: 'romesco' })).toBe('sauce: romesco');
+  });
+
+  it('falls back to JSON.stringify when no known label field exists', () => {
+    expect(formatStructuredEntry({ type: 'pin', product_id: 'abc' })).toBe('pin: {"type":"pin","product_id":"abc"}');
+    expect(formatStructuredEntry({ product_id: 'abc' })).toBe('{"product_id":"abc"}');
+  });
+
+  it('never renders raw [object Object]', () => {
+    expect(formatStructuredEntry({ anything: { nested: true } })).not.toContain('[object Object]');
+  });
+
+  it('degrades a single malformed entry locally instead of throwing', () => {
+    const circular: Record<string, unknown> = {};
+    circular.self = circular;
+    expect(formatStructuredEntry(circular)).toBe('(unrenderable entry)');
+    expect(() => formatStructuredEntry(circular)).not.toThrow();
   });
 });

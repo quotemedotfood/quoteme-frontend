@@ -99,6 +99,48 @@ export function formatQuoteDate(dateStr: string): string {
   }
 }
 
+/**
+ * Structured-render formatter for matching-engine surfaces.
+ *
+ * This is the single formatter for structured entries (validation rules,
+ * warnings, rejections, change-log rows, training-chat lines). It was
+ * extracted from the validation.rules renderer in QMAdminMatchingEngine so
+ * every surface renders structured content the same way instead of falling
+ * back to raw "[object Object]" text. Do not add a second formatter for
+ * these surfaces; extend this one.
+ *
+ * Behavior:
+ * - strings pass through untouched
+ * - null/undefined render as empty string
+ * - other primitives render via String()
+ * - objects render as "type: <best label>" where the label is the first of
+ *   ingredient_pattern / canonical_name / sauce_name, falling back to
+ *   JSON.stringify of the whole entry (the original stringify fallback)
+ *
+ * Local malformed-entry fallback: this function never throws. A single bad
+ * entry (circular reference, hostile getter, BigInt, ...) degrades to a
+ * placeholder string inside its own card; it can never take down the whole
+ * list or panel that is mapping over entries.
+ */
+export function formatStructuredEntry(entry: unknown): string {
+  try {
+    if (entry === null || entry === undefined) return '';
+    if (typeof entry === 'string') return entry;
+    if (typeof entry !== 'object') return String(entry);
+    const rec = entry as Record<string, unknown>;
+    const label = [rec.ingredient_pattern, rec.canonical_name, rec.sauce_name].find(
+      (v): v is string => typeof v === 'string' && v.length > 0
+    );
+    const head = typeof rec.type === 'string' && rec.type.length > 0 ? `${rec.type}: ` : '';
+    if (label) return `${head}${label}`;
+    const json = JSON.stringify(entry);
+    if (typeof json === 'string') return `${head}${json}`;
+    return head || '(unrenderable entry)';
+  } catch {
+    return '(unrenderable entry)';
+  }
+}
+
 export function formatColdLandingArtifact(
   source: string | null | undefined,
   artifactName: string | null | undefined
