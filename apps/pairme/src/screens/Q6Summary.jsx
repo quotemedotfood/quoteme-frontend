@@ -27,10 +27,10 @@ export default function Q6Summary(vm){
 </button>
 </div>
 <div style={{font: "600 var(--pm-sec) var(--font-body)", color: "var(--pm-muted)", letterSpacing: ".08em", textTransform: "uppercase", margin: "14px 0 8px"}}>Who they are to you</div>
-<div style={{display: "flex", flexWrap: "wrap", gap: "7px"}}>
+<div style={{display: "flex", flexDirection: "column", gap: "7px"}}>
 {(relPills || []).map((p, i) => (
 <React.Fragment key={i}>
-<button onClick={p.pick} style={{border: `1px solid ${p.bd}`, background: p.bg, color: "var(--pm-ink)", borderRadius: "999px", padding: "9px 13px", font: "500 12px var(--font-body)", cursor: "pointer", minHeight: "40px"}}>{p.label}</button>
+<button onClick={p.pick} style={{width: "100%", textAlign: "left", border: `1px solid ${p.bd}`, background: p.bg, color: "var(--pm-ink)", borderRadius: "999px", padding: "9px 13px", font: "500 12px var(--font-body)", cursor: "pointer", minHeight: "40px"}}>{p.label}</button>
 </React.Fragment>
 ))}
 </div>

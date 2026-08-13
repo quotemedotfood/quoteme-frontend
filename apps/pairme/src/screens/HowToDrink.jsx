@@ -62,10 +62,10 @@ export default function HowToDrink(vm){
 <div style={{border: "1px solid var(--pm-selBd)", background: "var(--pm-sel)", borderRadius: "12px", padding: "13px", marginTop: "10px"}}>
 <div style={{font: "600 13px var(--font-body)", color: "var(--pm-ink)"}}>Who's at the table?</div>
 <div style={{font: "400 12px/1.55 var(--font-body)", color: "var(--pm-muted)", marginTop: "4px"}}>Right now we're using your taste alone. Add the people you're with and we'll find wine that works for all of you, not just for whoever is holding the phone.</div>
-<div style={{display: "flex", gap: "7px", flexWrap: "wrap", marginTop: "10px"}}>
+<div style={{display: "flex", flexDirection: "column", gap: "7px", marginTop: "10px"}}>
 {(guests || []).map((g, i) => (
 <React.Fragment key={i}>
-<button onClick={g.pick} style={{border: `1px solid ${g.bd}`, background: g.bg, color: "var(--pm-ink)", borderRadius: "999px", padding: "9px 13px", font: "500 12px var(--font-body)", cursor: "pointer", minHeight: "40px"}}>{g.label}</button>
+<button onClick={g.pick} style={{width: "100%", textAlign: "left", border: `1px solid ${g.bd}`, background: g.bg, color: "var(--pm-ink)", borderRadius: "999px", padding: "9px 13px", font: "500 12px var(--font-body)", cursor: "pointer", minHeight: "40px"}}>{g.label}</button>
 </React.Fragment>
 ))}
 </div>

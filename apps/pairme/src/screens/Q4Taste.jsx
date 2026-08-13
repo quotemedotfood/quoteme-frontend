@@ -8,10 +8,10 @@ export default function Q4Taste(vm){
 <>
 <div style={{padding: "18px"}}>
 <div style={{font: "600 var(--pm-sec) var(--font-body)", color: "var(--pm-muted)", letterSpacing: ".08em", textTransform: "uppercase", marginBottom: "9px"}}>Love</div>
-<div style={{display: "flex", flexWrap: "wrap", gap: "8px"}}>
+<div style={{display: "flex", flexDirection: "column", gap: "8px"}}>
 {(lovePills || []).map((p, i) => (
 <React.Fragment key={i}>
-<button onClick={p.pick} style={{border: `1px solid ${p.bd}`, background: p.bg, color: "var(--pm-ink)", borderRadius: "999px", padding: "10px 14px", font: "500 12.5px var(--font-body)", cursor: "pointer", minHeight: "40px"}}>{p.label}</button>
+<button onClick={p.pick} style={{width: "100%", textAlign: "left", border: `1px solid ${p.bd}`, background: p.bg, color: "var(--pm-ink)", borderRadius: "999px", padding: "10px 14px", font: "500 12.5px var(--font-body)", cursor: "pointer", minHeight: "40px"}}>{p.label}</button>
 </React.Fragment>
 ))}
 </div>
@@ -25,10 +25,10 @@ export default function Q4Taste(vm){
 </div>
 </div>
 <div style={{font: "600 var(--pm-sec) var(--font-body)", color: "var(--pm-muted)", letterSpacing: ".08em", textTransform: "uppercase", margin: "20px 0 9px"}}>Rather not</div>
-<div style={{display: "flex", flexWrap: "wrap", gap: "8px"}}>
+<div style={{display: "flex", flexDirection: "column", gap: "8px"}}>
 {(notPills || []).map((p, i) => (
 <React.Fragment key={i}>
-<button onClick={p.pick} style={{border: `1px solid ${p.bd}`, background: p.bg, color: "var(--pm-ink)", borderRadius: "999px", padding: "10px 14px", font: "500 12.5px var(--font-body)", cursor: "pointer", minHeight: "40px"}}>{p.label}</button>
+<button onClick={p.pick} style={{width: "100%", textAlign: "left", border: `1px solid ${p.bd}`, background: p.bg, color: "var(--pm-ink)", borderRadius: "999px", padding: "10px 14px", font: "500 12.5px var(--font-body)", cursor: "pointer", minHeight: "40px"}}>{p.label}</button>
 </React.Fragment>
 ))}
 </div>

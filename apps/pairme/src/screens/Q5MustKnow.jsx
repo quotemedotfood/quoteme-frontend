@@ -8,10 +8,10 @@ export default function Q5MustKnow(vm){
 <>
 <div style={{padding: "18px"}}>
 <div style={{font: "600 var(--pm-sec) var(--font-body)", color: "var(--pm-muted)", letterSpacing: ".08em", textTransform: "uppercase", marginBottom: "9px"}}>Allergies and dietary</div>
-<div style={{display: "flex", flexWrap: "wrap", gap: "8px"}}>
+<div style={{display: "flex", flexDirection: "column", gap: "8px"}}>
 {(dietPills || []).map((p, i) => (
 <React.Fragment key={i}>
-<button onClick={p.pick} style={{border: `1px solid ${p.bd}`, background: p.bg, color: "var(--pm-ink)", borderRadius: "999px", padding: "10px 14px", font: "500 12.5px var(--font-body)", cursor: "pointer", minHeight: "40px"}}>{p.label}</button>
+<button onClick={p.pick} style={{width: "100%", textAlign: "left", border: `1px solid ${p.bd}`, background: p.bg, color: "var(--pm-ink)", borderRadius: "999px", padding: "10px 14px", font: "500 12.5px var(--font-body)", cursor: "pointer", minHeight: "40px"}}>{p.label}</button>
 </React.Fragment>
 ))}
 </div>
@@ -27,10 +27,10 @@ export default function Q5MustKnow(vm){
 </div>
 <div style={{background: "var(--pm-warnBg)", border: "1px solid var(--pm-warnBd)", borderRadius: "12px", padding: "12px", marginTop: "14px", font: "400 12.5px/1.6 var(--font-body)", color: "var(--pm-ink)"}}>We use this to keep dishes off your menu view, not to give medical advice. Tell your server about an allergy directly, every time.</div>
 <div style={{font: "600 var(--pm-sec) var(--font-body)", color: "var(--pm-muted)", letterSpacing: ".08em", textTransform: "uppercase", margin: "20px 0 9px"}}>Not drinking tonight</div>
-<div style={{display: "flex", flexWrap: "wrap", gap: "8px"}}>
+<div style={{display: "flex", flexDirection: "column", gap: "8px"}}>
 {(abstainPills || []).map((p, i) => (
 <React.Fragment key={i}>
-<button onClick={p.pick} style={{border: `1px solid ${p.bd}`, background: p.bg, color: "var(--pm-ink)", borderRadius: "999px", padding: "10px 14px", font: "500 12.5px var(--font-body)", cursor: "pointer", minHeight: "40px"}}>{p.label}</button>
+<button onClick={p.pick} style={{width: "100%", textAlign: "left", border: `1px solid ${p.bd}`, background: p.bg, color: "var(--pm-ink)", borderRadius: "999px", padding: "10px 14px", font: "500 12.5px var(--font-body)", cursor: "pointer", minHeight: "40px"}}>{p.label}</button>
 </React.Fragment>
 ))}
 </div>
