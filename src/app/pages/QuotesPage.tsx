@@ -196,6 +196,14 @@ export function QuotesPage() {
   );
 
   const handleDeleteQuote = async (quoteId: string) => {
+    // P0 route/shell guard fix round 2: the row-level Delete control is
+    // already hidden for immutable quotes, but the confirm modal calls this
+    // with a bare id (confirmDeleteId) disconnected from live quote state --
+    // a stale tab, or the quote going out while the modal is open, could
+    // still reach this. Look the quote up fresh and refuse if it is now
+    // immutable.
+    const quote = quotes.find(q => q.id === quoteId);
+    if (quote && isSentImmutableQuote(quote)) return;
     const ok = await deleteMutation.run(quoteId);
     if (ok) {
       setQuotes(prev => prev.filter(q => q.id !== quoteId));

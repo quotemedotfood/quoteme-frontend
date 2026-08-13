@@ -608,6 +608,10 @@ export function MapIngredientsPage() {
     const canonicalKey = line?.component?.canonical_key ?? null;
 
     const handleToggleLock = async () => {
+      // P0 route/shell guard fix round 2: call-site re-check. The
+      // ChainToggle control is already hidden on a read-only render, but a
+      // stale tab or a direct call must not be able to write anyway.
+      if (readOnly) return;
       if (!quoteId || !line?.id || !bestMatch || lockPending) return;
       setLockPending(bestMatch.id);
       const nextLocked = !bestMatchLocked;

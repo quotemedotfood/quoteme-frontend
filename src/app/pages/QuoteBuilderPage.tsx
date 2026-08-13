@@ -275,6 +275,11 @@ export function QuoteBuilderPage() {
   };
 
   const handleReplaceMatchInBuilder = (componentName: string, productId: string, product?: { id: string; item_number: string; brand: string; product: string; pack_size: string; category: string }) => {
+    // P0 route/shell guard fix round 2: call-site re-check. openMatchDrawer
+    // already refuses to open on a locked quote, but this handler is also
+    // wired directly to onAddToQuote/onReplaceMatch, so it needs its own
+    // guard against a stale tab or a direct call.
+    if (quoteLocked) return;
     if (!product) return;
     setItems(prev => prev.map(i => {
       if (i.component !== componentName) return i;
@@ -415,6 +420,9 @@ export function QuoteBuilderPage() {
   };
 
   const handleAddProduct = async (product: CatalogSearchProduct) => {
+    // P0 route/shell guard fix round 2: call-site re-check, matching the
+    // sibling write handlers' quoteLocked guards.
+    if (quoteLocked) return;
     if (!quoteId) return;
     const isGuest = !localStorage.getItem('quoteme_token');
     try {
@@ -448,6 +456,9 @@ export function QuoteBuilderPage() {
   };
 
   const handleRemoveItem = async (id: string) => {
+    // P0 route/shell guard fix round 2: call-site re-check, matching the
+    // sibling write handlers' quoteLocked guards.
+    if (quoteLocked) return;
     // Optimistic removal
     setItems(prev => prev.filter(item => item.id !== id));
     if (selectedItem?.id === id) setSelectedItem(null);

@@ -224,6 +224,10 @@ export function ExportFinalizePage() {
   const [ackError, setAckError] = useState<string | null>(null);
 
   async function handleAcknowledgeUnmatched(lineIds: string[], reason: 'rep_will_handle' | 'cant_source') {
+    // P0 route/shell guard fix round 2: call-site re-check. The triggering
+    // controls are already hidden/disabled on a read-only render, but a
+    // stale tab or a direct call must not be able to write anyway.
+    if (quoteReadOnly) return;
     if (!quoteId || lineIds.length === 0) return;
     setAckingLineIds(prev => [...prev, ...lineIds]);
     setAckError(null);
@@ -1634,8 +1638,16 @@ export function ExportFinalizePage() {
                   </Button>
                 </DrawerClose>
                 <Button
-                  onClick={() => sendEmailMutation.run()}
-                  disabled={sendEmailMutation.loading || (!contactEmail && !manualEmail)}
+                  onClick={() => {
+                    // P0 route/shell guard fix round 2: this is the drawer's
+                    // actual send control (every sibling send button on this
+                    // page already gates on quoteReadOnly); a disabled
+                    // control is not a gate, so re-check at the call site too.
+                    if (quoteReadOnly) return;
+                    sendEmailMutation.run();
+                  }}
+                  disabled={quoteReadOnly || sendEmailMutation.loading || (!contactEmail && !manualEmail)}
+                  title={quoteReadOnly ? (readOnlyMarker ?? undefined) : undefined}
                   className="flex-1 bg-[#A5CFDD] hover:bg-[#8db9c9] text-white min-h-[48px]"
                 >
                   {sendEmailMutation.loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Mail className="w-4 h-4 mr-2" />}
