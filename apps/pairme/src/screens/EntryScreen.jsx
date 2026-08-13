@@ -7,6 +7,7 @@ import { getOfflineTables } from '../lib/offlinePairing.js';
 import { computeOfferings, DIRECTION_FOR_FORMAT } from '../lib/pairingAdapter.js';
 import { useSpeech } from '../lib/useSpeech.js';
 import { capture as apiCapture } from '../lib/api.js';
+import { speak as speakText } from '../lib/speak.js';
 
 /**
  * EntryScreen: the four diner entry points (paste-first) on ONE screen,
@@ -65,24 +66,6 @@ const COLORS = {
 /** @param {{name: string, description: string}} dish */
 function dishKey(dish, i) {
   return `${i}:${dish.name}`;
-}
-
-/** Same window.speechSynthesis pattern state.js's own `say()` uses for
- * TheWine's "Say it" button - kept local here (rather than exported from
- * state.js, which this branch does not touch) since it is a two-line
- * wrapper, not shared logic. */
-function speakText(text) {
-  try {
-    const sp = window.speechSynthesis;
-    if (!sp || !text) return;
-    sp.cancel();
-    const u = new SpeechSynthesisUtterance(text);
-    u.rate = 0.82;
-    u.pitch = 1;
-    sp.speak(u);
-  } catch {
-    /* no speech synthesis available; the printed "say" text is the fallback */
-  }
 }
 
 export default function EntryScreen() {
@@ -618,7 +601,7 @@ export default function EntryScreen() {
                           <>
                             <button
                               type="button"
-                              onClick={() => speakText(o.wine.speak || o.wine.say)}
+                              onClick={() => speakText(o.wine.speak || o.wine.say || o.wine.label)}
                               aria-label="Say it out loud"
                               style={{ flex: 'none', width: 32, height: 32, borderRadius: 999, border: `1.5px solid ${COLORS.accentBd}`, background: COLORS.card, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                             >

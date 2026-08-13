@@ -49,6 +49,19 @@ export default function Settings(vm){
 <div style={{marginTop: "8px"}}>
 {(connections || []).map((c, i) => (
 <React.Fragment key={i}>
+{c.pick ? (
+/* BUILD 4: "I don't use any of these" - the acknowledgment row, last in the
+   list, same card shape as the connector rows above but a REAL control
+   (button + onClick), never "Coming soon": its badge reflects whether the
+   diner has tapped it. */
+<button type="button" onClick={c.pick} aria-pressed={!!c.selected} data-testid="connections-skip-row" style={{width: "100%", textAlign: "left", cursor: "pointer", border: `1.5px solid ${c.selected ? "var(--pm-selBd)" : "var(--pm-rule)"}`, background: c.selected ? "var(--pm-sel)" : "var(--pm-sunken)", borderRadius: "12px", padding: "12px 13px", marginBottom: "8px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "10px"}}>
+<div>
+<div style={{font: "600 13.5px var(--font-body)", color: "var(--pm-ink)"}}>{c.label}</div>
+<div style={{font: "400 11.5px/1.5 var(--font-body)", color: "var(--pm-muted)", marginTop: "2px"}}>{c.sub}</div>
+</div>
+<span style={{flex: "none", border: `1px solid ${c.selected ? "var(--pm-selBd)" : "var(--pm-rule)"}`, background: c.selected ? "var(--pm-selBd)" : "var(--pm-card)", color: c.selected ? "var(--pm-chrome)" : "var(--pm-muted)", borderRadius: "999px", padding: "8px 13px", font: "600 11px var(--font-body)", textTransform: "uppercase", letterSpacing: ".04em"}}>{c.status}</span>
+</button>
+) : (
 <div style={{border: "1px solid var(--pm-rule)", background: "var(--pm-sunken)", borderRadius: "12px", padding: "12px 13px", marginBottom: "8px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "10px"}}>
 <div>
 <div style={{font: "600 13.5px var(--font-body)", color: "var(--pm-ink)"}}>{c.label}</div>
@@ -56,6 +69,7 @@ export default function Settings(vm){
 </div>
 <span style={{flex: "none", border: "1px solid var(--pm-rule)", background: "var(--pm-card)", color: "var(--pm-muted)", borderRadius: "999px", padding: "8px 13px", font: "600 11px var(--font-body)", textTransform: "uppercase", letterSpacing: ".04em"}}>{c.status}</span>
 </div>
+)}
 </React.Fragment>
 ))}
 <div style={{font: "400 11.5px/1.6 var(--font-body)", color: "var(--pm-muted)", padding: "2px"}}>Nothing connects yet. When these land we'll read only your ratings and cellar, never post anything, and let you disconnect and delete what we pulled in.</div>

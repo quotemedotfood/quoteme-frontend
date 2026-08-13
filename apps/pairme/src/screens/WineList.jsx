@@ -1,29 +1,12 @@
 import React from 'react';
 import { buildWineListModel } from '../lib/wineListEngine.js';
+import { speak as speakFallback } from '../lib/speak.js';
 
 const NAVY = '#1F2A44';
 const PEAR = '#EFB96B';
 
 function fmtPrice(n) {
   return n == null ? null : `$${n}`;
-}
-
-/** Same speech-synthesis call TheWine.jsx's own `say()` makes (state.js),
- * kept local so this screen never HAS to be wired through usePairMe to
- * render or be tested - a plain `say` prop overrides it when the caller
- * (routes.jsx) has the real one. */
-function speakFallback(text) {
-  try {
-    const sp = window.speechSynthesis;
-    if (!sp || !text) return;
-    sp.cancel();
-    const u = new SpeechSynthesisUtterance(text);
-    u.rate = 0.82;
-    u.pitch = 1;
-    sp.speak(u);
-  } catch {
-    // Speech synthesis is a nice-to-have, never a hard requirement.
-  }
 }
 
 function SpeakerIcon() {
@@ -190,8 +173,8 @@ function WineRow({ wine, expanded, onToggle, onSpeak }) {
  * @param {Array<{name: string, components: string[]}>} pickedDishes - []
  *   when nothing has been picked yet: no badges are computed or shown.
  * @param {ReturnType<import('../../../../packages/pairing/src/tables.js').buildTables>} tables
- * @param {(text: string) => void} [say] - defaults to a local speechSynthesis
- *   call identical to TheWine's own `say()`.
+ * @param {(text: string) => void} [say] - defaults to the shared lib/speak.js
+ *   helper (see its header); a caller can still override with its own.
  * @param {() => void} [onBack]
  */
 export default function WineList({ wines, pickedDishes, tables, say, onBack }) {
