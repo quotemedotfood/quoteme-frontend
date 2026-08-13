@@ -21,13 +21,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from '../components/ui/dialog';
-import { getQuote, getGuestQuote, downloadQuotePdf, downloadOrderGuide, sendQuote, sendQuoteSms, acknowledgeUnmatchedLines } from '../services/api';
+import { getQuote, getGuestQuote, getCurrentUser, downloadQuotePdf, downloadQuoteCsv, downloadOrderGuide, sendQuote, sendQuoteSms, acknowledgeUnmatchedLines } from '../services/api';
 import { useUser } from '../contexts/UserContext';
 import type { QuoteResponse, QuoteLineResponse } from '../services/api';
 import { useAsyncMutation } from '../hooks/useAsyncMutation';
 import { isDemoMode, PROD_SIGNUP_URL } from '../utils/demoMode';
 import { latestChefQuestion } from '../utils/chefQuestion';
 import { categoryLabel } from '../utils/categoryLabel';
+import { formatCurrency } from '../utils/formatCurrency';
 
 
 function toTitleCase(str: string): string {
@@ -233,52 +234,35 @@ export function ExportFinalizePage() {
     }
   }
 
-  // CSV download
+  // CSV download — routed through the guarded SERVER exporter (the same
+  // downloadQuoteCsv QuotesPage uses). The old client-side CSV builder is
+  // deleted. Success means a real verified file blob came back; anything
+  // else shows a plain-language error and never claims success (no success
+  // drawer, no feedback prompt).
+  const [csvError, setCsvError] = useState<string | null>(null);
+
   async function handleCsvDownload() {
-    if (!quoteData) return;
+    if (!quoteId) return;
     setDownloadingCsv(true);
+    setCsvError(null);
     try {
-      const { matched, produceNames, otherUnmatched } = partitionLines(quoteData.lines || []);
-      const headers = ['Category', 'Item #', 'Brand', 'Product', 'Pack Size', 'Qty', 'Unit Price'];
-      const escCsv = (val: string) => {
-        if (val.includes(',') || val.includes('"') || val.includes('\n')) {
-          return `"${val.replace(/"/g, '""')}"`;
-        }
-        return val;
-      };
-      const rows = matched.map(line => [
-        escCsv(line.category || ''),
-        escCsv(line.product?.item_number || ''),
-        escCsv(line.product?.brand || ''),
-        escCsv(line.product?.product || ''),
-        escCsv(line.product?.pack_size || ''),
-        String(line.quantity),
-        line.unit_price || '',
-      ].join(','));
-
-      const csvParts = [headers.join(','), ...rows];
-
-      if (produceNames.length > 0 || otherUnmatched.length > 0) {
-        csvParts.push('');
-        csvParts.push('Items Not in Distributor Catalog');
-        if (produceNames.length > 0) {
-          csvParts.push(escCsv(`Fresh produce: source externally (${produceNames.join(', ')})`));
-        }
-        for (const line of otherUnmatched) {
-          csvParts.push(escCsv(line.component?.name || 'Unknown'));
-        }
+      const result = await downloadQuoteCsv(quoteId);
+      if (result.blob && result.blob.size > 0) {
+        const url = URL.createObjectURL(result.blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `quote-${quoteId}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => {
+          URL.revokeObjectURL(url);
+          a.remove();
+        }, 0);
+      } else {
+        setCsvError('We could not build the CSV file. Please try again, and contact support if it keeps happening.');
       }
-
-      const csv = csvParts.join('\n');
-      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `quote-${quoteId}.csv`;
-      a.click();
-      URL.revokeObjectURL(url);
-      setHasInteracted(true);
-      setShowSuccessDrawer(true);
+    } catch {
+      setCsvError('We could not build the CSV file. Please try again, and contact support if it keeps happening.');
     } finally {
       setDownloadingCsv(false);
     }
@@ -295,10 +279,12 @@ export function ExportFinalizePage() {
         const a = document.createElement('a');
         a.href = url;
         a.download = `quote-${quoteId}.pdf`;
+        document.body.appendChild(a);
         a.click();
-        URL.revokeObjectURL(url);
-        setHasInteracted(true);
-        setShowSuccessDrawer(true);
+        setTimeout(() => {
+          URL.revokeObjectURL(url);
+          a.remove();
+        }, 0);
       }
     } finally {
       setDownloadingPdf(false);
@@ -316,8 +302,12 @@ export function ExportFinalizePage() {
         const a = document.createElement('a');
         a.href = url;
         a.download = `order-guide-${quoteId}.xlsx`;
+        document.body.appendChild(a);
         a.click();
-        URL.revokeObjectURL(url);
+        setTimeout(() => {
+          URL.revokeObjectURL(url);
+          a.remove();
+        }, 0);
       } else if (result.error) {
         // B-115: Set dedicated orderGuideError so it renders inline near the button,
         // not inside the closed PDF preview modal.
@@ -328,6 +318,41 @@ export function ExportFinalizePage() {
       setDownloadingOrderGuide(false);
     }
   }
+
+  // Stored quote date (from the quote record), never today's date, so the
+  // preview shows the date that belongs to the quote itself.
+  const storedQuoteDate = quoteData?.created_at
+    ? new Date(quoteData.created_at).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+    : '-';
+
+  // Minimum-order shortfall: when the quote total is under the minimum order
+  // amount (from the rep's settings), name the exact shortfall instead of
+  // staying silent about it.
+  const [minimumOrderCents, setMinimumOrderCents] = useState<number | null>(null);
+  useEffect(() => {
+    if (isGuest) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await getCurrentUser();
+        const raw = res.data?.rep_settings?.minimum_order;
+        const dollars = raw ? parseFloat(String(raw).replace(/[^0-9.]/g, '')) : NaN;
+        if (!cancelled && Number.isFinite(dollars) && dollars > 0) {
+          setMinimumOrderCents(Math.round(dollars * 100));
+        }
+      } catch {
+        // Minimum unknown: show nothing rather than a wrong shortfall.
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [isGuest]);
+
+  const shortfallCents =
+    minimumOrderCents != null &&
+    typeof quoteData?.total_cents === 'number' &&
+    quoteData.total_cents < minimumOrderCents
+      ? minimumOrderCents - quoteData.total_cents
+      : null;
 
   // PDF error state
   const [pdfError, setPdfError] = useState<string | null>(null);
@@ -701,6 +726,17 @@ export function ExportFinalizePage() {
                     <span className="text-sm text-gray-600">Total Products:</span>
                     <span className="text-sm text-[#2A2A2A] font-medium">{quoteData ? partitionLines(quoteData.lines || []).matched.length : '-'}</span>
                   </div>
+                  {quoteData?.total && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">Quote Total:</span>
+                      <span className="text-sm text-[#2A2A2A] font-medium">{quoteData.total}</span>
+                    </div>
+                  )}
+                  {shortfallCents != null && minimumOrderCents != null && (
+                    <p className="text-xs text-amber-600" data-testid="minimum-shortfall">
+                      This quote is {formatCurrency(shortfallCents, quoteData?.distributor?.currency)} below the {formatCurrency(minimumOrderCents, quoteData?.distributor?.currency)} minimum order.
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -907,7 +943,7 @@ export function ExportFinalizePage() {
                   View Full PDF
                 </button>
               </div>
-              <p className="text-gray-500 text-sm mb-4">Click to preview the exact PDF that will be exported</p>
+              <p className="text-gray-500 text-sm mb-4">Summary of your quote. Click View Full PDF to see the document that will be exported.</p>
 
               {/* Mobile quote preview - card based */}
               <div className="md:hidden space-y-3 mb-4">
@@ -936,11 +972,11 @@ export function ExportFinalizePage() {
                       ))}
                       {(produceNames.length > 0 || otherUnmatched.length > 0) && (
                         <div className="mt-4">
-                          <p className="text-xs font-medium text-gray-500 mb-2">Items Not in Distributor Catalog</p>
+                          <p className="text-xs font-medium text-gray-500 mb-2">Items Your Rep Is Handling</p>
                           {produceNames.length > 0 && (
                             <div className="bg-amber-50 rounded-lg p-3 border border-amber-100 mb-2">
                               <p className="text-xs text-amber-700">
-                                Fresh produce not carried by this distributor: source externally ({produceNames.join(', ')})
+                                The rep is handling these items: {produceNames.join(', ')}
                               </p>
                             </div>
                           )}
@@ -986,7 +1022,7 @@ export function ExportFinalizePage() {
                       </div>
                       <div>
                         <span className="text-gray-400">Quote Date: </span>
-                        <span className="font-semibold text-gray-700">{new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</span>
+                        <span className="font-semibold text-gray-700">{storedQuoteDate}</span>
                       </div>
                     </div>
 
@@ -1026,7 +1062,7 @@ export function ExportFinalizePage() {
                             )}
                             {hasUnmatched && (
                               <div className="text-[0.45rem] text-amber-600 px-1.5 py-1 border-t border-gray-100 bg-amber-50/50">
-                                + {produceNames.length + otherUnmatched.length} items not in catalog
+                                + {produceNames.length + otherUnmatched.length} items the rep is handling
                               </div>
                             )}
                           </>
@@ -1156,7 +1192,7 @@ export function ExportFinalizePage() {
                 <Button
                   variant="outline"
                   className="w-full justify-start border-gray-300 text-[#2A2A2A] h-12"
-                  disabled={!isFinalized || downloadingCsv || !quoteData}
+                  disabled={!isFinalized || downloadingCsv || !quoteId}
                   onClick={handleCsvDownload}
                 >
                   {downloadingCsv ? (
@@ -1166,6 +1202,11 @@ export function ExportFinalizePage() {
                   )}
                   CSV Export
                 </Button>
+                {csvError && (
+                  <p className="text-xs text-red-500 mt-1" data-testid="csv-error">
+                    {csvError}
+                  </p>
+                )}
                 <Button
                   variant="outline"
                   className="w-full justify-start border-gray-300 text-[#2A2A2A] h-12"
