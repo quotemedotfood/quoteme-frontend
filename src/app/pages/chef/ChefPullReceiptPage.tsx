@@ -255,7 +255,7 @@ export function ChefPullReceiptPage() {
                       </span>
                       {docState !== 'preview' && (
                         <span className="inline-flex self-start bg-amber-50 text-amber-800 border border-amber-200 px-2 py-0.5 rounded text-xs">
-                          {(line as { resolution_label?: string }).resolution_label ?? 'Not in catalog'}
+                          {(line as { resolution_label?: string }).resolution_label ?? 'The rep is handling this item'}
                         </span>
                       )}
                     </div>
