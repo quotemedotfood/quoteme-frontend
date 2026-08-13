@@ -592,7 +592,15 @@ export function QuoteBuilderPage() {
               <Button
                 variant="outline"
                 className="border-gray-300 text-[#2A2A2A]"
-                onClick={() => setStockQuoteDrawerOpen(true)}
+                onClick={() => {
+                  // P0 route/shell guard fix round 1: derivative-creation
+                  // write (createStockQuote), same ruled treatment as
+                  // Convert to Order Guide on ExportFinalizePage.
+                  if (quoteLocked) return;
+                  setStockQuoteDrawerOpen(true);
+                }}
+                disabled={quoteLocked}
+                title={quoteLocked ? (readOnlyMarker ?? undefined) : undefined}
               >
                 <Save className="w-4 h-4 mr-2" />
                 Save as Stock Quote
@@ -1291,6 +1299,9 @@ export function QuoteBuilderPage() {
           <DrawerFooter className="border-t border-gray-200 flex-shrink-0">
             <Button
               onClick={async () => {
+                // P0 route/shell guard fix round 1: belt-and-suspenders,
+                // matching the sibling write handlers' quoteLocked guards.
+                if (quoteLocked) return;
                 if (!stockQuoteName.trim()) return;
                 setSavingStockQuote(true);
                 const quoteData = {
