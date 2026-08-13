@@ -9,9 +9,10 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
  * branches: voices already loaded, and the empty-getVoices()-until-
  * voiceschanged case some Windows/Android builds hit on the first call of
  * a session. */
-function makeFakeSynth({ voicesReady }) {
+function makeFakeSynth({ voicesReady, voices: readyVoices }) {
   const listeners = {};
-  let voices = voicesReady ? [{ name: 'fake-voice' }] : [];
+  const defaultReady = readyVoices || [{ name: 'fake-voice' }];
+  let voices = voicesReady ? defaultReady : [];
   return {
     spoken: [],
     cancelCalls: 0,
@@ -25,7 +26,7 @@ function makeFakeSynth({ voicesReady }) {
     },
     // Test hook: simulate the browser populating voices then firing the event.
     _resolveVoices() {
-      voices = [{ name: 'fake-voice' }];
+      voices = defaultReady;
       (listeners.voiceschanged || []).forEach((fn) => fn());
     },
   };
@@ -73,7 +74,9 @@ describe('speak.js', () => {
     expect(fake.spoken).toHaveLength(1);
     expect(fake.spoken[0].text).toBe('Zhee moh nay. Blanc de Blancs.');
     expect(fake.spoken[0].lang).toBe('en-US');
-    expect(fake.spoken[0].rate).toBeCloseTo(0.82);
+    // R2: rate raised from .82 to .9 - the old rate clipped the end of
+    // unfamiliar words.
+    expect(fake.spoken[0].rate).toBeCloseTo(0.9);
     expect(fake.spoken[0].pitch).toBe(1);
     expect(fake.cancelCalls).toBeGreaterThanOrEqual(1);
   });
@@ -133,6 +136,115 @@ describe('speak.js', () => {
     window.speechSynthesis = undefined;
     const { speak } = await import('./speak.js');
     expect(() => speak('anything')).not.toThrow();
+  });
+});
+
+// R2, item a: voice selection. Remote (cloud) voices sound dramatically
+// better but need network - offline pairing is this app's App Store
+// argument (guideline 4.2.3) - so a remote voice is a PREFERENCE and a
+// local voice (or the platform default) is always a working FALLBACK.
+describe('speak.js voice selection (R2, item a)', () => {
+  let originalSynthForVoiceTests;
+
+  beforeEach(() => {
+    originalSynthForVoiceTests = window.speechSynthesis;
+    window.SpeechSynthesisUtterance = FakeUtterance;
+    global.SpeechSynthesisUtterance = FakeUtterance;
+    vi.resetModules();
+  });
+
+  afterEach(() => {
+    window.speechSynthesis = originalSynthForVoiceTests;
+    window.SpeechSynthesisUtterance = FakeUtterance;
+    global.SpeechSynthesisUtterance = FakeUtterance;
+    vi.useRealTimers();
+  });
+
+  it('selects a remote voice matching lang when one exists, over a local voice in a different lang', async () => {
+    const localEnUS = { name: 'local-en', lang: 'en-US', localService: true };
+    const remoteFrFR = { name: 'remote-fr', lang: 'fr-FR', localService: false };
+    const fake = makeFakeSynth({ voicesReady: true, voices: [localEnUS, remoteFrFR] });
+    window.speechSynthesis = fake;
+    const { speak } = await import('./speak.js');
+
+    speak('Shah blee, premier cru.', { lang: 'fr-FR' });
+
+    expect(fake.spoken).toHaveLength(1);
+    expect(fake.spoken[0].voice).toBe(remoteFrFR);
+    expect(fake.spoken[0].lang).toBe('fr-FR');
+  });
+
+  it('falls back to a local voice matching lang when no remote voice matches', async () => {
+    const localFrFR = { name: 'local-fr', lang: 'fr-FR', localService: true };
+    const localEnUS = { name: 'local-en', lang: 'en-US', localService: true };
+    const fake = makeFakeSynth({ voicesReady: true, voices: [localFrFR, localEnUS] });
+    window.speechSynthesis = fake;
+    const { speak } = await import('./speak.js');
+
+    speak('Shah blee, premier cru.', { lang: 'fr-FR' });
+
+    expect(fake.spoken[0].voice).toBe(localFrFR);
+  });
+
+  it('prefers a remote voice matching lang over a local voice that also matches lang', async () => {
+    const localFrFR = { name: 'local-fr', lang: 'fr-FR', localService: true };
+    const remoteFrFR = { name: 'remote-fr', lang: 'fr-FR', localService: false };
+    // Order shouldn't matter - list the local one first.
+    const fake = makeFakeSynth({ voicesReady: true, voices: [localFrFR, remoteFrFR] });
+    window.speechSynthesis = fake;
+    const { speak } = await import('./speak.js');
+
+    speak('Shah blee, premier cru.', { lang: 'fr-FR' });
+
+    expect(fake.spoken[0].voice).toBe(remoteFrFR);
+  });
+
+  it('never throws and still speaks (with no voice set) when no voice matches lang at all', async () => {
+    const localEnUS = { name: 'local-en', lang: 'en-US', localService: true };
+    const fake = makeFakeSynth({ voicesReady: true, voices: [localEnUS] });
+    window.speechSynthesis = fake;
+    const { speak } = await import('./speak.js');
+
+    expect(() => speak('Zdravo', { lang: 'sr-RS' })).not.toThrow();
+    expect(fake.spoken).toHaveLength(1);
+    expect(fake.spoken[0].voice).toBeUndefined();
+  });
+
+  it('never throws when getVoices() itself throws (audio is never a hard requirement)', async () => {
+    const fake = {
+      spoken: [],
+      cancel() {},
+      getVoices() { throw new Error('boom'); },
+      speak(utterance) { this.spoken.push(utterance); },
+      addEventListener() {},
+      removeEventListener() {},
+    };
+    window.speechSynthesis = fake;
+    const { speak } = await import('./speak.js');
+
+    expect(() => speak('anything', { lang: 'fr-FR' })).not.toThrow();
+  });
+
+  it('utterance.lang is taken from the passed lang, independent of voice selection', async () => {
+    const remoteItIT = { name: 'remote-it', lang: 'it-IT', localService: false };
+    const fake = makeFakeSynth({ voicesReady: true, voices: [remoteItIT] });
+    window.speechSynthesis = fake;
+    const { speak } = await import('./speak.js');
+
+    speak('Bah-ROH-loh', { lang: 'it-IT' });
+
+    expect(fake.spoken[0].lang).toBe('it-IT');
+    expect(fake.spoken[0].voice).toBe(remoteItIT);
+  });
+
+  it('rate defaults to 0.9 regardless of voice selection', async () => {
+    const fake = makeFakeSynth({ voicesReady: true, voices: [{ name: 'v', lang: 'en-US', localService: true }] });
+    window.speechSynthesis = fake;
+    const { speak } = await import('./speak.js');
+
+    speak('anything');
+
+    expect(fake.spoken[0].rate).toBeCloseTo(0.9);
   });
 });
 

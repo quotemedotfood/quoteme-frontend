@@ -43,6 +43,11 @@ export const DEMO_DISHES = [
 
 export const DEMO_SECTIONS = ['Raw bar', 'Starters', 'Mains', 'Sides', 'Dessert'];
 
+// Exported for unit testing that every hand-authored phonetic carries a
+// `lang` tag (R2, item b) without duplicating the whole map: see
+// lib/demoSeed.test.js.
+export { PRONOUNCE };
+
 /** Default picks so the walk has something selected the moment Menu loads. */
 export const DEMO_DEFAULT_PICKED = ['a2', 'a5', 'e6', 'e9', 's2'];
 
@@ -52,28 +57,40 @@ export const DEMO_DEFAULT_PICKED = ['a2', 'a5', 'e6', 'e9', 's2'];
  * phonetic spelling (shown as text), `speak` is the full sentence handed to
  * speech synthesis, `tip` is the one-line coaching note, matching the three
  * fields Desi's static W object already used elsewhere in this app.
+ *
+ * `lang` (R2, item b - BCP-47, one of 'fr-FR'/'it-IT'/'de-DE'/'es-ES'/
+ * 'en-US'): the LANGUAGE speak.js should set on the utterance, assigned by
+ * the wine's own origin (the producer/region in the key), NOT a
+ * translation of `speak`/`say` - those stay the same hand-authored ENGLISH
+ * RESPELLING as before (see speak.js's own doc comment on why). Setting
+ * `lang` to the wine's real language lets a matching voice read that
+ * respelling with the vowel/R sounds it was actually written for, instead
+ * of forcing every wine through an English voice regardless of origin.
+ * This corpus is nearly all French (Aquitaine is a French bistro list);
+ * the few non-French wines (Napa, Finger Lakes, Port) are tagged 'en-US'
+ * per their own tip ("no French rules here, just say it plainly").
  */
 const PRONOUNCE = {
-  'Louis Michel, Chablis 1er Cru': { say: 'shah-BLEE', speak: 'Louis Michel. Shah blee, premier cru.', tip: 'Two syllables. The h is silent.' },
-  'Domaine Vacheron, Sancerre': { say: 'vash-ROHN, sahn-SEHR', speak: 'Vash rohn. Sahn sehr.', tip: 'Sancerre is two beats, both short.' },
-  'Pepiere, Muscadet Clos des Briords': { say: 'pay-PYAIR, muss-kah-DAY', speak: 'Pay pyair. Muss kah day.', tip: 'The final T in Muscadet is silent.' },
-  'Felines Jourdan, Picpoul': { say: 'feh-LEEN zhoor-DAHN, peek-POOL', speak: 'Feh leen zhoor dahn. Peek pool.', tip: 'Picpoul rhymes with cool.' },
-  'Pataille, Bourgogne Aligote': { say: 'pah-TIE, ah-lee-goh-TAY', speak: 'Pah tie. Bourgogne, ah lee goh tay.', tip: 'Aligote gets a hard T at the end.' },
-  'Huet, Vouvray Demi-Sec': { say: 'oo-AY, voo-VRAY', speak: 'Oo ay. Voo vray, deh mee sek.', tip: 'The H in Huet is silent. Start with the oo.' },
-  'Berthet-Bondet, Jura Savagnin': { say: 'ber-TAY bon-DAY, sah-vahn-YAN', speak: 'Ber tay bon day. Sah vahn yan.', tip: 'Savagnin, not sauvignon. Different grape entirely.' },
-  'Gimonnet, Blanc de Blancs Champagne': { say: 'zhee-moh-NAY', speak: 'Zhee moh nay. Blanc de Blancs.', tip: 'Two syllables that matter: moh-NAY.' },
-  'Foillard, Morgon': { say: 'fwah-YAR, mor-GOHN', speak: 'Fwah yar. Mor gohn.', tip: 'Foillard rhymes with the back half of boulevard.' },
-  'Joguet, Chinon': { say: 'zho-GAY, shee-NOHN', speak: 'Zho gay. Shee nohn.', tip: 'Chinon lands on the second syllable.' },
-  'Bouvier, Marsannay': { say: 'boo-vee-AY, mar-sah-NAY', speak: 'Boo vee ay. Mar sah nay.', tip: 'Marsannay, three even beats.' },
-  'Trapet, Gevrey-Chambertin': { say: 'zhev-RAY shom-ber-TAN', speak: 'Trah pay. Zhev ray shom ber tan.', tip: 'Land on TAN and stop.' },
-  'Vincent Paris, Cornas': { say: 'kor-NAHSS', speak: 'Vincent Paris. Kor nahss.', tip: 'The S at the end is pronounced, unusually for French.' },
-  'Graillot, Crozes-Hermitage': { say: 'gray-YOH, krohz-air-mee-TAHZH', speak: 'Gray yoh. Krohz air mee tahzh.', tip: 'Hermitage keeps its H silent, like most French H.' },
-  'Corison, Napa Cabernet': { say: 'kor-ih-SUN', speak: 'Corison. Napa cabernet.', tip: 'No French rules here, just say it plainly.' },
-  "Pichon Comtesse Reserve, Pauillac": { say: 'pee-SHOHN kohn-TESS, poh-YACK', speak: 'Pee shohn kohn tess. Poh yack.', tip: 'Pauillac rhymes with cognac.' },
-  'Tournelle, Arbois Poulsard': { say: 'toor-NELL, ar-BWAH pool-SAR', speak: 'Toor nell. Ar bwah, pool sar.', tip: 'Poulsard, the S is silent.' },
-  'Tempier, Bandol Rose': { say: 'tahm-pee-AY, bahn-DOLE', speak: 'Tahm pee ay. Bahn dole rose.', tip: 'Bandol takes the stress on the second syllable.' },
-  'Red Tail Ridge, Blaufrankisch': { say: 'BLOW-frahn-kish', speak: 'Red Tail Ridge. Blow frahn kish.', tip: 'Blau like the color blue, then frankish.' },
-  "Dow's, LBV Port": { say: 'LBV, late bottled vintage', speak: "Dow's. L B V port.", tip: 'Just say the three letters.' },
+  'Louis Michel, Chablis 1er Cru': { say: 'shah-BLEE', speak: 'Louis Michel. Shah blee, premier cru.', tip: 'Two syllables. The h is silent.', lang: 'fr-FR' },
+  'Domaine Vacheron, Sancerre': { say: 'vash-ROHN, sahn-SEHR', speak: 'Vash rohn. Sahn sehr.', tip: 'Sancerre is two beats, both short.', lang: 'fr-FR' },
+  'Pepiere, Muscadet Clos des Briords': { say: 'pay-PYAIR, muss-kah-DAY', speak: 'Pay pyair. Muss kah day.', tip: 'The final T in Muscadet is silent.', lang: 'fr-FR' },
+  'Felines Jourdan, Picpoul': { say: 'feh-LEEN zhoor-DAHN, peek-POOL', speak: 'Feh leen zhoor dahn. Peek pool.', tip: 'Picpoul rhymes with cool.', lang: 'fr-FR' },
+  'Pataille, Bourgogne Aligote': { say: 'pah-TIE, ah-lee-goh-TAY', speak: 'Pah tie. Bourgogne, ah lee goh tay.', tip: 'Aligote gets a hard T at the end.', lang: 'fr-FR' },
+  'Huet, Vouvray Demi-Sec': { say: 'oo-AY, voo-VRAY', speak: 'Oo ay. Voo vray, deh mee sek.', tip: 'The H in Huet is silent. Start with the oo.', lang: 'fr-FR' },
+  'Berthet-Bondet, Jura Savagnin': { say: 'ber-TAY bon-DAY, sah-vahn-YAN', speak: 'Ber tay bon day. Sah vahn yan.', tip: 'Savagnin, not sauvignon. Different grape entirely.', lang: 'fr-FR' },
+  'Gimonnet, Blanc de Blancs Champagne': { say: 'zhee-moh-NAY', speak: 'Zhee moh nay. Blanc de Blancs.', tip: 'Two syllables that matter: moh-NAY.', lang: 'fr-FR' },
+  'Foillard, Morgon': { say: 'fwah-YAR, mor-GOHN', speak: 'Fwah yar. Mor gohn.', tip: 'Foillard rhymes with the back half of boulevard.', lang: 'fr-FR' },
+  'Joguet, Chinon': { say: 'zho-GAY, shee-NOHN', speak: 'Zho gay. Shee nohn.', tip: 'Chinon lands on the second syllable.', lang: 'fr-FR' },
+  'Bouvier, Marsannay': { say: 'boo-vee-AY, mar-sah-NAY', speak: 'Boo vee ay. Mar sah nay.', tip: 'Marsannay, three even beats.', lang: 'fr-FR' },
+  'Trapet, Gevrey-Chambertin': { say: 'zhev-RAY shom-ber-TAN', speak: 'Trah pay. Zhev ray shom ber tan.', tip: 'Land on TAN and stop.', lang: 'fr-FR' },
+  'Vincent Paris, Cornas': { say: 'kor-NAHSS', speak: 'Vincent Paris. Kor nahss.', tip: 'The S at the end is pronounced, unusually for French.', lang: 'fr-FR' },
+  'Graillot, Crozes-Hermitage': { say: 'gray-YOH, krohz-air-mee-TAHZH', speak: 'Gray yoh. Krohz air mee tahzh.', tip: 'Hermitage keeps its H silent, like most French H.', lang: 'fr-FR' },
+  'Corison, Napa Cabernet': { say: 'kor-ih-SUN', speak: 'Corison. Napa cabernet.', tip: 'No French rules here, just say it plainly.', lang: 'en-US' },
+  "Pichon Comtesse Reserve, Pauillac": { say: 'pee-SHOHN kohn-TESS, poh-YACK', speak: 'Pee shohn kohn tess. Poh yack.', tip: 'Pauillac rhymes with cognac.', lang: 'fr-FR' },
+  'Tournelle, Arbois Poulsard': { say: 'toor-NELL, ar-BWAH pool-SAR', speak: 'Toor nell. Ar bwah, pool sar.', tip: 'Poulsard, the S is silent.', lang: 'fr-FR' },
+  'Tempier, Bandol Rose': { say: 'tahm-pee-AY, bahn-DOLE', speak: 'Tahm pee ay. Bahn dole rose.', tip: 'Bandol takes the stress on the second syllable.', lang: 'fr-FR' },
+  'Red Tail Ridge, Blaufrankisch': { say: 'BLOW-frahn-kish', speak: 'Red Tail Ridge. Blow frahn kish.', tip: 'Blau like the color blue, then frankish.', lang: 'en-US' },
+  "Dow's, LBV Port": { say: 'LBV, late bottled vintage', speak: "Dow's. L B V port.", tip: 'Just say the three letters.', lang: 'en-US' },
 };
 
 /** Region/grape display strings, "grape . Region, Country" like Desi's meta field. */
@@ -152,6 +169,11 @@ export function buildDemoRows(demoWines) {
       say: pron.say || '',
       speak: pron.speak || w.label,
       tip: pron.tip || '',
+      // R2 item b: no hand-authored phonetic (a real/parsed wine falls back
+      // to raw label above) means no known origin language either - default
+      // 'en-US' rather than guessing a region->language mapping for real
+      // wines, a deliberate non-goal here (future task).
+      lang: pron.lang || 'en-US',
     };
   });
 }
