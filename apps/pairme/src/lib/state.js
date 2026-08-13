@@ -26,6 +26,7 @@ import { buildTables, rowToEngineWine, dishToEngineDish, computeOfferings, DIREC
 import { getOfflineTables } from './offlinePairing.js';
 import { DEMO_DISHES, DEMO_SECTIONS, DEMO_DEFAULT_PICKED, buildDemoRows } from './demoSeed.js';
 import { getBaroloTableData } from './baroloSeed.js';
+import { speak as speakText } from './speak.js';
 
 // ---------------------------------------------------------------------------
 // PART 1: UI-level no-signal / offline fallback for TheWine.
@@ -343,6 +344,9 @@ function mapDirection(st) {
 // per each brand's guidelines: white Apple glyph on black, four-color Google
 // "G" on white, neither ever recolored). Email is not a brand mark, just a
 // neutral envelope outline in the ink color.
+// BUILD 6: built with React.createElement, not JSX - state.js is a plain .js
+// file with no JSX transform configured (only .jsx/.tsx get one), so JSX
+// syntax here would fail to build; do not "fix" this into JSX.
 const APPLE_MARK = React.createElement('svg', {width: 14, height: 18, viewBox: "0 0 384 512", 'aria-hidden': 'true', style: {display: 'block'}},
   React.createElement('path', {fill: '#fff', d: "M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5c0 26.2 4.8 53.3 14.4 81.2 12.8 37.7 59 130.2 107.2 128.7 25.2-.7 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-85.5 102.6-123.3-65.2-30.7-61.7-90-61.7-91.4zm-90.5-157.5c24.4-29 22.1-55.4 21.4-64.9-21.5 1.2-46.4 14.7-60.3 31.1-15.3 17.6-24.3 39.4-22.4 63.6 22.9-.9 42.1-14.7 61.3-29.8z"})
 );
@@ -368,7 +372,7 @@ export function usePairMe(opts = {}){
     venueQ:"",eatText:"",noList:false,blank:false,picked:["a2","a5","e6","e9","s2"],
     mode:null,sub:null,scope:null,present:["gim","trapet"],wineFormat:"both",
     guest:"me",guestDrawerOpen:false,guestShareNote:null,resolution:null,rate:{dish:4,wine:5,pair:4},fb:"",share:true,listening:null,skipped:0,
-    linked:[],connectionsOpen:false,account:null,bottle:"trapet",back:11,saved:false,shared:null,
+    linked:[],connectionsOpen:false,connectionsSkipped:false,account:null,bottle:"trapet",back:11,saved:false,shared:null,
     // Integration state (not part of Desi's original demo model).
     apiError:null,apiLoading:false,
     anonId:null,
@@ -564,8 +568,13 @@ export function usePairMe(opts = {}){
     patch((s2)=>Object.assign({},s2,{s:n},extra||{}));
   };
   const jumpTo=(name)=>{const el=secs.current[name];if(el&&bodyEl.current)bodyEl.current.scrollTop=el.offsetTop-52;};
-  const say=(text)=>{try{const sp=window.speechSynthesis;if(!sp)return;sp.cancel();
-      const u=new SpeechSynthesisUtterance(text);u.rate=.82;u.pitch=1;sp.speak(u);}catch(e){}};
+  // BUILD 2: was a hand-rolled SpeechSynthesisUtterance here (rate .82, pitch 1,
+  // sp.cancel() first) duplicated verbatim in WineList.jsx/TellUsScreen.jsx/
+  // EntryScreen.jsx. Now the one shared helper (lib/speak.js) - see its header
+  // for the lang='en-US' reasoning and the empty-getVoices() guard. `say` stays
+  // the local name everything below already calls; each call site below is
+  // still responsible for its own speak->say->raw-label precedence.
+  const say=(text)=>speakText(text);
   const field=(key)=>{const on=st.listening===key;return {
       v:st[key],set:e=>patch({[key]:e.target.value}),
       mic:()=>patch({listening:on?null:key}),
@@ -685,7 +694,12 @@ export function usePairMe(opts = {}){
           bd:on?"var(--pm-chrome)":"var(--pm-rule)",bw:on?"2px":"1px",bg:on?"var(--pm-sel)":"var(--pm-card)",
           chip:on?"presenting":"tap to add",chipBg:on?"#F9E4C7":"var(--pm-sunken)",
           pick:()=>patch(x=>({presentLabels:(x.presentLabels||[]).includes(w.label)?(x.presentLabels||[]).filter(y=>y!==w.label):[...(x.presentLabels||[]),w.label]})),
-          speak:()=>say(w.speak),
+          // BUILD 2 item 2: real/parsed wines carry no hand-authored say/speak
+          // (packages/pairing's parser never sets those fields), so w.speak is
+          // undefined here for every non-demo wine - fall back to the short
+          // phonetic (w.say) and, failing that, the raw label rather than
+          // speaking "undefined".
+          speak:()=>say(w.speak||w.say||w.label),
           open:null, // no BottleBrief data for engine wines yet; TheWine.jsx only renders the Brief link when `open` is set
           stockColor:"var(--pm-muted)",stockNote:"On the list tonight."};
       }):null;
@@ -1070,7 +1084,7 @@ export function usePairMe(opts = {}){
           return Array.from(byLabel.keys()).map(label=>{const r=(st.demoWineRows||[]).find(x=>x.label===label)||{};return {
             label,prod:r.producer||label,wine:r.wine_name||"",meta:r.meta||"",btl:r.price,
             glass:r.glass_price?"$"+r.glass_price+" glass":"bottle only",say:r.say||"",
-            dishes:byLabel.get(label).dishes,speak:()=>say(r.speak||label)};});})(),
+            dishes:byLabel.get(label).dishes,speak:()=>say(r.speak||r.say||label)};});})(),
         showFormatTabs:usingEngine,formatTabs,
         showCoverage:!!(coverageRows&&coverageRows.length),coverageTitle,coverage:coverageRows,
         offerTitle:usingEngine?(pairingDirection==="one_bottle"?"One bottle for the table":"Your wine"):(blank?"Three wines, no assumptions":"Your wine"),
@@ -1087,7 +1101,7 @@ export function usePairMe(opts = {}){
           bd:on?"var(--pm-chrome)":"var(--pm-rule)",bw:on?"2px":"1px",bg:on?"var(--pm-sel)":"var(--pm-card)",
           chip:on?"presenting":"tap to add",chipBg:on?"#F9E4C7":"var(--pm-sunken)",
           pick:()=>patch(x=>({present:x.present.includes(o.k)?x.present.filter(y=>y!==o.k):[...x.present,o.k]})),
-          speak:()=>say(w.speak),
+          speak:()=>say(w.speak||w.say||w.wine),
           open:()=>patch({s:16,bottle:o.k,back:11}),
           stockColor:w.stock<4?ORANGE:"var(--pm-muted)",
           stockNote:w.stock<4?"Only "+w.stock+" left tonight":"Plenty in the cellar"};}),
@@ -1104,13 +1118,13 @@ export function usePairMe(opts = {}){
             return {
               label:engineShownLabels.length>1?(i===0?"Bottle one":"Bottle two"):"One bottle",
               prod:w.producer,wine:w.wine_name,meta:w.meta+" . $"+w.price,say:w.say,tip:w.tip,
-              speak:()=>say(w.speak),
+              speak:()=>say(w.speak||w.say||w.label),
               compromise:(pairingDirection==="one_bottle"&&compromiseNote)?compromiseNote.text:null,
             };
           })
           :shownKeys.map((k,i)=>{const w=W[k];return {
             label:shownKeys.length>1?(i===0?"Bottle one":"Bottle two"):"One bottle",
-            prod:w.prod,wine:w.wine,meta:w.meta+" . $"+w.btl,say:w.say,tip:w.tip,speak:()=>say(w.speak),compromise:null};}),
+            prod:w.prod,wine:w.wine,meta:w.meta+" . $"+w.btl,say:w.say,tip:w.tip,speak:()=>say(w.speak||w.say||w.wine),compromise:null};}),
         hasDiet:st.diet.length>0,dietLine:st.diet.length?st.diet.join(" . "):"none",
 
         rateRows:[["dish","The food"],["wine","The wine"],["pair","How they went together"]].map(([k,label])=>({
@@ -1128,8 +1142,23 @@ export function usePairMe(opts = {}){
         // onboarding - nobody at a table wants to link a cellar app first. All
         // four read the same "Coming soon"; none connect yet (one label, no
         // special case). Visibly disabled, so no looks-but-isn't control.
-        connections:ACCOUNTS.map(a=>({
-          label:a.k, sub:a.sub, disabled:true, status:"Coming soon"})),
+        //
+        // BUILD 4: "I don't use any of these" is the LAST row, same card
+        // format as the four connector rows above - but it is a REAL control
+        // (has `pick`), not a disabled fiction: tapping it records a diner
+        // acknowledgment (connectionsSkipped) and its own badge reflects that,
+        // never "Coming soon" like the actual connectors.
+        connections:[
+          ...ACCOUNTS.map(a=>({label:a.k, sub:a.sub, disabled:true, status:"Coming soon"})),
+          {
+            label:"I don't use any of these",
+            sub:"Skip linking anything for now. You can always come back and connect one later.",
+            disabled:false,
+            selected:!!st.connectionsSkipped,
+            status:st.connectionsSkipped?"Acknowledged":"Not selected",
+            pick:()=>patch(x=>({connectionsSkipped:!x.connectionsSkipped})),
+          },
+        ],
         connectionsOpen:!!st.connectionsOpen,
         toggleConnections:()=>patch({connectionsOpen:!st.connectionsOpen}),
         shareTable:()=>patch({shared:"table"}),
@@ -1138,7 +1167,7 @@ export function usePairMe(opts = {}){
 
         bb:(function(self,key){const w=W[key],b=BRIEF[key];return {
           prod:w.prod,wine:w.wine,meta:w.meta+" . $"+w.btl+(w.glass?" . $"+w.glass+" glass":" . bottle only"),
-          say:w.say,tip:w.tip,speak:()=>say(w.speak),
+          say:w.say,tip:w.tip,speak:()=>say(w.speak||w.say||w.wine),
           means:b.means,notes:b.notes,why:b.why,bridge:b.bridge,yours:b.yours,
           save:()=>patch({saved:!st.saved}),
           savedLabel:st.saved?"Saved":"Save it",savedBg:st.saved?"var(--pm-sel)":"transparent",
