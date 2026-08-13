@@ -18,6 +18,16 @@ import { latestChefQuestion } from '../utils/chefQuestion';
 // (sent_at / status / state / quote_type) so a sent quote's price inputs
 // never round-trip to the BE's 422 on locked-quote edits.
 import { isLockedQuoteState } from '../utils/quoteStatusLabel';
+// P0 route/shell guard: sent immutability (item 3) + admin viewer (item 1).
+// A sent/accepted quote, or a quoteme_admin deep-linking here, gets a fully
+// read-only builder (pricing, Add Product, match drawer, feedback) with a
+// visible marker instead of write controls the server would refuse.
+import { useOptionalAuth } from '../contexts/AuthContext';
+import {
+  isSentImmutableQuote,
+  isAdminViewerRole,
+  quoteReadOnlyMarker,
+} from '../utils/quoteImmutability';
 // Wave 4(c): reuse Export's exact unresolved-items predicate so the count
 // means the same thing on both screens. availability_status/rep_handled
 // ship on the same getQuote/getGuestQuote response already fetched below;
@@ -154,6 +164,18 @@ export function QuoteBuilderPage() {
   // Drives disabling the price-edit affordance so it can never round-trip
   // to the BE's reject-on-locked-quote 422.
   const [quoteLocked, setQuoteLocked] = useState(false);
+  // P0 route/shell guard: sent-immutability signal kept separately from
+  // quoteLocked (which also folds in the admin-viewer gate below) so the
+  // marker copy can name the right reason.
+  const [sentLocked, setSentLocked] = useState(false);
+
+  // P0 route/shell guard item 1: quoteme_admin viewing a rep surface is a
+  // viewer, not the quote's author. useOptionalAuth so unit tests can mount
+  // this page without the provider stack; impersonated sessions carry the
+  // impersonated user's role and are unaffected.
+  const auth = useOptionalAuth();
+  const adminViewer = isAdminViewerRole(auth?.user?.role);
+  const readOnlyMarker = quoteReadOnlyMarker(adminViewer, sentLocked);
 
   const isGuest = !localStorage.getItem('quoteme_token');
   const fetchQuote = (id: string) => isGuest ? getGuestQuote(id) : getQuote(id);
@@ -208,10 +230,14 @@ export function QuoteBuilderPage() {
       }
       setItems(productItems);
       setUnresolvedCount(unacknowledgedUnmatchedLines(data.lines || []).length);
-      setQuoteLocked(
-        !!data.sent_at ||
-          isLockedQuoteState({ status: data.status, state: data.state, quote_type: data.quote_type }),
-      );
+      const sentImmutable =
+        isSentImmutableQuote({ status: data.status, state: data.state, sent_at: data.sent_at }) ||
+        isLockedQuoteState({ status: data.status, state: data.state, quote_type: data.quote_type });
+      setSentLocked(sentImmutable);
+      // Admin viewer folds into the same lock so every existing quoteLocked
+      // guard (price edits, bulk adjust, persistAllPrices) also covers the
+      // admin-read-only case.
+      setQuoteLocked(adminViewer || sentImmutable);
       setDistributorCurrency(data.distributor?.currency);
       if (data.input_mode) setInputMode(data.input_mode);
       if (data.detected_concept) setDetectedConcept(data.detected_concept);
@@ -222,7 +248,7 @@ export function QuoteBuilderPage() {
       setError(QUOTE_LOAD_ERROR);
       setLoading(false);
     }
-  }, [quoteId]);
+  }, [quoteId, adminViewer]);
 
   useEffect(() => {
     loadQuote();
@@ -241,6 +267,9 @@ export function QuoteBuilderPage() {
   })();
 
   const openMatchDrawer = (item: ProductItem) => {
+    // P0 route/shell guard: the match drawer is a write path (replace match /
+    // add to quote); never open it on a read-only render.
+    if (quoteLocked) return;
     setMatchDrawerItem(item);
     setMatchDrawerOpen(true);
   };
@@ -517,10 +546,24 @@ export function QuoteBuilderPage() {
               <ArrowLeft className="w-5 h-5" />
             </button>
             <div className="min-w-0">
-              <h1 className="text-xl text-[#4F4F4F]">Quote Builder</h1>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h1 className="text-xl text-[#4F4F4F]">Quote Builder</h1>
+                {quoteLocked && readOnlyMarker && (
+                  <span
+                    className="inline-flex items-center gap-1 text-xs font-medium bg-gray-100 text-gray-600 border border-gray-200 rounded-full px-2.5 py-1"
+                    data-testid="quote-read-only-marker"
+                  >
+                    <Lock className="w-3 h-3" />
+                    {readOnlyMarker}
+                  </span>
+                )}
+              </div>
               <div className="flex flex-wrap items-center gap-2">
                 <p className="text-sm text-gray-500 truncate">Total Components: {items.length}</p>
-                {unresolvedCount > 0 && (
+                {/* Item 3 reconciliation: a locked (sent/accepted) quote must
+                    not invite input; the needs-your-input badge is a write
+                    call to action, so it only renders while writable. */}
+                {unresolvedCount > 0 && !quoteLocked && (
                   <button
                     onClick={() => navigate(`/export-finalize?quoteId=${quoteId}`)}
                     className="text-xs font-medium bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full hover:opacity-80 transition-opacity"
@@ -715,15 +758,17 @@ export function QuoteBuilderPage() {
                 )}
                 {quoteLocked ? 'Pricing locked' : editMode ? (saving ? 'Saving...' : 'Save') : 'Edit price'}
               </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="flex-1 md:flex-none text-[#2A2A2A] border-gray-300"
-                onClick={() => setAddProductDrawerOpen(true)}
-              >
-                <Plus className="w-4 h-4 mr-1" />
-                Add Product
-              </Button>
+              {!quoteLocked && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1 md:flex-none text-[#2A2A2A] border-gray-300"
+                  onClick={() => setAddProductDrawerOpen(true)}
+                >
+                  <Plus className="w-4 h-4 mr-1" />
+                  Add Product
+                </Button>
+              )}
             </div>
           </div>
 
@@ -1129,7 +1174,9 @@ export function QuoteBuilderPage() {
         Finish Quote
       </button>
 
-      {quoteId && <QuoteReviewBar quoteId={quoteId} onMatchesUpdated={handleMatchesUpdated} noSidebarOffset />}
+      {/* Looks good / Needs fixes feedback is a write path (reviewQuote +
+          match redo): never rendered on a read-only view (item 3). */}
+      {quoteId && !quoteLocked && <QuoteReviewBar quoteId={quoteId} onMatchesUpdated={handleMatchesUpdated} noSidebarOffset />}
 
       {/* Match Selection Drawer */}
       {matchDrawerItem && (

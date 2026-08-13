@@ -2,10 +2,17 @@ import { Button } from '../components/ui/button';
 import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
 import { Input } from '../components/ui/input';
-import { ArrowLeft, ChevronRight, ChevronDown, Plus, X, Loader2, Filter } from 'lucide-react';
+import { ArrowLeft, ChevronRight, ChevronDown, Plus, X, Loader2, Filter, Lock } from 'lucide-react';
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router';
 import { useUser } from '../contexts/UserContext';
+import { useOptionalAuth } from '../contexts/AuthContext';
+import {
+  isSentImmutableQuote,
+  isAdminViewerRole,
+  quoteReadOnlyMarker,
+  type QuoteImmutabilitySignals,
+} from '../utils/quoteImmutability';
 import { isDemoMode } from '../utils/demoMode';
 import { toTitleCase, formatProductName } from '../utils/format';
 import { categoryLabel } from '../utils/categoryLabel';
@@ -193,6 +200,14 @@ export function MapIngredientsPage() {
   const location = useLocation();
   const { quotesRemaining } = useUser();
   const demo = isDemoMode();
+  // P0 route/shell guard item 1: a QM admin deep-linking here (e.g.
+  // /map-ingredients?quoteId=...) is a viewer whose writes the server intends
+  // to refuse, so the page renders read-only with an explicit marker instead
+  // of offering write controls. useOptionalAuth (not useAuth) so unit tests
+  // can mount this page without the provider stack; during impersonation the
+  // /me role is the impersonated user's, so impersonation is unaffected.
+  const auth = useOptionalAuth();
+  const adminViewer = isAdminViewerRole(auth?.user?.role);
 
   // Router state passed from StartNewQuotePage
   const routerMenuId: string | undefined = (location.state as any)?.menuId;
@@ -206,6 +221,9 @@ export function MapIngredientsPage() {
   // ── Core state ──
   const [quoteId, setQuoteId] = useState<string | null>(routerQuoteId || urlQuoteId || null);
   const [menuId, setMenuId] = useState<string | null>(routerMenuId || null);
+  // P0 route/shell guard: status/state/sent_at captured from every quote
+  // fetch so sent/accepted quotes render read-only (see readOnly below).
+  const [quoteMeta, setQuoteMeta] = useState<QuoteImmutabilitySignals | null>(null);
   const [dishes, setDishes] = useState<Dish[]>([]);
   const [selectedDish, setSelectedDish] = useState<Dish | null>(null);
   const [loading, setLoading] = useState(true);
@@ -342,6 +360,21 @@ export function MapIngredientsPage() {
   const fetchQuote = (id: string) => isGuest ? getGuestQuote(id) : getQuote(id);
   const persistQuote = (id: string, updates: any) => isGuest ? updateGuestQuote(id, updates) : updateQuote(id, updates);
 
+  // P0 route/shell guard: capture the immutability signals from any fetched
+  // quote payload (the local QuoteData interface only types the fields this
+  // page renders; status/state/sent_at ride along on the same response).
+  const captureQuoteMeta = (data: any) => {
+    setQuoteMeta({ status: data?.status, state: data?.state, sent_at: data?.sent_at });
+  };
+
+  // Sent immutability (item 3) + admin viewer (item 1): every write control
+  // on this page (dish checkbox, Manually Add, Add Match / Change Match,
+  // memory-lock chain, Adjust Pricing, Looks good / Needs fixes feedback) is
+  // hidden when readOnly, and a marker names why.
+  const sentLocked = !!quoteMeta && isSentImmutableQuote(quoteMeta);
+  const readOnly = adminViewer || sentLocked;
+  const readOnlyMarker = quoteReadOnlyMarker(adminViewer, sentLocked);
+
   // ─── Poll menu status then load quote ─────────────────────────────────────
 
   useEffect(() => {
@@ -361,6 +394,7 @@ export function MapIngredientsPage() {
           const res = await fetchQuote(quoteId);
           if (cancelled) return;
           if (res.error || !res.data) throw new Error(res.error || 'Failed to load quote');
+          captureQuoteMeta(res.data);
           const built = buildDishesFromLines((res.data as QuoteData).lines || []);
           setDishes(built);
           setSelectedDish(built[0] || null);
@@ -402,6 +436,7 @@ export function MapIngredientsPage() {
         const fullQuote = await fetchQuote(resolvedQuoteId);
         if (cancelled) return;
         if (fullQuote.error || !fullQuote.data) throw new Error(fullQuote.error || 'Failed to load quote');
+        captureQuoteMeta(fullQuote.data);
         const built = buildDishesFromLines((fullQuote.data as QuoteData).lines || []);
         setDishes(built);
         setSelectedDish(built[0] || null);
@@ -476,6 +511,7 @@ export function MapIngredientsPage() {
     try {
       const res = await fetchQuote(quoteId);
       if (res.error || !res.data) return;
+      captureQuoteMeta(res.data);
       const built = buildDishesFromLines((res.data as QuoteData).lines || []);
       setDishes(built);
       setSelectedDish(built[0] || null);
@@ -599,7 +635,7 @@ export function MapIngredientsPage() {
             <div className="text-xs text-gray-500">
               <p className="font-medium truncate flex items-center gap-1">
                 <span className="truncate">{formatProductName(bestMatch.product, bestMatch.brand)}</span>
-                {quoteId && line?.id && (
+                {quoteId && line?.id && !readOnly && (
                   <ChainToggle
                     locked={bestMatchLocked}
                     onToggle={handleToggleLock}
@@ -636,14 +672,17 @@ export function MapIngredientsPage() {
           )}
         </div>
 
-        {/* Right: action button */}
-        <Button
-          size="sm"
-          className={`text-xs px-3 py-1 whitespace-nowrap ${isMapped ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-[#A5CFDD] hover:bg-[#8db9c9] text-[#2A2A2A]'}`}
-          onClick={() => handleMapComponent(component)}
-        >
-          {isMapped ? 'Change Match' : 'Add Match'}
-        </Button>
+        {/* Right: action button — hidden on a read-only render (admin viewer
+            / sent quote); the server would refuse the resulting write. */}
+        {!readOnly && (
+          <Button
+            size="sm"
+            className={`text-xs px-3 py-1 whitespace-nowrap ${isMapped ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-[#A5CFDD] hover:bg-[#8db9c9] text-[#2A2A2A]'}`}
+            onClick={() => handleMapComponent(component)}
+          >
+            {isMapped ? 'Change Match' : 'Add Match'}
+          </Button>
+        )}
       </div>
     );
   };
@@ -667,7 +706,9 @@ export function MapIngredientsPage() {
               }`}
             >
               <div className="flex items-start gap-2">
-                <input type="checkbox" className="mt-1" checked readOnly />
+                {/* P0 route/shell guard: no active-looking dish checkbox on a
+                    read-only render (admin viewer / sent quote). */}
+                {!readOnly && <input type="checkbox" className="mt-1" checked readOnly />}
                 <div className="flex-1">
                   <p className="text-sm font-medium text-[#2A2A2A]">{dish.name}</p>
                   <p className="text-xs text-gray-500 mt-1">{dish.components.length} ingredients</p>
@@ -707,15 +748,17 @@ export function MapIngredientsPage() {
             </div>
           )}
         </div>
-        <div className="p-4 flex-shrink-0 border-t border-gray-100 pb-[112px]">
-          <Button
-            onClick={() => setIsAddDishDrawerOpen(true)}
-            className="w-full h-auto py-3 bg-[#7FAEC2] hover:bg-[#6A9AB0] text-white whitespace-normal text-center"
-          >
-            <Plus className="w-4 h-4 mr-2 shrink-0" />
-            Manually Add A Dish or Ingredient
-          </Button>
-        </div>
+        {!readOnly && (
+          <div className="p-4 flex-shrink-0 border-t border-gray-100 pb-[112px]">
+            <Button
+              onClick={() => setIsAddDishDrawerOpen(true)}
+              className="w-full h-auto py-3 bg-[#7FAEC2] hover:bg-[#6A9AB0] text-white whitespace-normal text-center"
+            >
+              <Plus className="w-4 h-4 mr-2 shrink-0" />
+              Manually Add A Dish or Ingredient
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Main Content */}
@@ -730,8 +773,23 @@ export function MapIngredientsPage() {
                 <ArrowLeft className="w-5 h-5" />
               </button>
               <div>
-                <h1 className="text-xl text-[#4F4F4F]">Match Ingredients</h1>
-                <p className="text-sm text-gray-500">Select product matches for each ingredient</p>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h1 className="text-xl text-[#4F4F4F]">Match Ingredients</h1>
+                  {readOnlyMarker && (
+                    <span
+                      className="inline-flex items-center gap-1 text-xs font-medium bg-gray-100 text-gray-600 border border-gray-200 rounded-full px-2.5 py-1"
+                      data-testid="quote-read-only-marker"
+                    >
+                      <Lock className="w-3 h-3" />
+                      {readOnlyMarker}
+                    </span>
+                  )}
+                </div>
+                <p className="text-sm text-gray-500">
+                  {readOnly
+                    ? 'Viewing matches for this quote. Changes are not available.'
+                    : 'Select product matches for each ingredient'}
+                </p>
               </div>
             </div>
             {/* Single Adjust Pricing button is in the sticky footer */}
@@ -1062,11 +1120,13 @@ export function MapIngredientsPage() {
               </button>
             ))}
           </div>
-          <div className="p-4 border-t border-gray-100 bg-gray-50">
-            <Button onClick={() => setIsAddDishDrawerOpen(true)} className="w-full bg-[#7FAEC2] hover:bg-[#6A9AB0] text-white">
-              <Plus className="w-4 h-4 mr-2" /> Manually Add A Dish
-            </Button>
-          </div>
+          {!readOnly && (
+            <div className="p-4 border-t border-gray-100 bg-gray-50">
+              <Button onClick={() => setIsAddDishDrawerOpen(true)} className="w-full bg-[#7FAEC2] hover:bg-[#6A9AB0] text-white">
+                <Plus className="w-4 h-4 mr-2" /> Manually Add A Dish
+              </Button>
+            </div>
+          )}
         </DrawerContent>
       </Drawer>
 
@@ -1128,11 +1188,15 @@ export function MapIngredientsPage() {
         onClick={() => navigate('/quote-builder', { state: { quoteId, isOpenQuote, locationId } })}
         className="fixed bottom-6 right-4 md:right-6 z-50 md:min-w-[200px] bg-[#F2993D] hover:bg-[#E8953A] text-white font-medium py-3 px-6 rounded-full shadow-lg text-base min-h-[48px]"
       >
-        Adjust Pricing
+        {/* Read-only render: navigation stays (the builder is itself locked)
+            but the label must not promise a write. */}
+        {readOnly ? 'View Pricing' : 'Adjust Pricing'}
       </button>
 
-      {/* Quote review bar */}
-      {quoteId && <QuoteReviewBar quoteId={quoteId} onMatchesUpdated={handleMatchesUpdated} />}
+      {/* Quote review bar — the Looks good / Needs fixes feedback loop is a
+          write path (reviewQuote + match redo), so it never renders on a
+          read-only view (admin viewer / sent quote). */}
+      {quoteId && !readOnly && <QuoteReviewBar quoteId={quoteId} onMatchesUpdated={handleMatchesUpdated} />}
 
     </div>
   );

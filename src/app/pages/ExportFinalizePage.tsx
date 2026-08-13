@@ -1,5 +1,5 @@
 import { Button } from '../components/ui/button';
-import { ArrowLeft, FileText, Download, Mail, MessageSquare, Check, ThumbsUp, ThumbsDown, Link as LinkIcon, Info, Edit, X, Loader2, Eye, RefreshCw } from 'lucide-react';
+import { ArrowLeft, FileText, Download, Mail, MessageSquare, Check, ThumbsUp, ThumbsDown, Link as LinkIcon, Info, Edit, X, Loader2, Eye, RefreshCw, Lock } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router';
 import { useState, useEffect, useCallback } from 'react';
 import { Input } from '../components/ui/input';
@@ -23,6 +23,12 @@ import {
 } from '../components/ui/dialog';
 import { getQuote, getGuestQuote, downloadQuotePdf, downloadOrderGuide, sendQuote, sendQuoteSms, acknowledgeUnmatchedLines } from '../services/api';
 import { useUser } from '../contexts/UserContext';
+import { useOptionalAuth } from '../contexts/AuthContext';
+import {
+  isSentImmutableQuote,
+  isAdminViewerRole,
+  quoteReadOnlyMarker,
+} from '../utils/quoteImmutability';
 import type { QuoteResponse, QuoteLineResponse } from '../services/api';
 import { useAsyncMutation } from '../hooks/useAsyncMutation';
 import { isDemoMode, PROD_SIGNUP_URL } from '../utils/demoMode';
@@ -412,6 +418,19 @@ export function ExportFinalizePage() {
   const exportBlockedIncomplete =
     !!quoteData && unacknowledgedUnmatchedLines(quoteData.lines || []).length > 0;
 
+  // P0 route/shell guard: sent immutability (item 3) + admin viewer (item 1).
+  // A Sent/Accepted quote, or a quoteme_admin deep-linking here, renders this
+  // page read-only: Edit, Email Quote to Chef, Convert to Order Guide,
+  // document controls and acknowledgment actions are disabled or hidden and
+  // a marker names why. useOptionalAuth so unit tests can mount this page
+  // without the provider stack; impersonated sessions carry the impersonated
+  // user's role and are unaffected.
+  const auth = useOptionalAuth();
+  const adminViewer = isAdminViewerRole(auth?.user?.role);
+  const sentLocked = !!quoteData && isSentImmutableQuote(quoteData);
+  const quoteReadOnly = adminViewer || sentLocked;
+  const readOnlyMarker = quoteReadOnlyMarker(adminViewer, sentLocked);
+
   // BUG #21: never fail silently — name WHY when blocked (unacknowledged
   // unmatched items vs. the generic review-required reason).
   const blockedSendReason = getBlockedSendReason(exportBlockedIncomplete, quoteData?.lines || []);
@@ -545,30 +564,45 @@ export function ExportFinalizePage() {
               <ArrowLeft className="w-5 h-5" />
             </button>
             <div>
-              <h1 className="text-xl text-[#4F4F4F]">Review & Send</h1>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h1 className="text-xl text-[#4F4F4F]">Review & Send</h1>
+                {readOnlyMarker && (
+                  <span
+                    className="inline-flex items-center gap-1 text-xs font-medium bg-gray-100 text-gray-600 border border-gray-200 rounded-full px-2.5 py-1"
+                    data-testid="quote-read-only-marker"
+                  >
+                    <Lock className="w-3 h-3" />
+                    {readOnlyMarker}
+                  </span>
+                )}
+              </div>
               {quoteData?.input_mode === 'concept_only' && (
                 <p className="text-xs text-amber-600 font-medium mt-0.5">Concept-based starting quote</p>
               )}
             </div>
           </div>
-          <div className="hidden md:flex gap-2">
-            <Button
-              variant="outline"
-              className="text-[#2A2A2A] border-gray-300"
-              onClick={() => navigate('/map-ingredients', { state: { quoteId, isOpenQuote } })}
-            >
-              <Edit className="w-4 h-4 mr-2" />
-              Edit Matches
-            </Button>
-            <Button
-              variant="outline"
-              className="text-[#2A2A2A] border-gray-300"
-              onClick={() => navigate('/quote-builder', { state: { quoteId, isOpenQuote } })}
-            >
-              <Edit className="w-4 h-4 mr-2" />
-              Edit Pricing
-            </Button>
-          </div>
+          {/* Item 3: Edit affordances are hidden once the quote is read-only
+              (sent/accepted, or admin viewer); the marker above names why. */}
+          {!quoteReadOnly && (
+            <div className="hidden md:flex gap-2">
+              <Button
+                variant="outline"
+                className="text-[#2A2A2A] border-gray-300"
+                onClick={() => navigate('/map-ingredients', { state: { quoteId, isOpenQuote } })}
+              >
+                <Edit className="w-4 h-4 mr-2" />
+                Edit Matches
+              </Button>
+              <Button
+                variant="outline"
+                className="text-[#2A2A2A] border-gray-300"
+                onClick={() => navigate('/quote-builder', { state: { quoteId, isOpenQuote } })}
+              >
+                <Edit className="w-4 h-4 mr-2" />
+                Edit Pricing
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* Source Confidence Strip */}
@@ -577,8 +611,16 @@ export function ExportFinalizePage() {
             <span>Catalog: {(quoteData as any).catalog_source || 'own'}</span>
             <span className="text-gray-300">|</span>
             {/* B-159: "unreviewed" links to the review flow; "reviewed" is plain text (non-interactive). */}
+            {/* Item 3 reconciliation: a Sent/Accepted record must not invite
+                review ("unreviewed, review now") — the review window closed at
+                send. Render the frozen fact as plain text instead. Same for an
+                admin viewer, whose review writes we intend to refuse. */}
             {(quoteData as any).menu_reviewed ? (
               <span>Menu: reviewed</span>
+            ) : quoteReadOnly ? (
+              <span data-testid="menu-review-frozen">
+                {sentLocked ? 'Menu: not reviewed before send' : 'Menu: unreviewed'}
+              </span>
             ) : (
               <button
                 type="button"
@@ -630,7 +672,9 @@ export function ExportFinalizePage() {
                   <h2 className="text-lg text-[#2A2A2A] mb-1">Quote Summary</h2>
                   <p className="text-gray-500 text-sm">Review before finalizing</p>
                 </div>
-                {!effectiveOpenQuote && <Button
+                {/* Item 3: Edit hidden on a read-only (sent/accepted or admin
+                    viewer) render. */}
+                {!effectiveOpenQuote && !quoteReadOnly && <Button
                   variant="outline"
                   size="sm"
                   data-testid="edit-quote-details"
@@ -717,11 +761,19 @@ export function ExportFinalizePage() {
               if (allUnmatched.length === 0) return null;
               const outstanding = allUnmatched.filter(l => !l.rep_handled);
 
+              // Item 3 reconciliation: on a read-only (sent/accepted or admin
+              // viewer) render this card is a record, not a to-do list — no
+              // "Needing Your Input" heading, no "N remaining" call to action,
+              // no acknowledgment buttons.
               return (
-                <div className="bg-white rounded-lg p-6 shadow-sm border-2 border-amber-200">
+                <div className={`bg-white rounded-lg p-6 shadow-sm border-2 ${quoteReadOnly ? 'border-gray-200' : 'border-amber-200'}`}>
                   <div className="flex items-center justify-between mb-1">
-                    <h2 className="text-lg text-[#2A2A2A]">Items Needing Your Input</h2>
-                    {outstanding.length > 0 ? (
+                    <h2 className="text-lg text-[#2A2A2A]">
+                      {quoteReadOnly ? 'Items Not in Catalog' : 'Items Needing Your Input'}
+                    </h2>
+                    {quoteReadOnly ? (
+                      outstanding.length === 0 && <Check className="w-5 h-5 text-green-600" />
+                    ) : outstanding.length > 0 ? (
                       <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">
                         {outstanding.length} remaining
                       </span>
@@ -730,7 +782,9 @@ export function ExportFinalizePage() {
                     )}
                   </div>
                   <p className="text-gray-500 text-sm mb-4">
-                    These items were not found in the distributor catalog. Choose how you will handle each one before sending.
+                    {quoteReadOnly
+                      ? 'These items were not found in the distributor catalog.'
+                      : 'These items were not found in the distributor catalog. Choose how you will handle each one before sending.'}
                   </p>
                   {ackError && (
                     <div className="text-sm text-red-500 bg-red-50 border border-red-200 rounded-md p-3 mb-3">
@@ -755,6 +809,10 @@ export function ExportFinalizePage() {
                           {acked ? (
                             <span className="text-xs text-green-700 flex items-center gap-1 shrink-0" data-testid={`ack-done-${line.id}`}>
                               <Check className="w-3.5 h-3.5" /> Acknowledged
+                            </span>
+                          ) : quoteReadOnly ? (
+                            <span className="text-xs text-gray-500 shrink-0" data-testid={`ack-frozen-${line.id}`}>
+                              Not acknowledged
                             </span>
                           ) : (
                             <div className="flex gap-2 shrink-0">
@@ -782,7 +840,7 @@ export function ExportFinalizePage() {
                       );
                     })}
                   </div>
-                  {outstanding.length > 1 && (
+                  {outstanding.length > 1 && !quoteReadOnly && (
                     <button
                       type="button"
                       onClick={() => handleAcknowledgeUnmatched(outstanding.map(l => l.id), 'rep_will_handle')}
@@ -810,6 +868,11 @@ export function ExportFinalizePage() {
               <p className="text-gray-500 text-sm mb-4">
                 Attach supporting documents to your quote.
               </p>
+              {quoteReadOnly && readOnlyMarker && (
+                <p className="text-xs text-gray-500 mb-4 flex items-center gap-1" data-testid="documents-read-only">
+                  <Lock className="w-3 h-3" /> {readOnlyMarker}: document selections are locked.
+                </p>
+              )}
 
               <div className="bg-orange-50 border border-orange-100 rounded-md p-4 mb-6">
                 <div className="flex gap-2">
@@ -837,8 +900,9 @@ export function ExportFinalizePage() {
                   <div className="space-y-3 pl-1">
                     {onboardingDocuments.map((doc) => (
                       <div key={doc.id} className="flex items-center space-x-3">
-                        <Checkbox 
-                          id={doc.id} 
+                        <Checkbox
+                          id={doc.id}
+                          disabled={quoteReadOnly}
                           checked={selectedDocs.includes(doc.id)}
                           onCheckedChange={(checked) => {
                             if (checked) {
@@ -869,8 +933,9 @@ export function ExportFinalizePage() {
                   <div className="space-y-3 pl-1">
                     {onboardingLinks.map((link) => (
                       <div key={link.id} className="flex items-center space-x-3">
-                        <Checkbox 
+                        <Checkbox
                           id={link.id}
+                          disabled={quoteReadOnly}
                           checked={selectedLinks.includes(link.id)}
                           onCheckedChange={(checked) => {
                             if (checked) {
@@ -1181,8 +1246,14 @@ export function ExportFinalizePage() {
                 </Button>
                 <Button
                   className="w-full justify-start bg-[#F2993D] hover:bg-[#E8953A] text-white h-12"
-                  disabled={!isFinalized || downloadingOrderGuide || !quoteId || exportBlockedIncomplete}
-                  title={exportBlockedIncomplete ? (blockedSendReason ?? undefined) : (getOrderGuideDisabledReason(isFinalized, quoteId) ?? undefined)}
+                  disabled={!isFinalized || downloadingOrderGuide || !quoteId || exportBlockedIncomplete || quoteReadOnly}
+                  title={
+                    quoteReadOnly
+                      ? (readOnlyMarker ?? undefined)
+                      : exportBlockedIncomplete
+                        ? (blockedSendReason ?? undefined)
+                        : (getOrderGuideDisabledReason(isFinalized, quoteId) ?? undefined)
+                  }
                   onClick={handleOrderGuideDownload}
                 >
                   {downloadingOrderGuide ? (
@@ -1193,8 +1264,15 @@ export function ExportFinalizePage() {
                   Convert to Order Guide
                 </Button>
                 {/* B-168/BUG#21: Inline reason when blocked on extraction review — always
-                    names WHY (unacknowledged unmatched items or the generic reason), never silent. */}
-                {exportBlockedIncomplete && (
+                    names WHY (unacknowledged unmatched items or the generic reason), never silent.
+                    Item 3 reconciliation: on a read-only quote the review-gate copy is a
+                    contradiction (it invites action on a frozen document); the read-only
+                    marker is the reason instead. */}
+                {quoteReadOnly ? (
+                  <p className="text-xs text-gray-500 mt-1" data-testid="order-guide-read-only">
+                    {readOnlyMarker}
+                  </p>
+                ) : exportBlockedIncomplete && (
                   <p className="text-xs text-amber-600 mt-1" data-testid="order-guide-review-required">
                     {blockedSendReason}
                   </p>
@@ -1279,8 +1357,13 @@ export function ExportFinalizePage() {
                   ) : (
                     <>
                       {/* Same gate as the sticky send control: block up front
-                          with the reason on it, never a silent click. */}
-                      {exportBlockedIncomplete && (
+                          with the reason on it, never a silent click. Read-only
+                          (item 3) takes precedence over the review-gate copy. */}
+                      {quoteReadOnly ? (
+                        <p className="text-xs text-gray-500 mb-1" data-testid="send-to-myself-read-only">
+                          {readOnlyMarker}
+                        </p>
+                      ) : exportBlockedIncomplete && (
                         <p className="text-xs text-amber-600 mb-1" data-testid="send-to-myself-blocked">
                           {blockedSendReason}
                         </p>
@@ -1288,8 +1371,14 @@ export function ExportFinalizePage() {
                       <Button
                         variant="outline"
                         className="w-full justify-start border-gray-300 text-[#2A2A2A] h-12"
-                        disabled={!isFinalized || sendEmailMutation.loading || exportBlockedIncomplete}
-                        title={exportBlockedIncomplete ? (blockedSendReason ?? undefined) : undefined}
+                        disabled={!isFinalized || sendEmailMutation.loading || exportBlockedIncomplete || quoteReadOnly}
+                        title={
+                          quoteReadOnly
+                            ? (readOnlyMarker ?? undefined)
+                            : exportBlockedIncomplete
+                              ? (blockedSendReason ?? undefined)
+                              : undefined
+                        }
                         onClick={handleSendEmail}
                       >
                         <Mail className="w-4 h-4 mr-3" />
@@ -1324,9 +1413,15 @@ export function ExportFinalizePage() {
           send gating (extraction review gate + recipient-required gate). */}
       {!isDemoMode() && (
         <div className="fixed bottom-0 left-0 right-0 md:left-64 bg-white border-t border-gray-200 p-4 z-40">
-          {/* B-168/BUG#21: Review gate takes precedence — block + always explain WHY
-              (never silent) before the email hint */}
-          {exportBlockedIncomplete ? (
+          {/* Item 3: read-only (sent/accepted or admin viewer) takes precedence
+              over every other gate — the quote already went out (or the viewer
+              is not its author), so no review-gate copy inviting action. */}
+          {quoteReadOnly ? (
+            <p className="text-xs text-center text-gray-500 mb-1" data-testid="send-quote-read-only">
+              {readOnlyMarker}
+            </p>
+          ) : exportBlockedIncomplete ? (
+            /* B-168/BUG#21: Review gate — block + always explain WHY (never silent) */
             <p className="text-xs text-center text-amber-600 mb-1" data-testid="send-quote-review-required">
               {blockedSendReason}
             </p>
@@ -1340,11 +1435,13 @@ export function ExportFinalizePage() {
           )}
           <button
             onClick={() => setShowEmailDrawer(true)}
-            disabled={exportBlockedIncomplete || isOpenQuoteSendDisabled(effectiveOpenQuote, manualEmail, contactEmail)}
+            disabled={quoteReadOnly || exportBlockedIncomplete || isOpenQuoteSendDisabled(effectiveOpenQuote, manualEmail, contactEmail)}
             title={
-              exportBlockedIncomplete
-                ? (blockedSendReason ?? undefined)
-                : (isOpenQuoteSendDisabled(effectiveOpenQuote, manualEmail, contactEmail) ? SEND_QUOTE_DISABLED_REASON : undefined)
+              quoteReadOnly
+                ? (readOnlyMarker ?? undefined)
+                : exportBlockedIncomplete
+                  ? (blockedSendReason ?? undefined)
+                  : (isOpenQuoteSendDisabled(effectiveOpenQuote, manualEmail, contactEmail) ? SEND_QUOTE_DISABLED_REASON : undefined)
             }
             className="w-full md:w-auto md:min-w-[200px] md:mx-auto md:block bg-[#F2993D] hover:bg-[#E8953A] text-white font-medium py-2.5 px-5 rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed"
           >

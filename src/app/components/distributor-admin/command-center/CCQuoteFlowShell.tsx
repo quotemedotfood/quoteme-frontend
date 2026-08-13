@@ -67,6 +67,16 @@ export function CCQuoteFlowShell() {
   }
 
   // Unchanged for every other role: no CCLayout/RepLayout injection here.
+  //
+  // P0 route/shell guard item 1 (quoteme_admin): the admin stays in the chrome
+  // RootLayout already gives them (AppSidebar) — this shell adds nothing — and
+  // the quote-flow PAGES themselves (MapIngredientsPage / QuoteBuilderPage /
+  // ExportFinalizePage) render READ-ONLY with an "Admin view (read-only)"
+  // marker for quoteme_admin (see src/app/utils/quoteImmutability.ts). A
+  // QM admin deep-linking /map-ingredients?quoteId=... therefore never sees
+  // active dish-checkbox / Manually Add / Add Match / Adjust Pricing /
+  // Looks good / Needs fixes controls whose writes the server intends to
+  // refuse.
   return <Outlet />;
 }
 

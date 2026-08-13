@@ -167,3 +167,13 @@ export function useAuth() {
   }
   return context;
 }
+
+/**
+ * Like useAuth, but tolerant of a missing provider (returns null instead of
+ * throwing). Used by quote-flow pages that read the viewer role for
+ * read-only gating (P0 route/shell guard) while remaining renderable in unit
+ * tests that mount them without the full provider stack.
+ */
+export function useOptionalAuth(): AuthContextType | null {
+  return useContext(AuthContext) ?? null;
+}
