@@ -234,9 +234,12 @@ export function ExportFinalizePage() {
   }
 
   // CSV download
+  const [csvError, setCsvError] = useState<string | null>(null);
+
   async function handleCsvDownload() {
     if (!quoteData) return;
     setDownloadingCsv(true);
+    setCsvError(null);
     try {
       const { matched, produceNames, otherUnmatched } = partitionLines(quoteData.lines || []);
       const headers = ['Category', 'Item #', 'Brand', 'Product', 'Pack Size', 'Qty', 'Unit Price'];
@@ -275,10 +278,15 @@ export function ExportFinalizePage() {
       const a = document.createElement('a');
       a.href = url;
       a.download = `quote-${quoteId}.csv`;
+      document.body.appendChild(a);
       a.click();
-      URL.revokeObjectURL(url);
-      setHasInteracted(true);
-      setShowSuccessDrawer(true);
+      setTimeout(() => {
+        URL.revokeObjectURL(url);
+        a.remove();
+      }, 0);
+    } catch {
+      setCsvError('Something went wrong building the CSV. Please try again.');
+      return;
     } finally {
       setDownloadingCsv(false);
     }
@@ -295,10 +303,12 @@ export function ExportFinalizePage() {
         const a = document.createElement('a');
         a.href = url;
         a.download = `quote-${quoteId}.pdf`;
+        document.body.appendChild(a);
         a.click();
-        URL.revokeObjectURL(url);
-        setHasInteracted(true);
-        setShowSuccessDrawer(true);
+        setTimeout(() => {
+          URL.revokeObjectURL(url);
+          a.remove();
+        }, 0);
       }
     } finally {
       setDownloadingPdf(false);
@@ -316,8 +326,12 @@ export function ExportFinalizePage() {
         const a = document.createElement('a');
         a.href = url;
         a.download = `order-guide-${quoteId}.xlsx`;
+        document.body.appendChild(a);
         a.click();
-        URL.revokeObjectURL(url);
+        setTimeout(() => {
+          URL.revokeObjectURL(url);
+          a.remove();
+        }, 0);
       } else if (result.error) {
         // B-115: Set dedicated orderGuideError so it renders inline near the button,
         // not inside the closed PDF preview modal.
@@ -1166,6 +1180,11 @@ export function ExportFinalizePage() {
                   )}
                   CSV Export
                 </Button>
+                {csvError && (
+                  <p className="text-xs text-red-500 mt-1" data-testid="csv-error">
+                    {csvError}
+                  </p>
+                )}
                 <Button
                   variant="outline"
                   className="w-full justify-start border-gray-300 text-[#2A2A2A] h-12"
