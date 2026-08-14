@@ -658,14 +658,27 @@ export function usePairMe(opts = {}){
       const wineListPickedDishes=chosen.map(dishToEngineDish);
       const blank=st.blank,conflict=st.guest==="sarah";
       const lo=Math.min(st.bMin,st.bMax),hi=Math.max(st.bMin,st.bMax);
+      // ONBOARDING HEADER. This table is laid out by STEP (1..6), not by
+      // screen index s. Screen indices run Q1Knowledge=2 .. Q6Summary=7 (see
+      // PATH_FOR_SCREEN above), so step = s - 1, which is exactly what is
+      // published as `step` at the vm seam below.
+      //
+      // It was previously subscripted [s], which shifted every heading one
+      // screen early: Q1 rendered Q2's heading, Q5 rendered "That's
+      // everything.", and Q6 (s=7) ran off the end of the array and rendered
+      // no heading and no subtitle at all. The leading null is what made [s]
+      // read as correctly 1-based on review. Index by obStep, never by s.
+      const obStep=s-1;
       const ob=[null,
         {t:"How well do you know wine?",s:"Be honest. This changes what we say, not what we pour."},
         {t:"How adventurous are you feeling?",s:"You can change this at any table, any night."},
         {t:"What's comfortable tonight?",s:"A floor and a ceiling. We never show you what you didn't ask to see."},
         {t:"What do you already love?",s:"Regions, grapes, styles. Whatever comes to mind."},
         {t:"Anything we must know?",s:"This one isn't about taste. We take it seriously."},
-        {t:"That's everything.",s:"Six questions, done. Have a full glass."}][s];
-      const glassH=34*Math.min(1,(s>=1&&s<=6?s:0)/6);
+        {t:"That's everything.",s:"Six questions, done. Have a full glass."}][obStep];
+      // Same root cause: the glass filled from raw s, so it started at 2/6 on
+      // Q1 and emptied to 0 on Q6, where s=7 fell outside the s<=6 guard.
+      const glassH=34*Math.min(1,(obStep>=1&&obStep<=6?obStep:0)/6);
 
       const offerSet=blank?[
         {k:"vach",role:"Safe, and we mean that kindly",roleColor:t.muted,why:"You've told us nothing, so we won't pretend we know you. Sancerre disappoints the fewest people at a table with mussels and a steak on it.",covers:"Moules, the pate, most of the table"},
