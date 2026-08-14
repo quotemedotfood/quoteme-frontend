@@ -124,12 +124,16 @@ const DISHES=[
  {id:"d4",sec:"Dessert",n:"Cheese, three",d:"Comte, Epoisses, Roquefort, honeycomb",p:18}];
 const SECS=["Raw bar","Starters","Mains","Sides","Dessert"];
 
+// R2 item b: `lang` (BCP-47) is the wine's own origin language, used to
+// select the utterance's voice - not a translation of `say`/`speak`, which
+// stay the same hand-authored ENGLISH RESPELLING as before (see speak.js's
+// doc comment). All five are French producers/regions.
 const W={
- gim:{prod:"Pierre Gimonnet & Fils",wine:"Blanc de Blancs 1er Cru Brut",meta:"chardonnay . Champagne, France",say:"zhee-moh-NAY",speak:"Zhee moh nay. Blanc de Blancs.",tip:"Two syllables that matter: moh-NAY. The rest can mumble.",glass:26,btl:138,stock:6},
- trapet:{prod:"Domaine Trapet",wine:"Gevrey-Chambertin",meta:"pinot noir . Burgundy, France",say:"zhev-RAY shom-ber-TAN",speak:"Trah pay. Zhev ray shom ber tan.",tip:"Land on TAN and stop.",glass:null,btl:234,stock:3},
- foil:{prod:"Jean Foillard",wine:"Morgon Cote du Py",meta:"gamay . Beaujolais, France",say:"fwah-YAR, mor-GOHN",speak:"Fwah yar. Mor gohn, coat due pee.",tip:"Foillard rhymes with the back half of boulevard.",glass:21,btl:102,stock:11},
- vach:{prod:"Domaine Vacheron",wine:"Sancerre",meta:"sauvignon blanc . Loire, France",say:"vash-ROHN, sahn-SEHR",speak:"Vash rohn. Sahn sehr.",tip:"Sancerre is two beats, both short.",glass:23,btl:102,stock:14},
- huet:{prod:"Domaine Huet",wine:"Vouvray Sec Le Mont",meta:"chenin blanc . Loire, France",say:"oo-AY, voo-VRAY",speak:"Oo ay. Voo vray sec, luh mohn.",tip:"The H is silent. Start with the oo.",glass:22,btl:100,stock:9}};
+ gim:{prod:"Pierre Gimonnet & Fils",wine:"Blanc de Blancs 1er Cru Brut",meta:"chardonnay . Champagne, France",say:"zhee-moh-NAY",speak:"Zhee moh nay. Blanc de Blancs.",tip:"Two syllables that matter: moh-NAY. The rest can mumble.",lang:"fr-FR",glass:26,btl:138,stock:6},
+ trapet:{prod:"Domaine Trapet",wine:"Gevrey-Chambertin",meta:"pinot noir . Burgundy, France",say:"zhev-RAY shom-ber-TAN",speak:"Trah pay. Zhev ray shom ber tan.",tip:"Land on TAN and stop.",lang:"fr-FR",glass:null,btl:234,stock:3},
+ foil:{prod:"Jean Foillard",wine:"Morgon Cote du Py",meta:"gamay . Beaujolais, France",say:"fwah-YAR, mor-GOHN",speak:"Fwah yar. Mor gohn, coat due pee.",tip:"Foillard rhymes with the back half of boulevard.",lang:"fr-FR",glass:21,btl:102,stock:11},
+ vach:{prod:"Domaine Vacheron",wine:"Sancerre",meta:"sauvignon blanc . Loire, France",say:"vash-ROHN, sahn-SEHR",speak:"Vash rohn. Sahn sehr.",tip:"Sancerre is two beats, both short.",lang:"fr-FR",glass:23,btl:102,stock:14},
+ huet:{prod:"Domaine Huet",wine:"Vouvray Sec Le Mont",meta:"chenin blanc . Loire, France",say:"oo-AY, voo-VRAY",speak:"Oo ay. Voo vray sec, luh mohn.",tip:"The H is silent. Start with the oo.",lang:"fr-FR",glass:22,btl:100,stock:9}};
 
 const BRIEF={
  gim:{means:"Blanc de Blancs means white from whites, so this is Champagne made only from chardonnay, no red grapes in it at all. 1er Cru is the second best vineyard rank in the region. Gimonnet is a grower, which means they farm what they bottle rather than buying grapes in.",
@@ -571,10 +575,14 @@ export function usePairMe(opts = {}){
   // BUILD 2: was a hand-rolled SpeechSynthesisUtterance here (rate .82, pitch 1,
   // sp.cancel() first) duplicated verbatim in WineList.jsx/TellUsScreen.jsx/
   // EntryScreen.jsx. Now the one shared helper (lib/speak.js) - see its header
-  // for the lang='en-US' reasoning and the empty-getVoices() guard. `say` stays
-  // the local name everything below already calls; each call site below is
-  // still responsible for its own speak->say->raw-label precedence.
-  const say=(text)=>speakText(text);
+  // for the voice-selection/language reasoning and the empty-getVoices() guard.
+  // `say` stays the local name everything below already calls; each call site
+  // below is still responsible for its own speak->say->raw-label precedence.
+  // R2 item b: `say` now takes an optional `lang` (the wine's own origin,
+  // from W[key].lang / a wine row's own `lang`) and forwards it to
+  // speak.js as `opts.lang`; call sites with no lang to hand it (e.g. the
+  // hardcoded demoSpeak line below) fall back to speak.js's own 'en-US'.
+  const say=(text,lang)=>speakText(text,{lang});
   const field=(key)=>{const on=st.listening===key;return {
       v:st[key],set:e=>patch({[key]:e.target.value}),
       mic:()=>patch({listening:on?null:key}),
@@ -699,7 +707,14 @@ export function usePairMe(opts = {}){
           // undefined here for every non-demo wine - fall back to the short
           // phonetic (w.say) and, failing that, the raw label rather than
           // speaking "undefined".
-          speak:()=>say(w.speak||w.say||w.label),
+          // NOTE (uncertain, see final report): `w` here is an engine wine
+          // object (pairingAdapter.js's rowToEngineWine output, out of this
+          // change's file scope) - it does not yet copy a `lang` field
+          // alongside say/speak, so w.lang is undefined for real
+          // engine-ranked offerings and say() falls back to speak.js's
+          // 'en-US' default. Passed through anyway so this call site is
+          // already correct the moment that passthrough is added upstream.
+          speak:()=>say(w.speak||w.say||w.label,w.lang),
           open:null, // no BottleBrief data for engine wines yet; TheWine.jsx only renders the Brief link when `open` is set
           stockColor:"var(--pm-muted)",stockNote:"On the list tonight."};
       }):null;
@@ -1084,7 +1099,7 @@ export function usePairMe(opts = {}){
           return Array.from(byLabel.keys()).map(label=>{const r=(st.demoWineRows||[]).find(x=>x.label===label)||{};return {
             label,prod:r.producer||label,wine:r.wine_name||"",meta:r.meta||"",btl:r.price,
             glass:r.glass_price?"$"+r.glass_price+" glass":"bottle only",say:r.say||"",
-            dishes:byLabel.get(label).dishes,speak:()=>say(r.speak||r.say||label)};});})(),
+            dishes:byLabel.get(label).dishes,speak:()=>say(r.speak||r.say||label,r.lang)};});})(),
         showFormatTabs:usingEngine,formatTabs,
         showCoverage:!!(coverageRows&&coverageRows.length),coverageTitle,coverage:coverageRows,
         offerTitle:usingEngine?(pairingDirection==="one_bottle"?"One bottle for the table":"Your wine"):(blank?"Three wines, no assumptions":"Your wine"),
@@ -1101,7 +1116,7 @@ export function usePairMe(opts = {}){
           bd:on?"var(--pm-chrome)":"var(--pm-rule)",bw:on?"2px":"1px",bg:on?"var(--pm-sel)":"var(--pm-card)",
           chip:on?"presenting":"tap to add",chipBg:on?"#F9E4C7":"var(--pm-sunken)",
           pick:()=>patch(x=>({present:x.present.includes(o.k)?x.present.filter(y=>y!==o.k):[...x.present,o.k]})),
-          speak:()=>say(w.speak||w.say||w.wine),
+          speak:()=>say(w.speak||w.say||w.wine,w.lang),
           open:()=>patch({s:16,bottle:o.k,back:11}),
           stockColor:w.stock<4?ORANGE:"var(--pm-muted)",
           stockNote:w.stock<4?"Only "+w.stock+" left tonight":"Plenty in the cellar"};}),
@@ -1118,13 +1133,16 @@ export function usePairMe(opts = {}){
             return {
               label:engineShownLabels.length>1?(i===0?"Bottle one":"Bottle two"):"One bottle",
               prod:w.producer,wine:w.wine_name,meta:w.meta+" . $"+w.price,say:w.say,tip:w.tip,
-              speak:()=>say(w.speak||w.say||w.label),
+              // Same engine-wine caveat as engineOffers above: w.lang is
+              // undefined here until pairingAdapter.js's rowToEngineWine
+              // also copies it through; harmless (speak.js defaults en-US).
+              speak:()=>say(w.speak||w.say||w.label,w.lang),
               compromise:(pairingDirection==="one_bottle"&&compromiseNote)?compromiseNote.text:null,
             };
           })
           :shownKeys.map((k,i)=>{const w=W[k];return {
             label:shownKeys.length>1?(i===0?"Bottle one":"Bottle two"):"One bottle",
-            prod:w.prod,wine:w.wine,meta:w.meta+" . $"+w.btl,say:w.say,tip:w.tip,speak:()=>say(w.speak||w.say||w.wine),compromise:null};}),
+            prod:w.prod,wine:w.wine,meta:w.meta+" . $"+w.btl,say:w.say,tip:w.tip,speak:()=>say(w.speak||w.say||w.wine,w.lang),compromise:null};}),
         hasDiet:st.diet.length>0,dietLine:st.diet.length?st.diet.join(" . "):"none",
 
         rateRows:[["dish","The food"],["wine","The wine"],["pair","How they went together"]].map(([k,label])=>({
@@ -1167,7 +1185,7 @@ export function usePairMe(opts = {}){
 
         bb:(function(self,key){const w=W[key],b=BRIEF[key];return {
           prod:w.prod,wine:w.wine,meta:w.meta+" . $"+w.btl+(w.glass?" . $"+w.glass+" glass":" . bottle only"),
-          say:w.say,tip:w.tip,speak:()=>say(w.speak||w.say||w.wine),
+          say:w.say,tip:w.tip,speak:()=>say(w.speak||w.say||w.wine,w.lang),
           means:b.means,notes:b.notes,why:b.why,bridge:b.bridge,yours:b.yours,
           save:()=>patch({saved:!st.saved}),
           savedLabel:st.saved?"Saved":"Save it",savedBg:st.saved?"var(--pm-sel)":"transparent",
@@ -1181,7 +1199,7 @@ export function usePairMe(opts = {}){
           bd:r.on?"var(--pm-selBd)":"var(--pm-rule)",bg:r.on?"var(--pm-sel)":"var(--pm-card)",
           trackBg:r.on?"#EFB96B":"var(--pm-sunken)",trackBd:r.on?"#E5A44F":"var(--pm-rule)",
           knobX:r.on?"22px":"2px",knobBg:r.on?"#1F2A44":"var(--pm-muted)"})),
-        demoSpeak:()=>say("Zhev ray shom ber tan. You said that perfectly."),
+        demoSpeak:()=>say("Zhev ray shom ber tan. You said that perfectly.","fr-FR"),
         acctTitle:st.account?"Signed in with "+st.account:"Not signed in",
         acctSub:st.account?"Your taste, your history and your table are saved.":"Everything works without it. Signing in is only so your taste survives closing the app.",
         acctAction:st.account?"Switch account":"Sign in",
