@@ -24,7 +24,7 @@
 import { dishProfile, scoreWine } from '../../../../packages/pairing/src/scoring.js';
 import { VOCAB } from '../../../../packages/pairing/src/wineVocab.js';
 import { rowToEngineWine, headlineWhy, GENERIC_RULE_IDS } from './pairingAdapter.js';
-import { deriveColor, deriveCountry, COLOR_TAB_ORDER } from './wineListVocab.js';
+import { deriveColor, deriveCountry, deriveRegion, COLOR_TAB_ORDER } from './wineListVocab.js';
 
 function titleCase(s) {
   return String(s || '')
@@ -79,7 +79,7 @@ export function buildWineListModel(wines, pickedDishes, tables) {
       const country = deriveCountry(row);
       const regionHead = String(row.region_head || row.region || '').toLowerCase();
       const grapeHead = String(row.grape_head || row.grape || '').toLowerCase();
-      const region = regionHead ? titleCase(regionHead) : row.region || '';
+      const region = deriveRegion(row, regionHead ? titleCase(regionHead) : row.region || '');
       const grape = grapeHead ? titleCase(grapeHead) : row.grape || '';
       const pronunciation = row.say || VOCAB.pronunciation(regionHead) || VOCAB.pronunciation(grapeHead) || '';
       const displayName = [row.producer, row.wine_name].filter(Boolean).join(', ') || row.label || '';

@@ -85,8 +85,84 @@ export function deriveColor(row) {
  * @returns {string} a country name, or "Other" when neither the region nor
  *   the grape resolves one.
  */
+/**
+ * Heads the shared wine_vocab.csv has no country for, but that a real list
+ * puts in front of a diner. Same spirit as GRAPE_COLOR_FALLBACK above: small,
+ * explicit, and it grows as real lists surface gaps.
+ *
+ * This lives on the FE display side ON PURPOSE. The shared corpus and the
+ * parser are being worked on the other seat right now, and a country map is
+ * display mapping: it decides which header a row sits under in the browse
+ * view, nothing more. Nothing here feeds scoring or selection.
+ *
+ * The Champagne villages below are grower-Champagne communes. They only start
+ * paying off once the parser emits a region_head for those rows, which today
+ * it does not (see CHAMPAGNE_STYLE below for what actually catches them now).
+ */
+const COUNTRY_FALLBACK = {
+  // Burgundy gap surfaced by the Aquitaine demo list.
+  marsannay: 'France',
+  aligote: 'France',
+  aligoté: 'France',
+  'bourgogne aligote': 'France',
+  'bourgogne aligoté': 'France',
+  // Champagne villages.
+  dizy: 'France', 'mareuil-sur-ay': 'France', 'mareuil sur ay': 'France',
+  cuis: 'France', cumieres: 'France', cumières: 'France', ay: 'France',
+  avize: 'France', cramant: 'France', oger: 'France',
+  'le mesnil-sur-oger': 'France', bouzy: 'France', verzenay: 'France',
+  verzy: 'France', ambonnay: 'France', vertus: 'France', chouilly: 'France',
+  trepail: 'France', 'villers-marmery': 'France', 'rilly-la-montagne': 'France',
+  hautvillers: 'France', epernay: 'France', reims: 'France', bisseuil: 'France',
+  'tours-sur-marne': 'France',
+};
+
+/**
+ * Champagne-shaped rows the village list will never fully cover.
+ *
+ * A cru designation ALONE is not enough, because Burgundy and Alsace both use
+ * grand cru. It is the PAIRING of a cru designation with a Champagne style
+ * term that is specific to Champagne, so both halves are required.
+ */
+const CHAMPAGNE_CRU = /\b(premier|1er|grand)\s+cru\b/i;
+const CHAMPAGNE_STYLE = /\b(extra brut|blanc de blancs|blanc de noirs|rose brut|rosé brut|brut)\b/i;
+
+function looksLikeChampagne(row) {
+  const designation = String(row.designation || '');
+  if (!CHAMPAGNE_CRU.test(designation)) return false;
+  const name = [row.wine_name, row.label].filter(Boolean).join(' ');
+  return CHAMPAGNE_STYLE.test(name);
+}
+
+/**
+ * @param {Record<string, any>} row
+ * @returns {string} a country name, or "Other" when neither the region nor
+ *   the grape nor the fallbacks resolve one.
+ */
 export function deriveCountry(row) {
   const regionHead = String(row.region_head || row.region || '').toLowerCase();
   const grapeHead = String(row.grape_head || row.grape || '').toLowerCase();
-  return (regionHead && VOCAB.countryFor(regionHead)) || (grapeHead && VOCAB.countryFor(grapeHead)) || 'Other';
+  return (
+    (regionHead && VOCAB.countryFor(regionHead)) ||
+    (grapeHead && VOCAB.countryFor(grapeHead)) ||
+    COUNTRY_FALLBACK[regionHead] ||
+    COUNTRY_FALLBACK[grapeHead] ||
+    (looksLikeChampagne(row) ? 'France' : '') ||
+    'Other'
+  );
+}
+
+/**
+ * The region header a row sits under, inside its country. Only overrides the
+ * parsed region when a row resolved its country by the Champagne-style rule
+ * above and has no region of its own to show.
+ *
+ * @param {Record<string, any>} row
+ * @param {string} parsedRegion - whatever the caller already derived
+ * @returns {string}
+ */
+export function deriveRegion(row, parsedRegion) {
+  if (parsedRegion) return parsedRegion;
+  if (looksLikeChampagne(row)) return 'Champagne';
+  return '';
 }
