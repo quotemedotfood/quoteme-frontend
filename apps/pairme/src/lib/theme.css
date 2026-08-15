@@ -13,21 +13,65 @@
 input,textarea,button{font-family:var(--font-body)}
 
 /*
- * STANDING RULE (Moose): no persistent scrollbar chrome on ANY page. Mobile
- * first - a lingering scrollbar breaks the phone-frame illusion on desktop and
- * never shows on touch anyway. Hide the scrollbar visuals app-wide while every
- * container stays fully scrollable (wheel, touch, trackpad, keyboard). A true
- * show-on-scroll-then-fade needs per-container JS and is not portable across
- * Windows/Linux persistent scrollbars, so we hide the chrome instead.
+ * STANDING RULE (Moose): no persistent scrollbar chrome INSIDE the phone
+ * frame. Mobile first - a lingering scrollbar breaks the phone-frame
+ * illusion, and never shows on touch anyway. Every container stays fully
+ * scrollable (wheel, touch, trackpad, keyboard) either way; only the
+ * visible chrome is removed. A true show-on-scroll-then-fade needs
+ * per-container JS and is not portable across Windows/Linux persistent
+ * scrollbars, so this hides the chrome outright instead, scoped rather
+ * than faded.
+ *
+ * ROOT CAUSE, do not re-widen this to the bare `*` selector: this rule used
+ * to be `*{scrollbar-width:none;...}` and its QuoteMe equivalent
+ * (src/styles/theme.css, this same repo) shipped the identical bare-`*`
+ * pattern and it caused a GPU-compositor layout-thrash freeze, invisible in
+ * headless CI: with every element in the tree carrying scrollbar styling
+ * and no reserved gutter, any one container's scrollbar appearing/
+ * disappearing as content shifted re-triggered relayout across the whole
+ * tree (see QuoteMe commit 4d74a88, "Fix renderer freeze:
+ * de-universalize scrollbar styling, stabilize gutter"). Their fix scoped
+ * the rule to an explicit list of real scroll containers and added
+ * scrollbar-gutter:stable; this does the PairMe equivalent below, naming
+ * the actual containers instead of `*`.
+ *
+ * .pm-scroll-hide   - scrollbar chrome off, always (Phone's own onboarding
+ *   body, the /entry, /tell-us and /login screens mounted in DeviceFrame,
+ *   and the horizontal chip/tab strips inside the onboarding screens -
+ *   Menu.jsx, WineList.jsx's color tabs).
+ * .pm-scroll-native - scrollbar chrome ON at desktop widths (Windows/Linux
+ *   have no persistent overlay scrollbar, so a hidden one leaves no signal
+ *   that content continues below the fold); hidden again at <=480px, where
+ *   the shell IS a real phone (see the max-width:480px block below - touch
+ *   scrolling has no persistent bars to show regardless). Used by the wine
+ *   list's own scroll body (App.jsx's DeviceFrame, keepNativeScrollbar) and
+ *   the restaurant operator desktop surface - the two DESKTOP surfaces this
+ *   product rule explicitly keeps a scrollbar on.
  */
-*{scrollbar-width:none;-ms-overflow-style:none;}
-*::-webkit-scrollbar{width:0;height:0;display:none;}
+.pm-scroll-hide{scrollbar-width:none;-ms-overflow-style:none;}
+.pm-scroll-hide::-webkit-scrollbar{width:0;height:0;display:none;}
+
+.pm-scroll-native{scrollbar-gutter:stable;}
+@media (max-width: 480px){
+  .pm-scroll-native{scrollbar-gutter:auto;scrollbar-width:none;-ms-overflow-style:none;}
+  .pm-scroll-native::-webkit-scrollbar{width:0;height:0;display:none;}
+}
 
 input[type=range]{accent-color:#EFB96B}
 input:focus,textarea:focus{outline:2px solid #EFB96B;outline-offset:1px}
 @keyframes pmspin{to{transform:rotate(360deg)}}
-.pm-phone input:not([type=range]){padding-right:44px}
-.pm-phone textarea{padding-right:46px}
+/*
+ * Reserved space for the absolute-positioned mic button overlaid on a Q-
+ * screen's own <Input>/<textarea> (see Q1Knowledge.jsx etc.). Scoped to
+ * Phone's own onboarding body (App.jsx's .pm-onboarding-body class), NOT
+ * the whole .pm-phone frame: DeviceFrame's other tenants (EntryScreen,
+ * TellUsScreen, Login) lay their own mic buttons out inline, not absolute,
+ * and do not want this padding - the old .pm-phone-scoped version of this
+ * rule would have force-added it to their inputs the moment those screens
+ * moved into the shell.
+ */
+.pm-onboarding-body input:not([type=range]){padding-right:44px}
+.pm-onboarding-body textarea{padding-right:46px}
 
 /*
  * Full-bleed on mobile (demo feedback item 2): a bordered 390x800 card

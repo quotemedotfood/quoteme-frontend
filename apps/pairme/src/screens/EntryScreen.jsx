@@ -11,11 +11,12 @@ import { speak as speakText } from '../lib/speak.js';
 
 /**
  * EntryScreen: the four diner entry points (paste-first) on ONE screen,
- * raw text -> dishes -> pick -> pair -> the 3 offerings. Deliberately its
- * own standalone route (routes.jsx's "/entry"), NOT nested inside App.jsx's
- * fixed-size Phone mockup frame (390x800, built for a desktop preview) -
- * this has to actually work full-width in a real phone browser tonight, so
- * it renders full-viewport instead of inside that card.
+ * raw text -> dishes -> pick -> pair -> the 3 offerings. Its own standalone
+ * route (routes.jsx's "/entry"), mounted inside App.jsx's DeviceFrame - the
+ * same 390x800 phone shell every other route uses - so it no longer breaks
+ * the phone-frame illusion on desktop. This root div still sets its own
+ * minHeight/background (see below); DeviceFrame's internal scroll container
+ * is what keeps it fully scrollable inside the shell either way.
  *
  * Reads packages/pairing (parseMenu, and via pairingAdapter/offlinePairing,
  * the scoring engine + zero-network tables) READ ONLY - no file under

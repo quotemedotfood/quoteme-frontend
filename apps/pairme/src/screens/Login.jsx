@@ -5,8 +5,11 @@ import { errorCopy } from '../lib/errors.js';
 
 /**
  * /login - a real, bookmarkable route, NOT one of the phone-frame SCREENS in
- * routes.jsx/state.js. One screen, one toggle between login and signup
- * (signup is not a separate page, per the AUTH CONTRACT this implements).
+ * routes.jsx/state.js (it draws its own layout, not <Phone>), but mounted
+ * inside the same 390x800 device shell via App.jsx's DeviceFrame
+ * (routes.jsx) like every other route except /operator. One screen, one
+ * toggle between login and signup (signup is not a separate page, per the
+ * AUTH CONTRACT this implements).
  *
  * NEVER a wall: this route is only ever reached by tapping the top-right
  * "Log in" chrome button (App.jsx's vm.goLogin) or a direct visit to

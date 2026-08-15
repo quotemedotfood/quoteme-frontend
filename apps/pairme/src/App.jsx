@@ -38,6 +38,58 @@ function statusBarTime(d) {
 }
 
 /**
+ * The single 390x800 phone-shaped box every mobile-first screen mounts
+ * inside, defined ONCE so a fix here is inherited everywhere instead of
+ * needing a per-screen patch. `position: relative` makes the box its own
+ * containing block, so a screen reaching for position:fixed/absolute stays
+ * scoped to the device instead of escaping to the real page; `overflow:
+ * hidden` means whatever is inside MUST scroll through an internal scroll
+ * container (DeviceFrame below, or Phone's own body further down), never
+ * through the box's own border. Phone (the onboarding chrome) and
+ * DeviceFrame (routes.jsx's standalone screens) both build on this, so
+ * there is exactly one definition of the frame's geometry.
+ */
+function frameBoxStyle(themeVars) {
+  return {
+    width: 390, height: 800, background: 'var(--pm-page)',
+    border: '1px solid var(--pm-rule)', borderRadius: 26,
+    position: 'relative', overflow: 'hidden',
+    boxShadow: '0 8px 28px -12px rgba(31,42,68,.28)',
+    display: 'flex', flexDirection: 'column',
+    ...parseVars(themeVars),
+  };
+}
+
+/**
+ * DeviceFrame: mounts a standalone full-page screen (not one of Phone's
+ * onboarding SCREENS below) inside the phone shell, with one internal
+ * scroll container so the screen's own overflow (even a naive
+ * minHeight:100vh written against the real viewport) scrolls inside the
+ * box instead of getting clipped by overflow:hidden or blowing the frame
+ * out to full desktop width. Used by routes.jsx for /entry, /tell-us,
+ * /login and /wines/list - four routes that used to render outside the
+ * shell entirely. /operator is deliberately NOT wrapped here: it is the
+ * restaurant-side desktop surface and a 390px frame around it would be
+ * wrong.
+ *
+ * `keepNativeScrollbar`: the wine list is long and, viewed at desktop
+ * widths, needs the browser's own scrollbar as the one signal (on Windows/
+ * Linux, which have no persistent overlay scrollbar) that content
+ * continues below the fold - see lib/theme.css's .pm-scroll-native. Every
+ * other DeviceFrame screen hides scrollbar chrome like the rest of the
+ * phone shell (.pm-scroll-hide); scrolling itself is unaffected either way.
+ */
+export function DeviceFrame({ children, themeVars, keepNativeScrollbar }) {
+  return (
+    <div className="pm-phone" style={frameBoxStyle(themeVars)}>
+      <div className={keepNativeScrollbar ? 'pm-scroll-native' : 'pm-scroll-hide'} style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden' }}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+/**
  * Phone chrome: status bar, an integration error banner, the scroll body,
  * and the sticky action bar. Screens never draw any of this (Desi's
  * contract). The error banner is new here, not in any screen file: it is
@@ -85,16 +137,7 @@ export function Phone({ vm }) {
     lastY.current = y;
   };
   return (
-    <div
-      className="pm-phone"
-      style={{
-        width: 390, height: 800, background: 'var(--pm-page)',
-        border: '1px solid var(--pm-rule)', borderRadius: 26, overflow: 'hidden',
-        boxShadow: '0 8px 28px -12px rgba(31,42,68,.28)',
-        display: 'flex', flexDirection: 'column',
-        ...parseVars(vm.themeVars),
-      }}
-    >
+    <div className="pm-phone" style={frameBoxStyle(vm.themeVars)}>
       <div style={{ flex: 'none', background: 'var(--pm-chrome)', padding: '7px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
         {/* The logo is the one thing that always stays in the header. */}
         <div style={{ flex: 'none', display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -132,7 +175,7 @@ export function Phone({ vm }) {
         </button>
       ) : null}
 
-      <div ref={vm.bodyRef} onScroll={onBodyScroll} style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
+      <div ref={vm.bodyRef} onScroll={onBodyScroll} className="pm-onboarding-body pm-scroll-hide" style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden' }}>
         {vm.onboarding ? OnboardingHeader(vm) : null}
         {Screen(vm)}
       </div>
