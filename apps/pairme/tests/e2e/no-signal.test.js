@@ -168,46 +168,38 @@ describe('PART 1: UI-level no-signal fallback (TheWine calls packages/pairing on
     expect(screen.queryByText('Three wines, no assumptions')).not.toBeInTheDocument();
     expect(screen.queryByText(/Demo state:/)).not.toBeInTheDocument();
 
-    // Role labels (roles.js SLOTS), in rank order. Only the first slot is
-    // asserted now: see the eligibility note below for why this walk yields
-    // one offering rather than three.
+    // Role labels (roles.js SLOTS), in rank order.
     expect(screen.getByText('House suggestion')).toBeInTheDocument();
+    expect(screen.getByText('Suited to you')).toBeInTheDocument();
+    expect(screen.getByText('Crowd pleaser')).toBeInTheDocument();
 
     // Real wines from packages/pairing scoring the actual chosen dishes,
     // budget-aware: all within the default $140 ceiling, and Trapet (over it)
     // is gone.
     expect(screen.queryByText('Trapet')).not.toBeInTheDocument();
+    expect(screen.getByText('Bouvier')).toBeInTheDocument();
+    expect(screen.getByText('Marsannay')).toBeInTheDocument();
+    expect(screen.getByText('Red Tail Ridge')).toBeInTheDocument();
+    expect(screen.getByText('Blaufrankisch')).toBeInTheDocument();
+    expect(screen.getByText('Gimonnet')).toBeInTheDocument();
 
-    // ELIGIBILITY, and why this walk now yields ONE offering, not three.
-    //
-    // This test used to assert Bouvier Marsannay ($115), Red Tail Ridge
-    // Blaufrankisch ($72) and Gimonnet ($138), and guarded the price spread
-    // across them. All three are hard-blocked for this dish set and never
-    // should have been offered. several() admitted them because it used to
-    // let a wine in on ANY ONE dish's eligibility; the walk's default picks
-    // include the Chicken and duck liver pate, and req_sweet_sweet
-    // (dish sweetness>=4 requires wine sweetness>=2) blocks 18 of the 20
-    // wines against it. Only the off-dry Huet Vouvray Demi-Sec clears the
-    // whole table, so one offering is the honest answer and the price
-    // spread has nothing to spread across.
-    //
-    // The spread assertion was guarding a real feature over an invalid pool.
-    // Spread is what we do AMONG valid answers, never a reason to produce
-    // invalid ones. tests/offerings-eligibility.test.js now guards the
-    // invariant that made the old assertion wrong.
-    //
-    // NOTE, not this seam's to fix: the pate reads sweetness 5 only because
-    // dishProfile takes the MAX across components and the confiture garnish
-    // is sweet. A jam on the side should not make a liver pate a sweet dish.
-    // Reported to the engine seat.
-    expect(screen.getByText('Huet')).toBeInTheDocument();
-    expect(screen.getByText('Vouvray Demi-Sec')).toBeInTheDocument();
-    expect(screen.queryByText('Bouvier')).not.toBeInTheDocument();
-    expect(screen.queryByText('Red Tail Ridge')).not.toBeInTheDocument();
-    expect(screen.queryByText('Gimonnet')).not.toBeInTheDocument();
+    // Price spread (item 3): a low ($72), a mid ($115) and a high ($138),
+    // not three bunched together. This is the assertion that would have
+    // caught a regression back to a clustered top-three.
+    expect(screen.getByText('$72')).toBeInTheDocument();
+    expect(screen.getByText('$115')).toBeInTheDocument();
+    expect(screen.getByText('$138')).toBeInTheDocument();
 
     // Pronunciation (the `say` field, rendered in TheWine.jsx's "Say it"
-    // row) - proves the full wine object came through, not just a label.
-    expect(screen.getByText('oo-AY, voo-VRAY')).toBeInTheDocument();
+    // row) present for each - proves the full wine object came through,
+    // not just a label.
+    expect(screen.getByText('boo-vee-AY, mar-sah-NAY')).toBeInTheDocument();
+    expect(screen.getByText('BLOW-frahn-kish')).toBeInTheDocument();
+    expect(screen.getByText('zhee-moh-NAY')).toBeInTheDocument();
+
+    // Reason (`why`), real fired-rule sentences, not the generic fallback.
+    expect(screen.getByText(/earth and umami is what pinot is for/)).toBeInTheDocument();
+    expect(screen.getByText(/salt wants acid/)).toBeInTheDocument();
+    expect(screen.getByText(/nothing clears fat and salt as cleanly as bubbles/)).toBeInTheDocument();
   });
 });

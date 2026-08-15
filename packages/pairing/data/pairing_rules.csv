@@ -7,7 +7,7 @@ hf_heat,hard_fail,axis,heat>=4,alcohol<=3 and tannin<=2,0,"{wine} because real h
 hf_heat_soft,penalty,axis,heat>=3,alcohol<=4 and tannin<=3,-20,"There is some heat on the plate, so the grip is a risk.",active,classic,1
 req_sweet_blue,hard_fail,component,blue cheese,sweetness>=3,0,"{wine} because blue cheese and sweet wine is a rule, not a preference.",active,classic,1
 req_sweet_roquefort,hard_fail,component,roquefort,sweetness>=3,0,"{wine} because Roquefort needs residual sugar to sit against the salt.",active,classic,1
-req_sweet_sweet,require,axis,sweetness>=4,sweetness>=2,0,"{wine} because the dish is already sweet and a bone-dry wine fights it.",active,classic,1
+req_sweet_sweet,boost,axis,sweetness>=4,sweetness>=2,25,"{wine} because the dish is already sweet and a bone-dry wine fights it.",active,classic,2
 req_acid_vinaigrette,require,component,vinaigrette,acid>=4,0,"{wine} because a vinaigrette will out-acid anything softer and flatten it.",active,classic,1
 req_acid_preserved,require,component,preserved lemon,acid>=5,0,"{wine} because preserved lemon is brutal on wine and only high acid survives it.",active,classic,1
 req_acid_general,require,axis,acid>=4,acid>=4,0,"{wine} matches the acid on the plate.",active,classic,1
