@@ -22,7 +22,7 @@ export default function Q6Summary(vm){
 <div style={{font: "400 12px/1.55 var(--font-body)", color: "var(--pm-muted)", margin: "4px 0 11px"}}>Whoever you eat with most. Tell us who they are and we'll walk them through the same six questions. Their taste gets its own profile, so you can order for them later.</div>
 <div style={{position: "relative"}}>
 <Input value={fGuestName.v} onChange={fGuestName.set} placeholder="Their name" style={{width: "100%"}}></Input>
-<button onClick={fGuestName.mic} style={{position: "absolute", right: "5px", top: "5px", width: "34px", height: "34px", borderRadius: "999px", border: `1.5px solid ${fGuestName.bd}`, background: fGuestName.bg, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center"}}>
+<button onClick={fGuestName.mic} aria-label="Speak instead of typing" style={{position: "absolute", right: "5px", top: "5px", width: "34px", height: "34px", borderRadius: "999px", border: `1.5px solid ${fGuestName.bd}`, background: fGuestName.bg, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center"}}>
 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--pm-ink)" strokeWidth="1.8" strokeLinecap="round"><rect x="9" y="2" width="6" height="11" rx="3"></rect><path d="M5 11a7 7 0 0 0 14 0"></path><line x1="12" y1="18" x2="12" y2="22"></line></svg>
 </button>
 </div>

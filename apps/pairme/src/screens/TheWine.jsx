@@ -137,7 +137,7 @@ export default function TheWine(vm){
 <div style={{font: "400 12px/1.55 var(--font-body)", color: "var(--pm-muted)", margin: "4px 0 9px"}}>Tell us what's wrong with them and we'll go again. This is the most useful thing you can say to us.</div>
 <div style={{position: "relative"}}>
 <Input value={fWhy.v} onChange={fWhy.set} placeholder="all too French, and too dear" style={{width: "100%"}}></Input>
-<button onClick={fWhy.mic} style={{position: "absolute", right: "5px", top: "5px", width: "34px", height: "34px", borderRadius: "999px", border: `1.5px solid ${fWhy.bd}`, background: fWhy.bg, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center"}}>
+<button onClick={fWhy.mic} aria-label="Speak instead of typing" style={{position: "absolute", right: "5px", top: "5px", width: "34px", height: "34px", borderRadius: "999px", border: `1.5px solid ${fWhy.bd}`, background: fWhy.bg, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center"}}>
 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--pm-ink)" strokeWidth="1.8" strokeLinecap="round"><rect x="9" y="2" width="6" height="11" rx="3"></rect><path d="M5 11a7 7 0 0 0 14 0"></path><line x1="12" y1="18" x2="12" y2="22"></line></svg>
 </button>
 </div>

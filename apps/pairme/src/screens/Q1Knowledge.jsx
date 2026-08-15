@@ -28,7 +28,7 @@ export default function Q1Knowledge(vm){
 <div style={{font: "400 11.5px var(--font-body)", color: "var(--pm-muted)", marginBottom: "6px"}}>Anything we didn't list</div>
 <div style={{position: "relative"}}>
 <Input value={fLevel.v} onChange={fLevel.set} placeholder="I know beer, not wine" style={{width: "100%"}}></Input>
-<button onClick={fLevel.mic} style={{position: "absolute", right: "5px", top: "5px", width: "34px", height: "34px", borderRadius: "999px", border: `1.5px solid ${fLevel.bd}`, background: fLevel.bg, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center"}}>
+<button onClick={fLevel.mic} aria-label="Speak instead of typing" style={{position: "absolute", right: "5px", top: "5px", width: "34px", height: "34px", borderRadius: "999px", border: `1.5px solid ${fLevel.bd}`, background: fLevel.bg, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center"}}>
 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--pm-ink)" strokeWidth="1.8" strokeLinecap="round"><rect x="9" y="2" width="6" height="11" rx="3"></rect><path d="M5 11a7 7 0 0 0 14 0"></path><line x1="12" y1="18" x2="12" y2="22"></line></svg>
 </button>
 </div>
