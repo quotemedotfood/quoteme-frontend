@@ -53,24 +53,72 @@ let cachedServerTables = null;
 let cachedServerBundle = null;
 
 /**
+ * GET /v1/rules/bundle returns `{ version, tables, checksum }` per the v1
+ * contract, so the three axis tables arrive NESTED under `tables`, while
+ * buildTables() reads `wine_axes`/`dish_axes`/`pairing_rules` at the TOP
+ * level. Handing the raw response straight to buildTables silently produced
+ * a table set with zero rules, zero dish axes and zero wine axes.
+ *
+ * That is not a cosmetic mismatch. With zero rules nothing can hard-fail, so
+ * every wine is eligible for every dish and every pairing degrades to the
+ * generic structural fallback: the exact wrong-match failure the eligibility
+ * gate exists to prevent, applied to the entire list at once, with no error
+ * anywhere on screen. It was invisible only because the endpoint has not been
+ * serving, so the app kept falling back to LOCAL_TABLES.
+ *
+ * Accept both shapes: nested under `tables` (the contract) and flat (what
+ * offlinePairing.noSignal.test.js primes the cache with).
+ */
+function unwrapBundle(bundle) {
+  if (!bundle) return null;
+  const t = bundle.tables && typeof bundle.tables === 'object' ? bundle.tables : bundle;
+  return {
+    wine_axes: t.wine_axes || [],
+    dish_axes: t.dish_axes || [],
+    pairing_rules: t.pairing_rules || [],
+  };
+}
+
+/**
+ * AN EMPTY BUNDLE IS NOT A BUNDLE.
+ *
+ * A well-formed response carrying empty arrays is truthy, and trusting
+ * truthiness alone let a degenerate payload disable scoring app-wide. The
+ * rules bundle cache is a module-level singleton shared by every screen, so
+ * one bad response poisons the whole tab until reload. Falling back to the
+ * tables compiled into the app is always safe: they are the ones we shipped.
+ */
+function isUsable(b) {
+  return !!b && b.pairing_rules.length > 0 && b.dish_axes.length > 0 && b.wine_axes.length > 0;
+}
+
+/**
  * The tables to score with right now, preferring whatever the server sent
  * last (if this tab ever had signal) over the tables shipped in the app.
  * Rebuilding only happens when the underlying bundle object actually
  * changes, so calling this on every pairing request is cheap.
+ *
+ * A server bundle only wins if it actually carries rules. Otherwise we score
+ * with LOCAL_TABLES rather than with nothing.
  */
 export function getOfflineTables() {
-  const serverBundle = getCachedRulesBundle();
-  if (serverBundle && serverBundle !== cachedServerBundle) {
-    cachedServerBundle = serverBundle;
-    cachedServerTables = buildTables(serverBundle);
+  const raw = getCachedRulesBundle();
+  if (raw && raw !== cachedServerBundle) {
+    cachedServerBundle = raw;
+    const unwrapped = unwrapBundle(raw);
+    cachedServerTables = isUsable(unwrapped) ? buildTables(unwrapped) : null;
   }
-  if (serverBundle) return cachedServerTables;
-  return LOCAL_TABLES;
+  return cachedServerTables || LOCAL_TABLES;
 }
 
-/** True once GET /v1/rules/bundle has succeeded at least once this tab. */
+/**
+ * True once GET /v1/rules/bundle has returned a bundle we can actually score
+ * with. A response that arrived but carried no rules is reported as NO server
+ * bundle, because that is the honest answer: we are scoring with the tables
+ * compiled into the app, and `usedFallbackTables` below must say so.
+ */
 export function hasServerRulesBundle() {
-  return !!getCachedRulesBundle();
+  return isUsable(unwrapBundle(getCachedRulesBundle()));
 }
 
 /**
