@@ -71,6 +71,25 @@ export function buildTables(bundle) {
     dish[c] = row;
   }
 
+  // WHEN A RULE MAY BE A HARD FAIL.
+  //
+  // dishProfile takes the MAX across a dish's components, so a single
+  // component sets the axis for the whole plate. That propagation is
+  // deliberate and stays: one artichoke really does constrain the plate.
+  //
+  // But MAX must not be able to slam a door on its own. A hard_fail or a
+  // require needs the constraint to come FROM THE DISH, not from something
+  // sitting beside it. Roquefort genuinely demands residual sugar, so
+  // req_sweet_roquefort is a hard_fail. A liver pate with confiture on the
+  // side does not, so req_sweet_sweet is a boost: Sauternes with pate is one
+  // classic answer, not a requirement, and Chinon, Beaujolais and Champagne
+  // are all standard with that plate.
+  //
+  // Test for a new blocking rule: would a sommelier refuse to pour this, or
+  // would they merely prefer something else? Only the first is a hard_fail.
+  //
+  // (pairing_rules.csv has no comment syntax, so this doctrine lives next to
+  // the consumer rather than in the data file.)
   const rules = (bundle.pairing_rules || []).filter(
     (r) => ((r.status || 'active').trim() === 'active')
   );
