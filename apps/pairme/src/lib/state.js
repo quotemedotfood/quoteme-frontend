@@ -24,6 +24,7 @@ import { errorCopy } from './errors.js';
 import { track } from './track.js';
 import { buildTables, rowToEngineWine, dishToEngineDish, computeOfferings, DIRECTION_FOR_FORMAT } from './pairingAdapter.js';
 import { getOfflineTables } from './offlinePairing.js';
+import { tableWineEligible, isHousePick, isOurPick, resolveProteinIcons } from './wineCardIconGate.js';
 import { DEMO_DISHES, DEMO_SECTIONS, DEMO_DEFAULT_PICKED, buildDemoRows } from './demoSeed.js';
 import { getBaroloTableData } from './baroloSeed.js';
 import { speak as speakText } from './speak.js';
@@ -711,6 +712,20 @@ export function usePairMe(opts = {}){
       const pairingDirection=st.pairingDirection;
       const roleColorFor=(slot)=>slot==="house"?t.blue:slot==="suited"?t.pearInk:t.muted;
       const presentSet=new Set(st.presentLabels||[]);
+      // WINE CARD ICONS: gate inputs shared by every offering below.
+      // `iconTables` best-effort matches whichever T actually produced
+      // st.pairingOfferings (see runFormat/cta above: rulesTables when a
+      // real bundle loaded, offline CSVs otherwise - both are always
+      // available, never null, so the table-wine gate never silently no-ops
+      // for lack of a table). `iconDishes` reuses wineListPickedDishes
+      // (already the table's currently-picked dishes in engine shape) so
+      // the gate is asked about the SAME dishes the cards claim to cover.
+      // `venuePushedLabels` is the set of wine labels the venue itself
+      // disclosed (see showFeatured/featured above) - icon 4 (house pick)
+      // reads this verbatim, never infers it.
+      const iconTables=st.rulesTables||getOfflineTables();
+      const iconDishes=wineListPickedDishes;
+      const venuePushedLabels=new Set((st.venuePushed||[]).map(p=>p&&p.wine).filter(Boolean));
       const engineOffers=usingEngine?st.pairingOfferings.map(o=>{
         const w=o.wine,on=presentSet.has(w.label);
         return {
@@ -738,7 +753,21 @@ export function usePairMe(opts = {}){
           // already correct the moment that passthrough is added upstream.
           speak:()=>say(w.speak||w.say||w.label,w.lang),
           open:null, // no BottleBrief data for engine wines yet; TheWine.jsx only renders the Brief link when `open` is set
-          stockColor:"var(--pm-muted)",stockNote:"On the list tonight."};
+          stockColor:"var(--pm-muted)",stockNote:"On the list tonight.",
+          // WINE CARD ICONS (see lib/wineCardIconGate.js for what each gate
+          // actually checks). tableActive recomputes the wine-specific-rule
+          // gate against the table's CURRENT picks/tables every render
+          // rather than trusting whatever the last pair()/runFormat() call
+          // captured, so the icon never lags a picked-dish change.
+          tableActive:tableWineEligible(w,iconDishes,iconTables),
+          glassActive:!!w.glass,
+          housePickActive:isHousePick(w,venuePushedLabels),
+          ourPickActive:isOurPick(o.slot),
+          // Not yet delivered by the backend (see wineCardIconGate.js's
+          // resolveProteinIcons doc comment) - engine wines carry no
+          // protein_match field today, so this always resolves to [], the
+          // correct "renders nothing" state, never a guess.
+          proteinIcons:resolveProteinIcons(w.protein_match)};
       }):null;
       const engineShownLabels=presentSet.size?Array.from(presentSet):(usingEngine?[st.pairingOfferings[0].wine.label]:[]);
       // ITEM 6: glass / bottle / both toggle on TheWine. Re-ranks in place
@@ -1145,7 +1174,18 @@ export function usePairMe(opts = {}){
           speak:()=>say(w.speak||w.say||w.wine,w.lang),
           open:()=>patch({s:16,bottle:o.k,back:11}),
           stockColor:w.stock<4?ORANGE:"var(--pm-muted)",
-          stockNote:w.stock<4?"Only "+w.stock+" left tonight":"Plenty in the cellar"};})),
+          stockNote:w.stock<4?"Only "+w.stock+" left tonight":"Plenty in the cellar",
+          // WINE CARD ICONS: this static demo path (Desi's hand-authored W,
+          // used off the /t/demo route) has no engine dishes/rules-table to
+          // run the table-wine gate against, so it ships dark here too;
+          // house pick has no venue-push data on this path either. "Our
+          // pick" and by-the-glass reuse the same role string / glass field
+          // this array already sets, no new data needed.
+          tableActive:false,
+          glassActive:!!w.glass,
+          housePickActive:false,
+          ourPickActive:o.role==="House suggestion",
+          proteinIcons:resolveProteinIcons(w.protein_match)};})),
         // ONE-BOTTLE MODE compromise: rendered on TheWine screen right under
         // the single offering (see TheWine.jsx). null on every other
         // direction and off the /t/demo path.

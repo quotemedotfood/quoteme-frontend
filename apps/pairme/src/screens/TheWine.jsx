@@ -1,5 +1,6 @@
 import React from 'react';
 import { Input } from '../lib/ds';
+import WineCardIcons from './WineCardIcons';
 
 /** Screen 12 · The wine */
 export default function TheWine(vm){
@@ -114,6 +115,7 @@ export default function TheWine(vm){
 )}
 <div style={{font: "600 11.5px var(--font-body)", color: w.stockColor, marginTop: "7px"}}>{w.stockNote}</div>
 </button>
+<WineCardIcons tableActive={w.tableActive} glassActive={w.glassActive} housePickActive={w.housePickActive} ourPickActive={w.ourPickActive} proteinIcons={w.proteinIcons} />
 <div style={{display: "flex", alignItems: "center", gap: "9px", marginTop: "11px", paddingTop: "10px", borderTop: "1px solid var(--pm-rule)"}}>
 <button onClick={w.speak} style={{flex: "none", width: "38px", height: "38px", borderRadius: "999px", border: "1.5px solid var(--pm-accent2)", background: "var(--pm-card)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center"}} aria-label="Say it out loud">
 <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--pm-ink)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M11 5 L6 9 H3 v6 h3 l5 4 Z"></path><path d="M15.5 8.5a5 5 0 0 1 0 7"></path><path d="M18.5 5.5a9 9 0 0 1 0 13"></path></svg>
