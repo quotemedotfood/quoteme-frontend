@@ -403,6 +403,11 @@ export function usePairMe(opts = {}){
     demoLoading:false,demoDishes:null,demoWineRows:[],venuePushed:[],
     rulesTables:null,rulesVersion:null,
     pairingDirection:null,pairingOfferings:null,pairingCompromise:null,pairingCoverage:null,
+    // pairingRan distinguishes "the engine ran and found nothing" from "the
+    // engine never ran". Without it, an empty offerings array looked exactly
+    // like a cold start and the UI fell back to Desi's static demo wines,
+    // presenting three canned bottles as if they were real picks.
+    pairingRan:false,pairingBlocked:null,
     pairingId:null,presentLabels:[],
     deleteConfirming:false,deleteDone:false});
   const patch = (p) => set(s => Object.assign({}, s, typeof p === 'function' ? p(s) : p));
@@ -699,6 +704,10 @@ export function usePairMe(opts = {}){
       // pairingOfferings and falls straight back to offerSet/W above,
       // unchanged.
       const usingEngine=Array.isArray(st.pairingOfferings)&&st.pairingOfferings.length>0;
+      // The engine ran and NOTHING on the list cleared the table. This is a
+      // real answer, not a cold start, so it must never fall through to the
+      // static offerSet below.
+      const engineBlocked=st.pairingRan===true&&Array.isArray(st.pairingOfferings)&&st.pairingOfferings.length===0;
       const pairingDirection=st.pairingDirection;
       const roleColorFor=(slot)=>slot==="house"?t.blue:slot==="suited"?t.pearInk:t.muted;
       const presentSet=new Set(st.presentLabels||[]);
@@ -745,10 +754,10 @@ export function usePairMe(opts = {}){
         const dir=DIRECTION_FOR_FORMAT[fmt]||'several';
         if(st.rulesTables&&st.demoWineRows.length&&chosen.length){
           const result=computeOfferings(dir,chosen,st.demoWineRows.map(rowToEngineWine),st.rulesTables,{format:fmt,budget:budgetOf(st)});
-          patch({wineFormat:fmt,pairingDirection:result.direction,pairingOfferings:result.offerings,pairingCompromise:result.compromise,pairingCoverage:result.coverage,presentLabels:[]});
+          patch({wineFormat:fmt,pairingDirection:result.direction,pairingOfferings:result.offerings,pairingCompromise:result.compromise,pairingCoverage:result.coverage,pairingRan:true,pairingBlocked:result.blocked||null,presentLabels:[]});
         }else if(st.demoWineRows&&st.demoWineRows.length){
           const offline=computeOfflineOfferings(dir,chosen,st.demoWineRows,{format:fmt,budget:budgetOf(st)});
-          patch({wineFormat:fmt,pairingDirection:offline.direction,pairingOfferings:offline.offerings,pairingCompromise:offline.compromise,pairingCoverage:offline.coverage,presentLabels:[]});
+          patch({wineFormat:fmt,pairingDirection:offline.direction,pairingOfferings:offline.offerings,pairingCompromise:offline.compromise,pairingCoverage:offline.coverage,pairingRan:true,pairingBlocked:offline.blocked||null,presentLabels:[]});
         }else{
           patch({wineFormat:fmt});
         }
@@ -823,6 +832,8 @@ export function usePairMe(opts = {}){
                   pairingOfferings: result.offerings,
                   pairingCompromise: result.compromise,
                   pairingCoverage: result.coverage,
+                  pairingRan: true,
+                  pairingBlocked: result.blocked || null,
                   presentLabels: [],
                 });
                 try {
@@ -868,6 +879,8 @@ export function usePairMe(opts = {}){
                   pairingOfferings: offline.offerings,
                   pairingCompromise: offline.compromise,
                   pairingCoverage: offline.coverage,
+                  pairingRan: true,
+                  pairingBlocked: offline.blocked || null,
                   presentLabels: [],
                 });
               };
@@ -1123,7 +1136,7 @@ export function usePairMe(opts = {}){
         presentCount:usingEngine
           ?(presentSet.size?presentSet.size+" ready to present":"None chosen yet, we'll present the first one")
           :(presentKeys.length?presentKeys.length+" ready to present":"None chosen yet, we'll present the first one"),
-        offers:engineOffers||offerSet.map(o=>{const w=W[o.k],on=presentKeys.includes(o.k);return {
+        offers:engineOffers||(engineBlocked?[]:offerSet.map(o=>{const w=W[o.k],on=presentKeys.includes(o.k);return {
           role:o.role,roleColor:o.roleColor,prod:w.prod,wine:w.wine,meta:w.meta,say:w.say,btl:w.btl,
           glass:w.glass?"$"+w.glass+" glass":"bottle only",why:o.why,covers:o.covers,
           bd:on?"var(--pm-chrome)":"var(--pm-rule)",bw:on?"2px":"1px",bg:on?"var(--pm-sel)":"var(--pm-card)",
@@ -1132,11 +1145,15 @@ export function usePairMe(opts = {}){
           speak:()=>say(w.speak||w.say||w.wine,w.lang),
           open:()=>patch({s:16,bottle:o.k,back:11}),
           stockColor:w.stock<4?ORANGE:"var(--pm-muted)",
-          stockNote:w.stock<4?"Only "+w.stock+" left tonight":"Plenty in the cellar"};}),
+          stockNote:w.stock<4?"Only "+w.stock+" left tonight":"Plenty in the cellar"};})),
         // ONE-BOTTLE MODE compromise: rendered on TheWine screen right under
         // the single offering (see TheWine.jsx). null on every other
         // direction and off the /t/demo path.
         compromiseNote,
+        // NOTHING CLEARED THE TABLE. The screen names the constraint instead
+        // of going blank or showing a canned shortlist. Sentence is the
+        // blocking rule's own why_template, never free prose.
+        blockedNote:engineBlocked?(st.pairingBlocked||null):null,
 
         foodRows:chosen.map(d=>({n:d.n,sec:d.sec})),
         handoff:usingEngine

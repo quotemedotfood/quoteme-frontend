@@ -3,7 +3,7 @@ import { Input } from '../lib/ds';
 
 /** Screen 12 · The wine */
 export default function TheWine(vm){
-  const { fWhy, offerTitle, offerSub, blankLabel, toggleBlank, showBlankToggle, presentCount, offers, compromiseNote, showFormatTabs, formatTabs, showCoverage, coverageTitle, coverage, showFeatured, featured, goWineList } = vm;
+  const { fWhy, offerTitle, offerSub, blankLabel, toggleBlank, showBlankToggle, presentCount, offers, compromiseNote, blockedNote, showFormatTabs, formatTabs, showCoverage, coverageTitle, coverage, showFeatured, featured, goWineList } = vm;
   return (
 <>
 <div>
@@ -72,7 +72,16 @@ export default function TheWine(vm){
 <div style={{font: "400 12.5px/1.6 var(--font-body)", color: "var(--pm-ink)", marginTop: "6px"}}>On the {compromiseNote.dish}: {compromiseNote.text}</div>
 </div>
 ) : null}
+{blockedNote ? (
+<div style={{border: "1px solid var(--pm-warnBd)", background: "var(--pm-warnBg)", borderRadius: "12px", padding: "14px", marginBottom: "14px"}}>
+<div style={{font: "700 11.5px var(--font-body)", color: "var(--pm-warnInk)", letterSpacing: ".06em", textTransform: "uppercase"}}>Nothing on this list works</div>
+<div style={{font: "400 12.5px/1.6 var(--font-body)", color: "var(--pm-ink)", marginTop: "6px"}}>It is the {blockedNote.dish}. {blockedNote.why}</div>
+<div style={{font: "400 12px/1.6 var(--font-body)", color: "var(--pm-muted)", marginTop: "8px"}}>We would rather tell you than pour you something that fights it. Ask your server what they keep back for this.</div>
+</div>
+) : null}
+{blockedNote ? null : (
 <div style={{font: "400 12px var(--font-body)", color: "var(--pm-muted)", marginBottom: "10px"}}>Tap the ones you want. {presentCount}</div>
+)}
 {(offers || []).map((w, i) => (
 <React.Fragment key={i}>
 <div style={{border: `${w.bw} solid ${w.bd}`, background: w.bg, borderRadius: "12px", padding: "14px", marginBottom: "12px"}}>
