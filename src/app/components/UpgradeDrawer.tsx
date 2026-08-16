@@ -73,7 +73,13 @@ export function UpgradeDrawer({ isOpen, onClose }: UpgradeDrawerProps) {
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-6">
           {/* Trial Status */}
-          <div className="bg-gradient-to-br from-[#F2993D] to-[#E08A2E] rounded-lg p-6 text-white mb-6">
+          {/* Flat Sacred Orange per the no-gradients doctrine (newspaper.css:6).
+              Prominence comes from the --qm-shadow-md token instead of the
+              former two-stop gradient. */}
+          <div
+            className="bg-[#F2993D] rounded-lg p-6 text-white mb-6"
+            style={{ boxShadow: 'var(--qm-shadow-md)' }}
+          >
             <div className="flex items-center gap-3 mb-3">
               <Zap className="w-8 h-8" />
               <div>

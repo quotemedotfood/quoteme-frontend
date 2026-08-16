@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -16,17 +16,6 @@ export function OnboardingConfirmPage() {
   const [error, setError] = useState('');
 
   const distributorName = user?.distributor?.name || user?.distributor_name || '';
-
-  // Load fonts
-  useEffect(() => {
-    if (!document.getElementById('quoteme-fonts')) {
-      const link = document.createElement('link');
-      link.id = 'quoteme-fonts';
-      link.rel = 'stylesheet';
-      link.href = 'https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=DM+Sans:wght@400;500;600&display=swap';
-      document.head.appendChild(link);
-    }
-  }, []);
 
   const handleConfirm = async () => {
     setConfirming(true);

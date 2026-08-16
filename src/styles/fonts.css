@@ -1,0 +1,14 @@
+/*
+ * Intentionally empty. Nothing was lost here.
+ *
+ * Playfair Display and DM Sans load from a Google Fonts <link> in index.html
+ * (see the preconnect + stylesheet tags in <head>). They previously loaded via
+ * nine per-page runtime useEffect injectors, which meant chef routes, public
+ * token routes and magic-link landings never got them and rendered in the
+ * Georgia fallback. Those injectors are gone; index.html is now the single
+ * place fonts are declared.
+ *
+ * This file is kept as the seam for a future move to self-hosted @font-face
+ * (which needs a weight audit first). Add @font-face rules here, not in a
+ * component.
+ */

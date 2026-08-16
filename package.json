@@ -11,7 +11,8 @@
     "test:watch": "vitest",
     "typecheck": "node scripts/typecheck.mjs",
     "typecheck:full": "tsc --noEmit",
-    "check:emdash": "node scripts/check-emdash.mjs"
+    "check:emdash": "node scripts/check-emdash.mjs",
+    "check:gradients": "node scripts/check-gradients.mjs"
   },
   "dependencies": {
     "@emotion/react": "11.14.0",
