@@ -89,34 +89,44 @@ export default function EntryScreen() {
   const [cameraBusy, setCameraBusy] = React.useState(false);
   const [cameraStatus, setCameraStatus] = React.useState('');
   const cameraInputRef = React.useRef(null);
-  // Item 3: voice input for the free-text modes. A spoken answer appends to
-  // whatever is already typed, so voice and keyboard compose instead of
-  // clobbering. Unsupported browsers keep the plain text input (supported=false
-  // hides the mic entirely).
-  const [speechHint, setSpeechHint] = React.useState('');
+  // Item 3: voice input for the free-text modes. interimResults is on, so
+  // freeText fills in as the diner talks; speechBaseRef snapshots whatever
+  // was already typed when listening starts so a spoken answer composes
+  // with it instead of clobbering it (each interim/final result replaces
+  // base + " " + heard-so-far, it does not append fragment after fragment).
+  // Unsupported browsers keep the plain text input (speech.supported false
+  // hides the mic entirely, R4).
+  const speechBaseRef = React.useRef('');
   const speech = useSpeech({
-    onResult: (t) => { setSpeechHint(''); setFreeText((prev) => (prev.trim() ? `${prev.trim()} ${t}` : t)); },
-    // Web Speech firing "no-speech" (or any error) IS the "returns nothing"
-    // case. There is no synchronous Whisper endpoint to fall back to (the BE
-    // one is async upload+poll, admin-scoped), so the honest fallback is the
-    // text field already on screen: say so plainly.
-    onError: () => setSpeechHint('We did not catch that. Type it instead.'),
+    onResult: (t) => {
+      const base = speechBaseRef.current.trim();
+      setFreeText(base ? `${base} ${t}` : t);
+    },
   });
+  const startListening = () => {
+    speechBaseRef.current = freeText;
+    speech.start();
+  };
+  // Web Speech firing `no-speech` (or any other error) IS the "returns
+  // nothing" case. There is no synchronous Whisper endpoint to fall back to
+  // (the BE one is async upload+poll, admin-scoped), so the honest fallback
+  // is the text field already on screen, plus one plain-language sentence
+  // from the hook itself (speech.message) - never a raw code like `no-speech`.
   const micButton = (
     speech.supported ? (
       <button
         type="button"
-        onClick={() => (speech.listening ? speech.stop() : speech.start())}
+        onClick={() => (speech.listening ? speech.stop() : startListening())}
         aria-label={speech.listening ? 'Stop listening' : 'Tell us what you are having'}
         aria-pressed={speech.listening}
         style={{
           flex: 'none', width: 44, height: 44, borderRadius: 999, cursor: 'pointer',
-          border: `1.5px solid ${speech.listening ? COLORS.chrome : COLORS.accentBd}`,
-          background: speech.listening ? COLORS.chrome : COLORS.card,
+          border: `1.5px solid ${speech.state === 'error' ? COLORS.warnBd : speech.listening ? COLORS.chrome : COLORS.accentBd}`,
+          background: speech.state === 'error' ? COLORS.warnBg : speech.listening ? COLORS.chrome : COLORS.card,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}
       >
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={speech.listening ? '#fff' : COLORS.ink} strokeWidth="1.8" strokeLinecap="round">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={speech.listening ? '#fff' : speech.state === 'error' ? COLORS.warnInk : COLORS.ink} strokeWidth="1.8" strokeLinecap="round">
           <rect x="9" y="2" width="6" height="11" rx="3"></rect>
           <path d="M5 11a7 7 0 0 0 14 0"></path>
           <line x1="12" y1="18" x2="12" y2="22"></line>
@@ -378,8 +388,8 @@ export default function EntryScreen() {
               ) : null}
               {micButton}
             </div>
-            {speechHint ? (
-              <div style={{ font: '500 12px inherit', color: COLORS.warnInk, marginTop: 6 }}>{speechHint}</div>
+            {speech.state === 'error' && speech.message ? (
+              <div style={{ font: '500 12px inherit', color: COLORS.warnInk, marginTop: 6 }}>{speech.message}</div>
             ) : null}
             <button
               type="button"
@@ -421,8 +431,8 @@ export default function EntryScreen() {
               ) : null}
               {micButton}
             </div>
-            {speechHint ? (
-              <div style={{ font: '500 12px inherit', color: COLORS.warnInk, marginTop: 6 }}>{speechHint}</div>
+            {speech.state === 'error' && speech.message ? (
+              <div style={{ font: '500 12px inherit', color: COLORS.warnInk, marginTop: 6 }}>{speech.message}</div>
             ) : null}
             <button
               type="button"
