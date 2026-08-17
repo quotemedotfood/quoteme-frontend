@@ -65,10 +65,16 @@ export function QuoteReviewPage() {
   // guards -- render-gating only. Both send paths here are writes, so they get
   // the same treatment as ExportFinalizePage.
   //
-  // A function rather than a const because the send mutation below must consult
-  // it, and hooks have to run before this component's early loading/error
-  // returns. It reads the CURRENT `quote` state on each call, so a quote that
-  // goes out mid-session is caught without a stale closure.
+  // A function rather than a const for one reason: `quoteLocked` cannot be
+  // computed up here. It needs a non-null `quote`, and the non-null narrowing
+  // only holds after this component's early loading/error returns further down,
+  // whereas useAsyncMutation is a hook and must run BEFORE them. Deferring the
+  // read into a function with its own `!!quote &&` guard is what lets the same
+  // predicate serve the hook above the returns and the render below them.
+  //
+  // It also means the mutation reads the CURRENT `quote` on each call rather
+  // than closing over the value at mount, so a quote that goes out mid-session
+  // is caught.
   const adminViewer = isAdminViewerRole(auth?.user?.role);
   const writeBlocked = () =>
     adminViewer || !!sendSuccess || (!!quote && (isSentImmutableQuote(quote) || isLockedQuoteState(quote)));
@@ -578,7 +584,16 @@ export function QuoteReviewPage() {
                 </div>
                 <Button
                   onClick={handleSendEmail}
-                  disabled={sendEmailMutation.loading || !sendEmail.trim()}
+                  // Sent immutability. This drawer's presence is keyed on
+                  // sendDrawerOpen, NOT on quoteLocked, and nothing dismisses it
+                  // on a flip. So without this term the belt inside
+                  // sendEmailMutation was the SOLE protection for a viewer who
+                  // opened the drawer and then became locked or admin. Same
+                  // shape as ExportFinalizePage's send control: disabled term
+                  // plus the call-site belt, because a disabled control is not
+                  // a gate.
+                  disabled={quoteLocked || sendEmailMutation.loading || !sendEmail.trim()}
+                  title={quoteLocked ? (readOnlyMarker ?? undefined) : undefined}
                   className="w-full bg-[#A5CFDD] hover:bg-[#7FAEC2] text-white"
                 >
                   {sendEmailMutation.loading ? (

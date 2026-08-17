@@ -375,13 +375,24 @@ export function MapIngredientsPage() {
   const readOnly = adminViewer || sentLocked;
   const readOnlyMarker = quoteReadOnlyMarker(adminViewer, sentLocked);
 
-  // Sent immutability: the write drawers are rendered unconditionally, so
-  // hiding their triggers does not dismiss one that is ALREADY open. If the
-  // quote goes out (or the role resolves to admin viewer) while a drawer is
-  // open, close it rather than leaving a live write surface on screen.
+  // Sent immutability, dismiss-on-flip. The write drawers here are rendered
+  // unconditionally, so hiding their triggers does not dismiss one that is
+  // ALREADY open when the quote goes out mid-session.
+  //
+  // The rule for choosing a render gate here is written out in full on
+  // QuoteBuilderPage, above its equivalent effect. In short: prefer the gate
+  // that still explains itself, and dismiss only as a last resort.
+  //
+  // MatchDrawer can render itself read-only (it takes readOnly and swaps its
+  // write actions for a "matches are locked" marker), so it is left mounted.
+  // Dismissing it as well, as an earlier round did, made that marker
+  // unreachable dead UI, because handleMapComponent already refuses to OPEN the
+  // drawer read-only, so nothing could ever reach a read-only MatchDrawer.
+  //
+  // Add Dish has neither a read-only mode nor a single disableable control, so
+  // dismissal IS its render gate, in front of handleAlignWithCatalog's belt.
   useEffect(() => {
     if (!readOnly) return;
-    setMapDrawerOpen(false);
     setIsAddDishDrawerOpen(false);
   }, [readOnly]);
 

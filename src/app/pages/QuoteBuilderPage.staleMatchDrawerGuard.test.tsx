@@ -166,6 +166,17 @@ describe('QuoteBuilderPage - match drawer left open refuses to persist once the 
     expect(screen.getByText(/select match for fried calamari/i)).toBeTruthy();
     expect(screen.queryByRole('button', { name: /replace match/i })).toBeNull();
 
+    // Click every control still in the read-only drawer, so the assertion below
+    // is load-bearing rather than vacuous: without something being clicked,
+    // "updateQuote was not called" would hold trivially.
+    const drawerControls = [
+      ...screen.queryAllByRole('button'),
+      ...Array.from(document.querySelectorAll('[role="button"]')),
+    ];
+    expect(drawerControls.length).toBeGreaterThan(0);
+    for (const c of drawerControls) fireEvent.click(c as Element);
+    await new Promise(r => setTimeout(r, 0));
+
     expect(updateQuote).not.toHaveBeenCalled();
   });
 });

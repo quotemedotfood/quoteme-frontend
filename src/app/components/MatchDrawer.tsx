@@ -653,7 +653,13 @@ export function MatchDrawer({
           <textarea
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            placeholder="Add chef notes, pack size details, or selling points..."
+            // Notes only ever persist through the belted submit, so an editable
+            // box on a read-only drawer could not write. It could still invite
+            // the rep to type something that is silently discarded, which is
+            // its own small lie about the state of the surface.
+            readOnly={readOnly}
+            disabled={readOnly}
+            placeholder={readOnly ? '' : 'Add chef notes, pack size details, or selling points...'}
             className="w-full min-h-[90px] rounded-[8px] px-3 py-[10px] text-[13px] resize-y outline-none"
             style={{ border: '1px solid var(--qm-soft-line)', fontFamily: 'var(--qm-sans)', color: 'var(--qm-charcoal)' }}
           />

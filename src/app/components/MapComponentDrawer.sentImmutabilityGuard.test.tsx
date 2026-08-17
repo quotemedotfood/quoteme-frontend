@@ -72,6 +72,9 @@ function renderDrawer(readOnly: boolean) {
 
 const findMoreName = /find (2 )?more/i;
 
+// Installed per-test by the INVARIANT case; see the comment there.
+let fetchSpy: ReturnType<typeof vi.fn>;
+
 describe('MapComponentDrawer sent immutability', () => {
   it('positive control: a WRITABLE drawer DOES offer Find-more and calls it', async () => {
     renderDrawer(false);
@@ -114,20 +117,38 @@ describe('MapComponentDrawer sent immutability', () => {
   // Same whole-surface invariant as MatchDrawer: any future write control added
   // here without a readOnly gate fails this test automatically.
   it('INVARIANT: clicking every control in a read-only drawer fires no write', async () => {
-    renderDrawer(true);
+    fetchSpy = vi.fn(async () => new Response('{}', { status: 200 })) as any;
+    const realFetch = globalThis.fetch;
+    globalThis.fetch = fetchSpy as any;
+    try {
+      renderDrawer(true);
 
-    const controls = [
-      ...screen.queryAllByRole('button'),
-      ...screen.queryAllByRole('checkbox'),
-      ...Array.from(document.querySelectorAll('[role="button"], [aria-pressed]')),
-    ];
-    expect(controls.length).toBeGreaterThan(0);
+      const controls = [
+        ...screen.queryAllByRole('button'),
+        ...screen.queryAllByRole('checkbox'),
+        ...Array.from(document.querySelectorAll('[role="button"], [aria-pressed]')),
+      ];
+      expect(controls.length).toBeGreaterThan(0);
 
-    for (const c of controls) fireEvent.click(c as Element);
-    await new Promise(r => setTimeout(r, 0));
+      for (const c of controls) fireEvent.click(c as Element);
+      await new Promise(r => setTimeout(r, 0));
 
-    expect(onFindMoreMatches).not.toHaveBeenCalled();
-    expect(onReplaceMatch).not.toHaveBeenCalled();
-    expect(onAddToQuote).not.toHaveBeenCalled();
+      expect(onFindMoreMatches).not.toHaveBeenCalled();
+      expect(onReplaceMatch).not.toHaveBeenCalled();
+      expect(onAddToQuote).not.toHaveBeenCalled();
+
+      // Generic backstop. The spies above only cover writes this test already
+      // knows about, so a NEW control calling a NEW api function would pass them
+      // silently. Everything in services/api ultimately goes through fetch, and
+      // the known writes here are mocked so they never reach it, which means any
+      // fetch with a mutating method is by definition an unguarded new write.
+      const mutating = fetchSpy.mock.calls.filter(([, init]) => {
+        const m = String((init as RequestInit | undefined)?.method ?? 'GET').toUpperCase();
+        return m !== 'GET' && m !== 'HEAD' && m !== 'OPTIONS';
+      });
+      expect(mutating).toEqual([]);
+    } finally {
+      globalThis.fetch = realFetch;
+    }
   });
 });
