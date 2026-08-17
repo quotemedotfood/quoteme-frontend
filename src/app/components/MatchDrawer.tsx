@@ -110,6 +110,20 @@ interface MatchDrawerProps {
    * (rank 0 = replacement, rest = additions) so the parent surface can
    * update its own local "mapped" tracking, then refetch/refresh. */
   onSubmitted?: (pickedProductIds: string[]) => void;
+  /**
+   * Sent immutability / admin-viewer gate. When true this drawer is a
+   * read-only surface: the two write paths it owns (submitYourCallSelection
+   * on submit, toggleRepMemoryLock on the chain toggles) refuse to fire and
+   * the footer actions are replaced by a marker.
+   *
+   * The drawer needs its own copy of the gate rather than relying on its
+   * opener: it is rendered unconditionally by MapIngredientsPage, so hiding
+   * the "Add Match" button that opens it does NOT unmount an already-open
+   * drawer when the quote goes out mid-session.
+   */
+  readOnly?: boolean;
+  /** Marker copy naming why the surface is read-only. */
+  readOnlyMarker?: string | null;
 }
 
 export function MatchDrawer({
@@ -124,6 +138,8 @@ export function MatchDrawer({
   dishComponentId,
   canonicalKey,
   onSubmitted,
+  readOnly = false,
+  readOnlyMarker = null,
 }: MatchDrawerProps) {
   const [picks, setPicks] = useState<string[]>([]);
   const [notes, setNotes] = useState('');
@@ -151,6 +167,9 @@ export function MatchDrawer({
     lockOverrides[productId] ?? serverValue;
 
   const handleToggleLock = async (productId: string, currentlyLocked: boolean) => {
+    // Sent immutability: the chain toggle is a write (toggleRepMemoryLock).
+    // Guard at the call site, not only where the toggle is rendered.
+    if (readOnly) return;
     if (!quoteId || !quoteLineId || lockPending) return;
     setLockPending(productId);
     const nextLocked = !currentlyLocked;
@@ -269,6 +288,12 @@ export function MatchDrawer({
   const addLabel = addCount > 0 ? `Add ${addCount} to Quote` : 'Add to Quote';
 
   const handleFindMore = async () => {
+    // Sent immutability: "Find 2 more matches" LOOKS like a read but is not.
+    // getMoreMatches is a POST to /quotes/:id/more_matches, which runs
+    // AlignmentEngineService#more_matches and persists AlignmentCandidate rows
+    // attached to this quote. The endpoint has no backend guard of its own, so
+    // this call-site guard is the only thing stopping it on a sent quote.
+    if (readOnly) return;
     if (!onFindMoreMatches) return;
     setLoadingMore(true);
     try {
@@ -282,6 +307,10 @@ export function MatchDrawer({
   };
 
   const handleSubmit = async () => {
+    // Sent immutability: submitting a Your Call selection rewrites the
+    // quote line's match. Refuse on a read-only surface even if the footer
+    // buttons were somehow reachable (stale render, direct call).
+    if (readOnly) return;
     if (!quoteId || !quoteLineId || picks.length === 0 || submitting) return;
     setSubmitting(true);
     setSubmitError(null);
@@ -356,7 +385,7 @@ export function MatchDrawer({
                   <div className="flex-1 min-w-0">
                     <h4 className="text-[13.5px] font-semibold leading-[1.3] flex items-center gap-[6px]" style={{ color: 'var(--qm-charcoal)' }}>
                       {formatProductName(currentMatch.product.product, currentMatch.product.brand)}
-                      {quoteId && quoteLineId && (
+                      {quoteId && quoteLineId && !readOnly && (
                         <ChainToggle
                           locked={isLocked(currentMatch.product.id, currentMatch.rep_memory)}
                           onToggle={() => handleToggleLock(currentMatch.product.id, isLocked(currentMatch.product.id, currentMatch.rep_memory))}
@@ -438,7 +467,7 @@ export function MatchDrawer({
                       <div className="flex-1 min-w-0">
                         <h4 className="text-[13.5px] font-semibold leading-[1.3] flex items-center gap-[6px]" style={{ color: 'var(--qm-charcoal)' }}>
                           {formatProductName(candidate.product.product, candidate.product.brand)}
-                          {quoteId && quoteLineId && (
+                          {quoteId && quoteLineId && !readOnly && (
                             <ChainToggle
                               locked={isLocked(candidate.product.id, candidate.rep_memory)}
                               onToggle={() => handleToggleLock(candidate.product.id, isLocked(candidate.product.id, candidate.rep_memory))}
@@ -491,7 +520,7 @@ export function MatchDrawer({
           {/* Find More Matches -- hidden once the display cap (current match +
               2 alternates = 3 options) is reached. Past this point the escape
               is Catalog Search / Manually Add below, not a longer list. */}
-          {onFindMoreMatches && allAlternates.length < MAX_ALTERNATES && (
+          {onFindMoreMatches && !readOnly && allAlternates.length < MAX_ALTERNATES && (
             <button
               type="button"
               onClick={handleFindMore}
@@ -624,7 +653,13 @@ export function MatchDrawer({
           <textarea
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            placeholder="Add chef notes, pack size details, or selling points..."
+            // Notes only ever persist through the belted submit, so an editable
+            // box on a read-only drawer could not write. It could still invite
+            // the rep to type something that is silently discarded, which is
+            // its own small lie about the state of the surface.
+            readOnly={readOnly}
+            disabled={readOnly}
+            placeholder={readOnly ? '' : 'Add chef notes, pack size details, or selling points...'}
             className="w-full min-h-[90px] rounded-[8px] px-3 py-[10px] text-[13px] resize-y outline-none"
             style={{ border: '1px solid var(--qm-soft-line)', fontFamily: 'var(--qm-sans)', color: 'var(--qm-charcoal)' }}
           />
@@ -632,6 +667,17 @@ export function MatchDrawer({
 
         {/* ── Footer ── */}
         <DrawerFooter className="p-0 flex-shrink-0" style={{ borderTop: '1px solid var(--qm-soft-line)' }}>
+          {readOnly ? (
+            /* Sent immutability: no write actions on a read-only surface.
+               The marker names why instead of showing a dead button. */
+            <div
+              className="px-[22px] pt-[14px] pb-[18px] text-[12.5px] font-semibold"
+              style={{ color: 'var(--qm-gray-500)' }}
+              data-testid="match-drawer-read-only"
+            >
+              {readOnlyMarker ?? 'Read-only'}: matches are locked.
+            </div>
+          ) : (
           <div className="flex gap-[10px] px-[22px] pt-[14px] pb-[18px]">
             <button
               type="button"
@@ -659,6 +705,7 @@ export function MatchDrawer({
               <Plus className="w-4 h-4" /> {addLabel}
             </button>
           </div>
+          )}
           {submitError && (
             <p className="px-[22px] pb-3 text-xs" style={{ color: '#B23A34' }}>{submitError}</p>
           )}

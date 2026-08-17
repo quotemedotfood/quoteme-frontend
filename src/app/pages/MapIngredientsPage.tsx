@@ -375,6 +375,27 @@ export function MapIngredientsPage() {
   const readOnly = adminViewer || sentLocked;
   const readOnlyMarker = quoteReadOnlyMarker(adminViewer, sentLocked);
 
+  // Sent immutability, dismiss-on-flip. The write drawers here are rendered
+  // unconditionally, so hiding their triggers does not dismiss one that is
+  // ALREADY open when the quote goes out mid-session.
+  //
+  // The rule for choosing a render gate here is written out in full on
+  // QuoteBuilderPage, above its equivalent effect. In short: prefer the gate
+  // that still explains itself, and dismiss only as a last resort.
+  //
+  // MatchDrawer can render itself read-only (it takes readOnly and swaps its
+  // write actions for a "matches are locked" marker), so it is left mounted.
+  // Dismissing it as well, as an earlier round did, made that marker
+  // unreachable dead UI, because handleMapComponent already refuses to OPEN the
+  // drawer read-only, so nothing could ever reach a read-only MatchDrawer.
+  //
+  // Add Dish has neither a read-only mode nor a single disableable control, so
+  // dismissal IS its render gate, in front of handleAlignWithCatalog's belt.
+  useEffect(() => {
+    if (!readOnly) return;
+    setIsAddDishDrawerOpen(false);
+  }, [readOnly]);
+
   // ─── Poll menu status then load quote ─────────────────────────────────────
 
   useEffect(() => {
@@ -456,6 +477,11 @@ export function MapIngredientsPage() {
   // ─── Add dish manually ────────────────────────────────────────────────────
 
   async function handleAlignWithCatalog() {
+    // Sent immutability: Manually Add is a write path (createMenu, which
+    // provisions a menu plus quote server-side and folds its lines into this
+    // surface). The trigger is hidden on a read-only render; guard the call
+    // site too, matching handleToggleLock.
+    if (readOnly) return;
     if (!newDishComponents.trim()) return;
     setAddDishLoading(true);
     try {
@@ -525,6 +551,10 @@ export function MapIngredientsPage() {
   const [selectedLine, setSelectedLine] = useState<QuoteLine | null>(null);
 
   const handleMapComponent = (componentName: string) => {
+    // Sent immutability: the match drawer is a write path
+    // (submitYourCallSelection / toggleRepMemoryLock). Never open it on a
+    // read-only render, mirroring QuoteBuilderPage's openMatchDrawer.
+    if (readOnly) return;
     // Check all dishes for the component line, not just selected dish
     let line: QuoteLine | null = null;
     if (selectedDish?.componentLines[componentName]) {
@@ -1091,6 +1121,8 @@ export function MapIngredientsPage() {
           const res = await getMoreMatches(quoteId, selectedLine.id);
           return res.data?.candidates || [];
         } : undefined}
+        readOnly={readOnly}
+        readOnlyMarker={readOnlyMarker}
         quoteId={quoteId || undefined}
         quoteLineId={selectedLine?.id || null}
         dishComponentId={selectedLine?.component?.id || null}

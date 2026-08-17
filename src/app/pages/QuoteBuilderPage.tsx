@@ -177,6 +177,35 @@ export function QuoteBuilderPage() {
   const adminViewer = isAdminViewerRole(auth?.user?.role);
   const readOnlyMarker = quoteReadOnlyMarker(adminViewer, sentLocked);
 
+  // Sent immutability, dismiss-on-flip. These drawers' presence is keyed on
+  // their own open state, not on quoteLocked, so a drawer already open when the
+  // quote goes out mid-session stays open. Every such drawer needs SOME render
+  // gate in front of its call-site belt, and there is one rule for choosing it,
+  // applied here and on MapIngredientsPage alike:
+  //
+  //   Prefer the gate that still explains itself. Dismiss the drawer only when
+  //   neither of the better options exists.
+  //
+  //   1. The drawer can render itself read-only  -> leave it mounted, let it say
+  //      why. MapComponentDrawer (and MatchDrawer on MapIngredientsPage) take
+  //      readOnly and swap their write actions for a "matches are locked"
+  //      marker. Dismissing these as well, as an earlier round did, made that
+  //      marker unreachable dead UI, since the open handlers already refuse to
+  //      OPEN a drawer read-only. Leaving them mounted also keeps the page
+  //      handlers' belts reachable, which is what
+  //      QuoteBuilderPage.writeBeltDirectInvoke.test.tsx exercises.
+  //   2. The write is one identifiable control -> leave it mounted and disable
+  //      that control. The Stock Quote drawer's Save Template button carries a
+  //      quoteLocked `disabled` term plus a title naming the reason.
+  //   3. Neither -> dismiss. The Add Product drawer writes via
+  //      CatalogProductSearch's onSelect, fired by clicking any search result,
+  //      so there is no single control to disable and no read-only mode; the
+  //      dismissal IS its render gate. Same for Add Dish on MapIngredientsPage.
+  useEffect(() => {
+    if (!quoteLocked) return;
+    setAddProductDrawerOpen(false);
+  }, [quoteLocked]);
+
   const isGuest = !localStorage.getItem('quoteme_token');
   const fetchQuote = (id: string) => isGuest ? getGuestQuote(id) : getQuote(id);
   const persistQuote = (id: string, updates: any) => isGuest ? updateGuestQuote(id, updates) : updateQuote(id, updates);
@@ -1208,6 +1237,8 @@ export function QuoteBuilderPage() {
           componentName={matchDrawerItem.component}
           candidates={matchDrawerItem.alignmentCandidates || []}
           isUnmatched={matchDrawerItem.unmatched}
+          readOnly={quoteLocked}
+          readOnlyMarker={readOnlyMarker}
           onFindMoreMatches={quoteId ? async () => {
             const res = await getMoreMatches(quoteId, matchDrawerItem.id);
             return res.data?.candidates || [];
@@ -1339,7 +1370,13 @@ export function QuoteBuilderPage() {
                 setStockQuoteName('');
                 setStockQuoteType('');
               }}
-              disabled={!stockQuoteName.trim() || savingStockQuote}
+              // Sent immutability. This drawer's presence is keyed on
+              // stockQuoteDrawerOpen, NOT on quoteLocked, and the dismiss effect
+              // above covers only the Add Product drawer. So without this term
+              // the onClick belt was the SOLE protection once the drawer was
+              // open and the quote locked underneath it.
+              disabled={quoteLocked || !stockQuoteName.trim() || savingStockQuote}
+              title={quoteLocked ? (readOnlyMarker ?? undefined) : undefined}
               className="w-full bg-[#7FAEC2] hover:bg-[#6A9AB0] text-white"
             >
               {savingStockQuote ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving...</> : 'Save Template'}

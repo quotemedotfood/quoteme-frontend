@@ -141,17 +141,41 @@ describe('QuoteBuilderPage - match drawer left open refuses to persist once the 
     setQuoteLockedOnNextLoad(true);
     fireEvent.click(screen.getByText('Simulate External Update'));
 
-    // Confirm the reload actually landed (quoteLocked flipped): the
-    // now-locked page hides QuoteReviewBar and shows the locked pricing
-    // affordance -- but the match drawer, unrelated state, stays open with
-    // the same selection.
+    // Confirm the reload actually landed (quoteLocked flipped).
     await waitFor(() => {
       expect(getQuote).toHaveBeenCalledTimes(2);
     });
-    expect(await screen.findByText(/select match for fried calamari/i)).toBeTruthy();
-    expect(screen.getByRole('button', { name: /replace match/i })).not.toBeDisabled();
 
-    fireEvent.click(screen.getByRole('button', { name: /replace match/i }));
+    // ROUND 4 CHANGE OF MECHANISM, same guarantee. This test used to click a
+    // still-live Replace Match button and prove the handler's belt refused the
+    // write. Round 4 adds a render gate in front of that button: the drawer is
+    // deliberately left OPEN (so the rep sees why it went inert rather than
+    // having it vanish), but MapComponentDrawer now receives readOnly and
+    // replaces its write actions with a marker. So there is no longer a button
+    // to click here, and what this test proves is the render gate.
+    //
+    // The BELT itself (handleReplaceMatchInBuilder's quoteLocked re-check) is
+    // covered directly by QuoteBuilderPage.writeBeltDirectInvoke.test.tsx,
+    // which stubs the drawer so no render gate can hide the trigger and then
+    // invokes the handler with a live lock. Removing the belt fails that test.
+    // The two files together cover both layers; neither covers both alone.
+    await waitFor(() => {
+      expect(screen.getByTestId('map-component-drawer-read-only')).toBeTruthy();
+    });
+    // Drawer still open, write action gone.
+    expect(screen.getByText(/select match for fried calamari/i)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /replace match/i })).toBeNull();
+
+    // Click every control still in the read-only drawer, so the assertion below
+    // is load-bearing rather than vacuous: without something being clicked,
+    // "updateQuote was not called" would hold trivially.
+    const drawerControls = [
+      ...screen.queryAllByRole('button'),
+      ...Array.from(document.querySelectorAll('[role="button"]')),
+    ];
+    expect(drawerControls.length).toBeGreaterThan(0);
+    for (const c of drawerControls) fireEvent.click(c as Element);
+    await new Promise(r => setTimeout(r, 0));
 
     expect(updateQuote).not.toHaveBeenCalled();
   });
