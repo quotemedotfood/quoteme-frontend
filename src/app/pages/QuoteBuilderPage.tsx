@@ -177,14 +177,18 @@ export function QuoteBuilderPage() {
   const adminViewer = isAdminViewerRole(auth?.user?.role);
   const readOnlyMarker = quoteReadOnlyMarker(adminViewer, sentLocked);
 
-  // Sent immutability: the match drawer's render is gated on matchDrawerItem,
-  // not on quoteLocked, so an already-open drawer survives a mid-session flip
-  // (openMatchDrawer only refuses to OPEN one). Close it, matching the
-  // equivalent effect on MapIngredientsPage.
+  // Sent immutability: the Add Product drawer has no read-only rendering of its
+  // own (its write goes through handleAddProduct), so dismiss it if the quote
+  // locks while it is open.
+  //
+  // The MATCH drawer is deliberately NOT dismissed here. It now receives
+  // readOnly and renders a "matches are locked" marker instead of its write
+  // actions, which tells the rep why the surface went inert rather than making
+  // a drawer vanish under the cursor. Leaving it mounted also keeps
+  // handleReplaceMatchInBuilder's belt reachable, which is what
+  // QuoteBuilderPage.writeBeltDirectInvoke.test.tsx exercises.
   useEffect(() => {
     if (!quoteLocked) return;
-    setMatchDrawerOpen(false);
-    setMatchDrawerItem(null);
     setAddProductDrawerOpen(false);
   }, [quoteLocked]);
 
