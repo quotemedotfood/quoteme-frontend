@@ -464,6 +464,11 @@ export function ExportFinalizePage() {
   // second click while a send is in flight is ignored synchronously.
   const sendEmailMutation = useAsyncMutation(
     async () => {
+      // Sent immutability: send is itself a write (it stamps sent_at and
+      // dispatches the document). Both trigger sites disable on
+      // quoteReadOnly, but the guard belongs inside the mutation too so a
+      // direct .run() from a stale render cannot re-send a gone-out quote.
+      if (quoteReadOnly) return { error: readOnlyMarker ?? 'This quote is read-only.' };
       if (!quoteId) return { error: 'No quote loaded.' };
       const emailToSend = manualEmail || contactEmail || undefined;
       return sendQuote(quoteId, emailToSend || undefined, sendNote || undefined);
@@ -493,6 +498,10 @@ export function ExportFinalizePage() {
 
   // Send SMS
   async function handleSendSms() {
+    // Sent immutability: same write class as the email send. This handler has
+    // no JSX trigger today, which is exactly why it needs its own guard: it
+    // would otherwise be wired up later without one.
+    if (quoteReadOnly) return;
     if (!quoteId) return;
     const phone = contactPhone;
     if (!phone) {

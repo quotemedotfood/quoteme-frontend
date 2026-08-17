@@ -202,8 +202,13 @@ export function QuotesPage() {
     // a stale tab, or the quote going out while the modal is open, could
     // still reach this. Look the quote up fresh and refuse if it is now
     // immutable.
+    // Fail CLOSED: if the row is no longer in the loaded list we cannot prove
+    // the quote is still deletable, so refuse rather than delete unverified.
     const quote = quotes.find(q => q.id === quoteId);
-    if (quote && isSentImmutableQuote(quote)) return;
+    if (!quote || isSentImmutableQuote(quote)) {
+      setConfirmDeleteId(null);
+      return;
+    }
     const ok = await deleteMutation.run(quoteId);
     if (ok) {
       setQuotes(prev => prev.filter(q => q.id !== quoteId));

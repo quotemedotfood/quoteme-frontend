@@ -375,6 +375,16 @@ export function MapIngredientsPage() {
   const readOnly = adminViewer || sentLocked;
   const readOnlyMarker = quoteReadOnlyMarker(adminViewer, sentLocked);
 
+  // Sent immutability: the write drawers are rendered unconditionally, so
+  // hiding their triggers does not dismiss one that is ALREADY open. If the
+  // quote goes out (or the role resolves to admin viewer) while a drawer is
+  // open, close it rather than leaving a live write surface on screen.
+  useEffect(() => {
+    if (!readOnly) return;
+    setMapDrawerOpen(false);
+    setIsAddDishDrawerOpen(false);
+  }, [readOnly]);
+
   // ─── Poll menu status then load quote ─────────────────────────────────────
 
   useEffect(() => {
@@ -456,6 +466,11 @@ export function MapIngredientsPage() {
   // ─── Add dish manually ────────────────────────────────────────────────────
 
   async function handleAlignWithCatalog() {
+    // Sent immutability: Manually Add is a write path (createMenu, which
+    // provisions a menu plus quote server-side and folds its lines into this
+    // surface). The trigger is hidden on a read-only render; guard the call
+    // site too, matching handleToggleLock.
+    if (readOnly) return;
     if (!newDishComponents.trim()) return;
     setAddDishLoading(true);
     try {
@@ -525,6 +540,10 @@ export function MapIngredientsPage() {
   const [selectedLine, setSelectedLine] = useState<QuoteLine | null>(null);
 
   const handleMapComponent = (componentName: string) => {
+    // Sent immutability: the match drawer is a write path
+    // (submitYourCallSelection / toggleRepMemoryLock). Never open it on a
+    // read-only render, mirroring QuoteBuilderPage's openMatchDrawer.
+    if (readOnly) return;
     // Check all dishes for the component line, not just selected dish
     let line: QuoteLine | null = null;
     if (selectedDish?.componentLines[componentName]) {
@@ -1091,6 +1110,8 @@ export function MapIngredientsPage() {
           const res = await getMoreMatches(quoteId, selectedLine.id);
           return res.data?.candidates || [];
         } : undefined}
+        readOnly={readOnly}
+        readOnlyMarker={readOnlyMarker}
         quoteId={quoteId || undefined}
         quoteLineId={selectedLine?.id || null}
         dishComponentId={selectedLine?.component?.id || null}
