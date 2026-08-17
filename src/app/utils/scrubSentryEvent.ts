@@ -1,56 +1,112 @@
-// scrubSentryEvent - strip credential material out of a Sentry event before
-// it leaves the browser.
+// scrubSentryEvent / scrubSentrySpan - strip credential material out of a
+// Sentry payload before it leaves the browser.
 //
 // Sentry's beforeSend used to be a pure no-op gate on the DSN, so anything
-// that happened to be attached to an event (an Authorization header on a
-// captured request, a magic-link URL in a navigation breadcrumb, a token in
-// an `extra`) shipped verbatim to the Sentry project. Console logging was the
-// loud version of that leak; telemetry is the quiet one.
+// attached to an event (an Authorization header, a magic-link URL in a
+// navigation breadcrumb, a token in an `extra`) shipped verbatim. Console
+// logging was the loud version of that leak; telemetry is the quiet one.
 //
-// Three things get redacted:
-//   1. Sensitive request headers, by name (Authorization, Cookie,
-//      X-Guest-Token, X-CSRF-Token).
-//   2. Sensitive query parameters in any URL-bearing field (request URL and
-//      query string, plus breadcrumb url/to/from). This is what catches the
-//      chef and rep magic links and the invite-accept links, all of which
-//      carry the credential in `?token=`.
-//   3. Any key in `extra` / `contexts` whose NAME looks like a credential.
+// DESIGN NOTES, all four of them learned from a verification pass that broke
+// the first version of this file:
 //
-// Values are replaced with a fixed marker, never truncated: a prefix of a
-// token is still credential material and still identifies the holder.
+//  1. WHOLE-PAYLOAD WALK, NOT A FIELD LIST. The first version enumerated
+//     request.headers, request.url, breadcrumbs, extra and contexts. Everything
+//     it did not enumerate shipped raw: event.message, event.transaction,
+//     exception.values[].value, spans[].description, event.user.id,
+//     crumb.data.href. A recursive walk over the entire payload is the only
+//     shape that does not lose that race.
+//
+//  2. VALUES, NOT JUST KEY NAMES. Matching key names alone missed the `Referer`
+//     header, which httpContextIntegration sets on EVERY event and which holds
+//     the full previous URL. Navigate away from /chef/welcome?token=... and the
+//     next error shipped the magic link. Every string is now pattern-matched:
+//     token-ish query params, `Bearer x`, and bare JWTs.
+//
+//  3. NON-MUTATING. The first version assigned into the event it was handed and
+//     threw "Cannot assign to read only property" on a frozen event. This one
+//     builds a new structure, so a frozen payload is fine.
+//
+//  4. IT CAN NEVER THROW. A throwing beforeSend silently kills error reporting
+//     for the whole app. Everything is wrapped, and the catch returns the
+//     ORIGINAL payload. That is a deliberate trade: a scrubber bug degrades to
+//     "unscrubbed telemetry", never to "no telemetry". Returning null here
+//     would drop the event entirely and hide the outage.
+//
+// KNOWN GAPS, stated plainly rather than papered over:
+//  - Opaque path-segment tokens (/c/:token, /q/:id) are indistinguishable from
+//    ordinary path segments and are NOT redacted unless they are JWT-shaped.
+//  - Values on class instances (not plain objects or arrays) are returned
+//    as-is; Sentry payloads are JSON-shaped, so this is theoretical.
+//  - Beyond MAX_DEPTH the value is replaced wholesale rather than inspected.
 
 export const REDACTED = '[redacted]';
 
-/** Header names whose value is a credential. Compared case-insensitively. */
+/** Deepest nesting inspected. Anything deeper is replaced, not inspected. */
+const MAX_DEPTH = 8;
+
+/**
+ * Header names whose value is a credential outright. Compared
+ * case-insensitively. `Referer` is deliberately NOT here: its value is a URL,
+ * and it is handled by the string pass, which keeps the useful path and drops
+ * only the token.
+ */
 export const SENSITIVE_HEADER_NAMES = [
   'authorization',
+  'proxy-authorization',
   'cookie',
   'set-cookie',
   'x-guest-token',
   'x-csrf-token',
+  'x-auth-token',
+  'x-api-key',
 ];
 
-/** Query parameter names whose value is a credential. */
+/** Query parameter names whose value is a credential. Substring matched, so
+ * access_token / invite_token / guest_token are all covered by "token". */
 export const SENSITIVE_QUERY_PARAMS = [
   'token',
   'jwt',
-  'access_token',
-  'refresh_token',
-  'id_token',
-  'invite_token',
-  'invitation_token',
-  'guest_token',
-  'reset_password_token',
-  'confirmation_token',
+  'passwd',
   'password',
+  'secret',
+  'credential',
   'api_key',
   'apikey',
-  'secret',
+  'auth',
+  'session',
+  'signature',
 ];
 
-/** Matches object keys that hold a credential value. */
+/** Object keys that hold a credential value. */
 const SENSITIVE_KEY_RE =
-  /(authorization|bearer|^cookie$|token|jwt|password|passwd|secret|api[-_]?key|credential)/i;
+  /(authorization|bearer|^cookie$|token|jwt|passwd|password|secret|api[-_]?key|apikey|credential|signature)/i;
+
+/**
+ * A `name=value` pair whose NAME contains a credential word, anywhere in a
+ * string: a real URL, a bare query string, or free text such as a breadcrumb
+ * message or an exception message ("401 for token=abc"). Only the value is
+ * replaced, so the surrounding text and the harmless params survive and the
+ * event stays diagnosable.
+ *
+ * The leading separator class includes whitespace deliberately. Restricting it
+ * to [?&#] missed `token=abc` sitting in an exception's `value` string, which
+ * is exactly where a failed-auth message puts it.
+ */
+const SENSITIVE_PARAM_RE = new RegExp(
+  `(^|[?&#\\s;,(\\[])([^?&#=\\s]*(?:${SENSITIVE_QUERY_PARAMS.join('|')})[^?&#=\\s]*)=([^&#\\s"'<>)\\]]*)`,
+  'gi',
+);
+
+/** `Bearer <credential>` anywhere in a string (header values, log lines). */
+const BEARER_RE = /\b(Bearer|Basic)\s+[A-Za-z0-9._~+/=-]{8,}/gi;
+
+/**
+ * A bare JWT: three dot-separated base64url segments starting with the `eyJ`
+ * that a base64-encoded `{"` always produces. This is the value-shape check
+ * that catches a token sitting under a key nobody thought to name, and it also
+ * catches a JWT sitting in a path segment.
+ */
+const JWT_RE = /\beyJ[A-Za-z0-9_-]{4,}\.[A-Za-z0-9_-]{4,}\.[A-Za-z0-9_-]*/g;
 
 type Dict = Record<string, unknown>;
 
@@ -73,135 +129,100 @@ export interface SentryEventLike {
   [key: string]: unknown;
 }
 
-/**
- * redactUrl - replace the value of every sensitive query parameter in `url`
- * with the redaction marker, leaving the path and the harmless params intact
- * so the event is still diagnosable. Works on absolute URLs and on bare
- * paths ("/chef/welcome?token=abc"), and leaves a string it cannot parse
- * alone apart from a regex fallback pass.
- */
-export function redactUrl(url: string): string {
-  if (!url || !/[?&#]/.test(url)) return url;
-
-  const applyToSearch = (search: string): string => {
-    const params = new URLSearchParams(search);
-    let touched = false;
-    for (const name of Array.from(params.keys())) {
-      if (SENSITIVE_QUERY_PARAMS.includes(name.toLowerCase())) {
-        params.set(name, REDACTED);
-        touched = true;
-      }
-    }
-    return touched ? params.toString() : search;
-  };
-
-  // Split off the fragment, then the query, without needing a base URL.
-  const hashAt = url.indexOf('#');
-  const fragment = hashAt >= 0 ? url.slice(hashAt) : '';
-  const withoutFragment = hashAt >= 0 ? url.slice(0, hashAt) : url;
-  const queryAt = withoutFragment.indexOf('?');
-
-  let result = withoutFragment;
-  if (queryAt >= 0) {
-    const head = withoutFragment.slice(0, queryAt);
-    const search = withoutFragment.slice(queryAt + 1);
-    result = `${head}?${applyToSearch(search)}`;
-  }
-
-  // Fragment-carried tokens (hash routing) get the same treatment.
-  let redactedFragment = fragment;
-  if (fragment.includes('=')) {
-    const fragmentQueryAt = fragment.indexOf('?');
-    if (fragmentQueryAt >= 0) {
-      redactedFragment = `${fragment.slice(0, fragmentQueryAt)}?${applyToSearch(
-        fragment.slice(fragmentQueryAt + 1),
-      )}`;
-    } else {
-      redactedFragment = `#${applyToSearch(fragment.slice(1))}`;
-    }
-  }
-
-  return `${result}${redactedFragment}`;
+function isPlainObject(value: unknown): value is Dict {
+  if (value === null || typeof value !== 'object') return false;
+  const proto = Object.getPrototypeOf(value);
+  return proto === Object.prototype || proto === null;
 }
 
-function redactKeyedValues(source: Dict): Dict {
-  const out: Dict = {};
-  for (const [key, value] of Object.entries(source)) {
-    out[key] = SENSITIVE_KEY_RE.test(key) ? REDACTED : value;
+function isSensitiveKey(key: string): boolean {
+  return SENSITIVE_KEY_RE.test(key) || SENSITIVE_HEADER_NAMES.includes(key.toLowerCase());
+}
+
+/**
+ * redactString - the value-shape pass. Replaces credential-valued query
+ * params, `Bearer x`, and bare JWTs wherever they appear in a string, leaving
+ * everything else intact.
+ */
+export function redactString(value: string): string {
+  if (!value) return value;
+  let out = value;
+  if (JWT_RE.test(out)) {
+    JWT_RE.lastIndex = 0;
+    out = out.replace(JWT_RE, REDACTED);
   }
+  JWT_RE.lastIndex = 0;
+  out = out.replace(BEARER_RE, (_match, scheme: string) => `${scheme} ${REDACTED}`);
+  out = out.replace(
+    SENSITIVE_PARAM_RE,
+    (_match, separator: string, name: string) => `${separator}${name}=${REDACTED}`,
+  );
   return out;
 }
 
 /**
- * scrubSentryEvent - returns the event with credential material redacted.
- * Safe to call on a partial or unexpected event shape: anything it does not
- * recognise is passed through untouched.
+ * redactUrl - redactString under the name the URL-bearing call sites use.
+ * Works on absolute URLs, bare paths, bare query strings, and URLs embedded in
+ * free text. Preserves the path and any harmless params.
+ */
+export function redactUrl(url: string): string {
+  return redactString(url);
+}
+
+function scrubValue(value: unknown, depth: number, seen: WeakSet<object>): unknown {
+  if (typeof value === 'string') return redactString(value);
+  if (value === null || typeof value !== 'object') return value;
+
+  // A cycle would otherwise recurse forever. Sentry payloads are acyclic in
+  // practice, but a user-attached `extra` is arbitrary application data.
+  if (seen.has(value)) return '[circular]';
+
+  if (Array.isArray(value)) {
+    if (depth >= MAX_DEPTH) return REDACTED;
+    seen.add(value);
+    const out = value.map((item) => scrubValue(item, depth + 1, seen));
+    seen.delete(value);
+    return out;
+  }
+
+  if (isPlainObject(value)) {
+    if (depth >= MAX_DEPTH) return REDACTED;
+    seen.add(value);
+    const out: Dict = {};
+    for (const [key, child] of Object.entries(value)) {
+      out[key] = isSensitiveKey(key) ? REDACTED : scrubValue(child, depth + 1, seen);
+    }
+    seen.delete(value);
+    return out;
+  }
+
+  // Dates, Errors, class instances: not JSON-shaped, left alone.
+  return value;
+}
+
+/**
+ * scrubSentryEvent - returns a scrubbed COPY of the payload. Never throws, and
+ * on any internal failure returns the original payload rather than null, so a
+ * bug here can never take error reporting offline.
+ *
+ * Generic in T so callers get their own payload type back: Sentry's
+ * beforeSend / beforeSendTransaction / beforeSendSpan each require the exact
+ * type they were handed.
  */
 export function scrubSentryEvent<T>(event: T): T {
-  if (!event || typeof event !== 'object') return event;
-
-  // Generic in T so callers get their own event type back (Sentry's beforeSend
-  // must return the exact event type it was handed). The scrub itself works
-  // against the structural subset it understands.
-  const target = event as unknown as SentryEventLike;
-
-  if (target.request) {
-    const request = target.request;
-
-    if (request.headers && typeof request.headers === 'object') {
-      const headers: Record<string, string> = {};
-      for (const [name, value] of Object.entries(request.headers)) {
-        headers[name] = SENSITIVE_HEADER_NAMES.includes(name.toLowerCase())
-          ? REDACTED
-          : value;
-      }
-      request.headers = headers;
-    }
-
-    if (typeof request.url === 'string') {
-      request.url = redactUrl(request.url);
-    }
-
-    if (typeof request.query_string === 'string') {
-      request.query_string = redactUrl(`?${request.query_string}`).replace(/^\?/, '');
-    } else if (request.query_string && typeof request.query_string === 'object') {
-      request.query_string = redactKeyedValues(request.query_string as Dict);
-    }
-
-    if (request.data && typeof request.data === 'object' && !Array.isArray(request.data)) {
-      request.data = redactKeyedValues(request.data as Dict);
-    }
+  try {
+    if (!event || typeof event !== 'object') return event;
+    return scrubValue(event, 0, new WeakSet()) as T;
+  } catch {
+    return event;
   }
+}
 
-  if (Array.isArray(target.breadcrumbs)) {
-    for (const crumb of target.breadcrumbs) {
-      if (!crumb || typeof crumb !== 'object') continue;
-      if (typeof crumb.message === 'string') {
-        crumb.message = redactUrl(crumb.message);
-      }
-      if (crumb.data && typeof crumb.data === 'object') {
-        const data = crumb.data as Dict;
-        for (const field of ['url', 'to', 'from']) {
-          if (typeof data[field] === 'string') {
-            data[field] = redactUrl(data[field] as string);
-          }
-        }
-        crumb.data = redactKeyedValues(data);
-      }
-    }
-  }
-
-  if (target.extra && typeof target.extra === 'object') {
-    target.extra = redactKeyedValues(target.extra);
-  }
-
-  if (target.contexts && typeof target.contexts === 'object') {
-    for (const [name, ctx] of Object.entries(target.contexts)) {
-      if (ctx && typeof ctx === 'object' && !Array.isArray(ctx)) {
-        target.contexts[name] = redactKeyedValues(ctx as Dict);
-      }
-    }
-  }
-
-  return event;
+/**
+ * scrubSentrySpan - same walk, named for the beforeSendSpan hook. Spans carry
+ * the URL in `description` and in `data['url.full']` / `data['http.url']`,
+ * which the string pass handles like any other string.
+ */
+export function scrubSentrySpan<T>(span: T): T {
+  return scrubSentryEvent(span);
 }

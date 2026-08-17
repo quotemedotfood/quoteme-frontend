@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client';
 import * as Sentry from '@sentry/react';
 import App from './app/App';
 import { ErrorFallback } from './app/components/ErrorFallback';
-import { scrubSentryEvent } from './app/utils/scrubSentryEvent';
+import { scrubSentryEvent, scrubSentrySpan } from './app/utils/scrubSentryEvent';
 import './styles/index.css';
 
 Sentry.init({
@@ -20,13 +20,32 @@ Sentry.init({
   tracesSampleRate: import.meta.env.PROD ? 0.1 : 1.0,
   replaysSessionSampleRate: 0.0,
   replaysOnErrorSampleRate: 1.0,
+  // SECURITY: all three send hooks are wired, deliberately.
+  //
+  // beforeSend is gated behind isErrorEvent() inside @sentry/core, so it sees
+  // ERROR events only. Transactions go to beforeSendTransaction and individual
+  // spans to beforeSendSpan. With browserTracingIntegration enabled and
+  // tracesSampleRate above zero, leaving those two unset means a pageload or
+  // navigation transaction recorded on /chef/welcome?token=... ships the raw
+  // magic-link token in request.url (httpContextIntegration sets request.url
+  // and the Referer header on every event) and in the root span's url.full,
+  // with the scrubber never running. Wiring only beforeSend is the leak.
+  //
+  // See src/app/utils/scrubSentryEvent.ts. The scrubber never throws and never
+  // returns null, so these hooks cannot take telemetry offline.
   beforeSend(event) {
     // No-op when DSN is not configured (local dev without Sentry).
     if (!import.meta.env.VITE_SENTRY_DSN) return null;
-    // SECURITY: redact Authorization headers, magic-link tokens in URLs and
-    // navigation breadcrumbs, and credential-named extras before the event
-    // leaves the browser. See src/app/utils/scrubSentryEvent.ts.
     return scrubSentryEvent(event);
+  },
+  beforeSendTransaction(event) {
+    if (!import.meta.env.VITE_SENTRY_DSN) return null;
+    return scrubSentryEvent(event);
+  },
+  // Spans carry the URL in `description` and `data['url.full']`. This hook must
+  // return a span, never null, or the span is dropped from the trace.
+  beforeSendSpan(span) {
+    return scrubSentrySpan(span);
   },
 });
 

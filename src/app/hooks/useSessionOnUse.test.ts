@@ -50,4 +50,28 @@ describe('routePathOnly', () => {
   it('leaves a plain path unchanged', () => {
     expect(routePathOnly('/rep/quotes/inbound')).toBe('/rep/quotes/inbound');
   });
+
+  // The three shapes a naive split on '?' leaked, all found by verification.
+  it('drops userinfo credentials rather than passing them through', () => {
+    const out = routePathOnly('//admin:hunter2@evil.example.com/rep/welcome');
+    expect(out).not.toContain('hunter2');
+    expect(out).not.toContain('admin:');
+  });
+
+  it('redacts a percent-encoded query that is not a literal question mark', () => {
+    const out = routePathOnly('/chef/welcome%3Ftoken=MAGICSECRETVALUE');
+    expect(out).not.toContain('MAGICSECRETVALUE');
+  });
+
+  it('redacts a JWT-shaped path segment', () => {
+    const jwt = 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.sIg2Nz4dAqPmB92K27uhbUJU1p1r_wW1gFWFOEjXkx';
+    expect(routePathOnly(`/c/${jwt}`)).not.toContain(jwt);
+  });
+
+  // Stated as a test so the limit is not rediscovered the hard way: an OPAQUE
+  // path-segment token cannot be told from an ordinary path segment. This is
+  // documented on the function and is why it must not be reused for /c/:token.
+  it('does NOT remove an opaque path-segment token (known limit)', () => {
+    expect(routePathOnly('/c/abc123opaque')).toBe('/c/abc123opaque');
+  });
 });
