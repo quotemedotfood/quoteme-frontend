@@ -85,6 +85,53 @@ describe('redactString / redactUrl value-shape pass', () => {
   });
 });
 
+// Email is PII, not a credential, and it is scrubbed for a specific reason:
+// AuthContext used to call Sentry.setUser({ id, email, role }), which put a
+// real address on every event. That call site is fixed; this is the backstop
+// that stops it (or any other call site) reintroducing the leak.
+describe('email addresses are scrubbed as a backstop', () => {
+  const EMAIL = 'carla@bigfish.com';
+
+  it('redacts an email in event.user, the setUser shape', () => {
+    const event = scrubSentryEvent<SentryEventLike>({
+      user: { id: 'e7b0d3a2-1c44-4f6b-9a2e-88f0d1c2b3a4', email: EMAIL, role: 'rep' },
+    });
+    expectNoSecret(event, EMAIL);
+    // The non-identifying fields survive: the point is grouping without PII.
+    expect((event.user as Record<string, unknown>).id).toBe('e7b0d3a2-1c44-4f6b-9a2e-88f0d1c2b3a4');
+    expect((event.user as Record<string, unknown>).role).toBe('rep');
+  });
+
+  it('redacts an email sitting in an exception message', () => {
+    const out = redactString(`Send failed for ${EMAIL} (422)`);
+    expectNoSecret(out, EMAIL);
+    expect(out).toContain('(422)');
+  });
+
+  it('redacts an email in a captured request body and in a breadcrumb', () => {
+    const event = scrubSentryEvent<SentryEventLike>({
+      request: { data: { recipient_email: EMAIL, quote_id: 'q-1' } },
+      breadcrumbs: [{ category: 'ui.input', message: `typed ${EMAIL}` }],
+    });
+    expectNoSecret(event, EMAIL);
+    expect((event.request!.data as Record<string, unknown>).quote_id).toBe('q-1');
+  });
+
+  it('redacts an email carried as a query param value', () => {
+    const out = redactUrl(`/rep/customers?email=${EMAIL}&page=2`);
+    expectNoSecret(out, EMAIL);
+    expect(out).toContain('page=2');
+  });
+
+  it('leaves non-email at-strings and email-ish counters alone', () => {
+    // No dotted TLD: a package spec or a bare user@host is not an address.
+    expect(redactString('@sentry/react@10.1.0')).toContain('@sentry/react');
+    // Key-name matching would have blanked this; value-shape matching does not.
+    const event = scrubSentryEvent<SentryEventLike>({ extra: { emails_sent: 3 } });
+    expect(event.extra!.emails_sent).toBe(3);
+  });
+});
+
 describe('scrubSentryEvent: headers', () => {
   it('redacts the Authorization header without keeping a prefix', () => {
     const event = scrubSentryEvent<SentryEventLike>({

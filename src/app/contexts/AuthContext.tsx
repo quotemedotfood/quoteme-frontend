@@ -48,10 +48,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (response.data) {
       setUser(response.data);
-      // Tag Sentry events with authenticated user identity.
+      // SECURITY: no email in telemetry. A PII payload sitting in a third-party
+      // collector is the same class of leak as a bearer token in the console:
+      // it is personal data we exported to a system with its own access list,
+      // retention and breach surface, for no diagnostic benefit that the id and
+      // the role do not already give us.
+      //
+      // The account id STAYS, and is not the same call as the guest one. The
+      // guest id used to be the first 12 characters of the guest token, i.e.
+      // credential material, so UserContext replaced it with a random
+      // browser-local trace id (see guestTraceId there). This id is a v4 UUID
+      // primary key (users.id, gen_random_uuid). It carries no personal data on
+      // its own, it is not a credential and cannot be used to authenticate, and
+      // it is the only field that makes an issue triageable back to the account
+      // that hit it. Swapping it for a browser-local random id would also be
+      // actively wrong here: reps hand a phone to a chef across the counter, so
+      // a per-BROWSER id merges two different people's errors under one
+      // identity, while a per-ACCOUNT id keeps them apart.
+      //
+      // The backstop is scrubSentryEvent, which redacts email-shaped strings
+      // anywhere in a payload, so re-adding an email here would not ship it.
       Sentry.setUser({
         id: response.data.id,
-        email: response.data.email,
         role: response.data.role,
       });
     } else {

@@ -1,5 +1,5 @@
-// scrubSentryEvent / scrubSentrySpan - strip credential material out of a
-// Sentry payload before it leaves the browser.
+// scrubSentryEvent / scrubSentrySpan - strip credential material, plus email
+// addresses, out of a Sentry payload before it leaves the browser.
 //
 // Sentry's beforeSend used to be a pure no-op gate on the DSN, so anything
 // attached to an event (an Authorization header, a magic-link URL in a
@@ -47,6 +47,9 @@
 //  - Values on class instances (not plain objects or arrays) are returned
 //    as-is; Sentry payloads are JSON-shaped, so this is theoretical.
 //  - Beyond MAX_DEPTH the value is replaced wholesale rather than inspected.
+//  - Email is the only PII shape handled (see EMAIL_RE). Names, phone numbers
+//    and addresses have no reliable value shape and are not redacted here, so
+//    the call site still has to not attach them.
 
 export const REDACTED = '[redacted]';
 
@@ -139,6 +142,24 @@ const BEARER_RE = /\b(Bearer|Basic)\s+[A-Za-z0-9._~+/=-]{8,}/gi;
  */
 const JWT_RE = /\beyJ[A-Za-z0-9_-]{4,}\.[A-Za-z0-9_-]{4,}\.[A-Za-z0-9_-]*/g;
 
+/**
+ * An email address. Not a credential, so it is the one PII shape this file
+ * handles, and it is here for a specific reason: AuthContext used to call
+ * Sentry.setUser({ id, email, role }), which put a real user's address into
+ * every event this app sent. That call site was fixed, but a field list is a
+ * thing people re-add, and event.user.email is not the only route in: a
+ * recipient address lands in an exception message ("send failed for
+ * chef@place.com"), in a captured POST body, and in a form breadcrumb.
+ *
+ * Value-shape rather than a key named `email`, for the reason in design note 2,
+ * and because a key list would also blank harmless keys such as `emails_sent`.
+ * Requires a dotted TLD, so a `user@host` style string with no domain is left
+ * alone. Runs AFTER USERINFO_RE, whose replacement leaves `[redacted]@host`
+ * with a bracket immediately before the `@`, which this deliberately does not
+ * match.
+ */
+const EMAIL_RE = /[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}/g;
+
 type Dict = Record<string, unknown>;
 
 interface BreadcrumbLike {
@@ -184,6 +205,7 @@ export function redactString(value: string): string {
   }
   JWT_RE.lastIndex = 0;
   out = out.replace(USERINFO_RE, (_match, slashes: string) => `${slashes}${REDACTED}@`);
+  out = out.replace(EMAIL_RE, REDACTED);
   out = out.replace(BEARER_RE, (_match, scheme: string) => `${scheme} ${REDACTED}`);
   out = out.replace(
     SENSITIVE_PARAM_RE,
