@@ -43,9 +43,18 @@ import {
  * BE PERSISTENCE: once a venue code is set, every confirm/swap/remove and every
  * pushed star is saved to PUT /v1/venues/:code/pairings (via the effect below),
  * so the operator's work survives a reload. "Load saved pairings" re-applies
- * them onto a freshly rebuilt menu (GET /v1/venues/:code/pairings). Follow-up:
- * the diner at /t/:code does not yet READ these (TableCodeRoute would need to
- * fetch and surface the pushed wines); that consumption is the next step.
+ * them onto a freshly rebuilt menu (GET /v1/venues/:code/pairings).
+ *
+ * THE LOOP IS CLOSED. The diner side DOES read these: lib/state.js's
+ * /t/:code effect calls getVenuePairings(tableCode) and patches the result
+ * into `venuePushed` (state.js:521), which TheWine renders as "Featured
+ * tonight". Covered end to end by tests/e2e/operator-loop.test.jsx.
+ *
+ * This paragraph previously said the diner "does not yet READ these" and
+ * called that consumption "the next step". That was already false when it was
+ * written: the diner side shipped two days before this file's own last
+ * commit. Anyone reading it would have rebuilt shipped work. Corrected rather
+ * than deleted, so the record of the correction survives.
  */
 
 const COLORS = {
