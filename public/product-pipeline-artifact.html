@@ -113,7 +113,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 <div class="header">
   <h1>QuoteMe pipeline</h1>
   <div class="header-actions">
-    <button class="btn" onclick="openNewCard(null,'backlog')"><i class="ti ti-plus"></i> Add card</button>
+    <button class="btn" aria-label="Add card to backlog" onclick="openNewCard(null,'backlog')"><i class="ti ti-plus"></i> Add card</button>
     <button class="btn" onclick="openNewColumn()"><i class="ti ti-layout-columns"></i> Add column</button>
   </div>
 </div>
@@ -360,6 +360,18 @@ function pBadge(p) { return p ? `<span class="badge badge-${p}">${p.toUpperCase(
 function aBadge(a) { const l={chef:'Chef',rep:'Rep',dist:'Distributor',brand:'Brand',infra:'Infra'}; return a ? `<span class="badge badge-${a}">${l[a]||a}</span>` : ''; }
 function sDot(s) { const m={todo:'todo',inflight:'inflight',review:'inflight',done:'done',blocked:'blocked',live:'done',partial:'inflight',planned:'todo'}; return `<span class="status-dot dot-${m[s]||'todo'}"></span>`; }
 
+// Card titles and column titles are operator-typed free text. Interpolating
+// them into an HTML *attribute* (the aria-labels below) is not the same as
+// interpolating them into text: a stray double quote or angle bracket closes
+// the attribute early and the button silently loses its accessible name.
+function attr(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
 function render() { renderBoard(); renderBacklog(); renderFlows(); }
 
 function renderBoard() {
@@ -373,12 +385,12 @@ function renderBoard() {
         <div class="card-meta">${pBadge(card.priority)}${aBadge(card.area)}${card.task_id?`<span class="card-task-id">${card.task_id}</span>`:''}${card.owner?`<span class="card-owner">${card.owner}</span>`:''}</div>
         <div class="card-claim-row" style="margin-top:6px;display:flex;align-items:center;gap:6px;" onclick="event.stopPropagation()">
           ${card.claimed_at
-            ? `<span style="font-size:11px;color:var(--text-secondary);">&#128100; ${card.claimed_by?card.claimed_by.name:(card.owner||'Claimed')}</span><button class="btn" style="padding:2px 8px;font-size:11px;" onclick="releaseCard('${card.id}')">Release</button>`
-            : `<button class="btn" style="padding:2px 8px;font-size:11px;" onclick="claimCard('${card.id}')">Claim</button>`
+            ? `<span style="font-size:11px;color:var(--text-secondary);">&#128100; ${card.claimed_by?card.claimed_by.name:(card.owner||'Claimed')}</span><button class="btn" style="padding:2px 8px;font-size:11px;" aria-label="Release ${attr(card.title)}" onclick="releaseCard('${card.id}')">Release</button>`
+            : `<button class="btn" style="padding:2px 8px;font-size:11px;" aria-label="Claim ${attr(card.title)}" onclick="claimCard('${card.id}')">Claim</button>`
           }
         </div>
       </div>`).join('')}
-      <button class="add-card-btn" onclick="openNewCard('${col.id}','board')"><i class="ti ti-plus"></i> Add card</button>
+      <button class="add-card-btn" aria-label="Add card to ${attr(col.title)}" onclick="openNewCard('${col.id}','board')"><i class="ti ti-plus"></i> Add card</button>
     </div>`;
   }).join('') + `<div><button class="add-col-btn" onclick="openNewColumn()">+ Column</button></div>`;
 }

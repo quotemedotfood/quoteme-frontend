@@ -374,8 +374,10 @@ export function CustomersPage() {
                               e.stopPropagation();
                               handleEditCustomer(restaurant);
                             }}
+                            // Icon-only, one per row, no name before this.
+                            aria-label={`Edit ${restaurant.name}`}
                           >
-                            <Edit className="w-4 h-4 text-gray-500" />
+                            <Edit className="w-4 h-4 text-gray-500" aria-hidden="true" />
                           </Button>
                         </div>
                       </div>
@@ -421,8 +423,12 @@ export function CustomersPage() {
                                         e.stopPropagation();
                                         handleEditContact(detail, contact);
                                       }}
+                                      // Icon-only, one per contact inside an expanded
+                                      // customer. The contact's own name is the only
+                                      // thing that separates these from each other.
+                                      aria-label={`Edit contact ${contact.first_name} ${contact.last_name}`}
                                     >
-                                      <Edit className="w-4 h-4 text-gray-500" />
+                                      <Edit className="w-4 h-4 text-gray-500" aria-hidden="true" />
                                     </Button>
                                   </div>
                                 </div>
