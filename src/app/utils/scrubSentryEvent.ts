@@ -268,9 +268,16 @@ function markFailed(out: Dict): void {
  * 4: per field this fails CLOSED (replaced with the marker), per payload it
  * fails OPEN (the payload still ships).
  *
- * `tagOnFailure` is false for spans: a span JSON has no `tags` field, and
- * inventing one would be merged back into the transaction event by
- * convertSpanJsonToTransactionEvent. Spans get the warning only.
+ * `tagOnFailure` is false for spans, for two reasons, neither of which is
+ * "it would be merged into the transaction event". It would not:
+ * convertSpanJsonToTransactionEvent (@sentry/core utils/transactionEvent.js
+ * :32-55) returns a hard whitelist of type, timestamp, start_timestamp,
+ * transaction, contexts.trace and measurements, and never reads span.tags,
+ * so an invented tag on the ROOT span is silently discarded. The real
+ * reasons are: on the root span the tag is dead weight, and on a CHILD span
+ * client.js pushes the whole returned object into processedSpans, so an
+ * invented `tags` key would be serialized into a span envelope item whose
+ * schema has no such field. Spans get the warning only.
  */
 function scrubPayload<T>(payload: T, tagOnFailure: boolean): T {
   try {
