@@ -10,7 +10,7 @@
 //
 // @vitest-environment node
 import { describe, it, expect } from 'vitest';
-import { isConsumeRoute } from './useSessionOnUse';
+import { isConsumeRoute, routePathOnly } from './useSessionOnUse';
 
 describe('isConsumeRoute', () => {
   it('flags the rep magic-link consume route', () => {
@@ -30,5 +30,24 @@ describe('isConsumeRoute', () => {
     expect(isConsumeRoute('/rep/quotes/inbound')).toBe(false);
     expect(isConsumeRoute('/chef/quotes/quote-123')).toBe(false);
     expect(isConsumeRoute('/rep/quotes/quote-123')).toBe(false);
+  });
+});
+
+// The guard's own diagnostic used to interpolate the whole rejected target
+// into a console.error, and a rejected target is precisely the case that
+// carries a raw magic-link or invite token in `?token=`. The log now names the
+// path only.
+describe('routePathOnly', () => {
+  it('drops the token query from a consume target', () => {
+    expect(routePathOnly('/chef/welcome?token=magic-secret-value')).toBe('/chef/welcome');
+    expect(routePathOnly('/rep/welcome?token=abc123&ref=email')).toBe('/rep/welcome');
+  });
+
+  it('drops a fragment as well', () => {
+    expect(routePathOnly('/chef/welcome#token=hash-secret')).toBe('/chef/welcome');
+  });
+
+  it('leaves a plain path unchanged', () => {
+    expect(routePathOnly('/rep/quotes/inbound')).toBe('/rep/quotes/inbound');
   });
 });

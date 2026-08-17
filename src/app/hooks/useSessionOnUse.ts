@@ -111,6 +111,16 @@ export function isConsumeRoute(target: string): boolean {
 }
 
 /**
+ * routePathOnly - the path portion of a navigation target, with the query
+ * string and fragment removed. Used so diagnostics can name the route that
+ * was rejected without printing the raw token that a consume route carries in
+ * `?token=`. Credential values never belong in a log line.
+ */
+export function routePathOnly(target: string): string {
+  return target.split(/[?#]/)[0];
+}
+
+/**
  * useEstablishSession - the persist + refresh + sync steps (1-3 above),
  * without navigating. Use this directly when a page needs the session
  * established immediately (e.g. on mount) but must defer navigation to a
@@ -154,8 +164,11 @@ export function useSessionOnUse() {
 
       let safeTarget = target;
       if (isConsumeRoute(target)) {
+        // SECURITY: a consume-route target is exactly the case that carries a
+        // raw magic-link / invite token in its query string, so log the path
+        // only. Never interpolate the full target (with its query) into a log.
         console.error(
-          `useSessionOnUse: refusing to navigate to consume route "${target}" after the session was already established; falling back to "${SAFE_DEFAULT_TARGET}".`,
+          `useSessionOnUse: refusing to navigate to consume route "${routePathOnly(target)}" after the session was already established; falling back to "${SAFE_DEFAULT_TARGET}".`,
         );
         safeTarget = SAFE_DEFAULT_TARGET;
       }

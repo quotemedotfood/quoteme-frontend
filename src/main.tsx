@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import * as Sentry from '@sentry/react';
 import App from './app/App';
 import { ErrorFallback } from './app/components/ErrorFallback';
+import { scrubSentryEvent } from './app/utils/scrubSentryEvent';
 import './styles/index.css';
 
 Sentry.init({
@@ -21,7 +22,11 @@ Sentry.init({
   replaysOnErrorSampleRate: 1.0,
   beforeSend(event) {
     // No-op when DSN is not configured (local dev without Sentry).
-    return import.meta.env.VITE_SENTRY_DSN ? event : null;
+    if (!import.meta.env.VITE_SENTRY_DSN) return null;
+    // SECURITY: redact Authorization headers, magic-link tokens in URLs and
+    // navigation breadcrumbs, and credential-named extras before the event
+    // leaves the browser. See src/app/utils/scrubSentryEvent.ts.
+    return scrubSentryEvent(event);
   },
 });
 

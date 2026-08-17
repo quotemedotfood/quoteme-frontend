@@ -36,9 +36,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const validateToken = useCallback(async (context: string = 'unknown') => {
-    const storedToken = localStorage.getItem('quoteme_token');
-    console.log(`[validateToken:${context}] Token in localStorage:`, storedToken ? `${storedToken.substring(0, 20)}...` : 'MISSING');
-
+    // SECURITY: never log the stored bearer token, in whole or in part. This
+    // runs on every authenticated route mount, so any prefix logged here was
+    // sitting in the console of every production session.
     const response = await getCurrentUser();
     console.log(`[validateToken:${context}] /me response:`, {
       hasData: !!response.data,
@@ -75,7 +75,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (response.token) {
       localStorage.setItem('quoteme_token', response.token);
       if (guestToken) localStorage.removeItem('quoteme_guest_token');
-      console.log('[login] Token stored:', response.token.substring(0, 30) + '...');
+      // SECURITY: no token value (or prefix of one) in the console.
       await validateToken('login');
       return { success: true };
     }
