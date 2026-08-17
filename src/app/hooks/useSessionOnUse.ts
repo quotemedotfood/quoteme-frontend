@@ -27,6 +27,7 @@ import { useCallback } from 'react';
 import { useNavigate } from 'react-router';
 import { useAuth } from '../contexts/AuthContext';
 import { useUser } from '../contexts/UserContext';
+import { redactUrl } from '../utils/scrubSentryEvent';
 
 /** Authenticated landing route to fall back to if a caller ever passes a
  * consume route as the navigation target. */
@@ -111,6 +112,42 @@ export function isConsumeRoute(target: string): boolean {
 }
 
 /**
+ * routePathOnly - the path portion of a navigation target, for diagnostics
+ * that need to name the route that was rejected without printing the raw
+ * token a consume route carries in `?token=`.
+ *
+ * Parsed with the URL parser rather than split on the first `?`, because a
+ * naive split leaks three shapes: userinfo credentials (`//user:pass@host/p`),
+ * a percent-encoded query (`/chef/welcome%3Ftoken=...`, where the `?` is not a
+ * literal `?`), and anything after a fragment. What survives the parse is then
+ * run through redactUrl, which catches the encoded-query case and any
+ * JWT-shaped path segment.
+ *
+ * HONEST LIMIT, read this before reusing it: an OPAQUE path-segment token is
+ * not detectable and is NOT removed. This app has such a route (`/c/:token`),
+ * so `routePathOnly('/c/abc123')` returns `/c/abc123` verbatim, token intact.
+ * This function is safe at its one call site only because isConsumeRoute()
+ * limits it to `/rep/welcome`, `/chef/welcome`, and `?token=` targets. Do not
+ * treat it as a general-purpose URL sanitizer.
+ */
+export function routePathOnly(target: string): string {
+  let path: string;
+  try {
+    // Any base works: we only ever read back the pathname.
+    path = new URL(target, 'http://localhost').pathname;
+  } catch {
+    path = target.split(/[?#]/)[0];
+  }
+  let decoded = path;
+  try {
+    decoded = decodeURIComponent(path);
+  } catch {
+    // Malformed percent-encoding: keep the raw pathname, still redacted below.
+  }
+  return redactUrl(decoded);
+}
+
+/**
  * useEstablishSession - the persist + refresh + sync steps (1-3 above),
  * without navigating. Use this directly when a page needs the session
  * established immediately (e.g. on mount) but must defer navigation to a
@@ -154,8 +191,11 @@ export function useSessionOnUse() {
 
       let safeTarget = target;
       if (isConsumeRoute(target)) {
+        // SECURITY: a consume-route target is exactly the case that carries a
+        // raw magic-link / invite token in its query string, so log the path
+        // only. Never interpolate the full target (with its query) into a log.
         console.error(
-          `useSessionOnUse: refusing to navigate to consume route "${target}" after the session was already established; falling back to "${SAFE_DEFAULT_TARGET}".`,
+          `useSessionOnUse: refusing to navigate to consume route "${routePathOnly(target)}" after the session was already established; falling back to "${SAFE_DEFAULT_TARGET}".`,
         );
         safeTarget = SAFE_DEFAULT_TARGET;
       }

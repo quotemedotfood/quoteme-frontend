@@ -54,6 +54,32 @@ const defaultContextValue: UserContextType = {
 
 const UserContext = createContext<UserContextType>(defaultContextValue);
 
+/**
+ * SECURITY: Sentry's user id for an anonymous guest used to be the first 12
+ * characters of the guest token, which put credential material into telemetry.
+ * The guest token is the actual bearer for X-Guest-Token, so no substring of
+ * it may leave the browser as a label. This returns a random, throwaway id
+ * that is stable for the browser (so Sentry can still group a guest's events)
+ * but has no relationship to any credential.
+ */
+const GUEST_TRACE_ID_KEY = 'quoteme_guest_trace_id';
+
+function guestTraceId(): string {
+  try {
+    const existing = localStorage.getItem(GUEST_TRACE_ID_KEY);
+    if (existing) return existing;
+    const fresh =
+      typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+        ? crypto.randomUUID()
+        : `guest-${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`;
+    localStorage.setItem(GUEST_TRACE_ID_KEY, fresh);
+    return fresh;
+  } catch {
+    // Storage unavailable (private mode, quota). An unlabelled guest is fine.
+    return 'guest';
+  }
+}
+
 export function UserProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<UserProfile>(() => {
     // Try to load from localStorage to persist across refreshes
@@ -110,8 +136,8 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
           quotesLimit: 5,
           isGuest: true,
         }));
-        // Tag Sentry with anonymous guest identity using first 12 chars of token.
-        Sentry.setUser({ id: existingToken.slice(0, 12), role: 'guest_chef' });
+        // Tag Sentry with an anonymous, non-credential guest id.
+        Sentry.setUser({ id: guestTraceId(), role: 'guest_chef' });
       }
       return;
     }
@@ -125,8 +151,8 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         quotesLimit: 5,
         isGuest: true,
       }));
-      // Tag Sentry with anonymous guest identity using first 12 chars of new token.
-      Sentry.setUser({ id: response.data.token.slice(0, 12), role: 'guest_chef' });
+      // Tag Sentry with an anonymous, non-credential guest id.
+      Sentry.setUser({ id: guestTraceId(), role: 'guest_chef' });
     }
   }, []);
 

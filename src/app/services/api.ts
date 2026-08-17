@@ -540,24 +540,16 @@ async function fetchWithAuth<T>(
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  // Debug: log what we're sending for auth-critical endpoints
-  if (endpoint.includes('/me') || endpoint.includes('sign_in')) {
-    console.log(`[fetchWithAuth] ${options.method || 'GET'} ${endpoint}`, {
-      hasToken: !!token,
-      tokenPrefix: token?.substring(0, 20),
-      authHeader: headers['Authorization']?.substring(0, 30),
-    });
-  }
-
+  // SECURITY: the auth-critical endpoints (/me, sign_in) used to log the
+  // token prefix and the Authorization header here. That block is gone and
+  // must not come back: /me runs on every authenticated route mount, so it
+  // printed credential material into every production session's console.
+  // Nothing in this function needs a token diagnostic.
   try {
     const response = await fetchWithRetry(`${API_BASE_URL}${endpoint}`, {
       ...options,
       headers,
     });
-
-    if (endpoint.includes('/me')) {
-      console.log(`[fetchWithAuth] /me response status: ${response.status}`);
-    }
 
     // Extract JWT token from response header if present
     const authHeader = response.headers.get('Authorization');
@@ -688,9 +680,6 @@ export async function signIn(credentials: LoginData): Promise<ApiResponse<{ mess
       jwtToken = data.token;
     }
 
-    console.log('[signIn] Authorization header:', authHeader ? 'present' : 'missing');
-    console.log('[signIn] JWT token extracted:', jwtToken ? 'yes' : 'no');
-
     return { data, token: jwtToken };
   } catch (error) {
     return {
@@ -731,9 +720,6 @@ export async function signUp(data: SignUpData): Promise<ApiResponse<{ message: s
     if (!jwtToken && body.token) {
       jwtToken = body.token;
     }
-
-    console.log('[signUp] Authorization header:', authHeader ? 'present' : 'missing');
-    console.log('[signUp] JWT token extracted:', jwtToken ? 'yes' : 'no');
 
     return { data: body, token: jwtToken };
   } catch (error) {
