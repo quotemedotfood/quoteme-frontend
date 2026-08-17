@@ -13,6 +13,7 @@ import {
 import { getAdminUsers, AdminUser } from '../../services/adminApi';
 import { impersonateChef } from '../../services/api';
 import { userStatusPill } from '../../utils/userDisplayStatus';
+import { AdminEmptyState } from './_adminEmptyState';
 
 type SortField = 'name' | 'email' | 'status' | 'last_login_at' | 'created_at';
 type SortDir = 'asc' | 'desc';
@@ -241,11 +242,7 @@ export function QMAdminChefs() {
       {error && <p className="text-sm text-red-500 py-4">{error}</p>}
       {loading && <p className="text-sm text-gray-400 py-8">Loading chef accounts...</p>}
 
-      {!loading && filtered.length === 0 && (
-        <div className="text-center py-16 text-gray-400">
-          <p className="text-lg font-medium">No chef accounts found</p>
-        </div>
-      )}
+      {!loading && filtered.length === 0 && <AdminEmptyState label="chef accounts" />}
 
       {!loading && filtered.length > 0 && (
         <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
