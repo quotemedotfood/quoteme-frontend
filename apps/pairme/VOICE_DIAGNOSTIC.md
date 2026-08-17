@@ -6,10 +6,26 @@ timings and a real error code, has never been captured. This snippet does
 that on a real device.
 
 Open a real desktop Chrome tab on `https://demo.pairme.wine`, open DevTools
-console, paste the whole block below, press Enter, then tap any field mic
-(or type `__pmVoiceProbe.stop()` to end it early). It logs every lifecycle
-event with a timestamp relative to when you pasted it, and prints a summary
-table on `onend`.
+console, paste the whole block below and press Enter. It starts listening
+immediately on its OWN recognizer, so just SPEAK. Do not tap a field mic
+while it runs: that would start a second recognizer competing with this one
+and the trace would show you the conflict rather than the bug.
+
+Say a few words, then stop talking and wait. Chrome ends the utterance by
+itself after a pause, which is the moment `onend` fires and the summary
+table prints. To cut it short instead, type `__pmVoiceProbe.stop()`.
+
+Every event is logged with a timestamp relative to when you pasted it.
+
+WHAT TO SEND BACK: the whole console output, including the table. The two
+things we most need are the `onerror` code, if one fires, and whether
+`onaudiostart` ever arrives. If `onstart` fires but `onaudiostart` never
+does, the browser never got the microphone. If neither fires, the recognizer
+never started at all.
+
+RUN IT TWICE: once accepting the microphone permission prompt, and once
+denying it. The denial path is the one that currently fails silently in the
+app, so its error code is the single most useful line of output.
 
 ```js
 (() => {
