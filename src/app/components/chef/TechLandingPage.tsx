@@ -31,13 +31,14 @@
 //   Both calls are unauthenticated — no Bearer/JWT headers.
 
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { Upload, Check, ArrowRight, Mail } from 'lucide-react';
+import { Upload, Check, ArrowRight, Mail, Loader2 } from 'lucide-react';
 import { useParams } from 'react-router';
 import quotemeLogo from '../../../assets/quoteme-logo.png';
 import {
   verifyCatalogUploadLink,
   uploadCatalogViaLink,
 } from '../../services/api';
+import { fileRejection, CATALOG_SURFACE } from '../../utils/fileGate';
 
 // ─── Demo data (locked — do not mutate during port) ──────────────────────────
 // Canonical: handoff/SECURE_REP_CATALOG_UPLOAD.md § Demo data
@@ -181,18 +182,36 @@ interface CatalogDropZoneV45Props {
   onSend: (file: File, note: string) => void;
   ctx: CtxNames;
   uploadError?: string | null;
+  /** True while the upload POST is in flight. Optional so existing callers
+   *  (SecureTechPreviewPage's static frames) are unaffected. */
+  sending?: boolean;
 }
 
-function CatalogDropZoneV45({ desktop = false, onSend, ctx, uploadError }: CatalogDropZoneV45Props) {
+function CatalogDropZoneV45({ desktop = false, onSend, ctx, uploadError, sending = false }: CatalogDropZoneV45Props) {
   const [file, setFile]       = useState<File | null>(null);
   const [fileName, setFileName] = useState('');
   const [fileSize, setFileSize] = useState('');
+  const [fileError, setFileError] = useState<string | null>(null);
   const [note, setNote]       = useState('');
   const [hover, setHover]     = useState(false);
   const fileInputRef          = useRef<HTMLInputElement>(null);
   const hasFile               = !!fileName;
 
+  // The single gate for BOTH intake paths. `accept` on the input below is only
+  // a picker hint and drag-and-drop ignores it outright, so this is the real
+  // guard: handleDrop and handleFileInputChange both funnel through here and
+  // neither carries a check of its own.
   const acceptFile = useCallback((f: File) => {
+    const rejection = fileRejection(f, CATALOG_SURFACE);
+    if (rejection) {
+      setFileError(rejection);
+      // Reset the picker so re-choosing the same file still fires a change
+      // event. Any previously accepted file is left attached on purpose:
+      // a mistaken drop should not silently discard what is already staged.
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+    setFileError(null);
     setFile(f);
     setFileName(f.name);
     setFileSize(
@@ -205,9 +224,10 @@ function CatalogDropZoneV45({ desktop = false, onSend, ctx, uploadError }: Catal
   const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     setHover(false);
+    if (sending) return;   // no swapping the file out from under an upload
     const f = e.dataTransfer?.files?.[0];
     if (f) acceptFile(f);
-  }, [acceptFile]);
+  }, [acceptFile, sending]);
 
   const handleFileInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
@@ -215,12 +235,27 @@ function CatalogDropZoneV45({ desktop = false, onSend, ctx, uploadError }: Catal
   }, [acceptFile]);
 
   const handleZoneClick = useCallback(() => {
+    if (sending) return;
     if (!hasFile) fileInputRef.current?.click();
-  }, [hasFile]);
+  }, [hasFile, sending]);
 
   const handleSend = useCallback(() => {
     if (file) onSend(file, note);
   }, [file, note, onSend]);
+
+  // One error position on the surface. A file the gate refused takes
+  // precedence over a stale upload error from a previous attempt.
+  const shownError = fileError ?? uploadError;
+
+  const helperLineStyle: React.CSSProperties = {
+    ...serifStyle,
+    fontStyle: 'italic',
+    fontSize: 11,
+    marginTop: 8,
+    textAlign: 'center',
+    lineHeight: 1.45,
+    color: C.gray500,
+  };
 
   return (
     <div>
@@ -228,7 +263,7 @@ function CatalogDropZoneV45({ desktop = false, onSend, ctx, uploadError }: Catal
       <input
         ref={fileInputRef}
         type="file"
-        accept=".pdf,.csv,.xlsx,.jpg,.jpeg,.png,.webp"
+        accept={CATALOG_SURFACE.exts.join(',')}
         style={{ display: 'none' }}
         onChange={handleFileInputChange}
       />
@@ -255,7 +290,7 @@ function CatalogDropZoneV45({ desktop = false, onSend, ctx, uploadError }: Catal
             : `1.5px dashed ${hover ? C.charcoal : 'rgba(60,50,40,.32)'}`,
           borderRadius: 6,
           transition: 'background .15s ease, border-color .15s ease',
-          cursor: 'pointer',
+          cursor: sending ? 'default' : 'pointer',
           outline: 'none',
         }}
       >
@@ -300,23 +335,25 @@ function CatalogDropZoneV45({ desktop = false, onSend, ctx, uploadError }: Catal
             {/* Replace link */}
             <button
               type="button"
+              disabled={sending}
               onClick={(e) => {
                 e.stopPropagation();
                 setFile(null);
                 setFileName('');
                 setFileSize('');
+                setFileError(null);
                 if (fileInputRef.current) fileInputRef.current.value = '';
               }}
               style={{
                 ...sans,
                 marginTop: 12,
                 fontSize: 11.5,
-                color: C.charcoal,
+                color: sending ? C.gray500 : C.charcoal,
                 textDecoration: 'underline',
                 textUnderlineOffset: 2,
                 background: 'transparent',
                 border: 'none',
-                cursor: 'pointer',
+                cursor: sending ? 'default' : 'pointer',
               }}
             >
               Use a different file
@@ -413,7 +450,7 @@ function CatalogDropZoneV45({ desktop = false, onSend, ctx, uploadError }: Catal
       <button
         type="button"
         onClick={handleSend}
-        disabled={!hasFile}
+        disabled={!hasFile || sending}
         style={{
           ...sans,
           marginTop: desktop ? 26 : 20,
@@ -425,7 +462,7 @@ function CatalogDropZoneV45({ desktop = false, onSend, ctx, uploadError }: Catal
           background: hasFile ? C.orange : 'rgba(60,50,40,.18)',
           border: 'none',
           borderRadius: 4,
-          cursor: hasFile ? 'pointer' : 'not-allowed',
+          cursor: !hasFile ? 'not-allowed' : sending ? 'progress' : 'pointer',
           display: 'inline-flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -433,27 +470,30 @@ function CatalogDropZoneV45({ desktop = false, onSend, ctx, uploadError }: Catal
           transition: 'background .15s ease',
         }}
       >
-        <ArrowRight size={14} color="#fff" />
-        Send it to {ctx.repFirst}
+        {sending ? (
+          <>
+            <Loader2 size={14} color="#fff" className="animate-spin" />
+            Sending to {ctx.repFirst}...
+          </>
+        ) : (
+          <>
+            <ArrowRight size={14} color="#fff" />
+            Send it to {ctx.repFirst}
+          </>
+        )}
       </button>
 
-      {!hasFile && (
-        <div
-          style={{
-            ...serifStyle,
-            fontStyle: 'italic',
-            fontSize: 11,
-            marginTop: 8,
-            textAlign: 'center',
-            lineHeight: 1.45,
-            color: C.gray500,
-          }}
-        >
+      {sending ? (
+        <div style={helperLineStyle}>
+          Sending now. A big catalog takes a moment.
+        </div>
+      ) : !hasFile ? (
+        <div style={helperLineStyle}>
           Drop the catalog first.
         </div>
-      )}
+      ) : null}
 
-      {uploadError && (
+      {shownError && (
         <div
           style={{
             ...sans,
@@ -464,7 +504,7 @@ function CatalogDropZoneV45({ desktop = false, onSend, ctx, uploadError }: Catal
             textAlign: 'center',
           }}
         >
-          {uploadError}
+          {shownError}
         </div>
       )}
     </div>
@@ -716,6 +756,8 @@ interface TechLandingDesktopProps {
   sentFileSize?: string;
   ctx: CtxNames;
   uploadError?: string | null;
+  /** True while the upload POST is in flight. Optional: static preview frames omit it. */
+  sending?: boolean;
 }
 
 export function TechLandingDesktop({
@@ -725,6 +767,7 @@ export function TechLandingDesktop({
   sentFileSize,
   ctx,
   uploadError,
+  sending,
 }: TechLandingDesktopProps) {
   return (
     <div
@@ -748,7 +791,7 @@ export function TechLandingDesktop({
             {state === 'sent' ? (
               <V45Sent desktop sentFileName={sentFileName} sentFileSize={sentFileSize} ctx={ctx} />
             ) : (
-              <CatalogDropZoneV45 desktop onSend={onSend} ctx={ctx} uploadError={uploadError} />
+              <CatalogDropZoneV45 desktop onSend={onSend} ctx={ctx} uploadError={uploadError} sending={sending} />
             )}
             <V45Footnote desktop ctx={ctx} />
           </>
@@ -768,6 +811,8 @@ interface TechLandingMobileProps {
   sentFileSize?: string;
   ctx: CtxNames;
   uploadError?: string | null;
+  /** True while the upload POST is in flight. Optional: static preview frames omit it. */
+  sending?: boolean;
 }
 
 export function TechLandingMobile({
@@ -777,6 +822,7 @@ export function TechLandingMobile({
   sentFileSize,
   ctx,
   uploadError,
+  sending,
 }: TechLandingMobileProps) {
   return (
     <div
@@ -799,7 +845,7 @@ export function TechLandingMobile({
             {state === 'sent' ? (
               <V45Sent sentFileName={sentFileName} sentFileSize={sentFileSize} ctx={ctx} />
             ) : (
-              <CatalogDropZoneV45 onSend={onSend} ctx={ctx} uploadError={uploadError} />
+              <CatalogDropZoneV45 onSend={onSend} ctx={ctx} uploadError={uploadError} sending={sending} />
             )}
             <V45Footnote ctx={ctx} />
           </>
@@ -833,6 +879,15 @@ export function TechLandingPage() {
   const [sentFileName, setSentFileName] = useState<string | undefined>();
   const [sentFileSize, setSentFileSize] = useState<string | undefined>();
   const [uploadError, setUploadError] = useState<string | null>(null);
+  // In-flight guard. The ref is the real lock: `sending` state and the button's
+  // `disabled` attribute only take effect on the NEXT render, so two taps in the
+  // same tick both reach handleSend and fire two real POSTs. `sending` exists
+  // purely to drive the UI. useAsyncMutation is deliberately not used here: its
+  // two-outcome contract collapses this page's three outcomes (delivered / 410
+  // expired / error) and would route a 410 down the failure path, losing the
+  // expired screen.
+  const sendingRef = useRef(false);
+  const [sending, setSending] = useState(false);
   const [isDesktop, setIsDesktop] = useState(() =>
     typeof window !== 'undefined' ? window.innerWidth >= 768 : false,
   );
@@ -892,40 +947,52 @@ export function TechLandingPage() {
 
   const handleSend = useCallback(async (file: File, _note: string) => {
     if (!token) return;
+    // MUST come before the first await: a second tap in the same tick would
+    // otherwise sail past a state-based check and POST the catalog twice.
+    if (sendingRef.current) return;
+    sendingRef.current = true;
+    setSending(true);
     setUploadError(null);
 
-    const result = await uploadCatalogViaLink(token, file);
+    try {
+      const result = await uploadCatalogViaLink(token, file);
 
-    if (result.data?.status === 'delivered') {
-      setSentFileName(file.name);
-      setSentFileSize(
-        file.size > 1_048_576
-          ? `${(file.size / 1_048_576).toFixed(1)} MB`
-          : `${Math.max(1, Math.round(file.size / 1024))} KB`,
-      );
-      setPageState('sent');
-      return;
-    }
+      if (result.data?.status === 'delivered') {
+        setSentFileName(file.name);
+        setSentFileSize(
+          file.size > 1_048_576
+            ? `${(file.size / 1_048_576).toFixed(1)} MB`
+            : `${Math.max(1, Math.round(file.size / 1024))} KB`,
+        );
+        setPageState('sent');
+        return;
+      }
 
-    if (result.status === 410) {
-      setPageState('expired');
-      return;
-    }
+      if (result.status === 410) {
+        setPageState('expired');
+        return;
+      }
 
-    // 422 (file_required / no_products_found) or 500 (ingest_failed)
-    // Surface a field-voice message — no raw error codes or internal detail
-    // strings exposed to the uploader.
-    const errorCode = result.error;
-    if (errorCode === 'no_products_found') {
-      setUploadError(
-        "We couldn't read any products from that file. Try a different format: a spreadsheet or clear PDF usually works best.",
-      );
-    } else if (errorCode === 'file_required') {
-      setUploadError('Please attach a file before sending.');
-    } else {
-      setUploadError(
-        "Something went wrong on our end. Wait a moment and try again, or ask your rep to request a new link.",
-      );
+      // 422 (file_required / no_products_found) or 500 (ingest_failed)
+      // Surface a field-voice message — no raw error codes or internal detail
+      // strings exposed to the uploader.
+      const errorCode = result.error;
+      if (errorCode === 'no_products_found') {
+        setUploadError(
+          "We couldn't read any products from that file. Try a different format: a spreadsheet or clear PDF usually works best.",
+        );
+      } else if (errorCode === 'file_required') {
+        setUploadError('Please attach a file before sending.');
+      } else {
+        setUploadError(
+          "Something went wrong on our end. Wait a moment and try again, or ask your rep to request a new link.",
+        );
+      }
+    } finally {
+      // Runs on every path above, including the early returns and a throw, so
+      // the lock can never be left set and strand the uploader.
+      sendingRef.current = false;
+      setSending(false);
     }
   }, [token]);
 
@@ -947,7 +1014,7 @@ export function TechLandingPage() {
     );
   }
 
-  const sharedProps = { state: pageState, onSend: handleSend, sentFileName, sentFileSize, ctx, uploadError };
+  const sharedProps = { state: pageState, onSend: handleSend, sentFileName, sentFileSize, ctx, uploadError, sending };
 
   return isDesktop
     ? <TechLandingDesktop {...sharedProps} />
