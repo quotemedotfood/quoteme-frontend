@@ -12,6 +12,12 @@ import { categoryLabel } from '../utils/categoryLabel';
 import { formatCurrency } from '../utils/formatCurrency';
 import { useAsyncMutation } from '../hooks/useAsyncMutation';
 import { isLockedQuoteState } from '../utils/quoteStatusLabel';
+import { useOptionalAuth } from '../contexts/AuthContext';
+import {
+  isSentImmutableQuote,
+  isAdminViewerRole,
+  quoteReadOnlyMarker,
+} from '../utils/quoteImmutability';
 
 function toTitleCase(str: string): string {
   if (!str) return '';
@@ -35,6 +41,8 @@ function matchLabel(score: number): { text: string; cls: string } {
 export function QuoteReviewPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  // Optional: this page also renders for guest/demo sessions with no auth.
+  const auth = useOptionalAuth();
   const quoteId: string | undefined = (location.state as any)?.quoteId;
   const isOpenQuote: boolean = (location.state as any)?.isOpenQuote || false;
   const locationId: string | undefined = (location.state as any)?.locationId;
@@ -52,6 +60,19 @@ export function QuoteReviewPage() {
   const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [sendSuccess, setSendSuccess] = useState<string | null>(null);
 
+  // Sent immutability (L5): this page carried its OWN `quoteLocked`, built on
+  // the older isLockedQuoteState, with no admin-viewer term and no call-site
+  // guards -- render-gating only. Both send paths here are writes, so they get
+  // the same treatment as ExportFinalizePage.
+  //
+  // A function rather than a const because the send mutation below must consult
+  // it, and hooks have to run before this component's early loading/error
+  // returns. It reads the CURRENT `quote` state on each call, so a quote that
+  // goes out mid-session is caught without a stale closure.
+  const adminViewer = isAdminViewerRole(auth?.user?.role);
+  const writeBlocked = () =>
+    adminViewer || !!sendSuccess || (!!quote && (isSentImmutableQuote(quote) || isLockedQuoteState(quote)));
+
   // BUG #32: routed through useAsyncMutation so a successful send ALWAYS
   // closes the drawer AND sets the success message together, from one
   // onSuccess callback. Before this fix, success only set sendSuccess and
@@ -60,6 +81,9 @@ export function QuoteReviewPage() {
   // run unconditionally before this component's early loading/error returns.
   const sendEmailMutation = useAsyncMutation(
     async () => {
+      // Call-site guard: both trigger sites gate on quoteLocked, but a stale
+      // render or a direct .run() must not be able to re-send a gone-out quote.
+      if (writeBlocked()) return { error: 'This quote is read-only.' };
       if (!quoteId || !sendEmail.trim()) return { error: 'Enter a recipient email.' };
       return sendQuote(quoteId);
     },
@@ -176,12 +200,23 @@ export function QuoteReviewPage() {
   // sendSuccess, or a persisted sent_at from a prior session) or has moved
   // into a terminal/locked J1 state, the primary CTA must reflect that
   // instead of staying a live, re-clickable "Send Quote" action.
-  const quoteLocked = !!sendSuccess || !!quote.sent_at || isLockedQuoteState(quote);
+  // Union of the pre-existing CTA-suppression terms and the shared L5 predicate
+  // plus the admin-viewer term. isSentImmutableQuote already subsumes the old
+  // `!!quote.sent_at` check; isLockedQuoteState is kept because it is BROADER
+  // here (confirmed/declined/expired also suppress this page's CTA). Strictly
+  // stronger than before, never weaker.
+  const quoteLocked = writeBlocked();
+  // sendSuccess counts as sent for copy purposes: the quote went out in THIS
+  // session, so "Confirmed & Sent" is the honest label even before a refetch.
+  const sentImmutable = !!sendSuccess || isSentImmutableQuote(quote);
+  const readOnlyMarker = quoteReadOnlyMarker(adminViewer, sentImmutable);
 
   // Send handlers
   const handleSendEmail = () => sendEmailMutation.run();
 
   const handleSendText = async () => {
+    // Call-site guard, matching the email path.
+    if (writeBlocked()) return;
     if (!quoteId || !sendPhone.trim()) return;
     setSendingText(true);
     setSendSuccess(null);
@@ -463,12 +498,25 @@ export function QuoteReviewPage() {
               <Send size={16} /> Sign up to send quotes
             </a>
           ) : quoteLocked ? (
-            <div
-              className="inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-md text-[#166534] font-medium bg-[#DCFCE7] border border-[#86EFAC] w-full md:w-auto min-h-[48px] cursor-default"
-              aria-label="Quote confirmed and sent"
-            >
-              <Lock size={16} /> Confirmed & Sent
-            </div>
+            /* Two different reasons this CTA is dead, and they must not wear
+               each other's copy: a quote that actually went out says
+               "Confirmed & Sent", whereas an admin viewing a still-unsent rep
+               quote gets the admin marker instead. */
+            sentImmutable ? (
+              <div
+                className="inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-md text-[#166534] font-medium bg-[#DCFCE7] border border-[#86EFAC] w-full md:w-auto min-h-[48px] cursor-default"
+                aria-label="Quote confirmed and sent"
+              >
+                <Lock size={16} /> Confirmed & Sent
+              </div>
+            ) : (
+              <div
+                className="inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-md text-gray-600 font-medium bg-gray-100 border border-gray-300 w-full md:w-auto min-h-[48px] cursor-default"
+                data-testid="quote-review-read-only"
+              >
+                <Lock size={16} /> {readOnlyMarker ?? 'Locked (read-only)'}
+              </div>
+            )
           ) : (
             <Button
               onClick={() => setSendDrawerOpen(true)}

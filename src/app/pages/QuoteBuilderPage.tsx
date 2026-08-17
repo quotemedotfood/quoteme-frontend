@@ -177,6 +177,17 @@ export function QuoteBuilderPage() {
   const adminViewer = isAdminViewerRole(auth?.user?.role);
   const readOnlyMarker = quoteReadOnlyMarker(adminViewer, sentLocked);
 
+  // Sent immutability: the match drawer's render is gated on matchDrawerItem,
+  // not on quoteLocked, so an already-open drawer survives a mid-session flip
+  // (openMatchDrawer only refuses to OPEN one). Close it, matching the
+  // equivalent effect on MapIngredientsPage.
+  useEffect(() => {
+    if (!quoteLocked) return;
+    setMatchDrawerOpen(false);
+    setMatchDrawerItem(null);
+    setAddProductDrawerOpen(false);
+  }, [quoteLocked]);
+
   const isGuest = !localStorage.getItem('quoteme_token');
   const fetchQuote = (id: string) => isGuest ? getGuestQuote(id) : getQuote(id);
   const persistQuote = (id: string, updates: any) => isGuest ? updateGuestQuote(id, updates) : updateQuote(id, updates);
@@ -1208,6 +1219,8 @@ export function QuoteBuilderPage() {
           componentName={matchDrawerItem.component}
           candidates={matchDrawerItem.alignmentCandidates || []}
           isUnmatched={matchDrawerItem.unmatched}
+          readOnly={quoteLocked}
+          readOnlyMarker={readOnlyMarker}
           onFindMoreMatches={quoteId ? async () => {
             const res = await getMoreMatches(quoteId, matchDrawerItem.id);
             return res.data?.candidates || [];

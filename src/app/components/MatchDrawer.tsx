@@ -288,6 +288,12 @@ export function MatchDrawer({
   const addLabel = addCount > 0 ? `Add ${addCount} to Quote` : 'Add to Quote';
 
   const handleFindMore = async () => {
+    // Sent immutability: "Find 2 more matches" LOOKS like a read but is not.
+    // getMoreMatches is a POST to /quotes/:id/more_matches, which runs
+    // AlignmentEngineService#more_matches and persists AlignmentCandidate rows
+    // attached to this quote. The endpoint has no backend guard of its own, so
+    // this call-site guard is the only thing stopping it on a sent quote.
+    if (readOnly) return;
     if (!onFindMoreMatches) return;
     setLoadingMore(true);
     try {
@@ -514,7 +520,7 @@ export function MatchDrawer({
           {/* Find More Matches -- hidden once the display cap (current match +
               2 alternates = 3 options) is reached. Past this point the escape
               is Catalog Search / Manually Add below, not a longer list. */}
-          {onFindMoreMatches && allAlternates.length < MAX_ALTERNATES && (
+          {onFindMoreMatches && !readOnly && allAlternates.length < MAX_ALTERNATES && (
             <button
               type="button"
               onClick={handleFindMore}

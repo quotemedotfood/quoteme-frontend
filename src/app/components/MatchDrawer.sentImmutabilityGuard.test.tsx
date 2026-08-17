@@ -43,6 +43,7 @@ vi.mock('../services/api', async () => {
   };
 });
 
+// vi.clearAllMocks() also resets the onFindMoreMatches spy declared below.
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
@@ -66,6 +67,8 @@ const CANDIDATE = {
   },
 } as AlignmentCandidateResponse;
 
+const onFindMoreMatches = vi.fn(async () => [] as AlignmentCandidateResponse[]);
+
 function renderDrawer(readOnly: boolean) {
   return render(
     <MatchDrawer
@@ -74,6 +77,7 @@ function renderDrawer(readOnly: boolean) {
       ingredientName="fried calamari"
       currentProduct={null}
       candidates={[CANDIDATE]}
+      onFindMoreMatches={onFindMoreMatches}
       quoteId="q-1"
       quoteLineId="line-1"
       canonicalKey="calamari"
@@ -130,6 +134,29 @@ describe('MatchDrawer sent immutability', () => {
     expect(toggleRepMemoryLock).not.toHaveBeenCalled();
   });
 
+  // The eighth write, and the one that reads like a query. "Find 2 more
+  // matches" is a POST to /quotes/:id/more_matches which runs
+  // AlignmentEngineService#more_matches and persists AlignmentCandidate rows
+  // against the quote. It sits in the candidate list, not the footer, so the
+  // footer replacement never hid it, and the endpoint has NO backend guard.
+  it('a READ-ONLY drawer offers no Find-more control and never persists candidates', () => {
+    renderDrawer(true);
+
+    expect(screen.queryByRole('button', { name: /Find 2 more matches/i })).toBeNull();
+    expect(onFindMoreMatches).not.toHaveBeenCalled();
+  });
+
+  it('positive control: a WRITABLE drawer DOES offer Find-more and calls it', async () => {
+    renderDrawer(false);
+
+    const findMore = screen.getByRole('button', { name: /Find 2 more matches/i });
+    fireEvent.click(findMore);
+
+    await vi.waitFor(() => {
+      expect(onFindMoreMatches).toHaveBeenCalledTimes(1);
+    });
+  });
+
   it('positive control: a WRITABLE drawer DOES render a chain toggle that writes', async () => {
     renderDrawer(false);
 
@@ -140,5 +167,31 @@ describe('MatchDrawer sent immutability', () => {
     await vi.waitFor(() => {
       expect(toggleRepMemoryLock).toHaveBeenCalledTimes(1);
     });
+  });
+
+  // The invariant that would have caught the find-more hole automatically,
+  // instead of a human noticing it two rounds later. Rather than naming the
+  // controls we already know about, this asserts a property of the whole
+  // read-only surface: click EVERY control in it, and no write may fire.
+  //
+  // A future contributor adding a new write control to this drawer without a
+  // readOnly gate fails this test without having to remember it exists.
+  it('INVARIANT: clicking every control in a read-only drawer fires no write', async () => {
+    renderDrawer(true);
+
+    const controls = [
+      ...screen.queryAllByRole('button'),
+      ...screen.queryAllByRole('checkbox'),
+      ...Array.from(document.querySelectorAll('[role="button"], [aria-pressed]')),
+    ];
+    // Sanity: the surface is not trivially empty, or this asserts nothing.
+    expect(controls.length).toBeGreaterThan(0);
+
+    for (const c of controls) fireEvent.click(c as Element);
+    await new Promise(r => setTimeout(r, 0));
+
+    expect(submitYourCallSelection).not.toHaveBeenCalled();
+    expect(toggleRepMemoryLock).not.toHaveBeenCalled();
+    expect(onFindMoreMatches).not.toHaveBeenCalled();
   });
 });

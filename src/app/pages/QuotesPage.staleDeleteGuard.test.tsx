@@ -107,4 +107,46 @@ describe('QuotesPage - confirm-modal Delete re-checks live quote state (P0 round
 
     expect(deleteQuote).not.toHaveBeenCalled();
   });
+
+  // Round 3. The round-2 guard read `if (quote && isSentImmutableQuote(quote))`,
+  // which FAILS OPEN: when the row is no longer in the loaded list, `quote` is
+  // undefined, the condition is false, and the delete proceeds having never
+  // evaluated the immutability predicate at all. The modal holds a bare id, so
+  // "gone from the list" is reachable the same way "now sent" is.
+  //
+  // This is a pure-logic guard with no render gate in front of it (the confirm
+  // modal is keyed off confirmDeleteId, not off the row), so unlike the drawer
+  // belts it is directly exercisable. It fails against the pre-fix code.
+  it('never calls deleteQuote if the quote has vanished from the list (fail closed, not open)', async () => {
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getAllByText('Test Kitchen').length).toBeGreaterThan(0);
+    });
+
+    fireEvent.click(screen.getByTitle('Delete'));
+    const heading = await screen.findByText('Delete Quote?');
+    const modal = heading.parentElement as HTMLElement;
+    const confirmButton = within(modal).getByRole('button', { name: 'Delete' });
+
+    // The quote disappears from under the still-open modal: the next refetch
+    // returns an empty list, so `quotes.find(...)` yields undefined and the
+    // guard has nothing to evaluate.
+    getQuotes.mockImplementationOnce(async () => ({ data: [] }));
+    fireEvent.change(screen.getByDisplayValue('All statuses'), { target: { value: 'sent' } });
+
+    await waitFor(() => {
+      expect(getQuotes).toHaveBeenCalledTimes(2);
+    });
+
+    expect(screen.getByText('Delete Quote?')).toBeInTheDocument();
+
+    fireEvent.click(confirmButton);
+
+    expect(deleteQuote).not.toHaveBeenCalled();
+    // ...and the modal is dismissed rather than left hanging over the list.
+    await waitFor(() => {
+      expect(screen.queryByText('Delete Quote?')).toBeNull();
+    });
+  });
 });
