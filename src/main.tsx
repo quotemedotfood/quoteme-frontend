@@ -42,9 +42,19 @@ Sentry.init({
     if (!import.meta.env.VITE_SENTRY_DSN) return null;
     return scrubSentryEvent(event);
   },
-  // Spans carry the URL in `description` and `data['url.full']`. This hook must
-  // return a span, never null, or the span is dropped from the trace.
+  // Spans carry the URL in `description` and `data['url.full']`.
+  //
+  // This hook must return a span and never null, but NOT because null drops the
+  // span. In v10 a null return is fail-OPEN: client.js:1056-1062 shows Sentry
+  // warns ("Returning null from `beforeSendSpan` is disallowed") and then skips
+  // the merge, so the event keeps the ORIGINAL UNSCRUBBED span values. The
+  // consequence of returning null is therefore shipping the raw URL, which is
+  // worse than a drop, so do not "simplify" this to a conditional return.
+  //
+  // No DSN means nothing is sent at all, so the span passes through untouched
+  // rather than being nulled, for the same reason.
   beforeSendSpan(span) {
+    if (!import.meta.env.VITE_SENTRY_DSN) return span;
     return scrubSentrySpan(span);
   },
 });

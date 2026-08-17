@@ -1,10 +1,12 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   scrubSentryEvent,
   scrubSentrySpan,
   redactUrl,
   redactString,
+  resetScrubFailureWarning,
   REDACTED,
+  SCRUB_FAILED_TAG,
 } from './scrubSentryEvent';
 import type { SentryEventLike } from './scrubSentryEvent';
 
@@ -64,6 +66,22 @@ describe('redactString / redactUrl value-shape pass', () => {
   it('leaves an ordinary url untouched', () => {
     expect(redactUrl('/rep/quotes/inbound')).toBe('/rep/quotes/inbound');
     expect(redactUrl('/api/v1/me?page=2')).toBe('/api/v1/me?page=2');
+  });
+
+  // A JSON body uses ':' not '=', so the query-param pattern never saw it.
+  it('redacts a credential in a JSON string body', () => {
+    expectNoSecret(redactString(`{"token":"${MAGIC}","quote_id":"q-1"}`));
+    expectNoSecret(redactString(`{"refresh_token": "${MAGIC}"}`));
+    expect(redactString(`{"token":"${MAGIC}","quote_id":"q-1"}`)).toContain('q-1');
+  });
+
+  // Userinfo credentials reach telemetry through the Referer header, and none
+  // of the other patterns touch the user:pass@host position.
+  it('redacts userinfo credentials in a URL', () => {
+    const out = redactString(`https://admin:${MAGIC}@app.quoteme.food/rep/welcome`);
+    expectNoSecret(out);
+    expect(out).not.toContain('admin:');
+    expect(out).toContain('/rep/welcome');
   });
 });
 
@@ -220,6 +238,44 @@ describe('scrubSentryEvent: depth, arrays and unexpected key names', () => {
   });
 });
 
+// These tests ASSERT THE LEAK. They exist so the gaps live in executable form
+// rather than in a header comment that decays, and so that anyone who closes
+// one of them gets a failing test telling them to update the documented limits
+// instead of silently believing the scrubber is total. An OPAQUE token has no
+// pattern to match: it is indistinguishable from a quote id or a slug. Closing
+// these requires route-pattern awareness or not putting tokens there, not a
+// better regex.
+describe('scrubSentryEvent: KNOWN GAPS, pinned deliberately', () => {
+  const OPAQUE = 'abc123opaquetoken';
+
+  it('does NOT catch an opaque token under an innocuous key', () => {
+    const event = scrubSentryEvent<SentryEventLike>({ extra: { blob: OPAQUE } });
+    expect(event.extra!.blob).toBe(OPAQUE);
+  });
+
+  it('does NOT catch an opaque token in a path segment (/c/:token)', () => {
+    const event = scrubSentryEvent<SentryEventLike>({
+      request: { url: `https://app.quoteme.food/c/${OPAQUE}` },
+      transaction: `/c/${OPAQUE}`,
+    });
+    expect(event.request!.url).toContain(OPAQUE);
+    expect(event.transaction).toContain(OPAQUE);
+  });
+
+  it('does NOT catch an opaque value in event.user.id', () => {
+    const event = scrubSentryEvent<SentryEventLike>({ user: { id: OPAQUE, role: 'chef' } });
+    expect((event.user as Record<string, unknown>).id).toBe(OPAQUE);
+  });
+
+  it('does NOT walk values on a class instance', () => {
+    class Holder {
+      constructor(public token: string) {}
+    }
+    const event = scrubSentryEvent<SentryEventLike>({ extra: { held: new Holder(MAGIC) } });
+    expect((event.extra!.held as Holder).token).toBe(MAGIC);
+  });
+});
+
 describe('scrubSentryEvent: cannot break error reporting', () => {
   it('does not mutate the payload it is given', () => {
     const original: SentryEventLike = { extra: { token: MAGIC } };
@@ -253,6 +309,73 @@ describe('scrubSentryEvent: cannot break error reporting', () => {
   it('passes non-object input straight through', () => {
     expect(scrubSentryEvent(null)).toBeNull();
     expect(scrubSentryEvent(undefined)).toBeUndefined();
+  });
+
+  // The granularity bug: one throwing getter used to return the WHOLE original
+  // event unscrubbed, un-redacting fields unrelated to the failure.
+  describe('a throwing getter cannot un-scrub the rest of the event', () => {
+    beforeEach(() => {
+      resetScrubFailureWarning();
+      vi.spyOn(console, 'warn').mockImplementation(() => {});
+    });
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    function eventWithThrowingField(): Record<string, unknown> {
+      const event: Record<string, unknown> = {
+        message: `failed on /chef/welcome?token=${MAGIC}`,
+        request: { headers: { Authorization: `Bearer ${JWT}` } },
+      };
+      Object.defineProperty(event, 'extra', {
+        enumerable: true,
+        get() {
+          throw new Error('exploding getter');
+        },
+      });
+      return event;
+    }
+
+    it('still redacts every other field', () => {
+      const scrubbed = scrubSentryEvent(eventWithThrowingField());
+      expectNoSecret(scrubbed);
+      expectNoSecret(scrubbed, JWT);
+      expect(scrubbed.message).toBe(`failed on /chef/welcome?token=${REDACTED}`);
+    });
+
+    it('replaces the unreadable field rather than passing it through', () => {
+      const scrubbed = scrubSentryEvent(eventWithThrowingField());
+      expect(scrubbed.extra).toBe(REDACTED);
+    });
+
+    it('makes the fail-open visible with a tag and one warning', () => {
+      const scrubbed = scrubSentryEvent(eventWithThrowingField()) as {
+        tags?: Record<string, string>;
+      };
+      expect(scrubbed.tags?.[SCRUB_FAILED_TAG]).toBe('true');
+      expect(console.warn).toHaveBeenCalledTimes(1);
+
+      // Warn-once: a repeatedly failing payload must not become console noise.
+      scrubSentryEvent(eventWithThrowingField());
+      expect(console.warn).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not tag a span, which has no tags field', () => {
+      const span: Record<string, unknown> = { description: 'GET /x' };
+      Object.defineProperty(span, 'data', {
+        enumerable: true,
+        get() {
+          throw new Error('exploding getter');
+        },
+      });
+      const scrubbed = scrubSentrySpan(span);
+      expect(scrubbed.tags).toBeUndefined();
+      expect(scrubbed.data).toBe(REDACTED);
+    });
+
+    it('never throws, whatever the payload does', () => {
+      expect(() => scrubSentryEvent(eventWithThrowingField())).not.toThrow();
+    });
   });
 
   it('leaves ordinary diagnostic content intact', () => {

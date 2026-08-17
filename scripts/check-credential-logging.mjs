@@ -95,8 +95,16 @@ const IDENTITY_RE = /^(user|users|profile|currentUser|me|account|session|credent
 //
 // Matched on EXACT identifier / property names only, so `voice_note_url` and
 // other domain fields do not trip it. Sanitized calls are pruned below.
+//
+// DELIBERATELY NARROW. `to`, `from`, `link`, `path` and `location` were in this
+// list and produced false positives on legitimate code in this very repo: date
+// ranges named from/to, geo objects named `location` (LocationContext), and
+// `console.log('link id', link.id)`, which tripped because the walk records the
+// object name as well as the member. A gate that cries wolf on
+// `console.log('geo', location)` gets switched off by the third developer who
+// hits it, and then it guards nothing. Only unambiguous URL-carrying names stay.
 const URLISH_RE =
-  /^(target|url|href|path|pathname|search|redirect|redirectTo|returnTo|callbackUrl|to|from|link|location|nextUrl|magicLink)$/i;
+  /^(target|url|href|pathname|redirect|redirectTo|returnTo|callbackUrl|nextUrl|magicLink)$/i;
 
 // Calls whose RESULT is already sanitized. The subtree is pruned, so passing a
 // raw target through one of these is the documented way to log a route.
@@ -161,10 +169,10 @@ function referencedNames(node, out = []) {
   if (ts.isIdentifier(node)) out.push(node.text);
   else if (ts.isPropertyAccessExpression(node)) {
     out.push(node.name.text);
-    // `path.join(...)` / `url.parse(...)`: the object is the Node builtin
+    // `url.parse(...)` / `path.join(...)`: the object is the Node builtin
     // module, not a route value. Record the member but do not record the
-    // module name, which would otherwise trip URLISH_RE on every build script.
-    // A BARE `path` identifier is still reported.
+    // module name, which would otherwise trip URLISH_RE in build scripts.
+    // A BARE `url` identifier is still reported.
     if (ts.isIdentifier(node.expression) && NODE_MODULE_NAMES.has(node.expression.text)) {
       return out;
     }

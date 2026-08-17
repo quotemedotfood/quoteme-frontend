@@ -26,11 +26,20 @@
 //     threw "Cannot assign to read only property" on a frozen event. This one
 //     builds a new structure, so a frozen payload is fine.
 //
-//  4. IT CAN NEVER THROW. A throwing beforeSend silently kills error reporting
-//     for the whole app. Everything is wrapped, and the catch returns the
-//     ORIGINAL payload. That is a deliberate trade: a scrubber bug degrades to
-//     "unscrubbed telemetry", never to "no telemetry". Returning null here
-//     would drop the event entirely and hide the outage.
+//  4. IT CAN NEVER THROW, AND IT FAILS AT FIELD GRANULARITY. A throwing
+//     beforeSend silently kills error reporting for the whole app, so this
+//     never throws. The FIRST version wrapped the whole walk in one try, which
+//     meant a single enumerable throwing getter anywhere in the payload
+//     returned the entire original event unscrubbed, un-redacting fields that
+//     had nothing to do with the failure. Each top-level field is now scrubbed
+//     inside its own try:
+//       - per FIELD, fail CLOSED: an unreadable or un-scrubbable field is
+//         replaced with the marker, never passed through raw. Shipping a raw
+//         value is the one outcome this file exists to prevent.
+//       - per EVENT, fail OPEN: every other field is still scrubbed and the
+//         event still ships. Returning null would drop it and hide the bug.
+//     A fail-open is also made VISIBLE rather than silent: the returned event
+//     carries a `scrub_failed` tag and the first occurrence logs one warning.
 //
 // KNOWN GAPS, stated plainly rather than papered over:
 //  - Opaque path-segment tokens (/c/:token, /q/:id) are indistinguishable from
@@ -77,9 +86,11 @@ export const SENSITIVE_QUERY_PARAMS = [
   'signature',
 ];
 
-/** Object keys that hold a credential value. */
+/** Object keys that hold a credential value. `cookies?` rather than `^cookie$`
+ * so a `cookies` field is blanked too; `Set-Cookie` is covered by the header
+ * list above. */
 const SENSITIVE_KEY_RE =
-  /(authorization|bearer|^cookie$|token|jwt|passwd|password|secret|api[-_]?key|apikey|credential|signature)/i;
+  /(authorization|bearer|^cookies?$|token|jwt|passwd|password|secret|api[-_]?key|apikey|credential|signature)/i;
 
 /**
  * A `name=value` pair whose NAME contains a credential word, anywhere in a
@@ -96,6 +107,26 @@ const SENSITIVE_PARAM_RE = new RegExp(
   `(^|[?&#\\s;,(\\[])([^?&#=\\s]*(?:${SENSITIVE_QUERY_PARAMS.join('|')})[^?&#=\\s]*)=([^&#\\s"'<>)\\]]*)`,
   'gi',
 );
+
+/**
+ * The same credential-named key, but in a JSON object rather than a query
+ * string: `{"token":"abc"}` uses `:` not `=`, so SENSITIVE_PARAM_RE never saw
+ * it. A captured POST body arrives at `request.data` exactly like this, either
+ * as a real object (handled by the key walk) or already serialized to a string
+ * (handled here).
+ */
+const SENSITIVE_JSON_RE = new RegExp(
+  `(["']([^"']*(?:${SENSITIVE_QUERY_PARAMS.join('|')})[^"']*)["']\\s*:\\s*)["'][^"']*["']`,
+  'gi',
+);
+
+/**
+ * Userinfo credentials in a URL: `https://admin:hunter2@host/x`. None of the
+ * other patterns touch the `user:pass@host` position, and this shape reaches
+ * telemetry through the Referer header. The whole userinfo section goes, not
+ * just the password half: a username is the other half of the same credential.
+ */
+const USERINFO_RE = /(\/\/)[^/\s:@]+:[^/\s@]+@/g;
 
 /** `Bearer <credential>` anywhere in a string (header values, log lines). */
 const BEARER_RE = /\b(Bearer|Basic)\s+[A-Za-z0-9._~+/=-]{8,}/gi;
@@ -152,11 +183,13 @@ export function redactString(value: string): string {
     out = out.replace(JWT_RE, REDACTED);
   }
   JWT_RE.lastIndex = 0;
+  out = out.replace(USERINFO_RE, (_match, slashes: string) => `${slashes}${REDACTED}@`);
   out = out.replace(BEARER_RE, (_match, scheme: string) => `${scheme} ${REDACTED}`);
   out = out.replace(
     SENSITIVE_PARAM_RE,
     (_match, separator: string, name: string) => `${separator}${name}=${REDACTED}`,
   );
+  out = out.replace(SENSITIVE_JSON_RE, (_match, keyPart: string) => `${keyPart}"${REDACTED}"`);
   return out;
 }
 
@@ -200,22 +233,88 @@ function scrubValue(value: unknown, depth: number, seen: WeakSet<object>): unkno
   return value;
 }
 
+/** Tag set on any payload where at least one field could not be scrubbed, so a
+ * fail-open is visible in Sentry instead of silent. */
+export const SCRUB_FAILED_TAG = 'scrub_failed';
+
+let warnedOnce = false;
+
+/** One warning per page load. A per-event warning would itself become noise (or
+ * a console breadcrumb loop) on a payload that fails repeatedly. */
+function warnScrubFailureOnce(): void {
+  if (warnedOnce) return;
+  warnedOnce = true;
+  console.warn(
+    `[scrubSentryEvent] at least one field could not be scrubbed and was replaced with ${REDACTED}. The event was still sent, tagged ${SCRUB_FAILED_TAG}.`,
+  );
+}
+
+/** Exported for tests: the warn-once latch is module state. */
+export function resetScrubFailureWarning(): void {
+  warnedOnce = false;
+}
+
+function markFailed(out: Dict): void {
+  try {
+    const existing = isPlainObject(out.tags) ? out.tags : {};
+    out.tags = { ...existing, [SCRUB_FAILED_TAG]: 'true' };
+  } catch {
+    // Nothing more to do: the warning below is the remaining signal.
+  }
+}
+
+/**
+ * Walks a payload's top-level fields, each inside its own try. See design note
+ * 4: per field this fails CLOSED (replaced with the marker), per payload it
+ * fails OPEN (the payload still ships).
+ *
+ * `tagOnFailure` is false for spans: a span JSON has no `tags` field, and
+ * inventing one would be merged back into the transaction event by
+ * convertSpanJsonToTransactionEvent. Spans get the warning only.
+ */
+function scrubPayload<T>(payload: T, tagOnFailure: boolean): T {
+  try {
+    if (!payload || typeof payload !== 'object') return payload;
+
+    const source = payload as unknown as Dict;
+    const out: Dict = {};
+    let failed = false;
+
+    for (const key of Object.keys(source)) {
+      try {
+        // Reading the property can itself throw: an enumerable getter that
+        // throws is exactly the case that used to un-scrub the whole event.
+        const value = source[key];
+        out[key] = isSensitiveKey(key) ? REDACTED : scrubValue(value, 1, new WeakSet());
+      } catch {
+        out[key] = REDACTED;
+        failed = true;
+      }
+    }
+
+    if (failed) {
+      if (tagOnFailure) markFailed(out);
+      warnScrubFailureOnce();
+    }
+    return out as T;
+  } catch {
+    // Even Object.keys failed (an exotic proxy). Last resort only: this is the
+    // one path that can still return an unscrubbed payload, so it is loud.
+    warnScrubFailureOnce();
+    return payload;
+  }
+}
+
 /**
  * scrubSentryEvent - returns a scrubbed COPY of the payload. Never throws, and
- * on any internal failure returns the original payload rather than null, so a
- * bug here can never take error reporting offline.
+ * a failure inside one field cannot un-redact any other field.
  *
  * Generic in T so callers get their own payload type back: Sentry's
  * beforeSend / beforeSendTransaction / beforeSendSpan each require the exact
  * type they were handed.
  */
 export function scrubSentryEvent<T>(event: T): T {
-  try {
-    if (!event || typeof event !== 'object') return event;
-    return scrubValue(event, 0, new WeakSet()) as T;
-  } catch {
-    return event;
-  }
+  return scrubPayload(event, true);
 }
 
 /**
@@ -224,5 +323,5 @@ export function scrubSentryEvent<T>(event: T): T {
  * which the string pass handles like any other string.
  */
 export function scrubSentrySpan<T>(span: T): T {
-  return scrubSentryEvent(span);
+  return scrubPayload(span, false);
 }
