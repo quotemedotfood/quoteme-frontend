@@ -25,7 +25,9 @@ const STEPS = [
   {
     step: 1, path: '/setup/1', screen: 'Q1Knowledge',
     title: 'How well do you know wine?',
-    sub: 'Be honest. This changes what we say, not what we pour.',
+    // Deliberately no subtitle: the promise callout in the screen body makes
+    // the same claim, and two sentences per page means the promise is the two.
+    sub: '',
   },
   {
     step: 2, path: '/setup/2', screen: 'Q2Adventure',
@@ -63,7 +65,7 @@ describe('onboarding headings', () => {
     ({ path, title, sub }) => {
       renderPairMeApp(path);
       expect(screen.getByText(title)).toBeInTheDocument();
-      expect(screen.getByText(sub)).toBeInTheDocument();
+      if (sub) expect(screen.getByText(sub)).toBeInTheDocument();
     }
   );
 
@@ -121,5 +123,25 @@ describe('onboarding headings', () => {
     heights.forEach((h, i) => expect(h).toBeCloseTo((34 * (i + 1)) / 6, 5));
     // Strictly increasing: never flat, never draining.
     heights.slice(1).forEach((h, i) => expect(h).toBeGreaterThan(heights[i]));
+  });
+});
+
+describe('two sentences per page', () => {
+  it('Q1 does not say the promise twice', () => {
+    // The header subtitle used to read "Be honest. This changes what we say,
+    // not what we pour." while the callout below it read "This changes how we
+    // explain a wine, never which wine we pick." Same claim, same screen, four
+    // sentences where the budget is two. The callout is the protected one.
+    renderPairMeApp('/setup/1');
+    expect(screen.getByText(PROMISE)).toBeInTheDocument();
+    expect(screen.queryByText(/Be honest\. This changes what we say/)).not.toBeInTheDocument();
+  });
+
+  it('renders no empty subtitle slot when a step has no subtitle', () => {
+    renderPairMeApp('/setup/1');
+    const counter = screen.getByText('Question 1 of 6 · skippable');
+    const header = counter.parentElement;
+    // heading + counter only, no third empty line reserving space.
+    expect(header.textContent.trim()).toBe('Question 1 of 6 · skippableHow well do you know wine?');
   });
 });

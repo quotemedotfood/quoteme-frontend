@@ -70,7 +70,7 @@ export default function YourProfile(vm){
 </div>
 </React.Fragment>
 ))}
-<div style={{border: "1px solid var(--pm-rule)", background: "var(--pm-card)", borderRadius: "10px", padding: "12px", font: "400 12px/1.65 var(--font-body)", color: "var(--pm-muted)"}}>Nothing is connected yet. When these land we'll read only your ratings and cellar, never post anything, and let you disconnect and delete what we pulled in.</div>
+<div style={{border: "1px solid var(--pm-rule)", background: "var(--pm-card)", borderRadius: "10px", padding: "12px", font: "400 12px/1.65 var(--font-body)", color: "var(--pm-muted)"}}>Nothing is connected yet.</div>
 <div style={{display: "flex", justifyContent: "space-between", alignItems: "center", gap: "10px", margin: "22px 0 9px"}}>
 <span style={{font: "600 var(--pm-sec) var(--font-body)", color: "var(--pm-muted)", letterSpacing: ".08em", textTransform: "uppercase"}}>Your table</span>
 <button onClick={shareTable} style={{border: "1.5px solid var(--pm-accent2)", background: "transparent", color: "var(--pm-accent2)", borderRadius: "999px", padding: "8px 14px", font: "600 11.5px var(--font-body)", cursor: "pointer", minHeight: "40px", display: "flex", alignItems: "center", gap: "6px"}}>

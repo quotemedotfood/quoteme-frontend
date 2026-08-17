@@ -9,7 +9,9 @@ export default function OnboardingHeader(vm){
 <div style={{flex: "1"}}>
 <div style={{font: "600 11.5px var(--font-body)", color: "#EFB96B", letterSpacing: ".06em", textTransform: "uppercase"}}>Question {step} of 6 · skippable</div>
 <div style={{font: "600 20px/1.3 var(--font-display)", color: "#fff", marginTop: "5px"}}>{obTitle}</div>
+{obSub ? (
 <div style={{font: "400 12.5px/1.55 var(--font-body)", color: "var(--pm-chromeSub)", marginTop: "7px"}}>{obSub}</div>
+) : null}
 </div>
 <div style={{flex: "none", display: "flex", flexDirection: "column", alignItems: "center", gap: "7px", width: "78px"}}>
 <svg width="38" height="60" viewBox="0 0 34 54" style={{overflow: "visible"}}>

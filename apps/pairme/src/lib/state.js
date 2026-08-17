@@ -676,7 +676,11 @@ export function usePairMe(opts = {}){
       // read as correctly 1-based on review. Index by obStep, never by s.
       const obStep=s-1;
       const ob=[null,
-        {t:"How well do you know wine?",s:"Be honest. This changes what we say, not what we pour."},
+        // NO SUBTITLE, DELIBERATELY. The promise callout inside Q1Knowledge.jsx
+        // ("This changes how we explain a wine, never which wine we pick")
+        // already makes this exact claim, and both rendered on the same screen.
+        // Two sentences per page, and on this screen the promise is the two.
+        {t:"How well do you know wine?",s:""},
         {t:"How adventurous are you feeling?",s:"You can change this at any table, any night."},
         {t:"What's comfortable tonight?",s:"A floor and a ceiling. We never show you what you didn't ask to see."},
         {t:"What do you already love?",s:"Regions, grapes, styles. Whatever comes to mind."},
