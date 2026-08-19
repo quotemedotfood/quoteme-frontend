@@ -25,6 +25,7 @@ import {
   updateAdminSubcategoryExclusions,
   SubcategoryExclusionsResponse,
 } from '../../services/api';
+import { AdminEmptyState } from './_adminEmptyState';
 
 type SortField = 'name' | 'region' | 'status' | 'rep_count' | 'product_count' | 'categorization_pct' | 'created_at';
 type SortDir = 'asc' | 'desc';
@@ -232,12 +233,7 @@ export function QMAdminDistributors() {
       {loading && <p className="text-sm text-gray-400 py-8">Loading distributors...</p>}
       {error && <p className="text-sm text-red-500 py-8">{error}</p>}
 
-      {!loading && !error && filtered.length === 0 && (
-        <div className="text-center py-16 text-gray-400">
-          <p className="text-lg font-medium">No distributors yet</p>
-          <p className="text-sm mt-1">Create your first distributor to get started.</p>
-        </div>
-      )}
+      {!loading && !error && filtered.length === 0 && <AdminEmptyState label="distributors" />}
 
       {!loading && filtered.length > 0 && (
         <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">

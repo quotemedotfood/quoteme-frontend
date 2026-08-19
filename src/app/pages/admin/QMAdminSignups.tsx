@@ -12,6 +12,7 @@ import {
 } from '../../components/ui/table';
 import { getAdminUsers, updateAdminUser, AdminUser } from '../../services/adminApi';
 import { userStatusPill } from '../../utils/userDisplayStatus';
+import { AdminEmptyState } from './_adminEmptyState';
 
 type SortField = 'name' | 'email' | 'role' | 'status' | 'created_at';
 type SortDir = 'asc' | 'desc';
@@ -181,12 +182,7 @@ export function QMAdminSignups() {
       {loading && <p className="text-sm text-gray-400 py-8">Loading users...</p>}
       {error && <p className="text-sm text-red-500 py-8">{error}</p>}
 
-      {!loading && !error && filtered.length === 0 && (
-        <div className="text-center py-16 text-gray-400">
-          <p className="text-lg font-medium">No users yet</p>
-          <p className="text-sm mt-1">Users will appear here as they sign up.</p>
-        </div>
-      )}
+      {!loading && !error && filtered.length === 0 && <AdminEmptyState label="users" />}
 
       {!loading && filtered.length > 0 && (
         <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">

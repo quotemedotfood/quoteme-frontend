@@ -32,10 +32,13 @@ export default function WhereTo(vm){
 <div style={{font: "600 13.5px var(--font-body)", color: "var(--pm-ink)", marginBottom: "9px"}}>Or find it</div>
 <div style={{position: "relative"}}>
 <Input value={fVenue.v} onChange={fVenue.set} placeholder="start typing" style={{width: "100%"}}></Input>
+{fVenue.micVisible ? (
 <button onClick={fVenue.mic} aria-label="Speak instead of typing" style={{position: "absolute", right: "5px", top: "5px", width: "34px", height: "34px", borderRadius: "999px", border: `1.5px solid ${fVenue.bd}`, background: fVenue.bg, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center"}}>
 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--pm-ink)" strokeWidth="1.8" strokeLinecap="round"><rect x="9" y="2" width="6" height="11" rx="3"></rect><path d="M5 11a7 7 0 0 0 14 0"></path><line x1="12" y1="18" x2="12" y2="22"></line></svg>
 </button>
+) : null}
 </div>
+{fVenue.hint ? (<div style={{font: "500 11.5px var(--font-body)", color: "var(--pm-pearInk)", marginTop: "6px"}}>{fVenue.hint}</div>) : null}
 {(venueHits || []).map((v, i) => (
 <React.Fragment key={i}>
 <button onClick={v.go} style={{width: "100%", textAlign: "left", border: "none", borderBottom: "1px solid var(--pm-rule)", background: "transparent", padding: "11px 0", cursor: "pointer", font: `${v.weight} 12.5px var(--font-body)`, color: v.color}}>{v.label}</button>
@@ -48,10 +51,13 @@ export default function WhereTo(vm){
 <div style={{font: "400 12px/1.45 var(--font-body)", color: "var(--pm-muted)", marginBottom: "9px"}}>No menu on hand? Type it or tell us, and we will take it from there.</div>
 <div style={{position: "relative"}}>
 <Input value={fEatText.v} onChange={fEatText.set} placeholder="roast chicken, potatoes, green beans" aria-label="What are you eating" style={{width: "100%"}}></Input>
+{fEatText.micVisible ? (
 <button onClick={fEatText.mic} aria-label="Tell us what you are eating" style={{position: "absolute", right: "5px", top: "5px", width: "34px", height: "34px", borderRadius: "999px", border: `1.5px solid ${fEatText.bd}`, background: fEatText.bg, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center"}}>
 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--pm-ink)" strokeWidth="1.8" strokeLinecap="round"><rect x="9" y="2" width="6" height="11" rx="3"></rect><path d="M5 11a7 7 0 0 0 14 0"></path><line x1="12" y1="18" x2="12" y2="22"></line></svg>
 </button>
+) : null}
 </div>
+{fEatText.hint ? (<div style={{font: "500 11.5px var(--font-body)", color: "var(--pm-pearInk)", marginTop: "6px"}}>{fEatText.hint}</div>) : null}
 <div style={{marginTop: "10px"}}>
 <Button variant="primary" size="md" onClick={goTellUs} disabled={!fEatText.v.trim()} style={{width: "100%", opacity: fEatText.v.trim() ? 1 : 0.55}}>Just tell us here</Button>
 </div>

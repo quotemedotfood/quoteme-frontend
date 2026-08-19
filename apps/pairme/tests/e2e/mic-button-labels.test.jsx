@@ -10,10 +10,27 @@
  * in isolation, so this proves the fix in the actual DOM a diner sees, not
  * just that some prop was passed to some component.
  */
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { renderPairMeApp } from './helpers/renderPairMeApp.jsx';
 
 const MIC_PATH_SIGNATURE = 'M5 11a7 7 0 0 0 14 0';
+
+// field()'s mic buttons now feature-detect and hide entirely with no
+// SpeechRecognition (R4/D4 fix - jsdom has none by default, same as
+// Firefox), so this file's whole premise (asserting the buttons ARE
+// present and labeled) needs a browser that supports voice, same as a
+// diner on Chrome or Safari would have.
+class FakeRecognition {
+  constructor() {
+    this.onstart = null; this.onaudiostart = null; this.onspeechstart = null;
+    this.onresult = null; this.onnomatch = null; this.onerror = null; this.onend = null;
+  }
+  start() {}
+  stop() { if (this.onend) this.onend(); }
+  abort() {}
+}
+beforeEach(() => { window.SpeechRecognition = FakeRecognition; });
+afterEach(() => { delete window.SpeechRecognition; });
 
 function micButtons(container) {
   return Array.from(container.querySelectorAll('svg'))
@@ -43,11 +60,9 @@ describe('Every microphone icon button carries an aria-label, never the glyph al
     ['/venue', 'WhereTo'],
     ['/menu', 'Menu'],
     ['/wines', 'TheWine'],
-    // NOT /entry: EntryScreen's mic only renders when speech.supported is
-    // true (Web Speech API), which jsdom never reports, so there is no mic
-    // button to find there in this test environment - that screen's own
-    // aria-label (already present, untouched by this build) is exercised
-    // in tests/e2e/entry-screen*.test.jsx instead.
+    // NOT /entry: EntryScreen's mic is exercised in its own
+    // tests/e2e/entry-screen*.test.jsx instead; it is not part of this
+    // file's 12-site field() sweep.
   ];
 
   routes.forEach(([path, label]) => {

@@ -8,8 +8,8 @@
 // (PATCH /api/v1/admin/users/:id) and merges the response back into local
 // state without a full reload.
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 
 const { mockUser, getAdminUsers, updateAdminUser, getAdminDistributors } = vi.hoisted(() => {
@@ -61,6 +61,12 @@ function renderPage() {
 }
 
 describe('QMAdminUsers - inline edit pencil', () => {
+  // This repo runs vitest without `globals`, so @testing-library/react never
+  // sees a global afterEach and its automatic cleanup does not register. Each
+  // it() would otherwise leave its tree in document.body and the next one
+  // would query across two copies of the page.
+  afterEach(() => cleanup());
+
   beforeEach(() => {
     getAdminUsers.mockClear();
     updateAdminUser.mockClear();
@@ -106,6 +112,27 @@ describe('QMAdminUsers - inline edit pencil', () => {
     await waitFor(() => {
       expect(screen.queryByPlaceholderText('Phone')).not.toBeInTheDocument();
     });
+  });
+
+  it('names the pencil after the row it edits, so N of them are tellable apart', async () => {
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('jamie@testdistributor.com')).toBeInTheDocument();
+    });
+
+    // The pencil is icon-only. Before this it had no accessible name at all,
+    // so a screen reader announced an identical bare "button" once per user
+    // row. The row's own identity is the only thing that separates them.
+    const pencil = screen.getByRole('button', { name: 'Edit Jamie Rivera' });
+    expect(pencil).toBeInTheDocument();
+
+    // aria-label, not visible text: the row must not grow a "Edit Jamie
+    // Rivera" caption next to the icon.
+    expect(pencil.textContent).toBe('');
+
+    fireEvent.click(pencil);
+    expect(await screen.findByPlaceholderText('Phone')).toBeInTheDocument();
   });
 
   it('discards changes on Cancel without calling updateAdminUser', async () => {

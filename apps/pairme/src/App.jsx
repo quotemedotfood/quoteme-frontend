@@ -105,23 +105,16 @@ export function Phone({ vm }) {
   // Field mics: one useSpeech, driven off vm.listening (set by any field's mic
   // button). A spoken result appends to that field via vm.appendToListening.
   // This is the real capture behind every field mic - see BUTTON_AUDIT.md.
-  const speech = useSpeech({ onResult: vm.appendToListening, onError: vm.stopListening });
+  const speech = useSpeech({ onResult: vm.appendToListening });
+  // Mirror the hook's own state/message onto vm so field() (state.js) can
+  // render the right border colour and plain-language hint for whichever
+  // field is currently listening, without state.js needing its own
+  // SpeechRecognition instance.
   React.useEffect(() => {
-    // PM-MIC (temporary diagnostic instrumentation): trace the trigger that
-    // flips vm.listening into a start()/stop() call, so Moose's console
-    // output shows the button-press-to-recognizer sequence end to end. See
-    // the PM-MIC header comment in useSpeech.js. Remove with the mic fix.
-    try {
-      if (typeof console !== 'undefined' && typeof console.log === 'function') {
-        const t =
-          typeof performance !== 'undefined' && typeof performance.now === 'function'
-            ? performance.now().toFixed(1)
-            : Date.now();
-        console.log(`[PM-MIC] t=${t}ms App effect fired, vm.listening=${vm.listening}`);
-      }
-    } catch {
-      /* diagnostic logging must never throw */
-    }
+    vm.setSpeechStatus(speech.state, speech.message);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [speech.state, speech.message]);
+  React.useEffect(() => {
     if (vm.listening) speech.start();
     else speech.stop();
     // eslint-disable-next-line react-hooks/exhaustive-deps
