@@ -9,6 +9,7 @@ import {
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { ExclusionRulesPanel } from '../../components/ExclusionRulesPanel';
+import { formatStructuredEntry } from '../../utils/format';
 import { ClusterListTab } from './_clusterListTab';
 import {
   getMatchingEngineRules,
@@ -465,19 +466,19 @@ function ValidationBadge({ validation, onSave, onRetry, saving }: {
       </div>
       {validation.warnings.length > 0 && (
         <div className="mt-1 space-y-0.5">
-          {validation.warnings.map((w, i) => <p key={i} className="text-xs text-amber-600">⚠ {w}</p>)}
+          {validation.warnings.map((w, i) => <p key={i} className="text-xs text-amber-600">⚠ {formatStructuredEntry(w)}</p>)}
         </div>
       )}
       {validation.rejections.length > 0 && (
         <div className="mt-1 space-y-0.5">
-          {validation.rejections.map((r, i) => <p key={i} className="text-xs text-red-600">✕ {r}</p>)}
+          {validation.rejections.map((r, i) => <p key={i} className="text-xs text-red-600">✕ {formatStructuredEntry(r)}</p>)}
         </div>
       )}
       {validation.rules.length > 0 && (
         <div className="mt-2 space-y-1">
           {validation.rules.map((rule, i) => (
             <div key={i} className="text-xs font-mono bg-white/60 rounded px-2 py-1">
-              {(rule as Record<string, unknown>).type}: {(rule as Record<string, unknown>).ingredient_pattern || (rule as Record<string, unknown>).canonical_name || (rule as Record<string, unknown>).sauce_name || JSON.stringify(rule)}
+              {formatStructuredEntry(rule)}
             </div>
           ))}
         </div>
@@ -525,7 +526,7 @@ function TrainingTab() {
     if (res.data) {
       setMessages(prev => [...prev, {
         role: 'system',
-        text: res.data!.confirmation,
+        text: formatStructuredEntry(res.data!.confirmation),
         rules: res.data!.rules_applied,
         validation: res.data!.validation,
         originalMessage: userMsg,
@@ -548,7 +549,7 @@ function TrainingTab() {
         text: m.text + '\n\n✓ Rules saved successfully.',
       } : m));
     } else {
-      setMessages(prev => [...prev, { role: 'system', text: `Failed to save: ${res.error}`, timestamp: new Date().toISOString() }]);
+      setMessages(prev => [...prev, { role: 'system', text: `Failed to save: ${formatStructuredEntry(res.error)}`, timestamp: new Date().toISOString() }]);
     }
   };
 
@@ -567,11 +568,11 @@ function TrainingTab() {
         {messages.map((msg, i) => (
           <div key={i} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
             <div className={`max-w-[80%] rounded-lg px-4 py-2.5 ${msg.role === 'user' ? 'bg-[#7FAEC2] text-white' : 'bg-gray-100 text-[#2A2A2A]'}`}>
-              <p className="text-sm whitespace-pre-wrap">{msg.text}</p>
+              <p className="text-sm whitespace-pre-wrap">{formatStructuredEntry(msg.text)}</p>
               {msg.rules && msg.rules.length > 0 && (
                 <div className="mt-2 pt-2 border-t border-gray-200/50">
                   {msg.rules.map((r, j) => (
-                    <p key={j} className="text-xs opacity-80">→ {r}</p>
+                    <p key={j} className="text-xs opacity-80">→ {formatStructuredEntry(r)}</p>
                   ))}
                 </div>
               )}
@@ -710,12 +711,12 @@ function ChangeLogTab() {
                   </span>
                 )}
               </div>
-              {log.message && <p className="text-sm text-[#4F4F4F] italic mb-1">"{log.message}"</p>}
-              {log.response && <p className="text-sm text-[#2A2A2A]">{log.response}</p>}
+              {log.message && <p className="text-sm text-[#4F4F4F] italic mb-1">"{formatStructuredEntry(log.message)}"</p>}
+              {log.response && <p className="text-sm text-[#2A2A2A]">{formatStructuredEntry(log.response)}</p>}
               {log.rules_applied && log.rules_applied.length > 0 && (
                 <div className="mt-1.5">
                   {log.rules_applied.map((r, i) => (
-                    <p key={i} className="text-xs text-[#7FAEC2]">→ {r}</p>
+                    <p key={i} className="text-xs text-[#7FAEC2]">→ {formatStructuredEntry(r)}</p>
                   ))}
                 </div>
               )}

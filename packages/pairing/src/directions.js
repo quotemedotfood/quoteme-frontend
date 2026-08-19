@@ -121,17 +121,41 @@ export function several(dishes, wines, T, opts = {}) {
   // eligible wine here just because an earlier dish already claimed its
   // grape. "several" wants every eligible wine, so it calls scoreWine
   // directly per dish.
-  for (const d of dishes) {
-    const { profile } = dishProfile(d.components, T);
-    for (const wine of wines) {
+  //
+  // ELIGIBILITY IS AND, NOT OR. This shortlist is offered to a table for the
+  // whole table, so a wine has to clear EVERY dish on it. A hard fail on any
+  // one plate rules the wine out entirely, exactly as oneBottle() already
+  // does, and exactly as pair() does for a single plate.
+  //
+  // This loop used to iterate dishes on the outside and admit a wine the
+  // moment it was eligible for ANY ONE of them. The result was real and bad:
+  // on "steak frites + Cheese, three", req_sweet_roquefort (hard_fail,
+  // sweetness>=3) blocks 18 of the 20 demo wines, but a dry Chablis entered
+  // the pool on the strength of the steak alone and was then offered against
+  // the Roquefort that had blocked it, while the one wine that actually
+  // cleared the table (an off-dry Vouvray, second by score) went unshown.
+  // A wrong match is worse than a clean miss, so the wine now has to clear
+  // the whole table or it does not enter the pool at all.
+  for (const wine of wines) {
+    let bestScore = -Infinity;
+    let bestForDish = null;
+    let clearsTable = true;
+    for (const d of dishes) {
+      const { profile } = dishProfile(d.components, T);
       const s = scoreWine(wine, profile, d.components, T);
-      if (!s.eligible) continue;
-      const label = wine.label;
-      const prev = best.get(label);
-      if (!prev || s.score > prev.bestScore) {
-        best.set(label, { wine, bestScore: s.score, bestForDish: d.name });
+      if (!s.eligible) {
+        clearsTable = false;
+        break;
+      }
+      // Rank on the best single plate: a standout for one course should
+      // outrank a wine that is merely fine for all of them.
+      if (s.score > bestScore) {
+        bestScore = s.score;
+        bestForDish = d.name;
       }
     }
+    if (!clearsTable || bestForDish === null) continue;
+    best.set(wine.label, { wine, bestScore, bestForDish });
   }
 
   return Array.from(best.values())

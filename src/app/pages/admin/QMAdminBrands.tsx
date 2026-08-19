@@ -12,6 +12,7 @@ import {
   TableCell,
 } from '../../components/ui/table';
 import { getAdminBrands, createAdminBrand, AdminBrand } from '../../services/adminApi';
+import { AdminEmptyState } from './_adminEmptyState';
 
 type SortField = 'name' | 'status' | 'created_at';
 type SortDir = 'asc' | 'desc';
@@ -133,12 +134,7 @@ export function QMAdminBrands() {
       {loading && <p className="text-sm text-gray-400 py-8">Loading brands...</p>}
       {error && <p className="text-sm text-red-500 py-8">{error}</p>}
 
-      {!loading && !error && filtered.length === 0 && (
-        <div className="text-center py-16 text-gray-400">
-          <p className="text-lg font-medium">No brands yet</p>
-          <p className="text-sm mt-1">Create your first brand to get started.</p>
-        </div>
-      )}
+      {!loading && !error && filtered.length === 0 && <AdminEmptyState label="brands" />}
 
       {!loading && filtered.length > 0 && (
         <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">

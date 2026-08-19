@@ -22,8 +22,16 @@ export function isImpersonating(): boolean {
  * localStorage, stores the original admin token + display name so the
  * ImpersonationBanner can restore the session, then redirects to '/'.
  *
+ * Security: the banner identity and the "am I actually impersonating who I
+ * clicked" check are both derived from the server's response, never from
+ * the caller-supplied `userName` or the row the admin clicked. If the
+ * response identifies a different user than the one requested, the token
+ * swap is aborted entirely (no admin token stash, no quoteme_token
+ * overwrite, no navigation) and an error is surfaced instead.
+ *
  * @param userId   - The UUID of the user to impersonate
- * @param userName - Display name shown in the banner
+ * @param userName - Fallback label only (unused once the response identity
+ *                    is available); kept for caller compatibility
  * @param setImpersonating - State setter to track in-flight request
  * @param setError - State setter for error display (pass null to reset)
  */
@@ -36,8 +44,17 @@ export async function handleImpersonate(
   setImpersonating(userId);
   const res = await impersonateUser(userId);
   if (res.data?.token) {
+    const returnedUser = res.data.user;
+    if (!returnedUser || returnedUser.id !== userId) {
+      setError('Impersonation target mismatch; not switching.');
+      setImpersonating(null);
+      return;
+    }
+    const displayName =
+      [returnedUser.first_name, returnedUser.last_name].filter(Boolean).join(' ') ||
+      returnedUser.email;
     localStorage.setItem('quoteme_admin_token', localStorage.getItem('quoteme_token') || '');
-    localStorage.setItem('quoteme_impersonating', userName);
+    localStorage.setItem('quoteme_impersonating', displayName);
     localStorage.setItem('quoteme_token', res.data.token);
     window.location.href = '/';
   } else {

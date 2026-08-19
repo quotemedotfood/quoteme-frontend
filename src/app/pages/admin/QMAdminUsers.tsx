@@ -22,6 +22,7 @@ import {
   AdminDistributor,
 } from '../../services/adminApi';
 import { userStatusPill } from '../../utils/userDisplayStatus';
+import { AdminEmptyState } from './_adminEmptyState';
 
 type SortField = 'name' | 'email' | 'status' | 'last_login_at' | 'created_at';
 type SortDir = 'asc' | 'desc';
@@ -453,12 +454,7 @@ export function QMAdminUsers() {
       {loading && <p className="text-sm text-gray-400 py-8">Loading admin users...</p>}
       {error && <p className="text-sm text-red-500 py-8">{error}</p>}
 
-      {!loading && !error && filtered.length === 0 && (
-        <div className="text-center py-16 text-gray-400">
-          <p className="text-lg font-medium">No admin users found</p>
-          <p className="text-sm mt-1">Invite admins using the button above.</p>
-        </div>
-      )}
+      {!loading && !error && filtered.length === 0 && <AdminEmptyState label="admin users" />}
 
       {!loading && filtered.length > 0 && (
         <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
@@ -665,8 +661,16 @@ export function QMAdminUsers() {
                               disabled={actionLoading === u.id}
                               onClick={() => startEdit(u)}
                               className="text-xs text-[#7FAEC2] hover:text-[#6A9AB0]"
+                              // Icon-only inline-edit pencil, one per user row, and
+                              // previously with no accessible name at all. Name falls
+                              // back to email because first/last are nullable on an
+                              // invited-but-never-completed account, and an unnamed
+                              // row still has to be tellable apart from its neighbours.
+                              aria-label={`Edit ${
+                                [u.first_name, u.last_name].filter(Boolean).join(' ') || u.email
+                              }`}
                             >
-                              <Pencil size={14} />
+                              <Pencil size={14} aria-hidden="true" />
                             </Button>
                           </>
                         )}

@@ -30,6 +30,7 @@ import {
 } from '../../components/ui/table';
 import { getAdminRestaurants, AdminRestaurant } from '../../services/adminApi';
 import { handleImpersonate } from '../../utils/impersonate';
+import { AdminEmptyState } from './_adminEmptyState';
 import { AddRestaurantModal } from './_addRestaurantModal';
 import { ManageAdminDrawer } from './_manageAdminDrawer';
 
@@ -73,6 +74,23 @@ function parseDataFlags(raw: string | null): string[] {
     .map((token) => token.trim())
     .filter(Boolean);
 }
+
+// The identity (Name) column is pinned to the left edge of the horizontal
+// scrollport. This table is ~1,991px wide at a 639px viewport, so Coverage,
+// Data Flags and Actions all sit offscreen; before this, scrolling right to
+// reach them scrolled the restaurant name away too, and the operator was left
+// reading anonymous rows. Header and body share the same `left-0` offset and
+// the same declared classes so the pinned column cannot drift out of
+// alignment. z-index and an opaque background are load-bearing: without them
+// the scrolled-under cells show through the pinned one.
+const STICKY_IDENTITY = 'sticky left-0 border-r border-gray-200';
+// Header sits above the body cells so the two never composite over each other
+// at the top-left corner, and carries the header row's own grey.
+const STICKY_IDENTITY_HEAD = `${STICKY_IDENTITY} z-20 bg-gray-50`;
+// Body cells are opaque white, and repeat the row's hover grey themselves
+// (via `group` on the row) because a sticky cell is painted separately from
+// the <tr> background it would otherwise inherit.
+const STICKY_IDENTITY_CELL = `${STICKY_IDENTITY} z-10 bg-white group-hover:bg-gray-50`;
 
 type SortField = 'name' | 'city' | 'status' | 'contact_count' | 'created_at';
 type SortDir = 'asc' | 'desc';
@@ -165,12 +183,7 @@ export function QMAdminRestaurants() {
       {loading && <p className="text-sm text-gray-400 py-8">Loading...</p>}
       {error && <p className="text-sm text-red-500 py-8">{error}</p>}
 
-      {!loading && !error && filtered.length === 0 && (
-        <div className="text-center py-16 text-gray-400">
-          <p className="text-lg font-medium">No restaurants yet</p>
-          <p className="text-sm mt-1">Restaurants will appear here when reps create them.</p>
-        </div>
-      )}
+      {!loading && !error && filtered.length === 0 && <AdminEmptyState label="restaurants" />}
 
       {!loading && filtered.length > 0 && (
         <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
@@ -178,7 +191,11 @@ export function QMAdminRestaurants() {
             <Table>
               <TableHeader>
                 <TableRow className="bg-gray-50">
-                  <TableHead className="cursor-pointer" onClick={() => toggleSort('name')}>
+                  <TableHead
+                    data-testid="restaurants-identity-head"
+                    className={`cursor-pointer ${STICKY_IDENTITY_HEAD}`}
+                    onClick={() => toggleSort('name')}
+                  >
                     <div className="flex items-center gap-1">Name <SortIcon field="name" /></div>
                   </TableHead>
                   <TableHead>Group</TableHead>
@@ -213,8 +230,11 @@ export function QMAdminRestaurants() {
                   const address = formatAddress(r);
                   const dataFlags = parseDataFlags(r.data_flags);
                   return (
-                  <TableRow key={r.id} className="hover:bg-gray-50">
-                    <TableCell className="font-medium">
+                  <TableRow key={r.id} className="group hover:bg-gray-50">
+                    <TableCell
+                      data-testid={`restaurants-identity-cell-${r.id}`}
+                      className={`font-medium ${STICKY_IDENTITY_CELL}`}
+                    >
                       <Link to={`/qm-admin/restaurants/${r.id}`} className="text-[#2A2A2A] hover:text-[#7FAEC2] hover:underline">
                         {r.name}
                       </Link>
@@ -263,13 +283,21 @@ export function QMAdminRestaurants() {
                         {MENU_KINDS.map(({ kinds, label, Icon }) => {
                           const present = kinds.some((k) => r.menu_coverage.includes(k));
                           return (
+                            // Presence is carried visually by opacity and colour alone, so
+                            // sighted and non-sighted operators were reading different data:
+                            // the accessible name used to be just "Dinner" whether we held a
+                            // dinner menu or not. role=img + aria-label makes the state part
+                            // of the name; the icon and the visible label are then decoration
+                            // for that one name rather than two separate announcements.
                             <span
                               key={label}
+                              role="img"
+                              aria-label={`${label} menu: ${present ? 'present' : 'not present'}`}
                               className={`flex items-center gap-1 text-xs ${
                                 present ? 'text-gray-600 opacity-100' : 'text-gray-400 opacity-30'
                               }`}
                             >
-                              <Icon size={14} />
+                              <Icon size={14} aria-hidden="true" />
                               {label}
                             </span>
                           );

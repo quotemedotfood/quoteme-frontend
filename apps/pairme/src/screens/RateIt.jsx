@@ -30,9 +30,11 @@ export default function RateIt(vm){
 <div style={{font: "600 13.5px var(--font-body)", color: "var(--pm-ink)", marginBottom: "6px"}}>Anything you want to tell us</div>
 <div style={{position: "relative"}}>
 <textarea value={fb} onChange={setFb} rows="3" placeholder="the Gevrey was the right call, the Champagne was a stretch on the pâté" style={{width: "100%", boxSizing: "border-box", border: "1px solid var(--pm-rule)", borderRadius: "8px", padding: "11px", font: "400 13px var(--font-body)", resize: "vertical", background: "var(--pm-card)", color: "var(--pm-ink)"}}></textarea>
-<button onClick={fFb.mic} style={{position: "absolute", right: "7px", top: "7px", width: "34px", height: "34px", borderRadius: "999px", border: `1.5px solid ${fFb.bd}`, background: fFb.bg, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center"}}>
+{fFb.micVisible ? (
+<button onClick={fFb.mic} aria-label="Speak instead of typing" style={{position: "absolute", right: "7px", top: "7px", width: "34px", height: "34px", borderRadius: "999px", border: `1.5px solid ${fFb.bd}`, background: fFb.bg, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center"}}>
 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--pm-ink)" strokeWidth="1.8" strokeLinecap="round"><rect x="9" y="2" width="6" height="11" rx="3"></rect><path d="M5 11a7 7 0 0 0 14 0"></path><line x1="12" y1="18" x2="12" y2="22"></line></svg>
 </button>
+) : null}
 </div>
 <div style={{font: "500 11.5px var(--font-body)", color: "var(--pm-pearInk)", marginTop: "6px"}}>{fFb.hint}</div>
 <button onClick={toggleShare} style={{width: "100%", textAlign: "left", border: `1px solid ${shareBd}`, background: shareBg, borderRadius: "12px", padding: "13px", marginTop: "12px", cursor: "pointer"}}>

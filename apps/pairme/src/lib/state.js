@@ -18,12 +18,14 @@ import {
   getStoredAuthToken,
   setAuthSession as apiSetAuthSession,
 } from './api.js';
+import { isSpeechSupported } from './useSpeech.js';
 import { parseWineList, loadRulesBundle } from '../../../../packages/pairing/src/index.js';
 import { DEMO as OFFLINE_DEMO_WINES } from '../../../../packages/pairing/src/demoFixtures.js';
 import { errorCopy } from './errors.js';
 import { track } from './track.js';
 import { buildTables, rowToEngineWine, dishToEngineDish, computeOfferings, DIRECTION_FOR_FORMAT } from './pairingAdapter.js';
 import { getOfflineTables } from './offlinePairing.js';
+import { tableWineEligible, isHousePick, isOurPick, resolveProteinIcons } from './wineCardIconGate.js';
 import { DEMO_DISHES, DEMO_SECTIONS, DEMO_DEFAULT_PICKED, buildDemoRows } from './demoSeed.js';
 import { getBaroloTableData } from './baroloSeed.js';
 import { speak as speakText } from './speak.js';
@@ -89,6 +91,10 @@ function computeOfflineOfferings(direction, chosenDishes, alreadyLoadedWineRows,
 
 const NAVY="#1F2A44",PEAR="#EFB96B",ORANGE="#F2993D",BLUED="#5C8A9C";
 
+const MIC_LISTENING_HINT = "Listening. Say it however you'd say it out loud.";
+const MIC_HEARD_HINT = "Heard you. Keep talking or tap to stop.";
+const MIC_DEFAULT_ERROR = "We could not hear that, try again or type it instead.";
+
 const THEME={
  light:{page:"#FBFAF7",card:"#fff",ink:"#1C1C1A",muted:"#6B6B66",rule:"#E3E1DB",chrome:"#1F2A44",chromeSub:"#A5CFDD",sel:"#FCF1E1",selBd:"#EFB96B",sunken:"#F1EFEA",warnBg:"#FEF3E7",warnBd:"#F2993D",warnInk:"#C4701A",blueBg:"#F4F8F9",blue:"#5C8A9C",pearInk:"#8A5A18",accent2:"#1F2A44",hover2:"#F4F2EC"},
  dark:{page:"#151A29",card:"#1E2438",ink:"#F3F1EB",muted:"#9EA2AE",rule:"#303A55",chrome:"#0E1320",chromeSub:"#8FB6C4",sel:"#2E2618",selBd:"#8A6A2A",sunken:"#222941",warnBg:"#3A2A18",warnBd:"#F2993D",warnInk:"#F2993D",blueBg:"#1A2731",blue:"#7FAFC0",pearInk:"#F2C889",accent2:"#EFB96B",hover2:"#2A3350"}};
@@ -124,12 +130,16 @@ const DISHES=[
  {id:"d4",sec:"Dessert",n:"Cheese, three",d:"Comte, Epoisses, Roquefort, honeycomb",p:18}];
 const SECS=["Raw bar","Starters","Mains","Sides","Dessert"];
 
+// R2 item b: `lang` (BCP-47) is the wine's own origin language, used to
+// select the utterance's voice - not a translation of `say`/`speak`, which
+// stay the same hand-authored ENGLISH RESPELLING as before (see speak.js's
+// doc comment). All five are French producers/regions.
 const W={
- gim:{prod:"Pierre Gimonnet & Fils",wine:"Blanc de Blancs 1er Cru Brut",meta:"chardonnay . Champagne, France",say:"zhee-moh-NAY",speak:"Zhee moh nay. Blanc de Blancs.",tip:"Two syllables that matter: moh-NAY. The rest can mumble.",glass:26,btl:138,stock:6},
- trapet:{prod:"Domaine Trapet",wine:"Gevrey-Chambertin",meta:"pinot noir . Burgundy, France",say:"zhev-RAY shom-ber-TAN",speak:"Trah pay. Zhev ray shom ber tan.",tip:"Land on TAN and stop.",glass:null,btl:234,stock:3},
- foil:{prod:"Jean Foillard",wine:"Morgon Cote du Py",meta:"gamay . Beaujolais, France",say:"fwah-YAR, mor-GOHN",speak:"Fwah yar. Mor gohn, coat due pee.",tip:"Foillard rhymes with the back half of boulevard.",glass:21,btl:102,stock:11},
- vach:{prod:"Domaine Vacheron",wine:"Sancerre",meta:"sauvignon blanc . Loire, France",say:"vash-ROHN, sahn-SEHR",speak:"Vash rohn. Sahn sehr.",tip:"Sancerre is two beats, both short.",glass:23,btl:102,stock:14},
- huet:{prod:"Domaine Huet",wine:"Vouvray Sec Le Mont",meta:"chenin blanc . Loire, France",say:"oo-AY, voo-VRAY",speak:"Oo ay. Voo vray sec, luh mohn.",tip:"The H is silent. Start with the oo.",glass:22,btl:100,stock:9}};
+ gim:{prod:"Pierre Gimonnet & Fils",wine:"Blanc de Blancs 1er Cru Brut",meta:"chardonnay . Champagne, France",say:"zhee-moh-NAY",speak:"Zhee moh nay. Blanc de Blancs.",tip:"Two syllables that matter: moh-NAY. The rest can mumble.",lang:"fr-FR",glass:26,btl:138,stock:6},
+ trapet:{prod:"Domaine Trapet",wine:"Gevrey-Chambertin",meta:"pinot noir . Burgundy, France",say:"zhev-RAY shom-ber-TAN",speak:"Trah pay. Zhev ray shom ber tan.",tip:"Land on TAN and stop.",lang:"fr-FR",glass:null,btl:234,stock:3},
+ foil:{prod:"Jean Foillard",wine:"Morgon Cote du Py",meta:"gamay . Beaujolais, France",say:"fwah-YAR, mor-GOHN",speak:"Fwah yar. Mor gohn, coat due pee.",tip:"Foillard rhymes with the back half of boulevard.",lang:"fr-FR",glass:21,btl:102,stock:11},
+ vach:{prod:"Domaine Vacheron",wine:"Sancerre",meta:"sauvignon blanc . Loire, France",say:"vash-ROHN, sahn-SEHR",speak:"Vash rohn. Sahn sehr.",tip:"Sancerre is two beats, both short.",lang:"fr-FR",glass:23,btl:102,stock:14},
+ huet:{prod:"Domaine Huet",wine:"Vouvray Sec Le Mont",meta:"chenin blanc . Loire, France",say:"oo-AY, voo-VRAY",speak:"Oo ay. Voo vray sec, luh mohn.",tip:"The H is silent. Start with the oo.",lang:"fr-FR",glass:22,btl:100,stock:9}};
 
 const BRIEF={
  gim:{means:"Blanc de Blancs means white from whites, so this is Champagne made only from chardonnay, no red grapes in it at all. 1er Cru is the second best vineyard rank in the region. Gimonnet is a grower, which means they farm what they bottle rather than buying grapes in.",
@@ -371,7 +381,7 @@ export function usePairMe(opts = {}){
     guestName:"",rel:null,added:[],
     venueQ:"",eatText:"",noList:false,blank:false,picked:["a2","a5","e6","e9","s2"],
     mode:null,sub:null,scope:null,present:["gim","trapet"],wineFormat:"both",
-    guest:"me",guestDrawerOpen:false,guestShareNote:null,resolution:null,rate:{dish:4,wine:5,pair:4},fb:"",share:true,listening:null,skipped:0,
+    guest:"me",guestDrawerOpen:false,guestShareNote:null,resolution:null,rate:{dish:4,wine:5,pair:4},fb:"",share:true,listening:null,listeningBase:null,speechState:"idle",speechMessage:null,skipped:0,
     linked:[],connectionsOpen:false,connectionsSkipped:false,account:null,bottle:"trapet",back:11,saved:false,shared:null,
     // Integration state (not part of Desi's original demo model).
     apiError:null,apiLoading:false,
@@ -399,6 +409,11 @@ export function usePairMe(opts = {}){
     demoLoading:false,demoDishes:null,demoWineRows:[],venuePushed:[],
     rulesTables:null,rulesVersion:null,
     pairingDirection:null,pairingOfferings:null,pairingCompromise:null,pairingCoverage:null,
+    // pairingRan distinguishes "the engine ran and found nothing" from "the
+    // engine never ran". Without it, an empty offerings array looked exactly
+    // like a cold start and the UI fell back to Desi's static demo wines,
+    // presenting three canned bottles as if they were real picks.
+    pairingRan:false,pairingBlocked:null,
     pairingId:null,presentLabels:[],
     deleteConfirming:false,deleteDone:false});
   const patch = (p) => set(s => Object.assign({}, s, typeof p === 'function' ? p(s) : p));
@@ -571,15 +586,37 @@ export function usePairMe(opts = {}){
   // BUILD 2: was a hand-rolled SpeechSynthesisUtterance here (rate .82, pitch 1,
   // sp.cancel() first) duplicated verbatim in WineList.jsx/TellUsScreen.jsx/
   // EntryScreen.jsx. Now the one shared helper (lib/speak.js) - see its header
-  // for the lang='en-US' reasoning and the empty-getVoices() guard. `say` stays
-  // the local name everything below already calls; each call site below is
-  // still responsible for its own speak->say->raw-label precedence.
-  const say=(text)=>speakText(text);
-  const field=(key)=>{const on=st.listening===key;return {
+  // for the voice-selection/language reasoning and the empty-getVoices() guard.
+  // `say` stays the local name everything below already calls; each call site
+  // below is still responsible for its own speak->say->raw-label precedence.
+  // R2 item b: `say` now takes an optional `lang` (the wine's own origin,
+  // from W[key].lang / a wine row's own `lang`) and forwards it to
+  // speak.js as `opts.lang`; call sites with no lang to hand it (e.g. the
+  // hardcoded demoSpeak line below) fall back to speak.js's own 'en-US'.
+  const say=(text,lang)=>speakText(text,{lang});
+  const field=(key)=>{
+    const on=st.listening===key;
+    // Only the field that is actually listening shows the live hook state;
+    // every other field's mic sits idle regardless of what the shared
+    // useSpeech instance is doing.
+    const micState=on?st.speechState:"idle";
+    const isError=on&&micState==="error";
+    const hint=!on?"":
+      micState==="error"?(st.speechMessage||MIC_DEFAULT_ERROR):
+      micState==="heard"?MIC_HEARD_HINT:
+      MIC_LISTENING_HINT;
+    return {
       v:st[key],set:e=>patch({[key]:e.target.value}),
-      mic:()=>patch({listening:on?null:key}),
-      bd:on?PEAR:"var(--pm-rule)",bg:on?"var(--pm-sel)":"var(--pm-card)",
-      hint:on?"Listening. Say it however you'd say it out loud.":""};};
+      // R4: feature-detect and hide the mic entirely rather than render one
+      // that can never do anything (Firefox has no SpeechRecognition at all).
+      // Checked live (not cached at module load) so it reflects whatever the
+      // browser actually has at call time.
+      micVisible:isSpeechSupported(),
+      micState,
+      mic:()=>patch({listening:on?null:key,listeningBase:on?null:(st[key]||"")}),
+      bd:!on?"var(--pm-rule)":isError?"var(--pm-warnBd)":PEAR,
+      bg:!on?"var(--pm-card)":isError?"var(--pm-warnBg)":"var(--pm-sel)",
+      hint};};
   const pills=(opts,key,multi)=>opts.map(label=>{
       const cur=st[key],on=multi?(cur||[]).includes(label):cur===label;
       return {label,on,bd:on?"var(--pm-chrome)":"var(--pm-rule)",bg:on?"var(--pm-sel)":"var(--pm-card)",
@@ -650,14 +687,27 @@ export function usePairMe(opts = {}){
       const wineListPickedDishes=chosen.map(dishToEngineDish);
       const blank=st.blank,conflict=st.guest==="sarah";
       const lo=Math.min(st.bMin,st.bMax),hi=Math.max(st.bMin,st.bMax);
+      // ONBOARDING HEADER. This table is laid out by STEP (1..6), not by
+      // screen index s. Screen indices run Q1Knowledge=2 .. Q6Summary=7 (see
+      // PATH_FOR_SCREEN above), so step = s - 1, which is exactly what is
+      // published as `step` at the vm seam below.
+      //
+      // It was previously subscripted [s], which shifted every heading one
+      // screen early: Q1 rendered Q2's heading, Q5 rendered "That's
+      // everything.", and Q6 (s=7) ran off the end of the array and rendered
+      // no heading and no subtitle at all. The leading null is what made [s]
+      // read as correctly 1-based on review. Index by obStep, never by s.
+      const obStep=s-1;
       const ob=[null,
         {t:"How well do you know wine?",s:"Be honest. This changes what we say, not what we pour."},
         {t:"How adventurous are you feeling?",s:"You can change this at any table, any night."},
         {t:"What's comfortable tonight?",s:"A floor and a ceiling. We never show you what you didn't ask to see."},
         {t:"What do you already love?",s:"Regions, grapes, styles. Whatever comes to mind."},
         {t:"Anything we must know?",s:"This one isn't about taste. We take it seriously."},
-        {t:"That's everything.",s:"Six questions, done. Have a full glass."}][s];
-      const glassH=34*Math.min(1,(s>=1&&s<=6?s:0)/6);
+        {t:"That's everything.",s:"Six questions, done. Have a full glass."}][obStep];
+      // Same root cause: the glass filled from raw s, so it started at 2/6 on
+      // Q1 and emptied to 0 on Q6, where s=7 fell outside the s<=6 guard.
+      const glassH=34*Math.min(1,(obStep>=1&&obStep<=6?obStep:0)/6);
 
       const offerSet=blank?[
         {k:"vach",role:"Safe, and we mean that kindly",roleColor:t.muted,why:"You've told us nothing, so we won't pretend we know you. Sancerre disappoints the fewest people at a table with mussels and a steak on it.",covers:"Moules, the pate, most of the table"},
@@ -678,9 +728,27 @@ export function usePairMe(opts = {}){
       // pairingOfferings and falls straight back to offerSet/W above,
       // unchanged.
       const usingEngine=Array.isArray(st.pairingOfferings)&&st.pairingOfferings.length>0;
+      // The engine ran and NOTHING on the list cleared the table. This is a
+      // real answer, not a cold start, so it must never fall through to the
+      // static offerSet below.
+      const engineBlocked=st.pairingRan===true&&Array.isArray(st.pairingOfferings)&&st.pairingOfferings.length===0;
       const pairingDirection=st.pairingDirection;
       const roleColorFor=(slot)=>slot==="house"?t.blue:slot==="suited"?t.pearInk:t.muted;
       const presentSet=new Set(st.presentLabels||[]);
+      // WINE CARD ICONS: gate inputs shared by every offering below.
+      // `iconTables` best-effort matches whichever T actually produced
+      // st.pairingOfferings (see runFormat/cta above: rulesTables when a
+      // real bundle loaded, offline CSVs otherwise - both are always
+      // available, never null, so the table-wine gate never silently no-ops
+      // for lack of a table). `iconDishes` reuses wineListPickedDishes
+      // (already the table's currently-picked dishes in engine shape) so
+      // the gate is asked about the SAME dishes the cards claim to cover.
+      // `venuePushedLabels` is the set of wine labels the venue itself
+      // disclosed (see showFeatured/featured above) - icon 4 (house pick)
+      // reads this verbatim, never infers it.
+      const iconTables=st.rulesTables||getOfflineTables();
+      const iconDishes=wineListPickedDishes;
+      const venuePushedLabels=new Set((st.venuePushed||[]).map(p=>p&&p.wine).filter(Boolean));
       const engineOffers=usingEngine?st.pairingOfferings.map(o=>{
         const w=o.wine,on=presentSet.has(w.label);
         return {
@@ -699,9 +767,30 @@ export function usePairMe(opts = {}){
           // undefined here for every non-demo wine - fall back to the short
           // phonetic (w.say) and, failing that, the raw label rather than
           // speaking "undefined".
-          speak:()=>say(w.speak||w.say||w.label),
+          // NOTE (uncertain, see final report): `w` here is an engine wine
+          // object (pairingAdapter.js's rowToEngineWine output, out of this
+          // change's file scope) - it does not yet copy a `lang` field
+          // alongside say/speak, so w.lang is undefined for real
+          // engine-ranked offerings and say() falls back to speak.js's
+          // 'en-US' default. Passed through anyway so this call site is
+          // already correct the moment that passthrough is added upstream.
+          speak:()=>say(w.speak||w.say||w.label,w.lang),
           open:null, // no BottleBrief data for engine wines yet; TheWine.jsx only renders the Brief link when `open` is set
-          stockColor:"var(--pm-muted)",stockNote:"On the list tonight."};
+          stockColor:"var(--pm-muted)",stockNote:"On the list tonight.",
+          // WINE CARD ICONS (see lib/wineCardIconGate.js for what each gate
+          // actually checks). tableActive recomputes the wine-specific-rule
+          // gate against the table's CURRENT picks/tables every render
+          // rather than trusting whatever the last pair()/runFormat() call
+          // captured, so the icon never lags a picked-dish change.
+          tableActive:tableWineEligible(w,iconDishes,iconTables),
+          glassActive:!!w.glass,
+          housePickActive:isHousePick(w,venuePushedLabels),
+          ourPickActive:isOurPick(o.slot),
+          // Not yet delivered by the backend (see wineCardIconGate.js's
+          // resolveProteinIcons doc comment) - engine wines carry no
+          // protein_match field today, so this always resolves to [], the
+          // correct "renders nothing" state, never a guess.
+          proteinIcons:resolveProteinIcons(w.protein_match)};
       }):null;
       const engineShownLabels=presentSet.size?Array.from(presentSet):(usingEngine?[st.pairingOfferings[0].wine.label]:[]);
       // ITEM 6: glass / bottle / both toggle on TheWine. Re-ranks in place
@@ -717,10 +806,10 @@ export function usePairMe(opts = {}){
         const dir=DIRECTION_FOR_FORMAT[fmt]||'several';
         if(st.rulesTables&&st.demoWineRows.length&&chosen.length){
           const result=computeOfferings(dir,chosen,st.demoWineRows.map(rowToEngineWine),st.rulesTables,{format:fmt,budget:budgetOf(st)});
-          patch({wineFormat:fmt,pairingDirection:result.direction,pairingOfferings:result.offerings,pairingCompromise:result.compromise,pairingCoverage:result.coverage,presentLabels:[]});
+          patch({wineFormat:fmt,pairingDirection:result.direction,pairingOfferings:result.offerings,pairingCompromise:result.compromise,pairingCoverage:result.coverage,pairingRan:true,pairingBlocked:result.blocked||null,presentLabels:[]});
         }else if(st.demoWineRows&&st.demoWineRows.length){
           const offline=computeOfflineOfferings(dir,chosen,st.demoWineRows,{format:fmt,budget:budgetOf(st)});
-          patch({wineFormat:fmt,pairingDirection:offline.direction,pairingOfferings:offline.offerings,pairingCompromise:offline.compromise,pairingCoverage:offline.coverage,presentLabels:[]});
+          patch({wineFormat:fmt,pairingDirection:offline.direction,pairingOfferings:offline.offerings,pairingCompromise:offline.compromise,pairingCoverage:offline.coverage,pairingRan:true,pairingBlocked:offline.blocked||null,presentLabels:[]});
         }else{
           patch({wineFormat:fmt});
         }
@@ -795,6 +884,8 @@ export function usePairMe(opts = {}){
                   pairingOfferings: result.offerings,
                   pairingCompromise: result.compromise,
                   pairingCoverage: result.coverage,
+                  pairingRan: true,
+                  pairingBlocked: result.blocked || null,
                   presentLabels: [],
                 });
                 try {
@@ -840,6 +931,8 @@ export function usePairMe(opts = {}){
                   pairingOfferings: offline.offerings,
                   pairingCompromise: offline.compromise,
                   pairingCoverage: offline.coverage,
+                  pairingRan: true,
+                  pairingBlocked: offline.blocked || null,
                   presentLabels: [],
                 });
               };
@@ -963,14 +1056,28 @@ export function usePairMe(opts = {}){
         fUnread:field("unreadable"),fVenue:field("venueQ"),fWhy:field("why"),fEatText:field("eatText"),
         fFb:field("fb"),fGuestName:field("guestName"),
         // Speech bridge for the field mics: the app-level useSpeech (App.jsx)
-        // drives these off st.listening. A spoken result appends to whatever the
-        // active field already holds, then clears listening (single-shot capture,
-        // matching useSpeech's interimResults:false). stopListening() is the
-        // error/cancel path. This is what turns the field mics from a "Listening"
-        // hint that captured nothing into a real control.
+        // drives these off st.listening. interimResults is on, so onResult
+        // fires repeatedly while the diner talks (isFinal:false) and once
+        // more when the phrase is done (isFinal:true) - appendToListening
+        // rebuilds the field from the text it held when listening started
+        // (listeningBase, snapshotted by mic() below) plus whatever has been
+        // heard so far, so the field visibly fills in as they speak instead
+        // of jumping once at the end. listening only clears on the final
+        // result (or if the diner taps the mic again to cancel).
         listening:st.listening,
-        appendToListening:(text)=>patch(x=>{const k=x.listening;if(!k)return{listening:null};const cur=x[k]||"";return {[k]:cur.trim()?cur.trim()+" "+text:text,listening:null};}),
-        stopListening:()=>patch({listening:null}),
+        appendToListening:(text,isFinal)=>patch(x=>{
+          const k=x.listening;
+          if(!k)return{listening:null};
+          const base=(x.listeningBase||"").trim();
+          const merged=base?base+" "+text:text;
+          if(!isFinal)return{[k]:merged};
+          return{[k]:merged,listening:null,listeningBase:null,speechState:"idle",speechMessage:null};
+        }),
+        // Mirror of the shared useSpeech instance's own state (App.jsx), so
+        // field() above can show the right border colour / plain-language
+        // hint for whichever field is currently listening.
+        setSpeechStatus:(state,message)=>patch({speechState:state,speechMessage:message}),
+        stopListening:()=>patch({listening:null,listeningBase:null,speechState:"idle",speechMessage:null}),
 
         // The two dots ARE the control now (a real two-handle range slider);
         // setBMin/setBMax take a dollar value, snap to the step, and clamp so
@@ -1084,7 +1191,7 @@ export function usePairMe(opts = {}){
           return Array.from(byLabel.keys()).map(label=>{const r=(st.demoWineRows||[]).find(x=>x.label===label)||{};return {
             label,prod:r.producer||label,wine:r.wine_name||"",meta:r.meta||"",btl:r.price,
             glass:r.glass_price?"$"+r.glass_price+" glass":"bottle only",say:r.say||"",
-            dishes:byLabel.get(label).dishes,speak:()=>say(r.speak||r.say||label)};});})(),
+            dishes:byLabel.get(label).dishes,speak:()=>say(r.speak||r.say||label,r.lang)};});})(),
         showFormatTabs:usingEngine,formatTabs,
         showCoverage:!!(coverageRows&&coverageRows.length),coverageTitle,coverage:coverageRows,
         offerTitle:usingEngine?(pairingDirection==="one_bottle"?"One bottle for the table":"Your wine"):(blank?"Three wines, no assumptions":"Your wine"),
@@ -1095,20 +1202,35 @@ export function usePairMe(opts = {}){
         presentCount:usingEngine
           ?(presentSet.size?presentSet.size+" ready to present":"None chosen yet, we'll present the first one")
           :(presentKeys.length?presentKeys.length+" ready to present":"None chosen yet, we'll present the first one"),
-        offers:engineOffers||offerSet.map(o=>{const w=W[o.k],on=presentKeys.includes(o.k);return {
+        offers:engineOffers||(engineBlocked?[]:offerSet.map(o=>{const w=W[o.k],on=presentKeys.includes(o.k);return {
           role:o.role,roleColor:o.roleColor,prod:w.prod,wine:w.wine,meta:w.meta,say:w.say,btl:w.btl,
           glass:w.glass?"$"+w.glass+" glass":"bottle only",why:o.why,covers:o.covers,
           bd:on?"var(--pm-chrome)":"var(--pm-rule)",bw:on?"2px":"1px",bg:on?"var(--pm-sel)":"var(--pm-card)",
           chip:on?"presenting":"tap to add",chipBg:on?"#F9E4C7":"var(--pm-sunken)",
           pick:()=>patch(x=>({present:x.present.includes(o.k)?x.present.filter(y=>y!==o.k):[...x.present,o.k]})),
-          speak:()=>say(w.speak||w.say||w.wine),
+          speak:()=>say(w.speak||w.say||w.wine,w.lang),
           open:()=>patch({s:16,bottle:o.k,back:11}),
           stockColor:w.stock<4?ORANGE:"var(--pm-muted)",
-          stockNote:w.stock<4?"Only "+w.stock+" left tonight":"Plenty in the cellar"};}),
+          stockNote:w.stock<4?"Only "+w.stock+" left tonight":"Plenty in the cellar",
+          // WINE CARD ICONS: this static demo path (Desi's hand-authored W,
+          // used off the /t/demo route) has no engine dishes/rules-table to
+          // run the table-wine gate against, so it ships dark here too;
+          // house pick has no venue-push data on this path either. "Our
+          // pick" and by-the-glass reuse the same role string / glass field
+          // this array already sets, no new data needed.
+          tableActive:false,
+          glassActive:!!w.glass,
+          housePickActive:false,
+          ourPickActive:o.role==="House suggestion",
+          proteinIcons:resolveProteinIcons(w.protein_match)};})),
         // ONE-BOTTLE MODE compromise: rendered on TheWine screen right under
         // the single offering (see TheWine.jsx). null on every other
         // direction and off the /t/demo path.
         compromiseNote,
+        // NOTHING CLEARED THE TABLE. The screen names the constraint instead
+        // of going blank or showing a canned shortlist. Sentence is the
+        // blocking rule's own why_template, never free prose.
+        blockedNote:engineBlocked?(st.pairingBlocked||null):null,
 
         foodRows:chosen.map(d=>({n:d.n,sec:d.sec})),
         handoff:usingEngine
@@ -1118,13 +1240,16 @@ export function usePairMe(opts = {}){
             return {
               label:engineShownLabels.length>1?(i===0?"Bottle one":"Bottle two"):"One bottle",
               prod:w.producer,wine:w.wine_name,meta:w.meta+" . $"+w.price,say:w.say,tip:w.tip,
-              speak:()=>say(w.speak||w.say||w.label),
+              // Same engine-wine caveat as engineOffers above: w.lang is
+              // undefined here until pairingAdapter.js's rowToEngineWine
+              // also copies it through; harmless (speak.js defaults en-US).
+              speak:()=>say(w.speak||w.say||w.label,w.lang),
               compromise:(pairingDirection==="one_bottle"&&compromiseNote)?compromiseNote.text:null,
             };
           })
           :shownKeys.map((k,i)=>{const w=W[k];return {
             label:shownKeys.length>1?(i===0?"Bottle one":"Bottle two"):"One bottle",
-            prod:w.prod,wine:w.wine,meta:w.meta+" . $"+w.btl,say:w.say,tip:w.tip,speak:()=>say(w.speak||w.say||w.wine),compromise:null};}),
+            prod:w.prod,wine:w.wine,meta:w.meta+" . $"+w.btl,say:w.say,tip:w.tip,speak:()=>say(w.speak||w.say||w.wine,w.lang),compromise:null};}),
         hasDiet:st.diet.length>0,dietLine:st.diet.length?st.diet.join(" . "):"none",
 
         rateRows:[["dish","The food"],["wine","The wine"],["pair","How they went together"]].map(([k,label])=>({
@@ -1167,7 +1292,7 @@ export function usePairMe(opts = {}){
 
         bb:(function(self,key){const w=W[key],b=BRIEF[key];return {
           prod:w.prod,wine:w.wine,meta:w.meta+" . $"+w.btl+(w.glass?" . $"+w.glass+" glass":" . bottle only"),
-          say:w.say,tip:w.tip,speak:()=>say(w.speak||w.say||w.wine),
+          say:w.say,tip:w.tip,speak:()=>say(w.speak||w.say||w.wine,w.lang),
           means:b.means,notes:b.notes,why:b.why,bridge:b.bridge,yours:b.yours,
           save:()=>patch({saved:!st.saved}),
           savedLabel:st.saved?"Saved":"Save it",savedBg:st.saved?"var(--pm-sel)":"transparent",
@@ -1181,7 +1306,7 @@ export function usePairMe(opts = {}){
           bd:r.on?"var(--pm-selBd)":"var(--pm-rule)",bg:r.on?"var(--pm-sel)":"var(--pm-card)",
           trackBg:r.on?"#EFB96B":"var(--pm-sunken)",trackBd:r.on?"#E5A44F":"var(--pm-rule)",
           knobX:r.on?"22px":"2px",knobBg:r.on?"#1F2A44":"var(--pm-muted)"})),
-        demoSpeak:()=>say("Zhev ray shom ber tan. You said that perfectly."),
+        demoSpeak:()=>say("Zhev ray shom ber tan. You said that perfectly.","fr-FR"),
         acctTitle:st.account?"Signed in with "+st.account:"Not signed in",
         acctSub:st.account?"Your taste, your history and your table are saved.":"Everything works without it. Signing in is only so your taste survives closing the app.",
         acctAction:st.account?"Switch account":"Sign in",

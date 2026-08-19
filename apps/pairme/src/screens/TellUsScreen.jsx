@@ -14,12 +14,12 @@ import { speak as speakText } from '../lib/speak.js';
  * venue, no menu photo) and landed here with that text carried over via
  * router state.
  *
- * Standalone full-viewport route, same category as EntryScreen.jsx and
- * OperatorPage.jsx (see routes.jsx) - NOT one of the Phone-mockup SCREENS
- * (that 390x800 card is a desktop-preview frame for Desi's onboarding walk).
- * This screen's own job - extract, let the diner correct, then one of three
- * paths to a pairing - does not fit that frame any better than EntryScreen's
- * paste/pick/pair walk did.
+ * Standalone route, same category as EntryScreen.jsx (see routes.jsx) - not
+ * one of Phone's onboarding SCREENS, but mounted inside the same 390x800
+ * DeviceFrame shell those SCREENS use, same as EntryScreen. Used to render
+ * outside that shell entirely (full desktop width, no phone border); that
+ * was the phone-frame regression, not something this screen's own job -
+ * extract, correct, then one of three paths to a pairing - actually needed.
  *
  * Reads packages/pairing (parseWineList, and via pairingAdapter/
  * offlinePairing, the scoring engine + zero-network tables) READ ONLY - no

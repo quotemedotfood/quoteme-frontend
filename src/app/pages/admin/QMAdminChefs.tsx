@@ -13,6 +13,7 @@ import {
 import { getAdminUsers, AdminUser } from '../../services/adminApi';
 import { impersonateChef } from '../../services/api';
 import { userStatusPill } from '../../utils/userDisplayStatus';
+import { AdminEmptyState } from './_adminEmptyState';
 
 type SortField = 'name' | 'email' | 'status' | 'last_login_at' | 'created_at';
 type SortDir = 'asc' | 'desc';
@@ -110,15 +111,33 @@ export function QMAdminChefs() {
   }, [chefs, search, sortField, sortDir]);
 
   async function handleImpersonate(chef: AdminUser) {
+    // Defense in depth: the row/modal controls already hide this action for
+    // a chef who has never signed in (see hasSignedIn below), but re-check
+    // here too so this function is safe regardless of caller.
+    if (!hasSignedIn(chef)) {
+      setError('Chef has not signed in yet.');
+      setShowReasonFor(null);
+      return;
+    }
     setImpersonatingId(chef.id);
-    const fullName = `${chef.first_name} ${chef.last_name}`;
 
     const res = await impersonateChef(chef.id);
 
     if (res.data?.token) {
+      const returnedChef = res.data.chef;
+      // Never trust the clicked row: verify the server actually issued a
+      // token for the chef we asked for before touching any storage.
+      if (!returnedChef || returnedChef.id !== chef.id) {
+        setError('Impersonation target mismatch; not switching.');
+        setImpersonatingId(null);
+        setShowReasonFor(null);
+        return;
+      }
+      const fullName = `${returnedChef.first_name} ${returnedChef.last_name}`;
       // Store admin credentials for restore on exit
       localStorage.setItem('quoteme_admin_token', localStorage.getItem('quoteme_token') || '');
-      // Store chef display info so the banner can read it
+      // Store chef display info (derived from the response, not the clicked
+      // row) so the banner can read it
       localStorage.setItem('quoteme_chef_impersonating', fullName);
       localStorage.setItem('quoteme_chef_impersonation_event_id', res.data.event_id);
       // Swap the session token
@@ -136,6 +155,14 @@ export function QMAdminChefs() {
 
     setShowReasonFor(null);
   }
+
+  // Item 6: gate impersonation off chefs who have never actually signed in.
+  // last_login_at is the real, server-stamped signal (StampsLastLogin
+  // concern) for "has this chef ever completed a sign-in" -- an
+  // invite_sent/never-logged-in chef has no session state we could switch
+  // into, so the control is disabled with an explanatory title rather than
+  // silently failing (or worse, impersonating an account with no history).
+  const hasSignedIn = (chef: AdminUser) => !!chef.last_login_at;
 
   // Feature 2 Slice 1: honest status pill. See userStatusPill for why a
   // never-logged-in chef renders "Invite sent" instead of "Active".
@@ -215,11 +242,7 @@ export function QMAdminChefs() {
       {error && <p className="text-sm text-red-500 py-4">{error}</p>}
       {loading && <p className="text-sm text-gray-400 py-8">Loading chef accounts...</p>}
 
-      {!loading && filtered.length === 0 && (
-        <div className="text-center py-16 text-gray-400">
-          <p className="text-lg font-medium">No chef accounts found</p>
-        </div>
-      )}
+      {!loading && filtered.length === 0 && <AdminEmptyState label="chef accounts" />}
 
       {!loading && filtered.length > 0 && (
         <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
@@ -276,7 +299,7 @@ export function QMAdminChefs() {
                       <Button
                         variant="outline"
                         size="sm"
-                        disabled={impersonatingId === chef.id}
+                        disabled={impersonatingId === chef.id || !hasSignedIn(chef)}
                         onClick={() => setShowReasonFor(chef.id)}
                         style={{
                           borderColor: '#F39839',
@@ -284,6 +307,7 @@ export function QMAdminChefs() {
                         }}
                         className="hover:opacity-80 flex items-center gap-1"
                         data-testid={`impersonate-btn-${chef.id}`}
+                        title={hasSignedIn(chef) ? undefined : 'Chef has not signed in yet'}
                       >
                         <UserCheck size={14} />
                         {impersonatingId === chef.id ? 'Switching...' : 'Impersonate'}

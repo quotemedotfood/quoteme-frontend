@@ -14,7 +14,6 @@ import { ChefQuotesPage } from "./pages/chef/ChefQuotesPage";
 import { QuotesRoleRouter } from "./components/QuotesRoleRouter";
 import { MapIngredientsPage } from "./pages/MapIngredientsPage";
 import { ExportFinalizePage } from "./pages/ExportFinalizePage";
-import { QuoteReviewPage } from "./pages/QuoteReviewPage";
 import { ErrorPage } from "./pages/ErrorPage";
 import { AuthPage } from "./pages/AuthPage";
 import { ResetPasswordPage } from "./pages/ResetPasswordPage";
@@ -465,7 +464,14 @@ export const router = createBrowserRouter([
               { path: "export-finalize", Component: ExportFinalizePage },
             ],
           },
-          { path: "review", Component: QuoteReviewPage },
+          // "review" (QuoteReviewPage) deleted: nothing in this app or in any
+          // backend email/SMS ever navigated to it, and it crashed on arrival.
+          // Its Distributor summary card did `value: (quote as any).distributor`
+          // and rendered `{card.value}`, but the serializer ships distributor as
+          // an object ({ id, name, logo_url, currency }), so React threw
+          // "Objects are not valid as a React child". The `as any` cast is what
+          // hid it from the typechecker. The live send/review path is
+          // ExportFinalizePage.
           { path: "onboarding/confirm", Component: OnboardingConfirmPage },
           { path: "catalog/confirmation", Component: CatalogConfirmationPage },
           // ── Command Center (B2-CC) — nested layout + routes ──────────────

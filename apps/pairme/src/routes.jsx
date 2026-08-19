@@ -1,7 +1,7 @@
 import React from 'react';
 import { Routes, Route, useNavigate, useParams } from 'react-router-dom';
 import { usePairMe } from './lib/state';
-import { Phone } from './App';
+import { Phone, DeviceFrame } from './App';
 import Login from './screens/Login';
 import EntryScreen from './screens/EntryScreen';
 import TellUsScreen from './screens/TellUsScreen';
@@ -28,11 +28,14 @@ function RouteBridge({ vm, screenIndex, tableCode }) {
 }
 
 /**
- * Browse the full wine list. Standalone full-page route, NOT one of the
- * Phone-mockup SCREENS (same category as /login and /entry above) - a wine
- * list wants the whole width of a real screen. Reads whatever wine rows +
- * picked dishes are already in memory (vm.wineListWines/wineListPickedDishes,
- * see state.js), zero network at this seam.
+ * Browse the full wine list. Not one of Phone's onboarding SCREENS (it does
+ * not read vm.screenNo or draw the CTA bar), but mounted inside the same
+ * 390x800 device shell via DeviceFrame below, same as every other route in
+ * this file except /operator - a bare, borderless full-width wine list was
+ * the phone-frame regression Moose caught (see DeviceFrame's doc comment,
+ * App.jsx). Reads whatever wine rows + picked dishes are already in memory
+ * (vm.wineListWines/wineListPickedDishes, see state.js), zero network at
+ * this seam.
  */
 function WineListRoute({ vm }) {
   const navigate = useNavigate();
@@ -45,6 +48,48 @@ function WineListRoute({ vm }) {
       onBack={() => navigate('/wines')}
     />
   );
+}
+
+/**
+ * THE PRINTED QR ROUTE. READ THIS BEFORE CHANGING ANYTHING HERE.
+ *
+ * WHAT THIS IS: one hardcoded route for one venue, provisioned by hand, so
+ * that a QR code printed for tomorrow's demo resolves to something real. The
+ * printed sticker encodes exactly
+ *
+ *     https://demo.pairme.wine/v/aquitaine
+ *
+ * and that string is already on paper. DO NOT RENAME OR REMOVE THIS PATH.
+ *
+ * WHAT THIS IS NOT, stated plainly because the rest of the codebase has twice
+ * carried comments describing behaviour that did not exist:
+ *
+ *   - NOTHING HERE MINTS A TOKEN. There is no generator, no SecureRandom, no
+ *     id of any kind created at any point in this file.
+ *   - NOTHING HERE STORES A TOKEN. There is no column, no table, no row, no
+ *     localStorage write. The word "aquitaine" below is a hardcoded string in
+ *     source, nothing more.
+ *   - NOTHING HERE RESOLVES A TOKEN. There is no lookup and no resolver
+ *     endpoint. GET /v1/t/:code does not exist on the backend, on main or on
+ *     any branch. This route deliberately does not call it.
+ *
+ * There is NO TOKEN CHAIN. A second venue does not get a URL by being added
+ * to a database; it gets one by a developer editing this file and shipping.
+ * That does not scale past a demo and is not meant to.
+ *
+ * HOW IT WORKS: it hands the already-built `demo` code to the same
+ * RouteBridge that /t/demo uses, so it loads the Aquitaine venue through
+ * GET /v1/demo, which IS built and live and needs no identity (see the BE's
+ * config/routes.rb v1 namespace). No new data path, no new failure mode.
+ *
+ * The real durable-token chain is a separate piece of work. ChefMagicLink in
+ * QuoteMe already mints, stores and resolves a durable venue-scoped token and
+ * is the closest existing shape to adapt.
+ */
+const AQUITAINE_DEMO_CODE = 'demo';
+
+function VenueRoute({ vm }) {
+  return <RouteBridge vm={vm} screenIndex={9} tableCode={AQUITAINE_DEMO_CODE} />;
 }
 
 function TableCodeRoute({ vm }) {
@@ -111,24 +156,26 @@ export default function PairMeApp() {
       <Routes>
         {/*
           Entry-points brief: the four diner entry points (paste-first) live
-          on ONE standalone screen, full-viewport, NOT inside the 390x800
-          Phone mockup card every other route below renders into (that card
-          is a desktop-preview frame for Desi's onboarding walk, not
-          something a real phone browser should be squeezed into for this
-          feature). See screens/EntryScreen.jsx.
+          on ONE screen, mounted inside the 390x800 device shell like every
+          other route below except /operator (see DeviceFrame, App.jsx).
+          Used to render full-viewport, outside the shell entirely - that
+          was the phone-frame regression, not a deliberate design: it read
+          as a desktop page, not a phone demo. See screens/EntryScreen.jsx.
         */}
-        <Route path="/entry" element={<EntryScreen />} />
+        <Route path="/entry" element={<DeviceFrame><EntryScreen /></DeviceFrame>} />
         {/*
           WhereTo's fourth path (item 6/7/8): "Just tell us here", the
-          at-home / no-menu case. Standalone and full-viewport like /entry
-          above, NOT the Phone mockup frame - extraction, correction, and a
-          three-way choice do not fit inside that 390x800 card any better
-          than EntryScreen's own walk does. See screens/TellUsScreen.jsx.
+          at-home / no-menu case. Mounted inside the device shell like
+          /entry above - extraction, correction, and a three-way choice
+          scroll inside the shell same as any other screen; nothing about
+          this walk needed the full viewport. See screens/TellUsScreen.jsx.
         */}
-        <Route path="/tell-us" element={<TellUsScreen />} />
+        <Route path="/tell-us" element={<DeviceFrame><TellUsScreen /></DeviceFrame>} />
         {/*
           Restaurant OPERATOR flow (restaurant_admin), standalone and
-          full-viewport like /entry above, NOT the Phone mockup frame. See
+          full-viewport, deliberately NOT wrapped in DeviceFrame - it is the
+          restaurant-side desktop surface, not a diner-facing phone screen,
+          and a 390px frame around it would be wrong. See
           operator/OperatorPage.jsx for the client-side-only build note and
           the BE persistence seam (confirmed/pushed pairings do not reach a
           diner at /t/:code yet - that is a follow-up, not this build).
@@ -143,12 +190,16 @@ export default function PairMeApp() {
         <Route path="/setup/5" element={<RouteBridge vm={vm} screenIndex={6} />} />
         <Route path="/setup/6" element={<RouteBridge vm={vm} screenIndex={7} />} />
         <Route path="/venue" element={<RouteBridge vm={vm} screenIndex={8} />} />
+        {/* Hand-provisioned demo venue. See VenueRoute above: nothing here
+            mints, stores or resolves a token. The printed QR encodes this
+            exact path, so it must not be renamed. */}
+        <Route path="/v/aquitaine" element={<VenueRoute vm={vm} />} />
         <Route path="/t/:code" element={<TableCodeRoute vm={vm} />} />
         <Route path="/capture" element={<RouteBridge vm={vm} screenIndex={18} />} />
         <Route path="/menu" element={<RouteBridge vm={vm} screenIndex={9} />} />
         <Route path="/direction" element={<RouteBridge vm={vm} screenIndex={10} />} />
         <Route path="/wines" element={<RouteBridge vm={vm} screenIndex={11} />} />
-        <Route path="/wines/list" element={<WineListRoute vm={vm} />} />
+        <Route path="/wines/list" element={<DeviceFrame keepNativeScrollbar><WineListRoute vm={vm} /></DeviceFrame>} />
         <Route path="/wines/brief" element={<RouteBridge vm={vm} screenIndex={16} />} />
         <Route path="/server" element={<RouteBridge vm={vm} screenIndex={12} />} />
         <Route path="/rate" element={<RouteBridge vm={vm} screenIndex={13} />} />
@@ -157,17 +208,19 @@ export default function PairMeApp() {
         <Route path="/profile/settings" element={<RouteBridge vm={vm} screenIndex={17} />} />
         {/*
           AUTH CONTRACT (locked, feat/pairme-accounts-be). A real,
-          bookmarkable route, NOT one of the phone-frame SCREENS above - it
-          renders its own full-page layout, not <Phone>. Because `vm` is
-          created once in PairMeApp (above) and this <Route> is a sibling of
-          the phone-frame routes inside the SAME <Routes>, navigating here
-          and back does not remount usePairMe: onboarding progress, the
-          picked dishes, everything, survives the round trip.
+          bookmarkable route, not one of Phone's onboarding SCREENS above -
+          it draws its own layout, not <Phone> - but mounted inside the
+          same device shell via DeviceFrame like every other route in this
+          file except /operator. Because `vm` is created once in PairMeApp
+          (above) and this <Route> is a sibling of the phone-frame routes
+          inside the SAME <Routes>, navigating here and back does not
+          remount usePairMe: onboarding progress, the picked dishes,
+          everything, survives the round trip.
           NO WALL: nothing above navigates here on its own; this is only
           reached via the top-right "Log in" chrome button (vm.goLogin,
           App.jsx) or a direct visit.
         */}
-        <Route path="/login" element={<Login vm={vm} />} />
+        <Route path="/login" element={<DeviceFrame><Login vm={vm} /></DeviceFrame>} />
         <Route path="*" element={<RouteBridge vm={vm} screenIndex={0} />} />
       </Routes>
     </>

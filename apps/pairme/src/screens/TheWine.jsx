@@ -1,9 +1,10 @@
 import React from 'react';
 import { Input } from '../lib/ds';
+import WineCardIcons from './WineCardIcons';
 
 /** Screen 12 · The wine */
 export default function TheWine(vm){
-  const { fWhy, offerTitle, offerSub, blankLabel, toggleBlank, showBlankToggle, presentCount, offers, compromiseNote, showFormatTabs, formatTabs, showCoverage, coverageTitle, coverage, showFeatured, featured, goWineList } = vm;
+  const { fWhy, offerTitle, offerSub, blankLabel, toggleBlank, showBlankToggle, presentCount, offers, compromiseNote, blockedNote, showFormatTabs, formatTabs, showCoverage, coverageTitle, coverage, showFeatured, featured, goWineList } = vm;
   return (
 <>
 <div>
@@ -72,7 +73,16 @@ export default function TheWine(vm){
 <div style={{font: "400 12.5px/1.6 var(--font-body)", color: "var(--pm-ink)", marginTop: "6px"}}>On the {compromiseNote.dish}: {compromiseNote.text}</div>
 </div>
 ) : null}
+{blockedNote ? (
+<div style={{border: "1px solid var(--pm-warnBd)", background: "var(--pm-warnBg)", borderRadius: "12px", padding: "14px", marginBottom: "14px"}}>
+<div style={{font: "700 11.5px var(--font-body)", color: "var(--pm-warnInk)", letterSpacing: ".06em", textTransform: "uppercase"}}>Nothing on this list works</div>
+<div style={{font: "400 12.5px/1.6 var(--font-body)", color: "var(--pm-ink)", marginTop: "6px"}}>It is the {blockedNote.dish}. {blockedNote.why}</div>
+<div style={{font: "400 12px/1.6 var(--font-body)", color: "var(--pm-muted)", marginTop: "8px"}}>We would rather tell you than pour you something that fights it. Ask your server what they keep back for this.</div>
+</div>
+) : null}
+{blockedNote ? null : (
 <div style={{font: "400 12px var(--font-body)", color: "var(--pm-muted)", marginBottom: "10px"}}>Tap the ones you want. {presentCount}</div>
+)}
 {(offers || []).map((w, i) => (
 <React.Fragment key={i}>
 <div style={{border: `${w.bw} solid ${w.bd}`, background: w.bg, borderRadius: "12px", padding: "14px", marginBottom: "12px"}}>
@@ -105,6 +115,7 @@ export default function TheWine(vm){
 )}
 <div style={{font: "600 11.5px var(--font-body)", color: w.stockColor, marginTop: "7px"}}>{w.stockNote}</div>
 </button>
+<WineCardIcons tableActive={w.tableActive} glassActive={w.glassActive} housePickActive={w.housePickActive} ourPickActive={w.ourPickActive} proteinIcons={w.proteinIcons} />
 <div style={{display: "flex", alignItems: "center", gap: "9px", marginTop: "11px", paddingTop: "10px", borderTop: "1px solid var(--pm-rule)"}}>
 <button onClick={w.speak} style={{flex: "none", width: "38px", height: "38px", borderRadius: "999px", border: "1.5px solid var(--pm-accent2)", background: "var(--pm-card)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center"}} aria-label="Say it out loud">
 <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--pm-ink)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M11 5 L6 9 H3 v6 h3 l5 4 Z"></path><path d="M15.5 8.5a5 5 0 0 1 0 7"></path><path d="M18.5 5.5a9 9 0 0 1 0 13"></path></svg>
@@ -128,9 +139,11 @@ export default function TheWine(vm){
 <div style={{font: "400 12px/1.55 var(--font-body)", color: "var(--pm-muted)", margin: "4px 0 9px"}}>Tell us what's wrong with them and we'll go again. This is the most useful thing you can say to us.</div>
 <div style={{position: "relative"}}>
 <Input value={fWhy.v} onChange={fWhy.set} placeholder="all too French, and too dear" style={{width: "100%"}}></Input>
-<button onClick={fWhy.mic} style={{position: "absolute", right: "5px", top: "5px", width: "34px", height: "34px", borderRadius: "999px", border: `1.5px solid ${fWhy.bd}`, background: fWhy.bg, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center"}}>
+{fWhy.micVisible ? (
+<button onClick={fWhy.mic} aria-label="Speak instead of typing" style={{position: "absolute", right: "5px", top: "5px", width: "34px", height: "34px", borderRadius: "999px", border: `1.5px solid ${fWhy.bd}`, background: fWhy.bg, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center"}}>
 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--pm-ink)" strokeWidth="1.8" strokeLinecap="round"><rect x="9" y="2" width="6" height="11" rx="3"></rect><path d="M5 11a7 7 0 0 0 14 0"></path><line x1="12" y1="18" x2="12" y2="22"></line></svg>
 </button>
+) : null}
 </div>
 <div style={{font: "500 11.5px var(--font-body)", color: "var(--pm-pearInk)", marginTop: "6px"}}>{fWhy.hint}</div>
 </div>

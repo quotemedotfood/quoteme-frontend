@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildProfilePayload } from './state.js';
+import { buildProfilePayload, W } from './state.js';
 
 // Minimal fake of usePairMe's internal state shape, only the fields
 // buildProfilePayload reads. Mirrors the initial state in usePairMe.
@@ -90,5 +90,28 @@ describe('buildProfilePayload - free_text', () => {
     expect(payload.free_text).toBeUndefined();
     expect(payload.preferences).toBeTruthy();
     expect(payload.safety).toBeTruthy();
+  });
+});
+
+describe('W - lang tags (R2, item b)', () => {
+  const entries = Object.entries(W);
+  const VALID_LANGS = new Set(['fr-FR', 'it-IT', 'de-DE', 'es-ES', 'en-US']);
+
+  it('has all 5 hand-authored phonetics (sanity check the fixture has not shrunk)', () => {
+    expect(entries).toHaveLength(5);
+  });
+
+  it.each(entries)('%s has a lang field from the allowed BCP-47 set', (key, w) => {
+    expect(w.lang).toBeTruthy();
+    expect(VALID_LANGS.has(w.lang)).toBe(true);
+  });
+
+  it('every W entry has a lang field (loop, no entry left untagged)', () => {
+    const missing = entries.filter(([, w]) => !w.lang);
+    expect(missing).toEqual([]);
+  });
+
+  it('all five are tagged fr-FR (Champagne/Burgundy/Beaujolais/Loire producers)', () => {
+    entries.forEach(([, w]) => expect(w.lang).toBe('fr-FR'));
   });
 });

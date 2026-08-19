@@ -141,12 +141,19 @@ function median(sortedNums) {
  * with - the diner's pick is comfort information a clustered top-3 throws
  * away before the guest ever gets to reveal it.
  *
- * `ranked` is already both (a) restricted to genuinely-qualifying wines -
- * several()'s own per-dish eligibility gate already ran - and (b) sorted
- * desc by adjScore. This function only SELECTS among those already-
- * qualifying entries by price bracket; it never promotes an ineligible
- * wine just to fill a bracket, and the score ranking that established
- * quality is preserved for the final 3 (see the sort at the end).
+ * `ranked` is already both (a) restricted to wines that clear EVERY dish on
+ * the table - several()'s whole-table eligibility gate already ran - and
+ * (b) sorted desc by adjScore. This function only SELECTS among those
+ * already-qualifying entries by price bracket; it never promotes an
+ * ineligible wine just to fill a bracket, and the score ranking that
+ * established quality is preserved for the final 3 (see the sort at the end).
+ *
+ * That first half of the invariant was ASSERTED here and was not true:
+ * several() used to admit a wine that cleared any ONE dish, so this function
+ * faithfully spread hard-blocked wines across price brackets. The gate was
+ * fixed in several() rather than here, because bracketing among valid answers
+ * is this function's only job. If a bracket has no qualifying candidate it
+ * stays empty. Empty beats wrong.
  *
  * Brackets: low = below the midpoint, high = the top quarter of the range
  * (near budget.max / the priciest candidates), mid = everything between.
@@ -161,6 +168,35 @@ function median(sortedNums) {
  * @returns {Array} up to 3 entries from `ranked`, one per bracket where a
  *   qualifying candidate exists there, sorted back to score order.
  */
+/**
+ * Which rule shut the door, and on which dish. Used only when NOTHING on the
+ * list clears the table, so the screen can name the constraint instead of
+ * going blank or, worse, falling back to a canned shortlist.
+ *
+ * Counts every hard block across every wine and dish and reports the rule
+ * responsible for the most of them, with that rule's own why_template.
+ *
+ * @returns {{ruleId: string, dish: string, why: string, wineCount: number}|null}
+ */
+function dominantBlocker(engineDishes, wines, T) {
+  const tally = new Map();
+  for (const d of engineDishes) {
+    const { profile } = dishProfile(d.components, T);
+    for (const wine of wines) {
+      const s = scoreWine(wine, profile, d.components, T);
+      if (s.eligible) continue;
+      for (const [ruleId, why] of s.blocked) {
+        const k = `${ruleId} ${d.name}`;
+        const prev = tally.get(k);
+        if (prev) prev.wineCount += 1;
+        else tally.set(k, { ruleId, dish: d.name, why, wineCount: 1 });
+      }
+    }
+  }
+  if (tally.size === 0) return null;
+  return [...tally.values()].sort((a, b) => b.wineCount - a.wineCount)[0];
+}
+
 function selectAcrossPriceBrackets(ranked, budget) {
   if (ranked.length <= 3) return ranked.slice(0, 3);
 
@@ -382,6 +418,23 @@ export function computeOfferings(direction, dishes, wines, T, opts = {}) {
   const ranked = several(engineDishes, wines, T, { n: SEVERAL_POOL_N })
     .map((entry) => ({ ...entry, adjScore: entry.bestScore - floorPenalty(entry.wine.price) }))
     .sort((a, b) => b.adjScore - a.adjScore);
+  // NOTHING CLEARS THE TABLE. Say so, and name the constraint.
+  //
+  // Real state now that eligibility is applied across the whole table: one
+  // hard_fail dish (a Roquefort wanting a sweeter wine than anything on the
+  // list) can empty the pool. The honest answer is none, plus a named reason.
+  // Three confident cards would be a wrong match, which doctrine forbids.
+  // The sentence is the blocking RULE'S OWN why_template, never free prose.
+  if (ranked.length === 0) {
+    return {
+      direction,
+      offerings: [],
+      compromise: null,
+      coverage: engineDishes.map((d) => ({ dish: d.name, sec: secOf(d.name), status: 'unpaired', wine: null })),
+      blocked: dominantBlocker(engineDishes, wines, T),
+    };
+  }
+
   const shortlist = selectAcrossPriceBrackets(ranked, budget);
   const offerings = shortlist.map((entry, i) => {
     const dish = engineDishes.find((d) => d.name === entry.bestForDish) || { components: [] };

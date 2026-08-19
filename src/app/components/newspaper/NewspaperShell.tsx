@@ -20,7 +20,7 @@
 //     {pageBody}
 //   </NewspaperShell>
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import * as LucideIcons from 'lucide-react';
 import { HelpField } from '../HelpField';
 
@@ -774,6 +774,35 @@ function NewspaperShellDesktop({
   );
 }
 
+// ── Breakpoint subscription ───────────────────────────────────────────────────
+//
+// Copied deliberately from RepLayout.tsx (same guarded form, same 768px
+// boundary). Extracting one shared hook would touch four live shells and would
+// hand two of them a guard they do not currently have, changing their jsdom
+// behaviour. That is tracked as a follow-up, not done here.
+//
+// Environments without matchMedia (some jsdom/test setups) default to desktop
+// so pre-existing desktop-oriented tests and behaviour are unaffected. Real
+// browsers all support matchMedia, so this only matters in test envs.
+function supportsMatchMedia(): boolean {
+  return typeof window !== 'undefined' && typeof window.matchMedia === 'function';
+}
+
+// Exported for unit testing only. Not re-exported from the newspaper barrel.
+export function useIsDesktop(): boolean {
+  const [isDesktop, setIsDesktop] = useState<boolean>(
+    supportsMatchMedia() ? window.matchMedia('(min-width: 768px)').matches : true
+  );
+  useEffect(() => {
+    if (!supportsMatchMedia()) return;
+    const mq = window.matchMedia('(min-width: 768px)');
+    const handler = (e: MediaQueryListEvent) => setIsDesktop(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
+  return isDesktop;
+}
+
 // ── NewspaperShell — THE ONE SHELL ───────────────────────────────────────────
 
 export interface NewspaperShellProps extends DesktopShellProps, NewspaperMobileShellProps {
@@ -794,8 +823,10 @@ export function NewspaperShell({
   initialMode = 'open',
   maxWidth = 880,
 }: NewspaperShellProps) {
-  // Breakpoint: ≥768px → desktop, else → mobile
-  const isDesktop = typeof window !== 'undefined' && window.innerWidth >= 768;
+  // Breakpoint: ≥768px → desktop, else → mobile.
+  // Subscribed via matchMedia so a viewport change re-renders the shell,
+  // instead of a render-phase read of window.innerWidth that never updates.
+  const isDesktop = useIsDesktop();
   const resolvedVariant = variant === 'desktop' && isDesktop ? 'desktop' : variant;
 
   if (resolvedVariant === 'mobile') {

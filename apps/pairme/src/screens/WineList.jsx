@@ -165,9 +165,14 @@ function WineRow({ wine, expanded, onToggle, onSpeak }) {
 /**
  * Screen: the full wine list, browsable by color then country then region.
  * Reachable from TheWine's "Browse the full list" button and directly at
- * /wines/list (see routes.jsx). Standalone full-page route, like Login and
- * EntryScreen - a wine list wants the whole width of the screen, not the
- * 390x800 Phone mockup every onboarding step renders into.
+ * /wines/list (see routes.jsx). Mounted inside the 390x800 device shell
+ * like Login and EntryScreen (see App.jsx's DeviceFrame) - it does not pin
+ * its own max-width, so it simply fills whatever width the shell gives it;
+ * used to render full desktop width outside the shell entirely, which was
+ * the phone-frame regression, not a deliberate "wine list wants the whole
+ * screen" design. DeviceFrame is passed keepNativeScrollbar for this route
+ * (routes.jsx) so a desktop viewer still sees a real scrollbar affordance
+ * for this long list (lib/theme.css's .pm-scroll-native).
  *
  * @param {Array<Record<string, any>>} wines - raw wine rows.
  * @param {Array<{name: string, components: string[]}>} pickedDishes - []
@@ -217,7 +222,7 @@ export default function WineList({ wines, pickedDishes, tables, say, onBack }) {
         </div>
       ) : (
         <>
-          <div role="tablist" aria-label="Wine color" style={{ display: 'flex', gap: 6, overflowX: 'auto', padding: '14px 16px 8px' }}>
+          <div role="tablist" aria-label="Wine color" className="pm-scroll-hide" style={{ display: 'flex', gap: 6, overflowX: 'auto', padding: '14px 16px 8px' }}>
             {model.colors.map((c) => {
               const on = c === color;
               return (

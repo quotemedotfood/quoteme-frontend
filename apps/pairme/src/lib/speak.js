@@ -10,19 +10,37 @@
 // Present via state.js's `say`/per-wine `speak()` closures, and WineList /
 // TellUsScreen / EntryScreen directly) calls this.
 //
-// LANGUAGE (why `lang` defaults to 'en-US'): our hand-authored phonetics
-// (state.js's W table, demoSeed.js's PRONOUNCE map) are ENGLISH
+// LANGUAGE (why `lang` still defaults to 'en-US'): our hand-authored
+// phonetics (state.js's W table, demoSeed.js's PRONOUNCE map) are ENGLISH
 // RESPELLINGS - e.g. "Zhee moh nay" for Gimonnet, not the real French
-// pronunciation and not IPA. They are written on the assumption an ENGLISH
-// voice reads them. Some devices pick speechSynthesis's default voice from
-// page/OS locale, and if that default voice is French/Italian/etc, reading
-// an English respelling through it mangles the vowels and rolls Rs that
-// were never meant to roll - that is the exact failure this guards
-// against. Setting `u.lang = 'en-US'` explicitly on every utterance pins
-// English pronunciation rules regardless of device default. A future
-// "native-language TTS" route (reading the real French/Italian
-// pronunciation with a matching voice) is a deliberate non-goal here - this
-// is the R1 stopgap.
+// pronunciation and not IPA. R1 pinned u.lang='en-US' on every utterance
+// because reading a respelling through a French/Italian/etc default voice
+// mangles the vowels and rolls Rs that were never meant to roll. R2 (this
+// revision) keeps that reasoning but drops the blanket 'en-US': demoSeed.js
+// and state.js now carry a `lang` tag PER WINE (its actual origin -
+// 'fr-FR' for a Chablis, 'en-US' for a Napa cabernet, etc) and pass it in
+// as `opts.lang`; a respelling like "Zhee moh nay" is still written to be
+// read BY that language's own voice (fr-FR reads French vowels/Rs the way
+// the respelling assumes), it just is not forced to en-US for wines whose
+// own phonetic was authored for a different one. Callers with no phonetic
+// at all (real/parsed wines, no hand-authored entry) still get the
+// 'en-US' default below - mapping every possible wine region to a
+// language is a deliberate non-goal here, same R1-stopgap spirit as
+// before, just narrower now that the hand-authored set carries its own tag.
+//
+// VOICE SELECTION (R2, item a): speechSynthesis.getVoices() typically
+// returns a mix of REMOTE/cloud voices (voice.localService === false) and
+// LOCAL/on-device voices. Remote voices sound dramatically better, but
+// need network to render - and offline pairing is this app's whole App
+// Store argument (guideline 4.2.3), so a remote voice can only ever be a
+// PREFERENCE, never a requirement. pickVoice() below: (1) prefers a REMOTE
+// voice whose lang matches the utterance's lang, (2) falls back to ANY
+// voice (remote or local) matching that lang, (3) falls back to no voice
+// at all (the engine's own default) if nothing matches. Speech itself
+// never blocks or throws on step 3 - a diner with no matching voice
+// installed still hears the platform default voice read the text; audio
+// is always a nice-to-have; this is a preference layered on the language
+// tag above, never a gate on whether something gets spoken.
 //
 // VOICE-LIST GUARD: on some Windows/Android builds,
 // speechSynthesis.getVoices() returns [] on the very first call in a page
@@ -56,6 +74,39 @@ function primeVoices() {
 primeVoices();
 
 /**
+ * Pick the best available voice for `lang` (see VOICE SELECTION above).
+ * PREFER a remote/cloud voice matching `lang`, then ANY voice matching
+ * `lang`, then null (caller leaves `u.voice` unset and the engine falls
+ * back to its own platform default). Never throws - a getVoices() that
+ * misbehaves just means no voice preference gets applied, not a crash.
+ * @param {SpeechSynthesis} sp
+ * @param {string} lang
+ * @returns {SpeechSynthesisVoice|null}
+ */
+function pickVoice(sp, lang) {
+  try {
+    if (!lang || !sp.getVoices) return null;
+    const voices = sp.getVoices();
+    if (!voices || !voices.length) return null;
+    const wanted = String(lang).toLowerCase();
+    const wantedBase = wanted.split('-')[0];
+    const matches = voices.filter((v) => {
+      if (!v || !v.lang) return false;
+      const vLang = String(v.lang).toLowerCase();
+      return vLang === wanted || vLang.split('-')[0] === wantedBase;
+    });
+    if (!matches.length) return null;
+    // Remote (cloud) voices are the PREFERENCE - they sound dramatically
+    // better - but they need network, so a local voice is the FALLBACK,
+    // never a hard requirement (offline pairing must still work).
+    const remote = matches.find((v) => v.localService === false);
+    return remote || matches[0];
+  } catch (e) {
+    return null;
+  }
+}
+
+/**
  * Speak `text` aloud. Every call site is responsible for its own
  * hand-authored-phonetic -> raw-label fallback (e.g. `w.speak || w.say ||
  * w.label`); this function just speaks whatever string it is given.
@@ -71,9 +122,11 @@ export function speak(text, opts = {}) {
     const fire = () => {
       try {
         const u = new SpeechSynthesisUtterance(text);
-        u.rate = opts.rate != null ? opts.rate : 0.82;
+        u.rate = opts.rate != null ? opts.rate : 0.9;
         u.pitch = opts.pitch != null ? opts.pitch : 1;
         u.lang = opts.lang || 'en-US';
+        const voice = pickVoice(sp, u.lang);
+        if (voice) u.voice = voice;
         sp.speak(u);
       } catch (e) { /* nice-to-have, never a hard requirement */ }
     };

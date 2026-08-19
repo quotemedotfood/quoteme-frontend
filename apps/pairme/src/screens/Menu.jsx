@@ -11,7 +11,7 @@ export default function Menu(vm){
 <div style={{font: "600 20px var(--font-display)", color: "#fff"}}>{venueName}</div>
 <div style={{font: "400 12.5px var(--font-body)", color: "var(--pm-chromeSub)", marginTop: "5px"}}>Their menu tonight. Tap everything the table is having.</div>
 </div>
-<div style={{position: "sticky", top: "0", zIndex: "3", background: "var(--pm-page)", borderBottom: "1px solid var(--pm-rule)", padding: "10px 14px", display: "flex", gap: "7px", overflowX: "auto"}}>
+<div className="pm-scroll-hide" style={{position: "sticky", top: "0", zIndex: "3", background: "var(--pm-page)", borderBottom: "1px solid var(--pm-rule)", padding: "10px 14px", display: "flex", gap: "7px", overflowX: "auto"}}>
 {(jumps || []).map((j, i) => (
 <React.Fragment key={i}>
 <button onClick={j.go} style={{flex: "none", border: "1px solid var(--pm-rule)", background: "var(--pm-card)", color: "var(--pm-ink)", borderRadius: "999px", padding: "7px 13px", font: "600 11.5px var(--font-body)", cursor: "pointer", whiteSpace: "nowrap"}}>{j.name}</button>
@@ -42,10 +42,13 @@ export default function Menu(vm){
 <div style={{font: "400 12px/1.5 var(--font-body)", color: "var(--pm-muted)", marginTop: "4px", fontStyle: "italic"}}>"Pavé de b…f, sauce ...rdelaise". The print ran into the fold.</div>
 <div style={{display: "flex", gap: "8px", alignItems: "center", marginTop: "9px"}}>
 <Input value={fUnread.v} onChange={fUnread.set} placeholder="type or say what it reads" style={{width: "100%"}}></Input>
-<button onClick={fUnread.mic} style={{position: "absolute", right: "5px", top: "5px", width: "34px", height: "34px", borderRadius: "999px", border: `1.5px solid ${fUnread.bd}`, background: fUnread.bg, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center"}}>
+{fUnread.micVisible ? (
+<button onClick={fUnread.mic} aria-label="Speak instead of typing" style={{position: "absolute", right: "5px", top: "5px", width: "34px", height: "34px", borderRadius: "999px", border: `1.5px solid ${fUnread.bd}`, background: fUnread.bg, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center"}}>
 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--pm-ink)" strokeWidth="1.8" strokeLinecap="round"><rect x="9" y="2" width="6" height="11" rx="3"></rect><path d="M5 11a7 7 0 0 0 14 0"></path><line x1="12" y1="18" x2="12" y2="22"></line></svg>
 </button>
+) : null}
 </div>
+{fUnread.hint ? (<div style={{font: "500 11.5px var(--font-body)", color: "var(--pm-pearInk)", marginTop: "7px"}}>{fUnread.hint}</div>) : null}
 <div style={{font: "400 11px var(--font-body)", color: "var(--pm-muted)", marginTop: "7px"}}>Or ignore this. We'll pair the rest and tell you we skipped one.</div>
 </div>
 </div>
