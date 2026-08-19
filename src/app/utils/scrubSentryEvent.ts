@@ -1,5 +1,5 @@
-// scrubSentryEvent / scrubSentrySpan - strip credential material out of a
-// Sentry payload before it leaves the browser.
+// scrubSentryEvent / scrubSentrySpan - strip credential material, plus email
+// addresses, out of a Sentry payload before it leaves the browser.
 //
 // Sentry's beforeSend used to be a pure no-op gate on the DSN, so anything
 // attached to an event (an Authorization header, a magic-link URL in a
@@ -47,6 +47,33 @@
 //  - Values on class instances (not plain objects or arrays) are returned
 //    as-is; Sentry payloads are JSON-shaped, so this is theoretical.
 //  - Beyond MAX_DEPTH the value is replaced wholesale rather than inspected.
+//  - Email is the only PII shape handled (see EMAIL_RE). Names, phone numbers
+//    and addresses have no reliable value shape and are not redacted here, so
+//    the call site still has to not attach them.
+//  - EMAIL_RE is ASCII-only on both sides of the `@`, so these ship
+//    UNREDACTED, measured rather than assumed:
+//      jos\u00E9@example.com  (unicode local part, either normalisation - the
+//                             realistic one for a kitchen-staff user base, so
+//                             treat it as a live gap, not a curiosity)
+//      carla@bigfish.k\u00F6ln (unicode domain, PRECOMPOSED and not punycoded)
+//      "quoted local"@x.com  (RFC 5321 quoted local part)
+//      user@[192.168.0.1]    (bracketed IP domain)
+//    A DECOMPOSED unicode domain (`ko` + U+0308 + `ln`) behaves differently
+//    from the precomposed one: the combining mark ends the ASCII label, so
+//    `carla@bigfish.ko` matches and the tail survives as an orphan mark. The
+//    address is destroyed rather than shipped, so that is a mangling, not a
+//    leak. All of this is pinned in the tests.
+//    Widening the classes is not a free win: it re-opens the backtracking
+//    question above, so measure before changing them.
+//  - The one OVER-redaction class, owned deliberately: EMAIL_RE cannot tell an
+//    address from `name@<digits><letter>.<ext>`, so a retina asset reference
+//    such as `logo@2x.png` is replaced whole. This repo ships no such asset
+//    today, so it is theoretical, but the next person should not have to
+//    rediscover it from a confusing event.
+//  - Also over-redacted: `https://admin@host/x`, a bare username with no
+//    password, loses its HOST as well as the username, because the match runs
+//    through the domain. USERINFO_RE does not fire on it (it requires
+//    `user:pass@`), so before EMAIL_RE existed that URL kept its host.
 
 export const REDACTED = '[redacted]';
 
@@ -139,6 +166,41 @@ const BEARER_RE = /\b(Bearer|Basic)\s+[A-Za-z0-9._~+/=-]{8,}/gi;
  */
 const JWT_RE = /\beyJ[A-Za-z0-9_-]{4,}\.[A-Za-z0-9_-]{4,}\.[A-Za-z0-9_-]*/g;
 
+/**
+ * An email address. Not a credential, so it is the one PII shape this file
+ * handles, and it is here for a specific reason: AuthContext used to call
+ * Sentry.setUser({ id, email, role }), which put a real user's address into
+ * every event this app sent. That call site was fixed, but a field list is a
+ * thing people re-add, and event.user.email is not the only route in: a
+ * recipient address lands in an exception message ("send failed for
+ * chef@place.com"), in a captured POST body, and in a form breadcrumb.
+ *
+ * Value-shape rather than a key named `email`, for the reason in design note 2,
+ * and because a key list would also blank harmless keys such as `emails_sent`.
+ * Requires a dotted TLD, so a `user@host` style string with no domain is left
+ * alone. Runs AFTER USERINFO_RE, whose replacement leaves `[redacted]@host`
+ * with a bracket immediately before the `@`, which this deliberately does not
+ * match.
+ *
+ * THE LOOKBEHIND IS LOAD-BEARING, DO NOT DROP IT. The local-part class
+ * contains `.`, so without it the engine restarts the match at every offset of
+ * a long unbroken word/dot run and backtracks the whole run each time: no `@`
+ * anywhere in the string is needed to trigger it. Measured end to end through
+ * redactString on this machine: 'a'.repeat(20000) took 401 ms and
+ * 'a.'.repeat(20000) took 1438 ms, against 0.2 ms and 0.4 ms with the
+ * lookbehind. That is a synchronous main-thread freeze inside
+ * beforeSend, i.e. on the error path, and beforeSendSpan runs per span on 10%
+ * of transactions. Prose and stack traces are safe because whitespace breaks
+ * the runs, but `extra`, `contexts`, `tags` and `breadcrumbs.data` are NOT
+ * length-truncated by Sentry before beforeSend (only `message`, exception
+ * values and `request.url` are, at maxValueLength), so an app-attached blob
+ * reaches this unbounded. The lookbehind makes a restart inside a run
+ * impossible, and the redaction it produces is byte-identical to the naive
+ * form. See the timing test in scrubSentryEvent.test.ts.
+ */
+const EMAIL_RE =
+  /(?<![A-Za-z0-9._%+-])[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}/g;
+
 type Dict = Record<string, unknown>;
 
 interface BreadcrumbLike {
@@ -184,6 +246,7 @@ export function redactString(value: string): string {
   }
   JWT_RE.lastIndex = 0;
   out = out.replace(USERINFO_RE, (_match, slashes: string) => `${slashes}${REDACTED}@`);
+  out = out.replace(EMAIL_RE, REDACTED);
   out = out.replace(BEARER_RE, (_match, scheme: string) => `${scheme} ${REDACTED}`);
   out = out.replace(
     SENSITIVE_PARAM_RE,

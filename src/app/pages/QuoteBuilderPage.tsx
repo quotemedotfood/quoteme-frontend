@@ -14,7 +14,7 @@ import { QuoteReviewBar } from '../components/QuoteReviewBar';
 import { MapComponentDrawer } from '../components/MapComponentDrawer';
 import type { CatalogSearchProduct, ChefQuestion } from '../services/api';
 import { latestChefQuestion } from '../utils/chefQuestion';
-// P1: same locked signal used by QuoteReviewPage's CONFIRMED-LOCKED CTA work
+// P1: same locked signal introduced by the CONFIRMED-LOCKED CTA work
 // (sent_at / status / state / quote_type) so a sent quote's price inputs
 // never round-trip to the BE's 422 on locked-quote edits.
 import { isLockedQuoteState } from '../utils/quoteStatusLabel';

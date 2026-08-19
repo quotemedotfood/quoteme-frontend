@@ -85,6 +85,93 @@ describe('redactString / redactUrl value-shape pass', () => {
   });
 });
 
+// Email is PII, not a credential, and it is scrubbed for a specific reason:
+// AuthContext used to call Sentry.setUser({ id, email, role }), which put a
+// real address on every event. That call site is fixed; this is the backstop
+// that stops it (or any other call site) reintroducing the leak.
+describe('email addresses are scrubbed as a backstop', () => {
+  const EMAIL = 'carla@bigfish.com';
+
+  it('redacts an email in event.user, the setUser shape', () => {
+    const event = scrubSentryEvent<SentryEventLike>({
+      user: { id: 'e7b0d3a2-1c44-4f6b-9a2e-88f0d1c2b3a4', email: EMAIL, role: 'rep' },
+    });
+    expectNoSecret(event, EMAIL);
+    // The non-identifying fields survive: the point is grouping without PII.
+    expect((event.user as Record<string, unknown>).id).toBe('e7b0d3a2-1c44-4f6b-9a2e-88f0d1c2b3a4');
+    expect((event.user as Record<string, unknown>).role).toBe('rep');
+  });
+
+  it('redacts an email sitting in an exception message', () => {
+    const out = redactString(`Send failed for ${EMAIL} (422)`);
+    expectNoSecret(out, EMAIL);
+    expect(out).toContain('(422)');
+  });
+
+  it('redacts an email in a captured request body and in a breadcrumb', () => {
+    const event = scrubSentryEvent<SentryEventLike>({
+      request: { data: { recipient_email: EMAIL, quote_id: 'q-1' } },
+      breadcrumbs: [{ category: 'ui.input', message: `typed ${EMAIL}` }],
+    });
+    expectNoSecret(event, EMAIL);
+    expect((event.request!.data as Record<string, unknown>).quote_id).toBe('q-1');
+  });
+
+  it('redacts an email carried as a query param value', () => {
+    const out = redactUrl(`/rep/customers?email=${EMAIL}&page=2`);
+    expectNoSecret(out, EMAIL);
+    expect(out).toContain('page=2');
+  });
+
+  // REGRESSION, and the reason EMAIL_RE carries a lookbehind. The local-part
+  // class contains `.`, so the naive form restarts at every offset of a long
+  // unbroken word/dot run and backtracks the whole run: 'a.'.repeat(20000)
+  // took 1438 ms through redactString, and no `@` anywhere in the string is
+  // needed to trigger it.
+  // beforeSend runs synchronously on the main thread on the error path, and
+  // `extra` / `contexts` / `tags` / `breadcrumbs.data` are not length-truncated
+  // by Sentry before it, so an app-attached blob reaches this unbounded.
+  //
+  // A correctness test cannot see this class of defect, hence a clock. The
+  // ceiling is deliberately enormous: the lookbehind form takes under 1 ms here
+  // and the quadratic form measured 985 ms in this very test, so anything in
+  // between is noise, not a verdict.
+  // Timed as the BEST of three runs, which is the statistic that survives a
+  // saturated CI box: scheduling can inflate a run but cannot deflate one.
+  it('does not backtrack on a long unbroken run (quadratic-blowup guard)', () => {
+    const haystack = 'a.'.repeat(20000);
+
+    let best = Infinity;
+    for (let i = 0; i < 3; i += 1) {
+      const started = performance.now();
+      const out = redactString(haystack);
+      best = Math.min(best, performance.now() - started);
+      // Guards against measuring nothing: there is no address in here, so the
+      // string must come back untouched.
+      expect(out).toBe(haystack);
+    }
+
+    expect(best).toBeLessThan(250);
+  });
+
+  // The guard must not have bought speed by missing addresses that appear late
+  // in a big payload.
+  it('still finds an address after a long run of harmless characters', () => {
+    const prefix = 'a.'.repeat(5000);
+    const out = redactString(`${prefix} carla@bigfish.com`);
+    expectNoSecret(out, 'carla@bigfish.com');
+    expect(out).toContain(prefix);
+  });
+
+  it('leaves non-email at-strings and email-ish counters alone', () => {
+    // No dotted TLD: a package spec or a bare user@host is not an address.
+    expect(redactString('@sentry/react@10.1.0')).toContain('@sentry/react');
+    // Key-name matching would have blanked this; value-shape matching does not.
+    const event = scrubSentryEvent<SentryEventLike>({ extra: { emails_sent: 3 } });
+    expect(event.extra!.emails_sent).toBe(3);
+  });
+});
+
 describe('scrubSentryEvent: headers', () => {
   it('redacts the Authorization header without keeping a prefix', () => {
     const event = scrubSentryEvent<SentryEventLike>({
@@ -273,6 +360,47 @@ describe('scrubSentryEvent: KNOWN GAPS, pinned deliberately', () => {
     }
     const event = scrubSentryEvent<SentryEventLike>({ extra: { held: new Holder(MAGIC) } });
     expect((event.extra!.held as Holder).token).toBe(MAGIC);
+  });
+
+  // EMAIL_RE is ASCII on both sides of the @. The unicode local part is the
+  // realistic miss for a kitchen-staff user base, so it is pinned rather than
+  // left to be discovered from a shipped address.
+  //
+  // Written with explicit \u escapes because the behaviour depends on unicode
+  // NORMALISATION and an editor can silently rewrite one form into the other.
+  // Both forms of the local part are missed. The domain is missed only when
+  // PRECOMPOSED; the decomposed case below behaves differently.
+  it.each([
+    ['unicode local part, precomposed', 'jos\u00E9@example.com'],
+    ['unicode local part, decomposed', 'jose\u0301@example.com'],
+    ['unicode domain, precomposed', 'carla@bigfish.k\u00F6ln'],
+    ['quoted local part', '"quoted local"@example.com'],
+    ['bracketed IP domain', 'user@[192.168.0.1]'],
+  ])('does NOT redact an email with a %s', (_label, address) => {
+    expect(redactString(address)).toBe(address);
+  });
+
+  // A DECOMPOSED unicode domain is not a clean miss like the others: the
+  // combining mark ends the ASCII label early, so `carla@bigfish.ko` matches
+  // and the tail survives as an orphan mark. Not a privacy hole (the address is
+  // destroyed rather than shipped), but the output is mangled, and this is the
+  // shape a reader would otherwise assume behaves like the precomposed case.
+  it('PARTIALLY redacts a decomposed unicode domain, leaving a mangled tail', () => {
+    expect(redactString('carla@bigfish.ko\u0308ln')).toBe(`${REDACTED}\u0308ln`);
+  });
+
+  // The only OVER-redaction class, owned deliberately: a retina asset
+  // reference is shaped exactly like an address. No such asset exists in this
+  // repo today.
+  it('DOES over-redact a logo@2x.png style asset reference', () => {
+    expect(redactString('logo@2x.png')).toBe(REDACTED);
+  });
+
+  // A bare username with no password: USERINFO_RE requires `user:pass@` and so
+  // never fires, and EMAIL_RE runs on through the domain, so the host is lost
+  // too. Before EMAIL_RE existed this URL kept its host.
+  it('DOES lose the host of a bare-username URL', () => {
+    expect(redactString('https://admin@host.example.com/x')).toBe(`https://${REDACTED}/x`);
   });
 });
 
