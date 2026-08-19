@@ -8,6 +8,7 @@ import { useNavigate, useLocation } from 'react-router';
 import { Checkbox } from '../components/ui/checkbox';
 import { useUser } from '../contexts/UserContext';
 import { isGuestVisitor } from '../utils/guestSession';
+import { fileRejection, MENU_SURFACE } from '../utils/fileGate';
 import { useLocation2 } from '../contexts/LocationContext';
 import { useAuth } from '../contexts/AuthContext';
 import { UpgradeDrawer } from '../components/UpgradeDrawer';
@@ -22,29 +23,16 @@ import { isBuyerRole as checkBuyerRole } from '../utils/roles';
 // bypasses it entirely — so we guard programmatically here too. Copy mirrors the
 // backend gate (MenuTextExtractorService) exactly so the message is identical
 // whether the file is caught client-side or slips through to the server.
-const MENU_ACCEPTED_EXTS = ['.pdf', '.png', '.jpg', '.jpeg', '.gif', '.webp', '.csv', '.txt'];
-const MENU_SUPPORTED_SENTENCE = 'The menu reader takes a PDF, photo, CSV, or text file.';
+//
+// The gate itself now lives in utils/fileGate.ts, shared with the token-gated
+// catalog intake (TechLandingPage). The two surfaces accept different formats
+// but must speak one vocabulary, so the copy lives there once and each surface
+// supplies only what it accepts. This stays a named export because
+// StartNewQuotePage.fileGate.test.ts pins this exact import.
 
 // Returns plain-language rejection copy, or null if the file is accepted.
-export function menuFileRejection(file: { name: string; type: string }): string | null {
-  const name = (file.name || '').toLowerCase();
-  const type = file.type || '';
-  const extOk = MENU_ACCEPTED_EXTS.some((e) => name.endsWith(e));
-  const typeOk =
-    type.startsWith('image/') ||
-    type.startsWith('text/') ||
-    type === 'application/pdf' ||
-    type === 'application/csv';
-  if (extOk || typeOk) return null;
-
-  if (/\.(xlsx|xls|xlsm|xlsb|ods|numbers|tsv)$/.test(name) || /spreadsheet|excel/.test(type)) {
-    return `This looks like a spreadsheet. ${MENU_SUPPORTED_SENTENCE}`;
-  }
-  if (/\.(docx|doc|odt|rtf|pages)$/.test(name) || /wordprocessing|msword/.test(type)) {
-    return `This looks like a Word document. ${MENU_SUPPORTED_SENTENCE}`;
-  }
-  return `This file type isn't supported. ${MENU_SUPPORTED_SENTENCE}`;
-}
+export const menuFileRejection = (file: { name: string; type: string }): string | null =>
+  fileRejection(file, MENU_SURFACE);
 
 // --- Types for ingredient editing ---
 interface ParsedIngredient {

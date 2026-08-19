@@ -50,6 +50,48 @@ function WineListRoute({ vm }) {
   );
 }
 
+/**
+ * THE PRINTED QR ROUTE. READ THIS BEFORE CHANGING ANYTHING HERE.
+ *
+ * WHAT THIS IS: one hardcoded route for one venue, provisioned by hand, so
+ * that a QR code printed for tomorrow's demo resolves to something real. The
+ * printed sticker encodes exactly
+ *
+ *     https://demo.pairme.wine/v/aquitaine
+ *
+ * and that string is already on paper. DO NOT RENAME OR REMOVE THIS PATH.
+ *
+ * WHAT THIS IS NOT, stated plainly because the rest of the codebase has twice
+ * carried comments describing behaviour that did not exist:
+ *
+ *   - NOTHING HERE MINTS A TOKEN. There is no generator, no SecureRandom, no
+ *     id of any kind created at any point in this file.
+ *   - NOTHING HERE STORES A TOKEN. There is no column, no table, no row, no
+ *     localStorage write. The word "aquitaine" below is a hardcoded string in
+ *     source, nothing more.
+ *   - NOTHING HERE RESOLVES A TOKEN. There is no lookup and no resolver
+ *     endpoint. GET /v1/t/:code does not exist on the backend, on main or on
+ *     any branch. This route deliberately does not call it.
+ *
+ * There is NO TOKEN CHAIN. A second venue does not get a URL by being added
+ * to a database; it gets one by a developer editing this file and shipping.
+ * That does not scale past a demo and is not meant to.
+ *
+ * HOW IT WORKS: it hands the already-built `demo` code to the same
+ * RouteBridge that /t/demo uses, so it loads the Aquitaine venue through
+ * GET /v1/demo, which IS built and live and needs no identity (see the BE's
+ * config/routes.rb v1 namespace). No new data path, no new failure mode.
+ *
+ * The real durable-token chain is a separate piece of work. ChefMagicLink in
+ * QuoteMe already mints, stores and resolves a durable venue-scoped token and
+ * is the closest existing shape to adapt.
+ */
+const AQUITAINE_DEMO_CODE = 'demo';
+
+function VenueRoute({ vm }) {
+  return <RouteBridge vm={vm} screenIndex={9} tableCode={AQUITAINE_DEMO_CODE} />;
+}
+
 function TableCodeRoute({ vm }) {
   const { code } = useParams();
   // Table QR landing. DO NOT RENAME this path: the Universal Links
@@ -148,6 +190,10 @@ export default function PairMeApp() {
         <Route path="/setup/5" element={<RouteBridge vm={vm} screenIndex={6} />} />
         <Route path="/setup/6" element={<RouteBridge vm={vm} screenIndex={7} />} />
         <Route path="/venue" element={<RouteBridge vm={vm} screenIndex={8} />} />
+        {/* Hand-provisioned demo venue. See VenueRoute above: nothing here
+            mints, stores or resolves a token. The printed QR encodes this
+            exact path, so it must not be renamed. */}
+        <Route path="/v/aquitaine" element={<VenueRoute vm={vm} />} />
         <Route path="/t/:code" element={<TableCodeRoute vm={vm} />} />
         <Route path="/capture" element={<RouteBridge vm={vm} screenIndex={18} />} />
         <Route path="/menu" element={<RouteBridge vm={vm} screenIndex={9} />} />

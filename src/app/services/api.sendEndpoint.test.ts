@@ -6,9 +6,10 @@
 // left repSendQuote with zero callers but still exported and still pointed at
 // the stale endpoint - a trap for a future caller to wire up by mistake and
 // silently reintroduce the send-blocker. This is a contract test pinning the
-// endpoint path used by the live Send button (ExportFinalizePage /
-// QuoteReviewPage handleSendEmail -> sendQuote) and asserting the dead
-// rep-only helper stays deleted.
+// endpoint path used by the live Send button (ExportFinalizePage
+// handleSendEmail -> sendQuote) and asserting the dead rep-only helper stays
+// deleted. (QuoteReviewPage was the other caller; it was an unreachable route
+// that crashed on render and has since been deleted.)
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 const fetchSpy = vi.fn();

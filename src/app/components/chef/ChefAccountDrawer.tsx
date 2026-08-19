@@ -11,7 +11,7 @@
 // No animation theater — clean slide only.
 // Backdrop closes. X button closes. No tap-outside prevention.
 
-import React, { useEffect, useRef, useCallback } from 'react';
+import React, { useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { X, MapPin, Plus, ChevronRight } from 'lucide-react';
 import type { ChefType } from './ChefBadgePill';
@@ -162,9 +162,8 @@ export function ChefAccountDrawer({
   onSignOut,
   onNavigate,
 }: ChefAccountDrawerProps) {
-  const drawerRef = useRef<HTMLDivElement | null>(null);
-
-  // Trap focus and close on Escape
+  // Close on Escape. This is not a focus trap: focus is free to leave the
+  // drawer once it is open.
   useEffect(() => {
     if (!open) return;
     function handleKey(e: KeyboardEvent) {
@@ -218,7 +217,6 @@ export function ChefAccountDrawer({
 
       {/* Drawer panel */}
       <div
-        ref={drawerRef}
         style={{
           position: 'relative',
           width: 340,
@@ -266,6 +264,10 @@ export function ChefAccountDrawer({
             type="button"
             onClick={onClose}
             aria-label="Close account drawer"
+            // The drawer portals to document.body, so its controls land after
+            // the whole app in tab order. Without this, a keyboard user cannot
+            // reach the drawer without tabbing through the page behind it.
+            autoFocus
             style={{
               display: 'flex',
               alignItems: 'center',

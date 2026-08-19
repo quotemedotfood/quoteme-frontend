@@ -5,7 +5,7 @@
  * choices. See screens/WhereTo.jsx's new "Or what are you eating?" card and
  * screens/TellUsScreen.jsx.
  */
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderPairMeApp } from './helpers/renderPairMeApp.jsx';
@@ -13,6 +13,22 @@ import { renderPairMeApp } from './helpers/renderPairMeApp.jsx';
 function nowWhatSection() {
   return screen.getByRole('heading', { name: 'Now what?' }).closest('section');
 }
+
+// fEatText's mic button (asserted below) now feature-detects and hides with
+// no SpeechRecognition (R4/D4 fix), so this file needs a browser that
+// supports voice, same as jsdom lacking one would otherwise hide it here
+// exactly as it correctly would on Firefox.
+class FakeRecognition {
+  constructor() {
+    this.onstart = null; this.onaudiostart = null; this.onspeechstart = null;
+    this.onresult = null; this.onnomatch = null; this.onerror = null; this.onend = null;
+  }
+  start() {}
+  stop() { if (this.onend) this.onend(); }
+  abort() {}
+}
+beforeEach(() => { window.SpeechRecognition = FakeRecognition; });
+afterEach(() => { delete window.SpeechRecognition; });
 
 describe('WhereTo: the fourth path ("Or what are you eating?")', () => {
   it('renders its own heading, a type-or-speak input, and a "Just tell us here" button, disabled until something is typed', async () => {

@@ -1,64 +1,108 @@
 import React from 'react';
 
-/* ============================================================================
- * TEMPORARY DIAGNOSTIC INSTRUMENTATION - PM-MIC
- * ----------------------------------------------------------------------------
- * Added to trace the SpeechRecognition lifecycle for Moose's 12-Aug mic
- * report (mic press does nothing / silently fails on desktop with mic
- * permission already granted). Every lifecycle event logs under the
- * `[PM-MIC]` prefix with a high-resolution timestamp (performance.now(), a
- * single monotonic clock shared with any other `[PM-MIC]` log lines added
- * elsewhere, e.g. App.jsx) so the sequence and any gaps are visible in the
- * console. INSTRUMENTATION ONLY - no behavior is changed by this block.
- * REMOVE this block and every `pmMicLog(`/`pmMicNow(` call site in the same
- * PR that lands the actual mic fix.
- * ========================================================================== */
-function pmMicNow() {
-  return typeof performance !== 'undefined' && typeof performance.now === 'function'
-    ? performance.now()
-    : Date.now();
-}
-function pmMicLog(event, detail) {
-  try {
-    if (typeof console === 'undefined' || typeof console.log !== 'function') return;
-    const t = pmMicNow().toFixed(1);
-    if (detail !== undefined) console.log(`[PM-MIC] t=${t}ms ${event}`, detail);
-    else console.log(`[PM-MIC] t=${t}ms ${event}`);
-  } catch {
-    /* diagnostic logging must never throw */
-  }
-}
-/* ===================================== end PM-MIC instrumentation header == */
-
 /**
- * Voice input over the Web Speech API (item 3). A diner holding a phone at a
- * table should be able to say what they are having rather than type a
- * restaurant's dishes one thumb at a time.
+ * Voice input over the Web Speech API. This is the ONE shared hook behind
+ * every mic button in the app (BUTTON_AUDIT.md lists the sites); a fix here
+ * is inherited everywhere instead of needing a per-screen patch.
  *
  * iOS Safari exposes this as `webkitSpeechRecognition` (not the unprefixed
  * name), which is exactly the device we care about, so both are checked.
  * When neither exists the hook reports `supported: false` and does nothing;
- * callers keep their text input as the fallback, so voice is strictly
- * additive and never blocks entry.
+ * callers feature-detect and hide the mic button entirely rather than
+ * rendering a dead one, so voice is strictly additive and never blocks
+ * entry (a screen's text input is always the fallback).
  *
- * @param {{onResult?: (transcript: string) => void, onError?: (err: string) => void, lang?: string}} [opts]
- * @returns {{supported: boolean, listening: boolean, start: () => void, stop: () => void}}
+ * Networking: recognition ships audio to the browser vendor's own servers to
+ * transcribe it (Apple for Safari, Google for Chrome), so a live network
+ * connection is required. That is unrelated to PairMe's offline table
+ * pairing, which never leaves the device; only voice CAPTURE needs the
+ * network, and losing it surfaces as the plain-language `network` message
+ * below rather than a silent failure.
+ *
+ * Four visible states are exposed so a mic that heard nothing still tells
+ * the diner something, rather than looking identical to one that is broken:
+ *   idle      - not listening, no error.
+ *   listening - the recognizer is live, waiting for speech.
+ *   heard     - at least one result (interim or final) has come back.
+ *   error     - recognition ended in an error; `message` is one plain
+ *               language sentence, never a raw API code like `no-speech`.
+ *
+ * `start()` always builds a fresh recognizer instance. A recognizer is never
+ * reused after it ends, and calling `start()` while one is still live (a
+ * second field's mic pressed before the first one finished) tears the old
+ * one down first rather than no-op'ing, so switching fields mid-listen
+ * always works.
+ *
+ * @param {{onResult?: (transcript: string, isFinal: boolean) => void, lang?: string}} [opts]
+ * @returns {{
+ *   supported: boolean,
+ *   state: 'idle'|'listening'|'heard'|'error',
+ *   listening: boolean,
+ *   message: string|null,
+ *   start: () => void,
+ *   stop: () => void,
+ * }}
  */
-export function useSpeech({ onResult, onError, lang = 'en-US' } = {}) {
+
+// One short, plain-language sentence per error code (never the raw code
+// itself). Covers every code the spec defines; anything unlisted falls back
+// to DEFAULT_ERROR_MESSAGE below.
+const ERROR_MESSAGES = {
+  'not-allowed': 'Turn on microphone access to use voice, or just type it instead.',
+  'service-not-allowed': 'Turn on microphone access to use voice, or just type it instead.',
+  'no-speech': 'We did not hear anything, try again or type it instead.',
+  network: 'Voice needs a network connection, try again or type it instead.',
+  'audio-capture': 'We could not find a microphone, type it instead.',
+  aborted: 'Voice was interrupted, try again or type it instead.',
+};
+const DEFAULT_ERROR_MESSAGE = 'We could not hear that, try again or type it instead.';
+
+function messageForError(code) {
+  return ERROR_MESSAGES[code] || DEFAULT_ERROR_MESSAGE;
+}
+
+/** Same feature-detection the hook itself uses; exported so a caller (the
+ * `field()` factory in state.js) can decide whether to render a mic button
+ * at all without needing its own SpeechRecognition instance. */
+export function isSpeechSupported() {
+  return typeof window !== 'undefined' && !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+}
+
+export function useSpeech({ onResult, lang = 'en-US' } = {}) {
   const Rec =
     typeof window !== 'undefined' ? window.SpeechRecognition || window.webkitSpeechRecognition : null;
   const supported = !!Rec;
-  const [listening, setListening] = React.useState(false);
+  const [state, setState] = React.useState('idle');
+  const [message, setMessage] = React.useState(null);
   const recRef = React.useRef(null);
-  // Keep the latest callbacks without re-creating start/stop (the recognizer
+  // Keep the latest callback without re-creating start/stop (the recognizer
   // fires asynchronously; a stale closure would drop the transcript).
-  const cbRef = React.useRef({ onResult, onError });
-  cbRef.current = { onResult, onError };
+  const cbRef = React.useRef({ onResult });
+  cbRef.current = { onResult };
+
+  // Strip every handler off an instance before discarding it, so a teardown
+  // can never fire a stale onresult/onerror/onend into state that belongs to
+  // whatever instance replaced it. Without this, our OWN cleanup abort()
+  // would itself raise an `aborted` error through the old handlers.
+  const teardown = React.useCallback((rec) => {
+    if (!rec) return;
+    rec.onstart = null;
+    rec.onaudiostart = null;
+    rec.onspeechstart = null;
+    rec.onresult = null;
+    rec.onnomatch = null;
+    rec.onerror = null;
+    rec.onend = null;
+    try {
+      rec.abort();
+    } catch {
+      /* already stopped */
+    }
+  }, []);
 
   const stop = React.useCallback(() => {
-    // PM-MIC (temporary): stop() call site + whether an instance existed.
-    pmMicLog('stop() called', { hadExistingInstance: !!recRef.current });
     const rec = recRef.current;
+    recRef.current = null;
     if (rec) {
       try {
         rec.stop();
@@ -66,71 +110,74 @@ export function useSpeech({ onResult, onError, lang = 'en-US' } = {}) {
         /* already stopped */
       }
     }
-    setListening(false);
+    setState('idle');
   }, []);
 
   const start = React.useCallback(() => {
-    // PM-MIC (temporary): start() call site. `hadExistingInstance: true`
-    // means recRef.current was already non-null, so the guard below returns
-    // early and this press is a silent no-op (a stuck/dead instance whose
-    // onend never fired would present exactly this way, with no error).
-    pmMicLog('start() called', { supported, hadExistingInstance: !!recRef.current });
-    if (!supported || recRef.current) return;
+    if (!supported) return;
+    // A fresh instance every press (never reuse one after onend). Switching
+    // straight from one field's mic to another's lands here with
+    // recRef.current still set to the first field's instance; tear it down
+    // instead of no-op'ing, or the second field's mic would silently do
+    // nothing (this was D3).
+    if (recRef.current) teardown(recRef.current);
+
     let rec;
     try {
       rec = new Rec();
     } catch {
+      setState('error');
+      setMessage(DEFAULT_ERROR_MESSAGE);
       return;
     }
     rec.lang = lang;
-    rec.interimResults = false;
+    rec.continuous = false;
+    rec.interimResults = true;
     rec.maxAlternatives = 1;
-    rec.onstart = () => {
-      pmMicLog('onstart');
-    };
-    rec.onaudiostart = () => {
-      pmMicLog('onaudiostart');
-    };
-    rec.onspeechstart = () => {
-      pmMicLog('onspeechstart');
-    };
     rec.onresult = (e) => {
-      const transcript = Array.from(e.results)
-        .map((r) => r[0] && r[0].transcript)
-        .filter(Boolean)
-        .join(' ')
-        .trim();
-      pmMicLog('onresult', {
-        hadTranscript: !!transcript,
-        length: transcript.length,
-        firstWord: transcript ? transcript.split(' ')[0] : null,
-      });
-      if (transcript && cbRef.current.onResult) cbRef.current.onResult(transcript);
-    };
-    rec.onnomatch = () => {
-      pmMicLog('onnomatch');
+      const startIdx = typeof e.resultIndex === 'number' ? e.resultIndex : 0;
+      let transcript = '';
+      let isFinal = false;
+      for (let i = startIdx; i < e.results.length; i++) {
+        const result = e.results[i];
+        const alt = result && result[0];
+        if (!alt || !alt.transcript) continue;
+        transcript = transcript ? `${transcript} ${alt.transcript}` : alt.transcript;
+        if (result.isFinal) isFinal = true;
+      }
+      transcript = transcript.trim();
+      if (!transcript) return;
+      setState('heard');
+      if (cbRef.current.onResult) cbRef.current.onResult(transcript, isFinal);
     };
     rec.onerror = (e) => {
-      pmMicLog('onerror', { code: e && e.error });
-      if (cbRef.current.onError) cbRef.current.onError(e && e.error ? e.error : 'speech_error');
+      setMessage(messageForError(e && e.error));
+      setState('error');
     };
     rec.onend = () => {
-      pmMicLog('onend');
       recRef.current = null;
-      setListening(false);
+      setState((s) => (s === 'error' ? s : 'idle'));
     };
     recRef.current = rec;
-    setListening(true);
+    setMessage(null);
+    setState('listening');
     try {
       rec.start();
-    } catch (err) {
-      pmMicLog('start() threw', { message: err && err.message });
+    } catch {
       recRef.current = null;
-      setListening(false);
+      setState('error');
+      setMessage(DEFAULT_ERROR_MESSAGE);
     }
-  }, [supported, Rec, lang]);
+  }, [supported, Rec, lang, teardown]);
 
-  React.useEffect(() => stop, [stop]);
+  React.useEffect(() => () => teardown(recRef.current), [teardown]);
 
-  return { supported, listening, start, stop };
+  return {
+    supported,
+    state,
+    listening: state === 'listening' || state === 'heard',
+    message,
+    start,
+    stop,
+  };
 }

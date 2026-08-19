@@ -658,8 +658,13 @@ export function CatalogManagePage() {
                         <button
                           onClick={() => { setEditingId(product.id); setEditCategory(product.category); }}
                           className="text-gray-300 hover:text-[#A5CFDD] transition-colors"
+                          // Icon-only, and one per product row: without a name a
+                          // screen reader announces an identical bare "button" for
+                          // every row. Category is what this control actually opens
+                          // for editing, so the name says so rather than just "Edit".
+                          aria-label={`Edit category for ${product.product_name}`}
                         >
-                          <Pencil className="w-3.5 h-3.5" />
+                          <Pencil className="w-3.5 h-3.5" aria-hidden="true" />
                         </button>
                       )}
                     </td>

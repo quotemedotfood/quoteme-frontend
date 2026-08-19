@@ -36,9 +36,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const validateToken = useCallback(async (context: string = 'unknown') => {
-    const storedToken = localStorage.getItem('quoteme_token');
-    console.log(`[validateToken:${context}] Token in localStorage:`, storedToken ? `${storedToken.substring(0, 20)}...` : 'MISSING');
-
+    // SECURITY: never log the stored bearer token, in whole or in part. This
+    // runs on every authenticated route mount, so any prefix logged here was
+    // sitting in the console of every production session.
     const response = await getCurrentUser();
     console.log(`[validateToken:${context}] /me response:`, {
       hasData: !!response.data,
@@ -48,10 +48,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (response.data) {
       setUser(response.data);
-      // Tag Sentry events with authenticated user identity.
+      // SECURITY: no email in telemetry. A PII payload sitting in a third-party
+      // collector is the same class of leak as a bearer token in the console:
+      // it is personal data we exported to a system with its own access list,
+      // retention and breach surface, for no diagnostic benefit that the id and
+      // the role do not already give us.
+      //
+      // The account id STAYS, and it is a different call from the guest one.
+      // The guest id used to be the first 12 characters of the guest token,
+      // i.e. credential material, so UserContext replaced it with a random
+      // browser-local trace id (see guestTraceId there). This id is a v4 UUID
+      // primary key (users.id, gen_random_uuid) and is not a credential: it
+      // cannot authenticate anything.
+      //
+      // It is NOT "not personal data". A persistent unique identifier tied to
+      // one individual is pseudonymous personal data (GDPR Art 4(1), Recital
+      // 26), so do not let this comment be read as a clearance. The distinction
+      // that decides it is LOCAL versus GLOBAL: this UUID is joinable only
+      // against our own systems, while an email is joinable against every
+      // breach dump, mailing list and data broker on the internet. Sentry is
+      // also currently the only third-party browser egress in this app (the
+      // only collector dependencies are @sentry/react and @sentry/vite-plugin),
+      // so the blast radius of the local identifier is one vendor.
+      //
+      // A browser-local random id would be worse on its own terms, independent
+      // of any privacy argument. It SPLITS one person across their phone and
+      // their laptop, so a single bug reads as two unrelated issues at half the
+      // frequency each, and it cannot answer "which account hit this", which is
+      // the entire triage use case. It also MERGES two people on a shared
+      // device, which is a live scenario here: reps hand a phone to a chef
+      // across the counter.
+      //
+      // The backstop is scrubSentryEvent, which redacts email-shaped strings
+      // anywhere in a payload, so re-adding an email here would not ship it.
       Sentry.setUser({
         id: response.data.id,
-        email: response.data.email,
         role: response.data.role,
       });
     } else {
@@ -75,7 +106,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (response.token) {
       localStorage.setItem('quoteme_token', response.token);
       if (guestToken) localStorage.removeItem('quoteme_guest_token');
-      console.log('[login] Token stored:', response.token.substring(0, 30) + '...');
+      // SECURITY: no token value (or prefix of one) in the console.
       await validateToken('login');
       return { success: true };
     }

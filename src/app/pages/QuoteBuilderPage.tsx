@@ -8,13 +8,13 @@ import { isDemoMode } from '../utils/demoMode';
 import { formatProductName } from '../utils/format';
 import { formatCurrency } from '../utils/formatCurrency';
 import { categoryLabel } from '../utils/categoryLabel';
-import { getQuote, getGuestQuote, updateQuote, updateGuestQuote, addGuestQuoteLine, addQuoteLine, removeGuestQuoteLine, createStockQuote, getMoreMatches } from '../services/api';
+import { getQuote, getGuestQuote, updateQuote, updateGuestQuote, addGuestQuoteLine, addQuoteLine, removeGuestQuoteLine, removeQuoteLine, createStockQuote, getMoreMatches } from '../services/api';
 import { CatalogProductSearch } from '../components/CatalogProductSearch';
 import { QuoteReviewBar } from '../components/QuoteReviewBar';
 import { MapComponentDrawer } from '../components/MapComponentDrawer';
 import type { CatalogSearchProduct, ChefQuestion } from '../services/api';
 import { latestChefQuestion } from '../utils/chefQuestion';
-// P1: same locked signal used by QuoteReviewPage's CONFIRMED-LOCKED CTA work
+// P1: same locked signal introduced by the CONFIRMED-LOCKED CTA work
 // (sent_at / status / state / quote_type) so a sent quote's price inputs
 // never round-trip to the BE's 422 on locked-quote edits.
 import { isLockedQuoteState } from '../utils/quoteStatusLabel';
@@ -99,6 +99,10 @@ const PRICING_SAVE_ERROR =
   'We could not save your pricing. Check your connection and try again, or use Save Draft to keep your work.';
 const QUOTE_LOAD_ERROR =
   'We could not load this quote. Check your connection and try again.';
+// The second sentence is load bearing. The whole point of this failure is that
+// the rep believes the line is gone; the copy has to say it is still there.
+const LINE_REMOVE_ERROR =
+  'We could not remove that item. It is still on the quote. Check your connection and try again.';
 
 export function QuoteBuilderPage() {
   const navigate = useNavigate();
@@ -419,20 +423,54 @@ export function QuoteBuilderPage() {
   };
 
   const handleRemoveItem = async (id: string) => {
+    // Capture the row AND its position before mutating. Re-appending on a
+    // revert would drop the row to the bottom of a list the rep is reading,
+    // so it has to come back exactly where it was.
+    const removedIndex = items.findIndex(item => item.id === id);
+    if (removedIndex === -1) return;
+    const removedItem = items[removedIndex];
+    const wasSelected = selectedItem?.id === id;
+
     // Optimistic removal
     setItems(prev => prev.filter(item => item.id !== id));
-    if (selectedItem?.id === id) setSelectedItem(null);
-    // Persist to backend
-    if (quoteId) {
-      const isGuest = !localStorage.getItem('quoteme_token');
-      try {
-        if (isGuest) {
-          await removeGuestQuoteLine(quoteId, id);
-        }
-        // TODO: add authenticated remove endpoint when needed
-      } catch (e) {
-        console.error('Error removing line:', e);
+    if (wasSelected) setSelectedItem(null);
+    // Clear any stale banner so a successful retry does not leave the
+    // previous failure on screen.
+    setSaveError(null);
+
+    if (!quoteId) return;
+
+    const restoreRemovedItem = () => {
+      setItems(prev => {
+        if (prev.some(item => item.id === id)) return prev;
+        const next = [...prev];
+        next.splice(Math.min(removedIndex, next.length), 0, removedItem);
+        return next;
+      });
+      if (wasSelected) setSelectedItem(removedItem);
+      setSaveError(LINE_REMOVE_ERROR);
+    };
+
+    const isGuest = !localStorage.getItem('quoteme_token');
+    try {
+      // Both paths issue a request now. They stay separate on purpose: the
+      // guest route is guest-token scoped under /api/v1/guest/quotes, the
+      // authed route is the rep's own /api/v1/quotes member action.
+      const res = isGuest
+        ? await removeGuestQuoteLine(quoteId, id)
+        : await removeQuoteLine(quoteId, id);
+      // Both a RETURNED error and a THROWN one have to revert. The fetch
+      // helpers resolve with { error } rather than throwing on a non-2xx, so
+      // a catch-only check would reproduce the old silence exactly. Success
+      // is the absence of `error`: removeQuoteLine resolves with data null on
+      // the endpoint's 204, so never test `!res.data` here.
+      if (res.error) {
+        console.error('Failed to remove line:', res.error);
+        restoreRemovedItem();
       }
+    } catch (e) {
+      console.error('Error removing line:', e);
+      restoreRemovedItem();
     }
   };
 

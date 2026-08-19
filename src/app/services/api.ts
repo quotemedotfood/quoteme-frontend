@@ -540,24 +540,16 @@ async function fetchWithAuth<T>(
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  // Debug: log what we're sending for auth-critical endpoints
-  if (endpoint.includes('/me') || endpoint.includes('sign_in')) {
-    console.log(`[fetchWithAuth] ${options.method || 'GET'} ${endpoint}`, {
-      hasToken: !!token,
-      tokenPrefix: token?.substring(0, 20),
-      authHeader: headers['Authorization']?.substring(0, 30),
-    });
-  }
-
+  // SECURITY: the auth-critical endpoints (/me, sign_in) used to log the
+  // token prefix and the Authorization header here. That block is gone and
+  // must not come back: /me runs on every authenticated route mount, so it
+  // printed credential material into every production session's console.
+  // Nothing in this function needs a token diagnostic.
   try {
     const response = await fetchWithRetry(`${API_BASE_URL}${endpoint}`, {
       ...options,
       headers,
     });
-
-    if (endpoint.includes('/me')) {
-      console.log(`[fetchWithAuth] /me response status: ${response.status}`);
-    }
 
     // Extract JWT token from response header if present
     const authHeader = response.headers.get('Authorization');
@@ -688,9 +680,6 @@ export async function signIn(credentials: LoginData): Promise<ApiResponse<{ mess
       jwtToken = data.token;
     }
 
-    console.log('[signIn] Authorization header:', authHeader ? 'present' : 'missing');
-    console.log('[signIn] JWT token extracted:', jwtToken ? 'yes' : 'no');
-
     return { data, token: jwtToken };
   } catch (error) {
     return {
@@ -731,9 +720,6 @@ export async function signUp(data: SignUpData): Promise<ApiResponse<{ message: s
     if (!jwtToken && body.token) {
       jwtToken = body.token;
     }
-
-    console.log('[signUp] Authorization header:', authHeader ? 'present' : 'missing');
-    console.log('[signUp] JWT token extracted:', jwtToken ? 'yes' : 'no');
 
     return { data: body, token: jwtToken };
   } catch (error) {
@@ -1407,6 +1393,65 @@ export async function addQuoteLine(quoteId: string, productId: string): Promise<
     method: 'POST',
     body: JSON.stringify({ product_id: productId }),
   });
+}
+
+// Authenticated counterpart to removeGuestQuoteLine. DELETEs the line via
+// Api::V1::QuotesController#remove_line, routed at
+// `delete 'lines/:line_id'` inside the `resources :quotes` member block.
+// That endpoint has existed since 2026-03-13; the page's
+// "TODO: add authenticated remove endpoint when needed" was stale on arrival,
+// and in the meantime a rep's delete never left the browser, so the line
+// stayed in the database and kept shipping in the PDF, the CSV, the order
+// guide and the emailed attachment the chef receives.
+//
+// Deliberately NOT routed through fetchWithAuth. That helper calls
+// `response.json()` unconditionally once `response.ok` is true, and this
+// endpoint answers with `head :no_content` (204, empty body). Parsing an
+// empty body throws a SyntaxError, the helper's own catch swallows it, and
+// every SUCCESSFUL delete would come back as
+// { error: 'Unexpected end of JSON input' } and raise a false error banner.
+// The empty-body guard below is local on purpose: fetchWithAuth backs the
+// whole app, so widening it is a much larger blast radius on a live product.
+// Follow-up ticket: teach the shared helpers to tolerate 204/empty bodies.
+//
+// Success is signalled by the absence of `error`, NOT by `data`, which is
+// null by design here. Callers must branch on `res.error` alone.
+export async function removeQuoteLine(quoteId: string, lineId: string): Promise<ApiResponse<null>> {
+  const token = getAuthToken();
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  try {
+    const response = await fetchWithRetry(
+      `${API_BASE_URL}/api/v1/quotes/${quoteId}/lines/${lineId}`,
+      { method: 'DELETE', headers }
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      return {
+        error: errorData.error || errorData.message || `HTTP ${response.status}`,
+        error_code: errorData.error_code || errorData.error,
+        error_data: errorData,
+        status: response.status,
+        data: undefined,
+      };
+    }
+
+    // 2xx reached here. The body is never read or parsed: a 204 has no body
+    // by definition, and nothing on the success path needs one. Not parsing
+    // is the whole point of bypassing the shared helper.
+    return { data: null, status: response.status };
+  } catch (error) {
+    return {
+      error: error instanceof Error ? error.message : 'Network error',
+      data: undefined,
+    };
+  }
 }
 
 export async function sendQuote(id: string, recipientEmail?: string, note?: string): Promise<ApiResponse<any>> {

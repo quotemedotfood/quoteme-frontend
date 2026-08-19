@@ -12,7 +12,8 @@
     "typecheck": "node scripts/typecheck.mjs",
     "typecheck:full": "tsc --noEmit",
     "check:emdash": "node scripts/check-emdash.mjs",
-    "check:gradients": "node scripts/check-gradients.mjs"
+    "check:gradients": "node scripts/check-gradients.mjs",
+    "check:credlog": "node scripts/check-credential-logging.mjs"
   },
   "dependencies": {
     "@emotion/react": "11.14.0",
