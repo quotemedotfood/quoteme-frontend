@@ -7,22 +7,27 @@
 import { describe, it, expect } from 'vitest';
 
 // ── P5: Menu Drop URL builder ─────────────────────────────────────────────────
-// Mirrors the buildMenuDropUrl helper in CCLayout.tsx.
+// Imports the real buildMenuDropUrl/COLD_LANDING_HOST from CCLayout.tsx so this
+// suite exercises the actual implementation instead of a hand-rolled copy that
+// could silently drift from it (a prior version of this file re-declared both
+// locally, including a wrong host, and would not have caught a regression).
 
-const COLD_LANDING_HOST = 'https://quoteme.food';
+import { buildMenuDropUrl } from './CCLayout';
 
-function buildMenuDropUrl(slug: string | null | undefined): string | null {
-  if (!slug) return null;
-  return `${COLD_LANDING_HOST}/d/${encodeURIComponent(slug)}`;
-}
+// Asserted against the literal expected host, not the module's own
+// COLD_LANDING_HOST constant -- interpolating that constant into the
+// expectation would make the assertion tautological (it would pass no
+// matter what the constant's value was) and could not catch a regression
+// in it.
+const EXPECTED_COLD_LANDING_HOST = 'https://prod.quoteme.food';
 
 describe('buildMenuDropUrl — P5 Menu Drop copy-link', () => {
   it('returns a well-formed URL when slug is present', () => {
-    expect(buildMenuDropUrl('lipari')).toBe('https://quoteme.food/d/lipari');
+    expect(buildMenuDropUrl('lipari')).toBe(`${EXPECTED_COLD_LANDING_HOST}/d/lipari`);
   });
 
   it('URL-encodes slugs with special characters', () => {
-    expect(buildMenuDropUrl('my dist')).toBe('https://quoteme.food/d/my%20dist');
+    expect(buildMenuDropUrl('my dist')).toBe(`${EXPECTED_COLD_LANDING_HOST}/d/my%20dist`);
   });
 
   it('returns null when slug is null — button is hidden gracefully', () => {
