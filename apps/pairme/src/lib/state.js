@@ -18,6 +18,7 @@ import {
   getStoredAuthToken,
   setAuthSession as apiSetAuthSession,
 } from './api.js';
+import { isSpeechSupported } from './useSpeech.js';
 import { parseWineList, loadRulesBundle } from '../../../../packages/pairing/src/index.js';
 import { DEMO as OFFLINE_DEMO_WINES } from '../../../../packages/pairing/src/demoFixtures.js';
 import { errorCopy } from './errors.js';
@@ -89,6 +90,10 @@ function computeOfflineOfferings(direction, chosenDishes, alreadyLoadedWineRows,
 }
 
 const NAVY="#1F2A44",PEAR="#EFB96B",ORANGE="#F2993D",BLUED="#5C8A9C";
+
+const MIC_LISTENING_HINT = "Listening. Say it however you'd say it out loud.";
+const MIC_HEARD_HINT = "Heard you. Keep talking or tap to stop.";
+const MIC_DEFAULT_ERROR = "We could not hear that, try again or type it instead.";
 
 const THEME={
  light:{page:"#FBFAF7",card:"#fff",ink:"#1C1C1A",muted:"#6B6B66",rule:"#E3E1DB",chrome:"#1F2A44",chromeSub:"#A5CFDD",sel:"#FCF1E1",selBd:"#EFB96B",sunken:"#F1EFEA",warnBg:"#FEF3E7",warnBd:"#F2993D",warnInk:"#C4701A",blueBg:"#F4F8F9",blue:"#5C8A9C",pearInk:"#8A5A18",accent2:"#1F2A44",hover2:"#F4F2EC"},
@@ -376,7 +381,7 @@ export function usePairMe(opts = {}){
     guestName:"",rel:null,added:[],
     venueQ:"",eatText:"",noList:false,blank:false,picked:["a2","a5","e6","e9","s2"],
     mode:null,sub:null,scope:null,present:["gim","trapet"],wineFormat:"both",
-    guest:"me",guestDrawerOpen:false,guestShareNote:null,resolution:null,rate:{dish:4,wine:5,pair:4},fb:"",share:true,listening:null,skipped:0,
+    guest:"me",guestDrawerOpen:false,guestShareNote:null,resolution:null,rate:{dish:4,wine:5,pair:4},fb:"",share:true,listening:null,listeningBase:null,speechState:"idle",speechMessage:null,skipped:0,
     linked:[],connectionsOpen:false,connectionsSkipped:false,account:null,bottle:"trapet",back:11,saved:false,shared:null,
     // Integration state (not part of Desi's original demo model).
     apiError:null,apiLoading:false,
@@ -589,11 +594,29 @@ export function usePairMe(opts = {}){
   // speak.js as `opts.lang`; call sites with no lang to hand it (e.g. the
   // hardcoded demoSpeak line below) fall back to speak.js's own 'en-US'.
   const say=(text,lang)=>speakText(text,{lang});
-  const field=(key)=>{const on=st.listening===key;return {
+  const field=(key)=>{
+    const on=st.listening===key;
+    // Only the field that is actually listening shows the live hook state;
+    // every other field's mic sits idle regardless of what the shared
+    // useSpeech instance is doing.
+    const micState=on?st.speechState:"idle";
+    const isError=on&&micState==="error";
+    const hint=!on?"":
+      micState==="error"?(st.speechMessage||MIC_DEFAULT_ERROR):
+      micState==="heard"?MIC_HEARD_HINT:
+      MIC_LISTENING_HINT;
+    return {
       v:st[key],set:e=>patch({[key]:e.target.value}),
-      mic:()=>patch({listening:on?null:key}),
-      bd:on?PEAR:"var(--pm-rule)",bg:on?"var(--pm-sel)":"var(--pm-card)",
-      hint:on?"Listening. Say it however you'd say it out loud.":""};};
+      // R4: feature-detect and hide the mic entirely rather than render one
+      // that can never do anything (Firefox has no SpeechRecognition at all).
+      // Checked live (not cached at module load) so it reflects whatever the
+      // browser actually has at call time.
+      micVisible:isSpeechSupported(),
+      micState,
+      mic:()=>patch({listening:on?null:key,listeningBase:on?null:(st[key]||"")}),
+      bd:!on?"var(--pm-rule)":isError?"var(--pm-warnBd)":PEAR,
+      bg:!on?"var(--pm-card)":isError?"var(--pm-warnBg)":"var(--pm-sel)",
+      hint};};
   const pills=(opts,key,multi)=>opts.map(label=>{
       const cur=st[key],on=multi?(cur||[]).includes(label):cur===label;
       return {label,on,bd:on?"var(--pm-chrome)":"var(--pm-rule)",bg:on?"var(--pm-sel)":"var(--pm-card)",
@@ -1033,14 +1056,28 @@ export function usePairMe(opts = {}){
         fUnread:field("unreadable"),fVenue:field("venueQ"),fWhy:field("why"),fEatText:field("eatText"),
         fFb:field("fb"),fGuestName:field("guestName"),
         // Speech bridge for the field mics: the app-level useSpeech (App.jsx)
-        // drives these off st.listening. A spoken result appends to whatever the
-        // active field already holds, then clears listening (single-shot capture,
-        // matching useSpeech's interimResults:false). stopListening() is the
-        // error/cancel path. This is what turns the field mics from a "Listening"
-        // hint that captured nothing into a real control.
+        // drives these off st.listening. interimResults is on, so onResult
+        // fires repeatedly while the diner talks (isFinal:false) and once
+        // more when the phrase is done (isFinal:true) - appendToListening
+        // rebuilds the field from the text it held when listening started
+        // (listeningBase, snapshotted by mic() below) plus whatever has been
+        // heard so far, so the field visibly fills in as they speak instead
+        // of jumping once at the end. listening only clears on the final
+        // result (or if the diner taps the mic again to cancel).
         listening:st.listening,
-        appendToListening:(text)=>patch(x=>{const k=x.listening;if(!k)return{listening:null};const cur=x[k]||"";return {[k]:cur.trim()?cur.trim()+" "+text:text,listening:null};}),
-        stopListening:()=>patch({listening:null}),
+        appendToListening:(text,isFinal)=>patch(x=>{
+          const k=x.listening;
+          if(!k)return{listening:null};
+          const base=(x.listeningBase||"").trim();
+          const merged=base?base+" "+text:text;
+          if(!isFinal)return{[k]:merged};
+          return{[k]:merged,listening:null,listeningBase:null,speechState:"idle",speechMessage:null};
+        }),
+        // Mirror of the shared useSpeech instance's own state (App.jsx), so
+        // field() above can show the right border colour / plain-language
+        // hint for whichever field is currently listening.
+        setSpeechStatus:(state,message)=>patch({speechState:state,speechMessage:message}),
+        stopListening:()=>patch({listening:null,listeningBase:null,speechState:"idle",speechMessage:null}),
 
         // The two dots ARE the control now (a real two-handle range slider);
         // setBMin/setBMax take a dollar value, snap to the step, and clamp so
