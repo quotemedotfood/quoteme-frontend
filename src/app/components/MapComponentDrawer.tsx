@@ -44,6 +44,19 @@ interface MapComponentDrawerProps {
   onReplaceMatch?: (componentName: string, productId: string, product?: CandidateProduct) => void;
   onAddToQuote?: (componentName: string, productId: string, product?: CandidateProduct) => void;
   isUnmatched?: boolean;
+  /**
+   * Sent immutability / admin-viewer gate. When true this drawer is read-only:
+   * every control that reaches a write refuses and is hidden.
+   *
+   * The drawer's own writes all arrive as callbacks (onFindMoreMatches,
+   * onReplaceMatch, onAddToQuote, onManualSelect, onApplyMapping). The page
+   * call-site guards cover the last four, but onFindMoreMatches reaches a POST
+   * (/quotes/:id/more_matches, which persists AlignmentCandidate rows) and had
+   * no guard on either side.
+   */
+  readOnly?: boolean;
+  /** Marker copy naming why the surface is read-only. */
+  readOnlyMarker?: string | null;
 }
 
 function tierLabel(tier: string, position: number): string {
@@ -70,6 +83,8 @@ export function MapComponentDrawer({
   onReplaceMatch,
   onAddToQuote,
   isUnmatched = false,
+  readOnly = false,
+  readOnlyMarker = null,
 }: MapComponentDrawerProps) {
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [notes, setNotes] = useState('');
@@ -98,6 +113,9 @@ export function MapComponentDrawer({
   };
 
   const handleReplaceMatch = () => {
+    // Sent immutability: call-site guard, matching the page handlers this
+    // drawer delegates to.
+    if (readOnly) return;
     const productId = manualPick?.id || selectedProductId;
     if (!productId) return;
 
@@ -117,6 +135,9 @@ export function MapComponentDrawer({
   };
 
   const handleAddToQuote = () => {
+    // Sent immutability: call-site guard, matching the page handlers this
+    // drawer delegates to.
+    if (readOnly) return;
     const productId = manualPick?.id || selectedProductId;
     if (!productId) return;
 
@@ -143,6 +164,9 @@ export function MapComponentDrawer({
   };
 
   const handleFindMore = async () => {
+    // Sent immutability: find-more is a POST that persists AlignmentCandidate
+    // rows against the quote, and the endpoint has no backend guard.
+    if (readOnly) return;
     if (!onFindMoreMatches) return;
     setLoadingMore(true);
     try {
@@ -279,7 +303,7 @@ export function MapComponentDrawer({
           )}
 
           {/* Find More Matches */}
-          {onFindMoreMatches && !isUnmatched && (
+          {onFindMoreMatches && !readOnly && !isUnmatched && (
             <div className="text-center">
               <Button
                 variant="outline"
@@ -355,6 +379,15 @@ export function MapComponentDrawer({
         </div>
 
         <DrawerFooter className="border-t border-gray-200 flex-shrink-0">
+          {readOnly ? (
+            /* Sent immutability: no write actions on a read-only surface. */
+            <div
+              className="text-[12.5px] font-semibold text-gray-500"
+              data-testid="map-component-drawer-read-only"
+            >
+              {readOnlyMarker ?? 'Read-only'}: matches are locked.
+            </div>
+          ) : (
           <div className="flex gap-3">
             <Button
               type="button"
@@ -375,6 +408,7 @@ export function MapComponentDrawer({
               Add to Quote
             </Button>
           </div>
+          )}
         </DrawerFooter>
       </DrawerContent>
     </Drawer>

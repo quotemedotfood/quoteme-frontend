@@ -1,6 +1,6 @@
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
-import { Search, Eye, Download, ArrowUpDown, ArrowUp, ArrowDown, SlidersHorizontal, RefreshCw, Loader2, Trash2, Pencil, FileSpreadsheet, FileText } from 'lucide-react';
+import { Search, Eye, Download, ArrowUpDown, ArrowUp, ArrowDown, SlidersHorizontal, RefreshCw, Loader2, Trash2, Pencil, FileSpreadsheet, FileText, Lock } from 'lucide-react';
 import { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { BottomSheet } from '../components/BottomSheet';
@@ -11,6 +11,10 @@ import { legacyStatusToState } from '../components/chef/QuoteStatusPill';
 import { quoteStatusLabel } from '../utils/quoteStatusLabel';
 import { isPricedQuote } from '../utils/quoteStatus';
 import { formatCurrency } from '../utils/formatCurrency';
+// P0 route/shell guard item 3: Sent immutability. Sent/Accepted rows hide
+// Edit / Convert to Order Guide / Delete and carry a read-only marker; the
+// server refuses those writes, so the list must not offer them.
+import { isSentImmutableQuote, SENT_READ_ONLY_MARKER } from '../utils/quoteImmutability';
 
 /** Statuses where the quote workflow is closed. Requote is hidden for these. */
 export const CLOSED_STATUSES = ['won', 'confirmed', 'accepted', 'declined'] as const;
@@ -192,6 +196,19 @@ export function QuotesPage() {
   );
 
   const handleDeleteQuote = async (quoteId: string) => {
+    // P0 route/shell guard fix round 2: the row-level Delete control is
+    // already hidden for immutable quotes, but the confirm modal calls this
+    // with a bare id (confirmDeleteId) disconnected from live quote state --
+    // a stale tab, or the quote going out while the modal is open, could
+    // still reach this. Look the quote up fresh and refuse if it is now
+    // immutable.
+    // Fail CLOSED: if the row is no longer in the loaded list we cannot prove
+    // the quote is still deletable, so refuse rather than delete unverified.
+    const quote = quotes.find(q => q.id === quoteId);
+    if (!quote || isSentImmutableQuote(quote)) {
+      setConfirmDeleteId(null);
+      return;
+    }
     const ok = await deleteMutation.run(quoteId);
     if (ok) {
       setQuotes(prev => prev.filter(q => q.id !== quoteId));
@@ -421,13 +438,23 @@ export function QuotesPage() {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-3 mt-4 pt-3 border-t border-gray-100">
-                  <button
-                    className="flex items-center gap-1.5 text-xs text-gray-600 hover:text-[#F2993D] transition-colors"
-                    onClick={() => handleEditQuote(quote.id)}
-                  >
-                    <Pencil className="w-3.5 h-3.5" />
-                    Edit
-                  </button>
+                  {isSentImmutableQuote(quote) ? (
+                    <span
+                      className="flex items-center gap-1.5 text-xs text-gray-500"
+                      data-testid={`quote-read-only-${quote.id}`}
+                    >
+                      <Lock className="w-3.5 h-3.5" />
+                      {SENT_READ_ONLY_MARKER}
+                    </span>
+                  ) : (
+                    <button
+                      className="flex items-center gap-1.5 text-xs text-gray-600 hover:text-[#F2993D] transition-colors"
+                      onClick={() => handleEditQuote(quote.id)}
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                      Edit
+                    </button>
+                  )}
                   <button
                     className="flex items-center gap-1.5 text-xs text-gray-600 hover:text-[#F2993D] transition-colors"
                     onClick={() => handleViewQuote(quote.id)}
@@ -449,13 +476,15 @@ export function QuotesPage() {
                     <FileText className="w-3.5 h-3.5" />
                     CSV
                   </button>
-                  <button
-                    className="flex items-center gap-1.5 text-xs text-[#F2993D] hover:text-[#E8953A] transition-colors"
-                    onClick={() => handleDownloadOrderGuide(quote.id)}
-                  >
-                    <FileSpreadsheet className="w-3.5 h-3.5" />
-                    Order Guide
-                  </button>
+                  {!isSentImmutableQuote(quote) && (
+                    <button
+                      className="flex items-center gap-1.5 text-xs text-[#F2993D] hover:text-[#E8953A] transition-colors"
+                      onClick={() => handleDownloadOrderGuide(quote.id)}
+                    >
+                      <FileSpreadsheet className="w-3.5 h-3.5" />
+                      Order Guide
+                    </button>
+                  )}
                   {!isClosedQuote(quote.status) && (
                     <button
                       className="flex items-center gap-1.5 text-xs text-gray-600 hover:text-[#F2993D] transition-colors disabled:opacity-50"
@@ -467,13 +496,15 @@ export function QuotesPage() {
                       Requote
                     </button>
                   )}
-                  <button
-                    className="flex items-center gap-1.5 text-xs text-red-400 hover:text-red-600 transition-colors ml-auto"
-                    onClick={() => setConfirmDeleteId(quote.id)}
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                    Delete
-                  </button>
+                  {!isSentImmutableQuote(quote) && (
+                    <button
+                      className="flex items-center gap-1.5 text-xs text-red-400 hover:text-red-600 transition-colors ml-auto"
+                      onClick={() => setConfirmDeleteId(quote.id)}
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      Delete
+                    </button>
+                  )}
                 </div>
               </div>
             ))}
@@ -592,13 +623,24 @@ export function QuotesPage() {
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                          <button
-                            className="p-1 hover:bg-gray-100 rounded transition-colors"
-                            title="Edit"
-                            onClick={() => handleEditQuote(quote.id)}
-                          >
-                            <Pencil className="w-4 h-4 text-gray-600" />
-                          </button>
+                          {isSentImmutableQuote(quote) ? (
+                            <span
+                              className="flex items-center gap-1 text-xs text-gray-500 whitespace-nowrap pr-1"
+                              title={SENT_READ_ONLY_MARKER}
+                              data-testid={`quote-read-only-${quote.id}`}
+                            >
+                              <Lock className="w-3.5 h-3.5" />
+                              {SENT_READ_ONLY_MARKER}
+                            </span>
+                          ) : (
+                            <button
+                              className="p-1 hover:bg-gray-100 rounded transition-colors"
+                              title="Edit"
+                              onClick={() => handleEditQuote(quote.id)}
+                            >
+                              <Pencil className="w-4 h-4 text-gray-600" />
+                            </button>
+                          )}
                           <button
                             className="p-1 hover:bg-gray-100 rounded transition-colors"
                             title="View"
@@ -620,13 +662,15 @@ export function QuotesPage() {
                           >
                             <FileText className="w-4 h-4 text-gray-600" />
                           </button>
-                          <button
-                            className="p-1 hover:bg-orange-50 rounded transition-colors"
-                            title="Convert to Order Guide"
-                            onClick={() => handleDownloadOrderGuide(quote.id)}
-                          >
-                            <FileSpreadsheet className="w-4 h-4 text-[#F2993D]" />
-                          </button>
+                          {!isSentImmutableQuote(quote) && (
+                            <button
+                              className="p-1 hover:bg-orange-50 rounded transition-colors"
+                              title="Convert to Order Guide"
+                              onClick={() => handleDownloadOrderGuide(quote.id)}
+                            >
+                              <FileSpreadsheet className="w-4 h-4 text-[#F2993D]" />
+                            </button>
+                          )}
                           {!isClosedQuote(quote.status) && (
                             <button
                               className="p-1 hover:bg-gray-100 rounded transition-colors disabled:opacity-50"
@@ -638,13 +682,15 @@ export function QuotesPage() {
                               <RefreshCw className={`w-4 h-4 text-gray-600 ${requotingId === quote.id ? 'animate-spin' : ''}`} />
                             </button>
                           )}
-                          <button
-                            className="p-1 hover:bg-red-50 rounded transition-colors"
-                            title="Delete"
-                            onClick={() => setConfirmDeleteId(quote.id)}
-                          >
-                            <Trash2 className="w-4 h-4 text-red-400" />
-                          </button>
+                          {!isSentImmutableQuote(quote) && (
+                            <button
+                              className="p-1 hover:bg-red-50 rounded transition-colors"
+                              title="Delete"
+                              onClick={() => setConfirmDeleteId(quote.id)}
+                            >
+                              <Trash2 className="w-4 h-4 text-red-400" />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>

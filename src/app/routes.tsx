@@ -40,6 +40,7 @@ import { QMAdminGapFillerNeedsPick } from "./pages/admin/QMAdminGapFillerNeedsPi
 import { QMAdminOperationalMemoryLearnings } from "./pages/admin/QMAdminOperationalMemoryLearnings";
 import { QMAdminChefs } from "./pages/admin/QMAdminChefs";
 import { QMAdminProductPipeline } from "./pages/admin/QMAdminProductPipeline";
+import { QMAdminNotFound } from "./pages/admin/QMAdminNotFound";
 import { SentryTestPage } from "./pages/admin/SentryTestPage";
 import { QuotePreviewPage } from "./pages/QuotePreviewPage";
 import { PaywallPage } from "./pages/PaywallPage";
@@ -333,6 +334,13 @@ export const router = createBrowserRouter([
           // Hidden verification route: navigate here post-deploy to confirm
           // Sentry captures FE exceptions. Remove once verified.
           { path: "sentry-test", Component: SentryTestPage },
+          // P0 route/shell guard item 2: catch-all so a bad /qm-admin/* URL
+          // renders a 404 INSIDE the admin shell instead of bubbling to the
+          // root errorElement (whose recovery used to hard-route to
+          // /dashboard and mount the rep shell with cached quote history).
+          // Deterministic trigger fix for the wrong-shell class, NOT its
+          // root cause.
+          { path: "*", Component: QMAdminNotFound },
         ],
       },
       {

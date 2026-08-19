@@ -2,6 +2,39 @@ import { useRouteError, isRouteErrorResponse, useNavigate, useLocation } from "r
 import { Button } from "../components/ui/button";
 import { AlertTriangle } from "lucide-react";
 
+/**
+ * P0 route/shell guard, item 2: surface-aware error recovery.
+ *
+ * This page renders at the root errorElement, OUTSIDE AppProviders (the
+ * error replaces RootWrapper), so it cannot read AuthContext. The failing
+ * URL's prefix is the deterministic signal for which shell the user was in,
+ * and recovery must stay inside that shell: a QM admin failing on
+ * /qm-admin/* must never be hard-routed to /dashboard, where the rep shell
+ * mounts with cached quote history. (The bad-URL trigger is deterministic
+ * for the historical wrong-shell class, but it is NOT the root cause of
+ * that class.)
+ *
+ * Exported for unit testing.
+ */
+export function errorRecoveryTarget(pathname: string): { label: string; path: string } {
+  if (pathname.startsWith("/qm-admin")) {
+    return { label: "Return to Dashboard", path: "/qm-admin" };
+  }
+  if (pathname.startsWith("/distributor-admin")) {
+    return { label: "Return to Command Center", path: "/distributor-admin/command-center" };
+  }
+  if (pathname.startsWith("/brand")) {
+    return { label: "Return to Dashboard", path: "/brand" };
+  }
+  if (pathname.startsWith("/chef") || pathname.startsWith("/d/")) {
+    return { label: "Start over", path: "/chef/distributor/new" };
+  }
+  // /rep/*, /dashboard, quote-flow pages, and anything else: /dashboard is
+  // safe because DashboardRoleRouter role-branches every non-rep role away
+  // from the rep shell (including quoteme_admin, see that file).
+  return { label: "Return to Dashboard", path: "/dashboard" };
+}
+
 export function ErrorPage() {
   const error = useRouteError();
   const navigate = useNavigate();
@@ -20,10 +53,7 @@ export function ErrorPage() {
     errorMessage = 'Unknown error';
   }
 
-  const isChefSurface =
-    location.pathname.startsWith('/chef') || location.pathname.startsWith('/d/');
-  const primaryLabel = isChefSurface ? 'Start over' : 'Return to Dashboard';
-  const primaryPath = isChefSurface ? '/chef/distributor/new' : '/dashboard';
+  const { label: primaryLabel, path: primaryPath } = errorRecoveryTarget(location.pathname);
 
   return (
     <div className="min-h-screen bg-[#FFF9F3] flex flex-col items-center justify-center p-4">

@@ -20,6 +20,13 @@ export function DashboardRoleRouter() {
 
   if (user?.role === 'distributor_admin') return <Navigate to="/distributor-admin/command-center" replace />;
 
+  // P0 route/shell guard item 2: a QM admin landing on /dashboard (e.g. via
+  // an error-page recovery or a stale bookmark) used to fall through to the
+  // rep dashboard (QuoteMePage) and see the rep shell with cached quote
+  // history. Admin recovery stays inside /qm-admin; no other shell's state
+  // renders even briefly.
+  if (user?.role === 'quoteme_admin') return <Navigate to="/qm-admin" replace />;
+
   // ROOT CAUSE FIX: brand users must never land in the rep/distributor shell.
   // /dashboard is the post-login default; send brand users straight to /brand.
   if (user?.role === 'brand') return <Navigate to="/brand" replace />;
