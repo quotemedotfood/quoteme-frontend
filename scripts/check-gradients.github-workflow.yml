@@ -1,0 +1,26 @@
+# MOVE THIS FILE to .github/workflows/check-gradients.yml to activate the CI gate.
+# It lives under scripts/ only because the PAT used to open this PR lacks the
+# GitHub `workflow` scope and cannot push files under .github/workflows/.
+# A maintainer with workflow scope should `git mv` it into place (contents are
+# final and correct as-is).
+#
+# NOTE: this repo currently has no .github directory at all, so none of the
+# three parked workflows (check-emdash, typecheck, check-gradients) are actually
+# enforced by CI today. All three need the same one-time move.
+name: check-gradients
+
+on:
+  pull_request:
+  push:
+
+jobs:
+  check-gradients:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run check:gradients

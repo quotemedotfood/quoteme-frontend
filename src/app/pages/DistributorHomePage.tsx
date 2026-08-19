@@ -25,17 +25,6 @@ export function DistributorHomePage() {
 
   const firstName = user?.first_name || '';
 
-  // Load fonts
-  useEffect(() => {
-    if (!document.getElementById('quoteme-fonts')) {
-      const link = document.createElement('link');
-      link.id = 'quoteme-fonts';
-      link.rel = 'stylesheet';
-      link.href = 'https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=DM+Sans:wght@400;500;600&display=swap';
-      document.head.appendChild(link);
-    }
-  }, []);
-
   async function loadHome() {
     setLoading(true);
     const res = await getDistributorHome();

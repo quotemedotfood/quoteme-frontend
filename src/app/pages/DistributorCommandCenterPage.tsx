@@ -1,19 +1,6 @@
-import { useEffect } from 'react';
 import { RepActivitySection } from '../components/distributor-admin/RepActivitySection';
 
 export function DistributorCommandCenterPage() {
-  // Load fonts — matches pattern used in DistributorHomePage and DistributorRepsPage.
-  useEffect(() => {
-    if (!document.getElementById('quoteme-fonts')) {
-      const link = document.createElement('link');
-      link.id = 'quoteme-fonts';
-      link.rel = 'stylesheet';
-      link.href =
-        'https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=DM+Sans:wght@400;500;600&display=swap';
-      document.head.appendChild(link);
-    }
-  }, []);
-
   return (
     <div className="p-6 md:p-10 max-w-5xl mx-auto">
       {/* Page header */}
