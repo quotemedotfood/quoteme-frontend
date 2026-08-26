@@ -1505,8 +1505,18 @@ function DiagnoseTab() {
                               placeholder="Reason"
                             />
                           </div>
-                          <button onClick={() => handleDeleteRule(idx)} className="text-red-400 hover:text-red-600 p-1">
-                            <Trash2 size={14} />
+                          <button
+                            onClick={() => handleDeleteRule(idx)}
+                            // These are PROPOSED rules the engine suggested and the
+                            // operator is still editing. handleDeleteRule is local
+                            // state only, so there is no persisted record and no id
+                            // to key on. target_name is the field being edited on
+                            // this row, and it is empty until they type on a rule
+                            // added by hand, hence the positional fallback.
+                            aria-label={`Remove ${rule.target_name.trim() || `rule ${idx + 1}`}`}
+                            className="text-red-400 hover:text-red-600 p-1"
+                          >
+                            <Trash2 size={14} aria-hidden="true" />
                           </button>
                         </div>
                         {rule.affects_positions.length > 0 && (
