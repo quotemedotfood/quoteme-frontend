@@ -59,15 +59,21 @@ describe('off-the-cuff pipeline: paste -> parse -> pair, two pools', () => {
     const user = userEvent.setup();
     await pasteAndPair(user, /Aquitaine \(demo\)/);
 
-    // By the glass: per-dish strategy names each course.
+    // By the glass: per-dish strategy names each course, THREE options deep
+    // (three bottles per dish - see tests/three-per-dish.test.js). Was
+    // getByText when a dish got exactly one card; the singular is what broke
+    // when the trio landed, not the behaviour.
     await user.click(screen.getByRole('tab', { name: 'By the glass' }));
-    expect(screen.getByText(/With the sole meuniere/i)).toBeInTheDocument();
+    const soleCards = screen.getAllByText(/With the sole meuniere/i);
+    expect(soleCards).toHaveLength(3);
+    // And the three are distinguishable, not three identical eyebrows.
+    expect(new Set(soleCards.map((el) => el.textContent)).size).toBe(3);
     // The compromise card belongs to the bottle pool only, not here.
     expect(screen.queryByText(/Where this bottle gives ground/i)).not.toBeInTheDocument();
 
     // Single bottle: one wine across everything, with its compromise.
     await user.click(screen.getByRole('tab', { name: 'Single bottle' }));
     expect(screen.getByText(/Where this bottle gives ground/i)).toBeInTheDocument();
-    expect(screen.queryByText(/With the sole meuniere/i)).not.toBeInTheDocument();
+    expect(screen.queryAllByText(/With the sole meuniere/i)).toHaveLength(0);
   });
 });

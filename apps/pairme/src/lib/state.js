@@ -24,6 +24,7 @@ import { DEMO as OFFLINE_DEMO_WINES } from '../../../../packages/pairing/src/dem
 import { errorCopy } from './errors.js';
 import { track } from './track.js';
 import { buildTables, rowToEngineWine, dishToEngineDish, computeOfferings, DIRECTION_FOR_FORMAT } from './pairingAdapter.js';
+import { offeringKey, isSelected, toggleOffering } from './offeringSelection.js';
 import { getOfflineTables } from './offlinePairing.js';
 import { tableWineEligible, isHousePick, isOurPick, resolveProteinIcons } from './wineCardIconGate.js';
 import { DEMO_DISHES, DEMO_SECTIONS, DEMO_DEFAULT_PICKED, buildDemoRows } from './demoSeed.js';
@@ -414,7 +415,7 @@ export function usePairMe(opts = {}){
     // like a cold start and the UI fell back to Desi's static demo wines,
     // presenting three canned bottles as if they were real picks.
     pairingRan:false,pairingBlocked:null,
-    pairingId:null,presentLabels:[],
+    pairingId:null,presentCardKeys:[],
     deleteConfirming:false,deleteDone:false});
   const patch = (p) => set(s => Object.assign({}, s, typeof p === 'function' ? p(s) : p));
   const bodyEl = React.useRef(null);
@@ -734,7 +735,12 @@ export function usePairMe(opts = {}){
       const engineBlocked=st.pairingRan===true&&Array.isArray(st.pairingOfferings)&&st.pairingOfferings.length===0;
       const pairingDirection=st.pairingDirection;
       const roleColorFor=(slot)=>slot==="house"?t.blue:slot==="suited"?t.pearInk:t.muted;
-      const presentSet=new Set(st.presentLabels||[]);
+      // SELECTION IS PER CARD, AND A CARD IS (DISH, WINE). This used to hold
+      // wine labels, which meant a wine winning two dishes lit both of its
+      // cards at once - and three-per-dish makes that the common case, not the
+      // edge one. See lib/offeringSelection.js.
+      const presentCardKeys=st.presentCardKeys||[];
+      const presentSet=new Set(presentCardKeys);
       // WINE CARD ICONS: gate inputs shared by every offering below.
       // `iconTables` best-effort matches whichever T actually produced
       // st.pairingOfferings (see runFormat/cta above: rulesTables when a
@@ -750,7 +756,7 @@ export function usePairMe(opts = {}){
       const iconDishes=wineListPickedDishes;
       const venuePushedLabels=new Set((st.venuePushed||[]).map(p=>p&&p.wine).filter(Boolean));
       const engineOffers=usingEngine?st.pairingOfferings.map(o=>{
-        const w=o.wine,on=presentSet.has(w.label);
+        const w=o.wine,on=isSelected(presentCardKeys,o);
         return {
           role:o.label||"Offering",roleColor:roleColorFor(o.slot),
           prod:w.producer,wine:w.wine_name,meta:w.meta,say:w.say,btl:w.price,
@@ -761,7 +767,7 @@ export function usePairMe(opts = {}){
           coversChips:(o.covers&&o.covers.length)?o.covers:[],
           bd:on?"var(--pm-chrome)":"var(--pm-rule)",bw:on?"2px":"1px",bg:on?"var(--pm-sel)":"var(--pm-card)",
           chip:on?"presenting":"tap to add",chipBg:on?"#F9E4C7":"var(--pm-sunken)",
-          pick:()=>patch(x=>({presentLabels:(x.presentLabels||[]).includes(w.label)?(x.presentLabels||[]).filter(y=>y!==w.label):[...(x.presentLabels||[]),w.label]})),
+          pick:()=>patch(x=>({presentCardKeys:toggleOffering(x.presentCardKeys,o)})),
           // BUILD 2 item 2: real/parsed wines carry no hand-authored say/speak
           // (packages/pairing's parser never sets those fields), so w.speak is
           // undefined here for every non-demo wine - fall back to the short
@@ -792,7 +798,11 @@ export function usePairMe(opts = {}){
           // correct "renders nothing" state, never a guess.
           proteinIcons:resolveProteinIcons(w.protein_match)};
       }):null;
-      const engineShownLabels=presentSet.size?Array.from(presentSet):(usingEngine?[st.pairingOfferings[0].wine.label]:[]);
+      // Card KEYS, not wine labels: two cards can share a wine, so a label no
+      // longer identifies which offering the diner chose to present.
+      const engineShownKeys=presentCardKeys.length
+        ?presentCardKeys
+        :(usingEngine?[offeringKey(st.pairingOfferings[0])]:[]);
       // ITEM 6: glass / bottle / both toggle on TheWine. Re-ranks in place
       // (no navigation) by re-running the SAME client engine over the pool the
       // format implies - 'glass' drops bottle-only wines so we never name a
@@ -806,10 +816,10 @@ export function usePairMe(opts = {}){
         const dir=DIRECTION_FOR_FORMAT[fmt]||'several';
         if(st.rulesTables&&st.demoWineRows.length&&chosen.length){
           const result=computeOfferings(dir,chosen,st.demoWineRows.map(rowToEngineWine),st.rulesTables,{format:fmt,budget:budgetOf(st)});
-          patch({wineFormat:fmt,pairingDirection:result.direction,pairingOfferings:result.offerings,pairingCompromise:result.compromise,pairingCoverage:result.coverage,pairingRan:true,pairingBlocked:result.blocked||null,presentLabels:[]});
+          patch({wineFormat:fmt,pairingDirection:result.direction,pairingOfferings:result.offerings,pairingCompromise:result.compromise,pairingCoverage:result.coverage,pairingRan:true,pairingBlocked:result.blocked||null,presentCardKeys:[]});
         }else if(st.demoWineRows&&st.demoWineRows.length){
           const offline=computeOfflineOfferings(dir,chosen,st.demoWineRows,{format:fmt,budget:budgetOf(st)});
-          patch({wineFormat:fmt,pairingDirection:offline.direction,pairingOfferings:offline.offerings,pairingCompromise:offline.compromise,pairingCoverage:offline.coverage,pairingRan:true,pairingBlocked:offline.blocked||null,presentLabels:[]});
+          patch({wineFormat:fmt,pairingDirection:offline.direction,pairingOfferings:offline.offerings,pairingCompromise:offline.compromise,pairingCoverage:offline.coverage,pairingRan:true,pairingBlocked:offline.blocked||null,presentCardKeys:[]});
         }else{
           patch({wineFormat:fmt});
         }
@@ -886,7 +896,7 @@ export function usePairMe(opts = {}){
                   pairingCoverage: result.coverage,
                   pairingRan: true,
                   pairingBlocked: result.blocked || null,
-                  presentLabels: [],
+                  presentCardKeys: [],
                 });
                 try {
                   // RECORDS the decision already made client-side (does not
@@ -902,6 +912,14 @@ export function usePairMe(opts = {}){
                       slot: o.slot,
                       wine_row_id: o.wine.client_row_id,
                       fired_rule_ids: (o.fired||[]).map(f=>f[0]),
+                      // course_it_out now records THREE rows per dish rather
+                      // than one per dish, so without this every row in a trio
+                      // looks the same and the dish is unrecoverable. NOT yet
+                      // permitted by V1::PairingsController#offerings_param
+                      // (it permits slot/wine_row_id/fired_rule_ids), so Rails
+                      // drops it with a log line today - harmless, and the
+                      // recording becomes correct the moment the BE permits it.
+                      for_dish: o.forDish || null,
                     })),
                   });
                   if (rec && !rec.notBuilt && rec.pairing_id) patch({pairingId:rec.pairing_id});
@@ -933,7 +951,7 @@ export function usePairMe(opts = {}){
                   pairingCoverage: offline.coverage,
                   pairingRan: true,
                   pairingBlocked: offline.blocked || null,
-                  presentLabels: [],
+                  presentCardKeys: [],
                 });
               };
               if (typeof navigator !== 'undefined' && navigator.onLine === false) {
@@ -1234,11 +1252,15 @@ export function usePairMe(opts = {}){
 
         foodRows:chosen.map(d=>({n:d.n,sec:d.sec})),
         handoff:usingEngine
-          ?engineShownLabels.map((label,i)=>{
-            const offering=st.pairingOfferings.find(o=>o.wine.label===label)||st.pairingOfferings[0];
+          ?engineShownKeys.map((cardKey,i)=>{
+            // Resolve by CARD key. `.find(o=>o.wine.label===label)` returned
+            // whichever dish's card came first in the flattened list, so
+            // presenting "the Trapet with the steak" could hand over the
+            // Trapet card belonging to a different plate entirely.
+            const offering=st.pairingOfferings.find(o=>offeringKey(o)===cardKey)||st.pairingOfferings[0];
             const w=offering.wine;
             return {
-              label:engineShownLabels.length>1?(i===0?"Bottle one":"Bottle two"):"One bottle",
+              label:engineShownKeys.length>1?(i===0?"Bottle one":"Bottle two"):"One bottle",
               prod:w.producer,wine:w.wine_name,meta:w.meta+" . $"+w.price,say:w.say,tip:w.tip,
               // Same engine-wine caveat as engineOffers above: w.lang is
               // undefined here until pairingAdapter.js's rowToEngineWine

@@ -579,10 +579,15 @@ export default function EntryScreen() {
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {offerings.offerings.map((o, i) => (
-                  // key must be unique per offering: a per-course glass pour can
-                  // repeat the same wine across courses, so o.wine.label alone
-                  // duplicates and breaks reconciliation when the pool switches.
-                  <div key={`${format}-${i}`} style={{ padding: '14px 16px', borderRadius: 14, border: `1.5px solid ${COLORS.rule}`, background: COLORS.card }}>
+                  // key must be unique per offering: a per-course glass pour
+                  // repeats the same wine across courses, so o.wine.label alone
+                  // duplicates. o.key IS (dish, wine) - see
+                  // lib/offeringSelection.js - so it is unique AND stable, where
+                  // the index it replaces silently rebound every card whenever
+                  // the list re-ranked (a budget change re-sorts in place). The
+                  // format prefix stays: switching pool is a different ranking,
+                  // and remounting there is deliberate.
+                  <div key={`${format}-${o.key || i}`} style={{ padding: '14px 16px', borderRadius: 14, border: `1.5px solid ${COLORS.rule}`, background: COLORS.card }}>
                     <div style={{ font: '600 12px inherit', color: COLORS.chrome, textTransform: 'uppercase', letterSpacing: '.03em', marginBottom: 2 }}>
                       {o.label || 'Offering'}
                     </div>
