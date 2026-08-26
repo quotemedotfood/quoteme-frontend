@@ -176,7 +176,7 @@ export function QMAdminConferenceCommand() {
       )}
       {/* Conference Banner */}
       {!bannerDismissed && (
-        <div className="bg-gradient-to-r from-[#1e3a5f] to-[#2d5a8e] text-white px-4 md:px-6 py-3 flex items-center justify-between">
+        <div className="bg-[#1e3a5f] text-white px-4 md:px-6 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
             <span className="text-sm font-medium">SENA 2026: Live</span>
@@ -895,7 +895,7 @@ function CaptureLeadDrawer({
       {/* Drawer */}
       <div className="fixed top-0 right-0 h-full w-full md:w-[480px] bg-white shadow-2xl z-50 flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 bg-gradient-to-r from-[#f8fbfc] to-white">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200">
           <div>
             <h2 className="text-lg font-semibold text-[#2A2A2A]">Capture Lead</h2>
             <p className="text-xs text-gray-500 mt-0.5">Snap a card, record a note, or fill in manually</p>
@@ -1206,7 +1206,7 @@ function EmailComposerDrawer({
         <div className="md:hidden w-10 h-1 bg-gray-300 rounded-full mx-auto mt-3 mb-1" />
 
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 bg-gradient-to-r from-[#f8fbfc] to-white">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200">
           <div>
             <h2 className="text-lg font-semibold text-[#2A2A2A]">Send Email</h2>
             <p className="text-xs text-gray-500 mt-0.5">

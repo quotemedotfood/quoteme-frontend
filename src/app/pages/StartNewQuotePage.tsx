@@ -289,17 +289,6 @@ export function StartNewQuotePage() {
     });
   }, [isGuest, user?.unlimited_drafts, user?.role]);
 
-  // Load Google Fonts
-  useEffect(() => {
-    if (!document.getElementById('quoteme-fonts')) {
-      const link = document.createElement('link');
-      link.id = 'quoteme-fonts';
-      link.rel = 'stylesheet';
-      link.href = 'https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=DM+Sans:wght@400;500;600&display=swap';
-      document.head.appendChild(link);
-    }
-  }, []);
-
   function cleanCatalogName(cat: CatalogSummary): string {
     const count = cat.row_count;
     if (count >= 1000) {

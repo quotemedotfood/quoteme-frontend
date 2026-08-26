@@ -46,16 +46,6 @@ export function DistributorRepsPage() {
   // with confirmMatch -- only one dialog is ever shown for one add.
   const [pendingBeConfirmMessage, setPendingBeConfirmMessage] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!document.getElementById('quoteme-fonts')) {
-      const link = document.createElement('link');
-      link.id = 'quoteme-fonts';
-      link.rel = 'stylesheet';
-      link.href = 'https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=DM+Sans:wght@400;500;600&display=swap';
-      document.head.appendChild(link);
-    }
-  }, []);
-
   async function loadReps() {
     setLoading(true);
     const res = await getDistributorAdminReps();
