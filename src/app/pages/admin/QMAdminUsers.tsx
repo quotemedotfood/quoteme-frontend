@@ -84,6 +84,14 @@ function roleBadge(role: string) {
   );
 }
 
+// One row, one human label, for every row-scoped control in the Actions cell.
+// Falls back to the email because first/last are nullable on an
+// invited-but-never-completed account, and an unnamed row still has to be
+// tellable apart from its neighbours.
+function userLabel(u: AdminUser): string {
+  return [u.first_name, u.last_name].filter(Boolean).join(' ') || u.email;
+}
+
 export function QMAdminUsers() {
   const navigate = useNavigate();
   const [users, setUsers] = useState<AdminUser[]>([]);
@@ -661,14 +669,7 @@ export function QMAdminUsers() {
                               disabled={actionLoading === u.id}
                               onClick={() => startEdit(u)}
                               className="text-xs text-[#7FAEC2] hover:text-[#6A9AB0]"
-                              // Icon-only inline-edit pencil, one per user row, and
-                              // previously with no accessible name at all. Name falls
-                              // back to email because first/last are nullable on an
-                              // invited-but-never-completed account, and an unnamed
-                              // row still has to be tellable apart from its neighbours.
-                              aria-label={`Edit ${
-                                [u.first_name, u.last_name].filter(Boolean).join(' ') || u.email
-                              }`}
+                              aria-label={`Edit ${userLabel(u)}`}
                             >
                               <Pencil size={14} aria-hidden="true" />
                             </Button>
