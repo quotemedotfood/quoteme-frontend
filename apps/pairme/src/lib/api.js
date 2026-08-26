@@ -223,12 +223,31 @@ export function fetchRulesBundle(sinceVersion) {
   return request(`/v1/rules/bundle${qs}`);
 }
 
-/** POST /v1/events - instrumentation beacon. Not in the documented v1
- * contract (see PairMe API Contract v1); wired ahead of the BE catching up
- * per the demo instrumentation spec. Callers should use track() in
- * ./track.js rather than this directly, so a dropped beacon never throws. */
+/** POST /v1/events - instrumentation beacon. Callers should use track() in
+ * ./track.js rather than this directly, so a dropped beacon never throws.
+ *
+ * SHAPE (V1::EventsController, which does `params.require(:events)` and
+ * permits :name, :occurred_at, props): a BATCH - `{events: [{name,
+ * occurred_at, props}]}`. This client previously sent the singular
+ * `{event, props}`, which missed on both the array and the key name, so
+ * every beacon since the endpoint landed raised ParameterMissing server-
+ * side. track() swallows failures by design, so it never surfaced.
+ *
+ * occurred_at is stamped HERE, on the client, not derived from server
+ * receive time: a beacon can be queued behind an offline period or a slow
+ * network, and receive time would then record when we got it rather than
+ * when the diner did the thing. The funnel timings are the whole point of
+ * these events, so the client clock is the correct source even though it is
+ * the less trustworthy one.
+ *
+ * One event per call for now. The array is the contract, not a batching
+ * promise; when a real queue lands it fills this array instead of changing
+ * the shape. */
 export function postEvent(event, props) {
-  return request('/v1/events', { method: 'POST', body: { event, props: props || {} } });
+  return request('/v1/events', {
+    method: 'POST',
+    body: { events: [{ name: event, occurred_at: new Date().toISOString(), props: props || {} }] },
+  });
 }
 
 /**

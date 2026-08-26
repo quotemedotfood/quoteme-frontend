@@ -11,11 +11,18 @@
  * Quality props attached where known: wines_found, corrections_per_capture,
  * extraction_source.
  *
- * POST /v1/events is not yet in the documented PairMe API Contract v1 (see
- * Artifacts/PairMe API Contract v1.md); this is wired ahead of the BE
- * catching up, per the demo instrumentation spec. A 404/NO_IDENTITY/network
- * failure here is expected and harmless: it just means an event was not
- * recorded, never a broken screen.
+ * POST /v1/events IS built and live (V1::EventsController, routes.rb
+ * "Item 8 - instrumentation"); it is only the contract doc that has not
+ * caught up. Do not read a failure here as "the BE has not landed yet" -
+ * that assumption is precisely what hid a year of dropped events, because
+ * this client was posting the wrong payload shape and the endpoint was
+ * rejecting all of it. See postEvent() in api.js for the required shape.
+ *
+ * Identity is genuinely optional on this endpoint, so NO_IDENTITY is not an
+ * expected outcome either. A network failure is still expected and harmless
+ * (an event goes unrecorded, never a broken screen) - but anything else
+ * here now means a real bug, and swallowing it is a deliberate trade for
+ * the diner's sake, not a sign that nothing is wrong.
  */
 import { postEvent } from './api.js';
 
