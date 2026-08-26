@@ -144,16 +144,22 @@ export function QuoteReviewBar({ quoteId, onMatchesUpdated }: QuoteReviewBarProp
             <button
               onClick={handleThumbsUp}
               className="p-2 rounded-full bg-white/20 hover:bg-white/30 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+              // Icon-only rating control. `title` is the last fallback in the
+              // accessible-name computation and is never surfaced on touch, so
+              // both thumbs announced as unnamed buttons. The name has to say
+              // which answer the button gives, not just which glyph it shows.
+              aria-label="These matches look good"
               title="Looks good"
             >
-              <ThumbsUp className="w-5 h-5 text-white" />
+              <ThumbsUp className="w-5 h-5 text-white" aria-hidden="true" />
             </button>
             <button
               onClick={handleThumbsDown}
               className="p-2 rounded-full bg-white/20 hover:bg-white/30 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+              aria-label="These matches need fixes"
               title="Needs fixes"
             >
-              <ThumbsDown className="w-5 h-5 text-white" />
+              <ThumbsDown className="w-5 h-5 text-white" aria-hidden="true" />
             </button>
           </div>
         </div>
