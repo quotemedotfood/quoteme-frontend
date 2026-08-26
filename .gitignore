@@ -1,5 +1,9 @@
-node_modules/
+# No trailing slash. `node_modules/` matches a DIRECTORY only, so it does not
+# match `node_modules` committed as a SYMLINK (git mode 120000, which git
+# classifies as a file). That gap is why the symlink has been committed twice:
+# a worktree that symlinks node_modules at the parent checkout, plus a
+# `git add -A`, and nothing stopped it. Bare `node_modules` covers both forms.
+node_modules
 dist/
 .env
 .env.local
-node_modules/
