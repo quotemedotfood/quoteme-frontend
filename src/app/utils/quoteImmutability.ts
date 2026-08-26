@@ -47,11 +47,18 @@ export function isSentImmutableQuote(q: QuoteImmutabilitySignals): boolean {
   return (
     !!q.sent_at ||
     q.status === 'sent' ||
-    q.status === 'accepted' ||
     q.status === 'won' ||
     isAcceptedQuoteState(q.state)
   );
 }
+
+// Removed: a `q.status === 'accepted'` term. `accepted` is not a valid quote
+// STATUS -- Quote::VALID_STATUSES is
+// [processing draft pending assigned sent won lost expired] and the backend
+// validates inclusion, so no payload can carry it. It IS a valid `state`, which
+// the isAcceptedQuoteState(q.state) term above already covers. Keeping both was
+// the two-vocabulary confusion in miniature: the same token guarded twice, once
+// on the axis that can hold it and once on the axis that cannot.
 
 /** True when the viewer role gets read-only rendering on rep quote surfaces. */
 export function isAdminViewerRole(role: string | null | undefined): boolean {
