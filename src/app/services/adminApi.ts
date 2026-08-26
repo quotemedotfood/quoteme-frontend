@@ -1,3 +1,13 @@
+import { fetchWithPolicy } from './requestPolicy';
+
+// Every request in this file goes through fetchWithPolicy, which supplies the
+// timeout this client never had (a request that never settles left a permanent
+// spinner on every QM Admin page) and the retry-once-on-network-failure rule
+// this client also never had. Same module as api.ts: one policy, not two.
+//
+// The rule to keep in mind when adding a call here: a MUTATION that times out is
+// UNKNOWN, not failed. fetchWithPolicy never retries one and never tells the
+// user it failed, because the server may already have acted.
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://web-production-9f6e9.up.railway.app';
 
 interface ApiResponse<T> {
@@ -41,7 +51,7 @@ async function fetchWithAuth<T>(
   }
 
   try {
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    const response = await fetchWithPolicy(`${API_BASE_URL}${endpoint}`, {
       ...options,
       headers,
     });
@@ -405,7 +415,7 @@ export async function grantFreeQuotes(
 
 export async function downloadDistributorExport(distributorId: string, type: 'catalog' | 'quotes' | 'reps'): Promise<void> {
   const token = getAuthToken();
-  const response = await fetch(getAdminDistributorExportUrl(distributorId, type), {
+  const response = await fetchWithPolicy(getAdminDistributorExportUrl(distributorId, type), {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!response.ok) {
@@ -601,7 +611,7 @@ export async function createConferenceLead(data: FormData): Promise<ApiResponse<
   if (token) headers['Authorization'] = `Bearer ${token}`;
 
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/admin/conference-leads`, {
+    const response = await fetchWithPolicy(`${API_BASE_URL}/api/v1/admin/conference-leads`, {
       method: 'POST',
       headers,
       body: data,
@@ -650,7 +660,7 @@ export async function ocrConferenceCard(
   formData.append('card_photo', file);
 
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/admin/conference-leads/ocr`, {
+    const response = await fetchWithPolicy(`${API_BASE_URL}/api/v1/admin/conference-leads/ocr`, {
       method: 'POST',
       headers,
       body: formData,
@@ -876,7 +886,7 @@ export async function sendMatchingEngineChat(
     formData.append('file', file);
     const headers: Record<string, string> = {};
     if (token) headers['Authorization'] = `Bearer ${token}`;
-    const response = await fetch(`${API_BASE_URL}/api/v1/admin/matching-engine/chat`, {
+    const response = await fetchWithPolicy(`${API_BASE_URL}/api/v1/admin/matching-engine/chat`, {
       method: 'POST',
       headers,
       body: formData,
@@ -1652,7 +1662,7 @@ export async function updateClusterLabelV2(
   if (token) headers['Authorization'] = `Bearer ${token}`;
 
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/admin/cluster_labels/${id}`, {
+    const response = await fetchWithPolicy(`${API_BASE_URL}/api/v1/admin/cluster_labels/${id}`, {
       method: 'PATCH',
       headers,
       body: JSON.stringify({
@@ -1762,7 +1772,7 @@ export async function bulkUpdateClusterLabels(
   payload: BulkUpdatePayload
 ): Promise<ApiResponse<BulkUpdateResult> & { warnings?: BulkUpdateWarning[] }> {
   const token = localStorage.getItem('quoteme_token');
-  const res = await fetch(`${API_BASE_URL}/api/v1/admin/cluster_labels/bulk_update`, {
+  const res = await fetchWithPolicy(`${API_BASE_URL}/api/v1/admin/cluster_labels/bulk_update`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -1905,7 +1915,7 @@ export async function createRestaurant(
   if (token) headers['Authorization'] = `Bearer ${token}`;
 
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/admin/restaurants`, {
+    const response = await fetchWithPolicy(`${API_BASE_URL}/api/v1/admin/restaurants`, {
       method: 'POST',
       headers,
       body: JSON.stringify({ restaurant: input }),
@@ -2257,7 +2267,7 @@ export async function uploadAdminBrandLogo(
   formData.append('logo', file);
 
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/admin/brands/${brandId}/logo`, {
+    const response = await fetchWithPolicy(`${API_BASE_URL}/api/v1/admin/brands/${brandId}/logo`, {
       method: 'POST',
       headers,
       body: formData,
@@ -2285,7 +2295,7 @@ export async function uploadAdminDistributorLogo(
   formData.append('logo', file);
 
   try {
-    const response = await fetch(`${API_BASE_URL}/api/v1/admin/distributors/${distributorId}/logo`, {
+    const response = await fetchWithPolicy(`${API_BASE_URL}/api/v1/admin/distributors/${distributorId}/logo`, {
       method: 'POST',
       headers,
       body: formData,
