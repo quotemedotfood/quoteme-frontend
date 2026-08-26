@@ -16,6 +16,7 @@ import { dishProfile, scoreWine, pair } from '../../../../packages/pairing/src/s
 import { SLOTS } from '../../../../packages/pairing/src/roles.js';
 import { oneBottle, several } from '../../../../packages/pairing/src/directions.js';
 import { buildTables } from '../../../../packages/pairing/src/tables.js';
+import { offeringKey } from './offeringSelection.js';
 
 export { buildTables };
 
@@ -360,6 +361,9 @@ export function computeOfferings(direction, dishes, wines, T, opts = {}) {
           bestForDish: best.dish,
           score: result.totalScore,
           covers: dishNames, // a qualifying one-bottle pick is eligible for every dish
+          // Table-wide card, so there is no forDish and the wine IS the
+          // identity - same key function, so callers never branch on direction.
+          key: offeringKey({ wine: result.wine }),
         },
       ],
       compromise: result.compromise,
@@ -377,32 +381,63 @@ export function computeOfferings(direction, dishes, wines, T, opts = {}) {
     // mains_only with no identifiable main pairs everything rather than pairing
     // nothing (still honest: coverage below reflects what actually happened).
     const toPair = target.length ? target : engineDishes;
-    const offerings = toPair
-      .map((d) => {
-        const res = pair(d.name, d.components, wines, T, { n: 1 });
-        const top = res.picks[0];
-        if (!top) return null;
-        return {
-          wine: top.wine,
-          slot: 'house',
-          label: `With the ${d.name.toLowerCase()}`,
-          why: headlineWhy(top.fired, top.wine),
-          fired: top.fired,
-          forDish: d.name,
-          forSec: secOf(d.name),
-          bestForDish: d.name,
-          score: top.score,
-          covers: [d.name],
-        };
-      })
-      .filter(Boolean);
+    // THREE BOTTLES PER DISH (Moose: "This IS the bottle for every dish").
+    // pair() already dedupes its picks by grape for its single-dish discovery
+    // mechanic, so asking for three gets three genuinely different answers
+    // rather than three bottlings of the same thing. A dish with fewer than
+    // three eligible wines yields however many it has - short is honest, and
+    // padding it would mean offering a wine the engine blocked.
+    const OPTIONS_PER_DISH = 3;
+    // Slots read top-to-bottom WITHIN a dish's own trio: the dish's best fit is
+    // the house suggestion, the next two are alternatives. They are not a
+    // table-wide ranking - each dish gets its own three, so slot is relative to
+    // the dish, exactly as `label` is.
+    const SLOT_FOR_RANK = ['house', 'suited', 'crowd'];
+    // TheWine renders one FLAT list of cards, so a dish's three cards sit next
+    // to each other with nothing but this eyebrow to tell them apart - three
+    // cards all reading "With the sole meuniere" is unreadable.
+    //
+    // The distinction is DESCRIPTIVE, never ranked. Amy the sommelier's
+    // standing objection to "Top pick / Second pick / Third pick" (see the
+    // RANK_LABELS comment in operator/OperatorPage.jsx) is that it asserts a
+    // winner she would never claim - "one dish can have twenty pairings, it
+    // depends what the guest likes." Same vocabulary here: display order, not
+    // a hierarchy. `slot` still carries the machine-readable rank.
+    const RANK_SUFFIX = ['', ' . another option', ' . a third option'];
+    const offerings = toPair.flatMap((d) => {
+      const res = pair(d.name, d.components, wines, T, { n: OPTIONS_PER_DISH });
+      return res.picks.slice(0, OPTIONS_PER_DISH).map((pick, rank) => ({
+        wine: pick.wine,
+        slot: SLOT_FOR_RANK[rank] || 'crowd',
+        label: `With the ${d.name.toLowerCase()}${RANK_SUFFIX[rank] || ''}`,
+        why: headlineWhy(pick.fired, pick.wine),
+        fired: pick.fired,
+        forDish: d.name,
+        forSec: secOf(d.name),
+        bestForDish: d.name,
+        score: pick.score,
+        covers: [d.name],
+        // A CARD IS (DISH, WINE) - the same wine can legitimately win under
+        // several dishes now, so identity cannot be the wine alone and cannot
+        // be the dish alone. See lib/offeringSelection.js for why the selection
+        // and the Present handoff both read this rather than wine.label.
+        key: offeringKey({ forDish: d.name, wine: pick.wine }),
+      }));
+    });
     const pairedNames = new Set(offerings.map((o) => o.forDish));
-    const coverage = engineDishes.map((d) => ({
-      dish: d.name,
-      sec: secOf(d.name),
-      status: pairedNames.has(d.name) ? 'paired' : 'unpaired',
-      wine: pairedNames.has(d.name) ? offerings.find((o) => o.forDish === d.name).wine.label : null,
-    }));
+    const coverage = engineDishes.map((d) => {
+      // Name the dish's OWN best fit (its 'house' card), not whichever of its
+      // three cards happens to sit first once the list is flattened.
+      const top =
+        offerings.find((o) => o.forDish === d.name && o.slot === 'house') ||
+        offerings.find((o) => o.forDish === d.name);
+      return {
+        dish: d.name,
+        sec: secOf(d.name),
+        status: pairedNames.has(d.name) ? 'paired' : 'unpaired',
+        wine: top ? top.wine.label : null,
+      };
+    });
     return { direction, offerings, compromise: null, coverage };
   }
 
@@ -450,6 +485,10 @@ export function computeOfferings(direction, dishes, wines, T, opts = {}) {
       bestForDish: entry.bestForDish,
       score: entry.adjScore,
       covers: coversFor(entry.wine),
+      // Table-wide shortlist: one card per wine across everything ordered, so
+      // the wine is the identity here too (bestForDish is a display hint, not
+      // the card's dish - the card is not "for" one plate).
+      key: offeringKey({ wine: entry.wine }),
     };
   });
   const coverage = engineDishes.map((d) => {
