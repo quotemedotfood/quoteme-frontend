@@ -20,50 +20,78 @@
 // the Ruby side in spec/models/quote_spec.rb).
 
 import { describe, it, expect } from 'vitest';
-import { isClosedQuote, CLOSED_STATUSES, getStatusDisplayLabel } from './QuotesPage';
+import { isClosedQuote, CLOSED_STATUSES, CLOSED_STATES, getStatusDisplayLabel } from './QuotesPage';
 
-describe('isClosedQuote — hides Requote button for closed quotes', () => {
-  it('returns true for "won", the one status that closes a quote today', () => {
-    expect(isClosedQuote('won')).toBe(true);
+describe('isClosedQuote — hides Requote on quotes that cannot move again', () => {
+  // ── status axis ──────────────────────────────────────────────────────────
+  it('closes on status "won"', () => {
+    expect(isClosedQuote({ status: 'won' })).toBe(true);
   });
 
-  it('returns false for "draft" (open quote)', () => {
-    expect(isClosedQuote('draft')).toBe(false);
+  // MOOSE RULING 2026-08-26: Requote must not be offered on lost quotes.
+  // 'lost' is terminal server-side (VALID_TRANSITIONS maps it to []).
+  it('closes on status "lost" (ruling 2026-08-26)', () => {
+    expect(isClosedQuote({ status: 'lost' })).toBe(true);
   });
 
-  it('returns false for "sent" (open quote)', () => {
-    expect(isClosedQuote('sent')).toBe(false);
+  // ── state axis, honoured per the same ruling ─────────────────────────────
+  it('closes on state "accepted" even while status is still open', () => {
+    expect(isClosedQuote({ status: 'draft', state: 'accepted' })).toBe(true);
   });
 
-  it('returns false for "pending" (fail-open — do not hide button)', () => {
-    expect(isClosedQuote('pending')).toBe(false);
+  it('closes on state "declined" even while status is still open', () => {
+    expect(isClosedQuote({ status: 'pending', state: 'declined' })).toBe(true);
   });
 
-  // Behaviour-preserving record of the two open questions. 'lost' is terminal
-  // backend-side (VALID_TRANSITIONS maps it to []) yet Requote is still offered
-  // on it; 'expired' correctly stays open because it transitions back to
-  // 'draft'. Asserting today's behaviour so a deliberate change trips here
-  // rather than passing silently.
-  it('currently returns false for "lost" — OPEN QUESTION, see CLOSED_STATUSES', () => {
-    expect(isClosedQuote('lost')).toBe(false);
+  // ── deliberately still open ──────────────────────────────────────────────
+  it('stays open on status "expired" — requotable by design (expired -> draft)', () => {
+    expect(isClosedQuote({ status: 'expired' })).toBe(false);
   });
 
-  it('returns false for "expired", which is requotable by design', () => {
-    expect(isClosedQuote('expired')).toBe(false);
+  it('stays open on state "expired" — a new quote is the remedy', () => {
+    expect(isClosedQuote({ status: 'sent', state: 'expired' })).toBe(false);
+  });
+
+  // UNDECIDED, asserted at today's behaviour so a ruling trips this test
+  // rather than passing silently. The rep has sent a priced quote back and the
+  // chef has not answered; isLockedQuoteState calls that locked for DISPLAY,
+  // which is a different question from whether fresh pricing may be requested.
+  it('currently stays open on state "confirmed" — OPEN QUESTION', () => {
+    expect(isClosedQuote({ status: 'sent', state: 'confirmed' })).toBe(false);
+  });
+
+  it('stays open for "draft" / "sent" / "pending" with no state', () => {
+    expect(isClosedQuote({ status: 'draft' })).toBe(false);
+    expect(isClosedQuote({ status: 'sent' })).toBe(false);
+    expect(isClosedQuote({ status: 'pending' })).toBe(false);
+  });
+
+  it('stays open on an empty signal set (fail-open — do not hide the button)', () => {
+    expect(isClosedQuote({})).toBe(false);
+    expect(isClosedQuote({ status: null, state: null })).toBe(false);
   });
 });
 
-describe('CLOSED_STATUSES — contains only reachable STATUS values', () => {
-  it('is exactly ["won"]', () => {
-    expect([...CLOSED_STATUSES]).toEqual(['won']);
+describe('CLOSED_STATUSES / CLOSED_STATES — each axis holds only its own vocabulary', () => {
+  it('CLOSED_STATUSES is exactly the terminal STATUS values', () => {
+    expect([...CLOSED_STATUSES].sort()).toEqual(['lost', 'won']);
   });
 
-  it('holds no J1 state tokens, which can never arrive on `status`', () => {
-    // These three are `state` values. A regression that puts them back here
-    // would be dead weight at best and a silent widening at worst.
-    expect(CLOSED_STATUSES as readonly string[]).not.toContain('confirmed');
-    expect(CLOSED_STATUSES as readonly string[]).not.toContain('accepted');
-    expect(CLOSED_STATUSES as readonly string[]).not.toContain('declined');
+  it('CLOSED_STATES is exactly the chef-acted STATE values', () => {
+    expect([...CLOSED_STATES].sort()).toEqual(['accepted', 'declined']);
+  });
+
+  it('holds no state tokens on the status axis, and vice versa', () => {
+    // The two-vocabulary trap: Quote::VALID_STATUSES is
+    // [processing draft pending assigned sent won lost expired], so a state
+    // token on the status axis is unreachable code, and a status token on the
+    // state axis is the mirror error.
+    for (const stateToken of ['accepted', 'declined', 'confirmed', 'preview', 'distributor_quote']) {
+      expect(CLOSED_STATUSES as readonly string[]).not.toContain(stateToken);
+    }
+    for (const statusToken of ['won', 'lost', 'draft', 'sent', 'pending']) {
+      expect(CLOSED_STATES as readonly string[]).not.toContain(statusToken);
+    }
   });
 });
 
