@@ -24,9 +24,22 @@ describe('isSentImmutableQuote', () => {
 
   it('is true for the Sent and Accepted statuses (incl. legacy won)', () => {
     expect(isSentImmutableQuote({ status: 'sent', state: null, sent_at: null })).toBe(true);
-    expect(isSentImmutableQuote({ status: 'accepted', state: null, sent_at: null })).toBe(true);
     expect(isSentImmutableQuote({ status: 'won', state: null, sent_at: null })).toBe(true);
+    // Acceptance arrives on the `state` axis, which is where 'accepted' lives.
     expect(isSentImmutableQuote({ status: 'draft', state: 'accepted', sent_at: null })).toBe(true);
+  });
+
+  // Dropped from the case above: an `{ status: 'accepted' }` assertion.
+  // 'accepted' is not a valid STATUS -- Quote::VALID_STATUSES is
+  // [processing draft pending assigned sent won lost expired] and the backend
+  // validates inclusion, so that payload cannot occur. The assertion was
+  // driving the guard with an input production never produces, and it kept a
+  // redundant term alive in isSentImmutableQuote: the same token checked once
+  // on the axis that can hold it and once on the axis that cannot.
+  it('does not treat `accepted` as a status, because the backend cannot send it', () => {
+    // A real accepted quote is status 'won' and/or state 'accepted', both
+    // covered above. The status axis alone must not carry the chef vocabulary.
+    expect(isSentImmutableQuote({ status: 'accepted', state: null, sent_at: null })).toBe(false);
   });
 
   it('is false for a confirmed-but-unsent quote (still writable)', () => {

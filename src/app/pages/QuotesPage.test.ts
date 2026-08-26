@@ -2,27 +2,29 @@
 // Pure-function tests for the isClosedQuote guard that hides the Requote button
 // on closed quotes (Justin lock R3 [44]).
 //
-// Axis: QuoteListItem.status (the only field exposed by the index endpoint).
-// Closed statuses: won (legacy) | confirmed | accepted | declined (J1 axis)
+// Axis: QuoteListItem.status. The header here used to add "(the only field
+// exposed by the index endpoint)" and to list the closed set as
+// "won (legacy) | confirmed | accepted | declined (J1 axis)". Both halves were
+// wrong, and this suite locked the wrong half in:
+//
+//   * The index endpoint exposes `state` as well as `status`.
+//   * 'confirmed' / 'accepted' / 'declined' are J1 `state` values, NOT statuses.
+//     Quote::VALID_STATUSES is
+//     [processing draft pending assigned sent won lost expired] and the backend
+//     validates inclusion, so none of the three can ever reach `status`.
+//
+// So the old assertions below drove isClosedQuote with inputs production cannot
+// produce, and the CLOSED_STATUSES assertion pinned a list where 3 of 4 entries
+// were unreachable. Rewritten to assert the reachable contract, plus explicit
+// negative assertions that the chef-flow tokens are not statuses (mirroring
+// the Ruby side in spec/models/quote_spec.rb).
 
 import { describe, it, expect } from 'vitest';
 import { isClosedQuote, CLOSED_STATUSES, getStatusDisplayLabel } from './QuotesPage';
 
 describe('isClosedQuote — hides Requote button for closed quotes', () => {
-  it('returns true for legacy "won"', () => {
+  it('returns true for "won", the one status that closes a quote today', () => {
     expect(isClosedQuote('won')).toBe(true);
-  });
-
-  it('returns true for J1 "confirmed"', () => {
-    expect(isClosedQuote('confirmed')).toBe(true);
-  });
-
-  it('returns true for J1 "accepted"', () => {
-    expect(isClosedQuote('accepted')).toBe(true);
-  });
-
-  it('returns true for J1 "declined"', () => {
-    expect(isClosedQuote('declined')).toBe(true);
   });
 
   it('returns false for "draft" (open quote)', () => {
@@ -33,14 +35,35 @@ describe('isClosedQuote — hides Requote button for closed quotes', () => {
     expect(isClosedQuote('sent')).toBe(false);
   });
 
-  it('returns false for unknown status (fail-open — do not hide button)', () => {
+  it('returns false for "pending" (fail-open — do not hide button)', () => {
     expect(isClosedQuote('pending')).toBe(false);
+  });
+
+  // Behaviour-preserving record of the two open questions. 'lost' is terminal
+  // backend-side (VALID_TRANSITIONS maps it to []) yet Requote is still offered
+  // on it; 'expired' correctly stays open because it transitions back to
+  // 'draft'. Asserting today's behaviour so a deliberate change trips here
+  // rather than passing silently.
+  it('currently returns false for "lost" — OPEN QUESTION, see CLOSED_STATUSES', () => {
+    expect(isClosedQuote('lost')).toBe(false);
+  });
+
+  it('returns false for "expired", which is requotable by design', () => {
+    expect(isClosedQuote('expired')).toBe(false);
   });
 });
 
-describe('CLOSED_STATUSES — exhaustive list matches spec', () => {
-  it('contains exactly the 4 closed states (won + 3 J1)', () => {
-    expect([...CLOSED_STATUSES].sort()).toEqual(['accepted', 'confirmed', 'declined', 'won']);
+describe('CLOSED_STATUSES — contains only reachable STATUS values', () => {
+  it('is exactly ["won"]', () => {
+    expect([...CLOSED_STATUSES]).toEqual(['won']);
+  });
+
+  it('holds no J1 state tokens, which can never arrive on `status`', () => {
+    // These three are `state` values. A regression that puts them back here
+    // would be dead weight at best and a silent widening at worst.
+    expect(CLOSED_STATUSES as readonly string[]).not.toContain('confirmed');
+    expect(CLOSED_STATUSES as readonly string[]).not.toContain('accepted');
+    expect(CLOSED_STATUSES as readonly string[]).not.toContain('declined');
   });
 });
 

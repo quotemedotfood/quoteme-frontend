@@ -17,7 +17,25 @@ import { formatCurrency } from '../utils/formatCurrency';
 import { isSentImmutableQuote, SENT_READ_ONLY_MARKER } from '../utils/quoteImmutability';
 
 /** Statuses where the quote workflow is closed. Requote is hidden for these. */
-export const CLOSED_STATUSES = ['won', 'confirmed', 'accepted', 'declined'] as const;
+// Closed = Requote is hidden. This list is checked against QuoteListItem.status
+// ONLY (see isClosedQuote below and its two call sites), so it may contain
+// nothing but valid STATUS values.
+//
+// It previously read ['won', 'confirmed', 'accepted', 'declined']. Three of
+// those four are J1 `state` values, not statuses: Quote::VALID_STATUSES is
+// [processing draft pending assigned sent won lost expired]. The backend
+// validates inclusion, so 'confirmed' / 'accepted' / 'declined' could never
+// arrive on `status` and only 'won' ever matched. Trimming them is
+// behaviour-identical.
+//
+// TWO OPEN QUESTIONS, deliberately NOT changed here because either would be a
+// behaviour change needing a ruling rather than a cleanup:
+//   1. 'lost' is a valid terminal status (VALID_TRANSITIONS maps it to []) and
+//      is absent, so Requote is currently OFFERED on lost quotes. Should it be?
+//      ('expired' legitimately belongs out: it transitions back to 'draft'.)
+//   2. The index endpoint now also exposes `state`, so state-based closure
+//      could be honoured here. That is a widening, not a repair.
+export const CLOSED_STATUSES = ['won'] as const;
 export const isClosedQuote = (status: string): boolean =>
   (CLOSED_STATUSES as readonly string[]).includes(status);
 
