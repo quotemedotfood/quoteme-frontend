@@ -1,0 +1,77 @@
+# PROPOSAL, NOT ACTIVE. This file is deliberately parked outside .github/.
+#
+# TO ACTIVATE (one command, needs a maintainer):
+#   mkdir -p .github/workflows && git mv scripts/ci.github-workflow.yml .github/workflows/ci.yml
+#
+# DO NOT ACTIVATE WITHOUT A RULING. Activating changes what blocks a merge on
+# this repo, which is a policy decision, not a code one. Two things to settle
+# first:
+#
+#   1. check:gradients currently FAILS on main. One real violation:
+#      apps/pairme/src/screens/Q3Budget.jsx:60. It is a range-slider thumb drawn
+#      with a hard-stop radial-gradient (solid disc to 9px, 2.5px accent ring to
+#      11.5px, transparent from 12px). Zero blending. It satisfies the RATIONALE
+#      of the guard's existing carve-out ("structural pattern fills with hard
+#      stops, not color blends") but not its LETTER, which is a prefix match on
+#      `repeating-`. Either widen the carve-out or restyle the thumb. The
+#      obvious flat-CSS restyle is not free: the 44px box is the WCAG touch
+#      target, and a bordered 23px circle inside it needs a child element or a
+#      pseudo-element, which inline styles cannot express.
+#
+#   2. Whether a red typecheck should block, given 23 grandfathered signatures.
+#
+# This supersedes the four single-purpose parked files
+# (check-credential-logging, check-emdash, check-gradients, typecheck), which
+# can be deleted on activation. They were parked because the PAT lacked the
+# `workflow` scope; the current gh credential HAS it, so that blocker is gone.
+
+name: gates
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  gates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+
+      # `npm ci` is mandatory, not an optimisation. node_modules is no longer
+      # tracked (it had been committed as a mode-120000 symlink pointing at an
+      # absolute path on one developer's machine, which is dangling everywhere
+      # else). Without this step tsc cannot launch.
+      - run: npm ci
+
+      # Ordered cheapest-first so a copy-rule violation does not wait on tsc.
+      # `if: always()` on each so one failure still reports the others: a run
+      # that stops at the first red hides how much work is actually queued.
+      - name: check:emdash
+        if: always()
+        run: npm run check:emdash
+
+      - name: check:gradients
+        if: always()
+        run: npm run check:gradients
+
+      - name: check:credential-logging
+        if: always()
+        run: npm run check:credlog
+
+      # Runs LAST because it is the slowest, and it now FAILS CLOSED: a tsc that
+      # cannot launch, or that exits non-zero with no parseable TSxxxx output,
+      # is a failure rather than a pass. Before that change this step would have
+      # gone green on a broken install and certified nothing.
+      - name: typecheck
+        if: always()
+        run: npm run typecheck
+
+      - name: unit tests
+        if: always()
+        run: npx vitest run --no-file-parallelism

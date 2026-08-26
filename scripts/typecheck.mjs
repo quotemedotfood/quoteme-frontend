@@ -40,17 +40,58 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const BASELINE_PATH = join(__dirname, 'typecheck-baseline.json');
 const UPDATE = process.argv.includes('--update-baseline');
 
-// tsc exits non-zero when it finds errors; capture stdout regardless.
+// FAIL CLOSED. tsc exits non-zero when it finds errors, so a non-zero exit is
+// expected and its stdout must still be captured. But there are two other ways
+// to exit non-zero, and this function used to be blind to both:
+//
+//   * tsc never launched (no node_modules, no typescript, ENOENT on npx).
+//   * tsc launched and died on something that is not a type error: a bad
+//     tsconfig, an OOM kill, a crash. Exit 2, no `TSxxxx` lines to parse.
+//
+// In both cases the old code returned the stderr text, the TSxxxx parser found
+// nothing in it, "0 errors" met an empty diff against the baseline, and the
+// gate printed a PASS. A gate that reports success when it could not run is
+// worse than no gate: it trains people to trust a green that means nothing.
+// This is the same defect class as a test that re-declares the value it claims
+// to be checking.
+//
+// Returns { output, status, launchError } so the caller can tell the three
+// cases apart. `status` is null when the process never started.
 function runTsc() {
   try {
-    execFileSync('npx', ['tsc', '--noEmit', '--pretty', 'false'], {
+    const out = execFileSync('npx', ['tsc', '--noEmit', '--pretty', 'false'], {
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'pipe'],
     });
-    return '';
+    return { output: out || '', status: 0, launchError: null };
   } catch (e) {
-    return `${e.stdout || ''}${e.stderr || ''}`;
+    // execFileSync sets `status` to the exit code when the child ran, and
+    // leaves it null/undefined when spawn itself failed (then `code` holds
+    // e.g. 'ENOENT').
+    const status = typeof e.status === 'number' ? e.status : null;
+    return {
+      output: `${e.stdout || ''}${e.stderr || ''}`,
+      status,
+      launchError: status === null ? (e.code || e.message || 'spawn failed') : null,
+    };
   }
+}
+
+// Hard stop, used for every "the gate could not do its job" path. Distinct
+// wording from the FAILED-with-new-errors path so the two are never confused
+// in a log.
+function abortUnverifiable(reason, detail) {
+  console.error(`\n✗ typecheck gate COULD NOT RUN — ${reason}\n`);
+  if (detail) console.error(`${detail.trim()}\n`);
+  console.error(
+    'This is NOT a pass. tsc did not produce a parseable result, so nothing\n' +
+      'was verified. Most often this is a missing toolchain in a fresh clone or\n' +
+      'worktree; `node_modules` is no longer tracked (deliberately, it used to be\n' +
+      'committed as an absolute-path symlink), so run:\n' +
+      '  npm ci\n' +
+      'A bad tsconfig or an OOM kill reaches here too.\n'
+  );
+  process.exit(1);
 }
 
 // Parse lines like:
@@ -78,8 +119,32 @@ function keyOf(err) {
   return `${err.file}::${err.code}::${normMsg}`;
 }
 
-const output = runTsc();
+const { output, status, launchError } = runTsc();
+
+// Gate 1: tsc never started. Nothing was checked.
+if (launchError) {
+  abortUnverifiable(`tsc could not be launched (${launchError})`, output);
+}
+
 const errors = parse(output);
+
+// Gate 2: tsc ran, exited non-zero, and produced nothing this script can read
+// as a type error. tsc uses exit 1 for "type errors found" and exit 2 for a
+// fatal problem (bad tsconfig, crash), so a non-zero exit with zero parsed
+// errors means the run is unusable, not clean. Reporting a pass here is the bug
+// this gate exists to prevent.
+if (status !== 0 && errors.length === 0) {
+  abortUnverifiable(
+    `tsc exited ${status} but produced no parseable TSxxxx diagnostics`,
+    output,
+  );
+}
+
+// Gate 3: --update-baseline must never be able to write an EMPTY baseline off a
+// broken run. That would silently grandfather the entire codebase.
+if (UPDATE && errors.length === 0 && status !== 0) {
+  abortUnverifiable('refusing to write a baseline from an unusable tsc run', output);
+}
 
 if (UPDATE) {
   const baseline = {};

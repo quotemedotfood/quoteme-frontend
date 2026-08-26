@@ -36,7 +36,26 @@ import ts from 'typescript';
 import fs from 'node:fs';
 import path from 'node:path';
 
-const ROOT = process.argv[2] || 'src';
+// SCOPE. This used to be `process.argv[2] || 'src'`, a single root defaulting to
+// src. Both the npm script (`check:gradients`) and the CI workflow invoke it
+// bare, so `apps/` was NEVER scanned and the PairMe app was outside the guard
+// entirely from the day the guard landed. It reported OK while holding a real
+// violation.
+//
+// Now: every argument is a root, and with no arguments the defaults are src AND
+// apps. A root that does not exist is skipped rather than fatal, so this works
+// in a checkout without apps/.
+const DEFAULT_ROOTS = ['src', 'apps'];
+const ROOTS = process.argv.slice(2).length > 0 ? process.argv.slice(2) : DEFAULT_ROOTS;
+
+const missingRoots = ROOTS.filter((r) => !fs.existsSync(r));
+const presentRoots = ROOTS.filter((r) => fs.existsSync(r));
+
+if (presentRoots.length === 0) {
+  console.error(`check:gradients: none of the requested roots exist: ${ROOTS.join(', ')}`);
+  console.error('Refusing to report OK on an empty scan. Pass a real path, or run from the repo root.');
+  process.exit(1);
+}
 
 // Tailwind gradient utilities: bg-gradient-to-r / -l / -t / -b / -br ...
 const TW_RE = /\bbg-gradient-to-/;
@@ -154,7 +173,7 @@ function scanCss(file, text, offenders) {
   }
 }
 
-const files = walk(ROOT, []);
+const files = presentRoots.flatMap((r) => walk(r, []));
 const offenders = [];
 
 for (const file of files) {
@@ -168,7 +187,10 @@ for (const file of files) {
 }
 
 if (offenders.length > 0) {
-  console.log(`check:gradients: found ${offenders.length} gradient violation(s):`);
+  console.log(
+    `check:gradients: found ${offenders.length} gradient violation(s) ` +
+      `in ${presentRoots.join(', ')}:`,
+  );
   for (const o of offenders) console.log(`  ${o.file}:${o.line}: ${o.text}`);
   console.log('');
   console.log('QuoteMe doctrine (src/styles/newspaper.css:6): No gradients. One');
@@ -179,6 +201,12 @@ if (offenders.length > 0) {
   console.log('this guard allows. See scripts/check-gradients.mjs for scope.');
   process.exit(1);
 } else {
-  console.log('check:gradients: no gradient fills found. OK.');
+  console.log(
+    `check:gradients: no gradient fills found in ${presentRoots.join(', ')} ` +
+      `(${files.length} files). OK.`,
+  );
+  if (missingRoots.length > 0) {
+    console.log(`  (skipped, not present: ${missingRoots.join(', ')})`);
+  }
   process.exit(0);
 }
