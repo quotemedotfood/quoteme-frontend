@@ -84,10 +84,11 @@ function roleBadge(role: string) {
   );
 }
 
-// One row, one human label, for every row-scoped control in the Actions cell.
-// Falls back to the email because first/last are nullable on an
+// One row, one human label, used by every row-scoped control in the Actions
+// cell. Falls back to the email because first/last are nullable on an
 // invited-but-never-completed account, and an unnamed row still has to be
-// tellable apart from its neighbours.
+// tellable apart from its neighbours. Extracted from the expression that was
+// already inlined on the edit pencil so there is one copy rather than several.
 function userLabel(u: AdminUser): string {
   return [u.first_name, u.last_name].filter(Boolean).join(' ') || u.email;
 }
@@ -593,6 +594,7 @@ export function QMAdminUsers() {
                                   size="sm"
                                   disabled={actionLoading === u.id}
                                   onClick={() => handleStatusChange(u.id, 'inactive')}
+                                  aria-label={`Deactivate ${userLabel(u)}`}
                                   className="text-yellow-600 border-yellow-300 hover:bg-yellow-50"
                                 >
                                   Deactivate
@@ -616,6 +618,7 @@ export function QMAdminUsers() {
                                   size="sm"
                                   disabled={actionLoading === u.id}
                                   onClick={() => handleStatusChange(u.id, 'active')}
+                                  aria-label={`Activate ${userLabel(u)}`}
                                   className="text-green-600 border-green-300 hover:bg-green-50"
                                 >
                                   Activate
@@ -638,6 +641,7 @@ export function QMAdminUsers() {
                                 size="sm"
                                 disabled={actionLoading === u.id}
                                 onClick={() => handleResendInvite(u.id, u.email)}
+                                aria-label={`Resend invite to ${userLabel(u)}`}
                                 className="text-blue-600 border-blue-300 hover:bg-blue-50"
                               >
                                 Resend Invite
@@ -649,6 +653,7 @@ export function QMAdminUsers() {
                                 size="sm"
                                 disabled={actionLoading === u.id}
                                 onClick={() => handleResendWelcome(u.id, u.email)}
+                                aria-label={`Resend welcome to ${userLabel(u)}`}
                                 className="text-teal-600 border-teal-300 hover:bg-teal-50"
                               >
                                 Resend Welcome
@@ -660,6 +665,7 @@ export function QMAdminUsers() {
                                 size="sm"
                                 disabled={actionLoading === u.id}
                                 onClick={() => handleStatusChange(u.id, 'active')}
+                                aria-label={`Unarchive ${userLabel(u)}`}
                                 className="text-green-600 border-green-300 hover:bg-green-50"
                               >
                                 Unarchive

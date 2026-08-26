@@ -73,3 +73,46 @@ describe('QMAdminUsers - Archive button accessible name', () => {
     });
   });
 });
+
+// The rest of the Actions cell is the same class B defect as Archive: a
+// visible verb with no record. Same ruling applied, target only. The two
+// Resend buttons take "to" because a bare append reads as gibberish.
+describe('QMAdminUsers - remaining row status actions', () => {
+  it('names Deactivate and Resend Invite on an active row that has never signed in', async () => {
+    getAdminUsers.mockResolvedValueOnce({
+      data: [user({ status: 'active', last_login_at: null })],
+    });
+    render(<MemoryRouter><QMAdminUsers /></MemoryRouter>);
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Deactivate Jamie Rivera' })).toBeInTheDocument();
+    });
+    expect(screen.getByRole('button', { name: 'Resend invite to Jamie Rivera' })).toBeInTheDocument();
+  });
+
+  it('names Activate on an inactive row', async () => {
+    getAdminUsers.mockResolvedValueOnce({ data: [user({ status: 'inactive' })] });
+    render(<MemoryRouter><QMAdminUsers /></MemoryRouter>);
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Activate Jamie Rivera' })).toBeInTheDocument();
+    });
+  });
+
+  it('names Unarchive on an archived row', async () => {
+    getAdminUsers.mockResolvedValueOnce({ data: [user({ status: 'archived' })] });
+    render(<MemoryRouter><QMAdminUsers /></MemoryRouter>);
+
+    // Archived rows are filtered out until the operator opts in. The toggle is
+    // the page's only checkbox; it is a bare input inside a <label>, with no
+    // htmlFor and no id, so getByLabelText cannot resolve it.
+    await waitFor(() => {
+      expect(screen.getByRole('checkbox')).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByRole('checkbox'));
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Unarchive Jamie Rivera' })).toBeInTheDocument();
+    });
+  });
+});
