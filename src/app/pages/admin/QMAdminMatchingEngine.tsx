@@ -100,12 +100,17 @@ function RuleSection({ title, icon: Icon, count, children, defaultOpen = false }
 // ═══════════════════════════════════════════════════════════════════════
 // Rules Tab
 // ═══════════════════════════════════════════════════════════════════════
-function RulesTab({ rules, onRefresh }: { rules: MatchingEngineRules | null; onRefresh: () => void }) {
+export function RulesTab({ rules, onRefresh }: { rules: MatchingEngineRules | null; onRefresh: () => void }) {
   const [deleting, setDeleting] = useState<string | null>(null);
   const [promoting, setPromoting] = useState<string | null>(null);
 
-  const handleDelete = async (type: string, id: string) => {
-    if (!confirm('Deactivate this rule? It can be re-enabled later.')) return;
+  // The endpoint is DELETE, but matching_engine#delete_rule does
+  // `record.update!(is_active: false)` and logs "Deactivated". Nothing is
+  // destroyed, so "Deactivate" is the verb that tells the truth and the one
+  // used in both the confirm and the accessible name. The trash glyph is the
+  // remaining liar; changing it is a visual call, not an a11y one.
+  const handleDelete = async (type: string, id: string, name: string) => {
+    if (!confirm(`Deactivate "${name}"? It can be re-enabled later.`)) return;
     setDeleting(id);
     await deleteMatchingEngineRule(type, id);
     setDeleting(null);
@@ -155,7 +160,7 @@ function RulesTab({ rules, onRefresh }: { rules: MatchingEngineRules | null; onR
                   {s.prepared_sku_blocked && <span className="text-xs text-red-500 font-medium">prepared SKU blocked</span>}
                 </div>
               </div>
-              <button onClick={() => handleDelete('sauce_expansion', s.id)} disabled={deleting === s.id} className="text-gray-300 hover:text-red-400 transition-colors p-1"><Trash2 size={14} /></button>
+              <button onClick={() => handleDelete('sauce_expansion', s.id, toTitleCase(s.sauce_name))} disabled={deleting === s.id} aria-label={`Deactivate ${toTitleCase(s.sauce_name)}`} className="text-gray-300 hover:text-red-400 transition-colors p-1"><Trash2 size={14} aria-hidden="true" /></button>
             </div>
           ))}
         </div>
@@ -251,7 +256,7 @@ function RulesTab({ rules, onRefresh }: { rules: MatchingEngineRules | null; onR
                 <span className="text-xs text-gray-400 ml-2">→ {fg.format_tag}</span>
                 {fg.blocked_in_roles.length > 0 && <span className="text-xs text-red-500 ml-2">blocked in: {fg.blocked_in_roles.join(', ')}</span>}
               </div>
-              <button onClick={() => handleDelete('format_gate', fg.id)} disabled={deleting === fg.id} className="text-gray-300 hover:text-red-400 transition-colors p-1"><Trash2 size={14} /></button>
+              <button onClick={() => handleDelete('format_gate', fg.id, fg.ingredient_pattern)} disabled={deleting === fg.id} aria-label={`Deactivate ${fg.ingredient_pattern}`} className="text-gray-300 hover:text-red-400 transition-colors p-1"><Trash2 size={14} aria-hidden="true" /></button>
             </div>
           ))}
         </div>
@@ -267,7 +272,7 @@ function RulesTab({ rules, onRefresh }: { rules: MatchingEngineRules | null; onR
                 <span className="text-xs text-gray-400 ml-2">({sf.category})</span>
                 {sf.synonyms.length > 0 && <span className="text-xs text-[#7FAEC2] ml-2">= {sf.synonyms.join(', ')}</span>}
               </div>
-              <button onClick={() => handleDelete('synonym', sf.id)} disabled={deleting === sf.id} className="text-gray-300 hover:text-red-400 transition-colors p-1"><Trash2 size={14} /></button>
+              <button onClick={() => handleDelete('synonym', sf.id, sf.canonical_name)} disabled={deleting === sf.id} aria-label={`Deactivate ${sf.canonical_name}`} className="text-gray-300 hover:text-red-400 transition-colors p-1"><Trash2 size={14} aria-hidden="true" /></button>
             </div>
           ))}
         </div>
@@ -283,7 +288,7 @@ function RulesTab({ rules, onRefresh }: { rules: MatchingEngineRules | null; onR
                 <span className={`text-xs ml-2 px-1.5 py-0.5 rounded ${il.sensitivity === 'locked' ? 'bg-red-50 text-red-600' : il.sensitivity === 'sensitive' ? 'bg-amber-50 text-amber-600' : 'bg-green-50 text-green-600'}`}>{il.sensitivity}</span>
                 {il.notes && <p className="text-xs text-gray-400 mt-0.5">{il.notes}</p>}
               </div>
-              <button onClick={() => handleDelete('identity_lock', il.id)} disabled={deleting === il.id} className="text-gray-300 hover:text-red-400 transition-colors p-1"><Trash2 size={14} /></button>
+              <button onClick={() => handleDelete('identity_lock', il.id, il.ingredient_pattern)} disabled={deleting === il.id} aria-label={`Deactivate ${il.ingredient_pattern}`} className="text-gray-300 hover:text-red-400 transition-colors p-1"><Trash2 size={14} aria-hidden="true" /></button>
             </div>
           ))}
         </div>
@@ -1500,8 +1505,18 @@ function DiagnoseTab() {
                               placeholder="Reason"
                             />
                           </div>
-                          <button onClick={() => handleDeleteRule(idx)} className="text-red-400 hover:text-red-600 p-1">
-                            <Trash2 size={14} />
+                          <button
+                            onClick={() => handleDeleteRule(idx)}
+                            // These are PROPOSED rules the engine suggested and the
+                            // operator is still editing. handleDeleteRule is local
+                            // state only, so there is no persisted record and no id
+                            // to key on. target_name is the field being edited on
+                            // this row, and it is empty until they type on a rule
+                            // added by hand, hence the positional fallback.
+                            aria-label={`Remove ${rule.target_name.trim() || `rule ${idx + 1}`}`}
+                            className="text-red-400 hover:text-red-600 p-1"
+                          >
+                            <Trash2 size={14} aria-hidden="true" />
                           </button>
                         </div>
                         {rule.affects_positions.length > 0 && (

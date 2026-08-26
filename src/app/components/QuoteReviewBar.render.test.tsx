@@ -42,3 +42,16 @@ describe('QuoteReviewBar — real render smoke test (quoting flow)', () => {
     expect(submitButton).toBeEnabled();
   });
 });
+
+// The two thumbs are the only icon-only controls on this bar and they carried
+// only a `title`. Same defect class the QM-admin pencil and the Product
+// Pipeline Claim buttons already had fixed on main; this bar was missed
+// because it is on the quoting flow rather than an admin route.
+describe('QuoteReviewBar - thumbs accessible names', () => {
+  it('names both rating buttons by the answer they give', () => {
+    render(<QuoteReviewBar quoteId="quote-123" onMatchesUpdated={() => {}} />);
+
+    expect(screen.getByRole('button', { name: 'These matches look good' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'These matches need fixes' })).toBeInTheDocument();
+  });
+});
