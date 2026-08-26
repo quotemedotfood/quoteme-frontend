@@ -602,6 +602,7 @@ export function QMAdminUsers() {
                                   size="sm"
                                   disabled={actionLoading === u.id}
                                   onClick={() => handleStatusChange(u.id, 'archived')}
+                                  aria-label={`Archive ${userLabel(u)}`}
                                   className="text-gray-500 border-gray-300 hover:bg-gray-50"
                                 >
                                   Archive
@@ -624,6 +625,7 @@ export function QMAdminUsers() {
                                   size="sm"
                                   disabled={actionLoading === u.id}
                                   onClick={() => handleStatusChange(u.id, 'archived')}
+                                  aria-label={`Archive ${userLabel(u)}`}
                                   className="text-gray-500 border-gray-300 hover:bg-gray-50"
                                 >
                                   Archive
