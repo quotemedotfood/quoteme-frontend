@@ -1688,7 +1688,7 @@ const CAT_COLORS: Record<string, string> = {
   charcuterie: 'bg-rose-100 text-rose-800',
 };
 
-function CatalogsTab() {
+export function CatalogsTab() {
   const [searchParams] = useSearchParams();
   const urlCatalogId = searchParams.get('catalog_id') || '';
   const urlBrand = searchParams.get('brand') || '';
@@ -2041,6 +2041,15 @@ function CatalogsTab() {
                         ref={el => { if (el) el.indeterminate = someSel && !allSel; }}
                         onChange={toggleAll} className="rounded border-gray-300 text-[#A5CFDD]" />
                     </th>
+                    {/* Item # is the only column here that is unique per row.
+                        Product, Brand and Pack can be byte-identical across
+                        genuinely different products: on the Fish Guys catalog
+                        10 of the first 50 rows render identically without it,
+                        three at a time, while an operator ticks checkboxes
+                        that drive bulk category writes. Rendered exactly as
+                        the API returns it; decoding the suffix is a separate
+                        change. */}
+                    <th className="px-3 py-2">Item #</th>
                     <th className="px-3 py-2">Product</th>
                     <th className="px-3 py-2">Brand</th>
                     <th className="px-3 py-2">Pack</th>
@@ -2054,6 +2063,9 @@ function CatalogsTab() {
                       <td className="px-3 py-2">
                         <input type="checkbox" checked={selected.has(p.id)} onChange={() => toggleSelect(p.id)}
                           className="rounded border-gray-300 text-[#A5CFDD]" />
+                      </td>
+                      <td className="px-3 py-2 text-gray-500 font-mono whitespace-nowrap">
+                        {p.item_number || <span className="text-gray-300">-</span>}
                       </td>
                       <td className="px-3 py-2 text-[#2A2A2A] font-medium">{p.product_name}</td>
                       <td className="px-3 py-2 text-gray-500">{p.brand || '-'}</td>
@@ -2069,7 +2081,7 @@ function CatalogsTab() {
                     </tr>
                   ))}
                   {(!products?.products || products.products.length === 0) && (
-                    <tr><td colSpan={6} className="px-3 py-6 text-center text-gray-400">No products</td></tr>
+                    <tr><td colSpan={7} className="px-3 py-6 text-center text-gray-400">No products</td></tr>
                   )}
                 </tbody>
               </table>
