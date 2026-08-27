@@ -14,6 +14,25 @@ import { getAdminUsers, updateAdminUser, AdminUser } from '../../services/adminA
 import { userStatusPill } from '../../utils/userDisplayStatus';
 import { AdminEmptyState } from './_adminEmptyState';
 
+// Every role the backend will accept. Source of truth is the inclusion
+// validation on User (app/models/user.rb:17); keep this list in step with it.
+//
+// The filter used to hard-code only the first four, so group_admin, brand,
+// buyer and restaurant_admin rows were unreachable through it: on Test that
+// is 12 of 49 users hidden behind a control that looks complete. buyer in
+// particular is created by the guest-conversion and registration paths, so
+// it appears without anyone choosing it.
+const ROLE_OPTIONS: Array<{ value: string; label: string }> = [
+  { value: 'rep', label: 'Rep' },
+  { value: 'chef', label: 'Chef' },
+  { value: 'distributor_admin', label: 'Dist Admin' },
+  { value: 'quoteme_admin', label: 'QM Admin' },
+  { value: 'group_admin', label: 'Group Admin' },
+  { value: 'restaurant_admin', label: 'Restaurant Admin' },
+  { value: 'buyer', label: 'Buyer' },
+  { value: 'brand', label: 'Brand' },
+];
+
 type SortField = 'name' | 'email' | 'role' | 'status' | 'created_at';
 type SortDir = 'asc' | 'desc';
 
@@ -99,7 +118,14 @@ export function QMAdminSignups() {
           cmp = a.role.localeCompare(b.role);
           break;
         case 'status':
-          cmp = a.status.localeCompare(b.status);
+          // Sort by the label the operator can actually see. The Status cell
+          // renders userStatusPill(u), which reads the derived display_status
+          // ("Invite sent" for an account nobody has ever signed into), while
+          // the raw `status` column is set to "active" the moment an admin
+          // creates the user. Sorting on the raw column grouped every
+          // never-signed-in account under Active, so the header reordered the
+          // table by a value that appears nowhere on screen.
+          cmp = userStatusPill(a).label.localeCompare(userStatusPill(b).label);
           break;
         case 'created_at':
           cmp = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
@@ -153,10 +179,9 @@ export function QMAdminSignups() {
           className="border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white"
         >
           <option value="">All Roles</option>
-          <option value="rep">Rep</option>
-          <option value="chef">Chef</option>
-          <option value="distributor_admin">Dist Admin</option>
-          <option value="quoteme_admin">QM Admin</option>
+          {ROLE_OPTIONS.map(({ value, label }) => (
+            <option key={value} value={value}>{label}</option>
+          ))}
         </select>
         <label className="flex items-center gap-2 text-sm text-[#4F4F4F] cursor-pointer">
           <input
