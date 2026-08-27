@@ -460,70 +460,28 @@ export function getGuestToken(): string | null {
 // Every call site in this file goes through here (see the `await fetch(` ->
 // `await fetchWithRetry(` sites below), so the retry-once behavior and the
 // plain-language fallback copy are centralized in one place.
-const NETWORK_RETRY_DELAY_MS = 600;
-export const NETWORK_FAILURE_MESSAGE =
-  "That didn't go through, give it a second and try again.";
+// MOVED to ./requestPolicy. The retry rule below is unchanged in behaviour;
+// it now lives in one module shared with adminApi.ts, which had no retry and no
+// timeout at all, and it gained a TIMEOUT it never had. Re-exported here so the
+// existing importers (api.fetchRetry.test.ts) keep working.
+//
+// The rule worth restating at the call site: a MUTATION that times out is
+// UNKNOWN, not failed. It is never retried, and its copy does not claim failure,
+// because the server may already have acted and "failed" on a send that
+// succeeded is how a chef gets two quotes.
+export {
+  NETWORK_FAILURE_MESSAGE,
+  TIMEOUT_READ_MESSAGE,
+  TIMEOUT_MUTATION_MESSAGE,
+  NetworkFetchFailedError,
+  RequestTimedOutError,
+  DEFAULT_TIMEOUT_MS,
+  SLOW_TIMEOUT_MS,
+} from './requestPolicy';
 
-function isNetworkFetchFailure(error: unknown): boolean {
-  // The Fetch API only rejects (as opposed to resolving with a non-ok
-  // response) for network-level failures — connection refused, DNS failure,
-  // CORS block, offline, etc. Those surface as a TypeError.
-  return error instanceof TypeError;
-}
+import { fetchWithPolicy } from './requestPolicy';
 
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-// Thrown only after BOTH the original attempt and the single retry fail with
-// a network-class error. Callers' existing `catch (error) { ... error
-// instanceof Error ? error.message : 'Network error' }` blocks pick this up
-// for free — `.message` is already the plain-language copy above.
-export class NetworkFetchFailedError extends Error {}
-
-// BUG #28: a raw network-level failure (TypeError) tells the client nothing
-// about whether the request actually reached the server. For a mutating
-// verb (POST/PATCH/PUT/DELETE) that is a real risk, not just a cosmetic
-// one: if the connection drops AFTER the server already processed the
-// request (e.g. a Railway instance swap cutting the response mid-flight),
-// the original request already took effect server-side (the email is
-// already sent, the record already deleted). Blindly retrying in that case
-// silently re-fires the same non-idempotent action a second time, which is
-// exactly the "rep sends a quote and the chef gets it twice" class of bug,
-// and it lives entirely inside this shared helper, below every call site's
-// own in-flight guard (useAsyncMutation's ref cannot see or block a retry
-// that happens inside a single mutationFn() call).
-// Only safe/idempotent methods (GET/HEAD/OPTIONS; the default when no
-// method is given) get the retry-once treatment. Mutating verbs get a
-// single attempt: a network-class failure there surfaces the same
-// plain-language copy immediately, with no second request sent.
-function isSafeRetryableMethod(method?: string): boolean {
-  const normalized = (method || 'GET').toUpperCase();
-  return normalized === 'GET' || normalized === 'HEAD' || normalized === 'OPTIONS';
-}
-
-async function fetchWithRetry(input: string, init?: RequestInit): Promise<Response> {
-  const retryable = isSafeRetryableMethod(init?.method);
-  try {
-    return await fetch(input, init);
-  } catch (firstError) {
-    if (!isNetworkFetchFailure(firstError)) {
-      throw firstError;
-    }
-    if (!retryable) {
-      throw new NetworkFetchFailedError(NETWORK_FAILURE_MESSAGE);
-    }
-    await delay(NETWORK_RETRY_DELAY_MS);
-    try {
-      return await fetch(input, init);
-    } catch (secondError) {
-      if (!isNetworkFetchFailure(secondError)) {
-        throw secondError;
-      }
-      throw new NetworkFetchFailedError(NETWORK_FAILURE_MESSAGE);
-    }
-  }
-}
+const fetchWithRetry = fetchWithPolicy;
 
 // Helper to make authenticated requests
 async function fetchWithAuth<T>(
