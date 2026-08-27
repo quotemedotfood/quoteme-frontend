@@ -59,8 +59,23 @@ export function QMAdminUnassociatedReps() {
     setLoading(true);
     const res = await getAdminUsers();
     if (res.data) {
-      // Filter to unassociated reps client-side
-      setUsers(res.data.filter((u) => u.rep_profile && !u.rep_profile.distributor_id));
+      // Filter to unassociated reps client-side.
+      //
+      // This used to read `u.rep_profile && !u.rep_profile.distributor_id`,
+      // which requires a rep_profile to EXIST before a rep can be counted as
+      // unassociated. A rep-role user with no rep_profile at all is the most
+      // unassociated a rep can be, and it was the one case the page could
+      // never show: the row was hidden and the page reported zero, so the
+      // count and the empty table agreed with each other and both were wrong.
+      //
+      // Keyed on the role instead, so the two ways a rep can lack a
+      // distributor are both counted: no profile, or a profile pointing at
+      // nothing. The assign path already supports both, since
+      // admin/users_controller#assign_distributor does
+      // `user.rep_profile || user.create_rep_profile!`.
+      setUsers(
+        res.data.filter((u) => u.role === 'rep' && !u.rep_profile?.distributor_id),
+      );
     } else {
       setError(res.error || 'Failed to load');
     }
