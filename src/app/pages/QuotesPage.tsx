@@ -17,27 +17,47 @@ import { formatCurrency } from '../utils/formatCurrency';
 import { isSentImmutableQuote, SENT_READ_ONLY_MARKER } from '../utils/quoteImmutability';
 
 /** Statuses where the quote workflow is closed. Requote is hidden for these. */
-// Closed = Requote is hidden. This list is checked against QuoteListItem.status
-// ONLY (see isClosedQuote below and its two call sites), so it may contain
-// nothing but valid STATUS values.
+// Closed = Requote is hidden. TWO AXES, because a quote's lifecycle position is
+// recorded on two columns and either one can close it.
 //
-// It previously read ['won', 'confirmed', 'accepted', 'declined']. Three of
-// those four are J1 `state` values, not statuses: Quote::VALID_STATUSES is
-// [processing draft pending assigned sent won lost expired]. The backend
-// validates inclusion, so 'confirmed' / 'accepted' / 'declined' could never
-// arrive on `status` and only 'won' ever matched. Trimming them is
-// behaviour-identical.
+// MOOSE RULING 2026-08-26, both parts:
+//   * Requote must NOT be offered on lost quotes. 'lost' is terminal server-side
+//     (Quote::VALID_TRANSITIONS maps it to []) and was absent here, so Requote
+//     was being offered on quotes that can never move again.
+//   * State-based closure IS honoured now that the index endpoint exposes
+//     `state` on list rows (QuoteListItem.state).
 //
-// TWO OPEN QUESTIONS, deliberately NOT changed here because either would be a
-// behaviour change needing a ruling rather than a cleanup:
-//   1. 'lost' is a valid terminal status (VALID_TRANSITIONS maps it to []) and
-//      is absent, so Requote is currently OFFERED on lost quotes. Should it be?
-//      ('expired' legitimately belongs out: it transitions back to 'draft'.)
-//   2. The index endpoint now also exposes `state`, so state-based closure
-//      could be honoured here. That is a widening, not a repair.
-export const CLOSED_STATUSES = ['won'] as const;
-export const isClosedQuote = (status: string): boolean =>
-  (CLOSED_STATUSES as readonly string[]).includes(status);
+// DELIBERATELY EXCLUDED, each for a stated reason rather than by omission:
+//   status 'expired'  requotable BY DESIGN. VALID_TRANSITIONS maps expired to
+//                     [draft], so refreshing it is the entire point.
+//   state  'expired'  the J1 grace period elapsed without chef action. Same
+//                     logic: a new quote is the remedy, so do not hide Requote.
+//   state  'confirmed' / quote_type 'confirmed'
+//                     STILL OPEN. The rep has sent a priced quote back and the
+//                     chef has not answered (CommandCenter files this under
+//                     "waiting on chef", not closed). isLockedQuoteState treats
+//                     it as locked for DISPLAY, which is a different question
+//                     from whether fresh pricing may be requested. Not decided
+//                     here; asserted at today's behaviour in the test so a
+//                     ruling trips the suite instead of passing silently.
+//
+// RELATIONSHIP TO THE OTHER TWO PREDICATES, so a fourth does not appear:
+//   isClosedQuote (here)         may I ask for fresh pricing?  status+state
+//   isSentImmutableQuote         may I write to this record?   sent_at+status+state
+//   isLockedQuoteState           should CTAs be suppressed?    +quote_type, widest
+// All three are legitimately different questions. Do not collapse them.
+export const CLOSED_STATUSES = ['won', 'lost'] as const;
+export const CLOSED_STATES = ['accepted', 'declined'] as const;
+
+export const isClosedQuote = ({
+  status,
+  state,
+}: {
+  status?: string | null;
+  state?: string | null;
+}): boolean =>
+  (CLOSED_STATUSES as readonly string[]).includes(status ?? '') ||
+  (CLOSED_STATES as readonly string[]).includes(state ?? '');
 
 /**
  * Pure display mapping for quote status badges.
@@ -503,7 +523,7 @@ export function QuotesPage() {
                       Order Guide
                     </button>
                   )}
-                  {!isClosedQuote(quote.status) && (
+                  {!isClosedQuote(quote) && (
                     <button
                       className="flex items-center gap-1.5 text-xs text-gray-600 hover:text-[#F2993D] transition-colors disabled:opacity-50"
                       onClick={() => handleRequote(quote.id)}
@@ -689,7 +709,7 @@ export function QuotesPage() {
                               <FileSpreadsheet className="w-4 h-4 text-[#F2993D]" />
                             </button>
                           )}
-                          {!isClosedQuote(quote.status) && (
+                          {!isClosedQuote(quote) && (
                             <button
                               className="p-1 hover:bg-gray-100 rounded transition-colors disabled:opacity-50"
                               title="Requote"
