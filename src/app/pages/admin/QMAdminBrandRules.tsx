@@ -21,6 +21,7 @@ import {
   auditBrandRules,
   seedBrandRules,
 } from '../../services/adminApi';
+import { ADMIN_PAGE_FRAME, ADMIN_PAGE_FRAME_STYLE } from '../../components/admin/adminPageFrame';
 
 // ─── Category color mapping ────────────────────────────────────────────────────
 
@@ -260,7 +261,7 @@ export function QMAdminBrandRules() {
   const displayedRules = rules;
 
   return (
-    <div className="p-6 md:p-10 max-w-7xl">
+    <div className={ADMIN_PAGE_FRAME} style={ADMIN_PAGE_FRAME_STYLE}>
       {/* Header */}
       <div className="flex items-start justify-between mb-6">
         <div>

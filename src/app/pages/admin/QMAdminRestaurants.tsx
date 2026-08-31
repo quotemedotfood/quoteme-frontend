@@ -33,6 +33,7 @@ import { handleImpersonate } from '../../utils/impersonate';
 import { AdminEmptyState } from './_adminEmptyState';
 import { AddRestaurantModal } from './_addRestaurantModal';
 import { ManageAdminDrawer } from './_manageAdminDrawer';
+import { ADMIN_PAGE_FRAME, ADMIN_PAGE_FRAME_STYLE } from '../../components/admin/adminPageFrame';
 
 // Menu coverage is presence, not a quality score: six recognized menu kinds,
 // each rendered as an icon + a visible text label (never icon-only). The `main`
@@ -160,7 +161,7 @@ export function QMAdminRestaurants() {
   }, [restaurants, search, sortField, sortDir]);
 
   return (
-    <div className="p-6 md:p-10 max-w-7xl">
+    <div className={ADMIN_PAGE_FRAME} style={ADMIN_PAGE_FRAME_STYLE}>
       <h1 className="text-2xl font-bold text-[#2A2A2A] mb-6" style={{ fontFamily: "'Playfair Display', serif" }}>
         Restaurants & Groups
       </h1>

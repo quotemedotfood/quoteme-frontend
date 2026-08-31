@@ -23,6 +23,7 @@ import {
 } from '../../services/adminApi';
 import { userStatusPill } from '../../utils/userDisplayStatus';
 import { AdminEmptyState } from './_adminEmptyState';
+import { ADMIN_PAGE_FRAME, ADMIN_PAGE_FRAME_STYLE } from '../../components/admin/adminPageFrame';
 
 type SortField = 'name' | 'email' | 'status' | 'last_login_at' | 'created_at';
 type SortDir = 'asc' | 'desc';
@@ -318,7 +319,7 @@ export function QMAdminUsers() {
   };
 
   return (
-    <div className="p-6 md:p-10 max-w-7xl">
+    <div className={ADMIN_PAGE_FRAME} style={ADMIN_PAGE_FRAME_STYLE}>
       <div className="flex items-center justify-between mb-6">
         <h1
           className="text-2xl font-bold text-[#2A2A2A]"

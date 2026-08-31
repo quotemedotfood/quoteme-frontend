@@ -9,6 +9,7 @@ import {
 } from '../../services/adminApi';
 import { Button } from '../../components/ui/button';
 import { userStatusPill } from '../../utils/userDisplayStatus';
+import { ADMIN_PAGE_FRAME, ADMIN_PAGE_FRAME_STYLE } from '../../components/admin/adminPageFrame';
 
 const ROLE_BADGE: Record<string, string> = {
   quoteme_admin: 'bg-purple-100 text-purple-700',
@@ -114,7 +115,7 @@ export function QMAdminUserDetailPage() {
   const statusPill = userStatusPill(user);
 
   return (
-    <div className="p-6 md:p-10 max-w-3xl">
+    <div className={ADMIN_PAGE_FRAME} style={ADMIN_PAGE_FRAME_STYLE}>
       <Link
         to="/qm-admin/users"
         className="text-sm text-[#7FAEC2] hover:underline flex items-center gap-1 mb-4"

@@ -3,6 +3,7 @@ import { Link } from 'react-router';
 import { AlertTriangle, UserPlus, FileText, UserX } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { getAdminStats, AdminStats } from '../../services/adminApi';
+import { ADMIN_PAGE_FRAME, ADMIN_PAGE_FRAME_STYLE } from '../../components/admin/adminPageFrame';
 
 export function QMAdminDashboard() {
   const { user } = useAuth();
@@ -54,7 +55,7 @@ export function QMAdminDashboard() {
     : [];
 
   return (
-    <div className="p-6 md:p-10 max-w-5xl">
+    <div className={ADMIN_PAGE_FRAME} style={ADMIN_PAGE_FRAME_STYLE}>
       <h1
         className="text-2xl md:text-3xl font-bold text-[#2A2A2A] mb-1"
         style={{ fontFamily: "'Playfair Display', serif" }}

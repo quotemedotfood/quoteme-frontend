@@ -21,6 +21,7 @@ import {
 } from '../../components/ui/table';
 import { stripSeedPrefix } from '../../utils/format';
 import { ManageAdminDrawer } from './_manageAdminDrawer';
+import { ADMIN_PAGE_FRAME, ADMIN_PAGE_FRAME_STYLE } from '../../components/admin/adminPageFrame';
 
 const CONTACT_ROLE_OPTIONS = [
   { value: 'chef', label: 'Chef' },
@@ -194,7 +195,7 @@ export function QMAdminRestaurantDetailPage() {
   }
 
   return (
-    <div className="p-6 md:p-10 max-w-6xl">
+    <div className={ADMIN_PAGE_FRAME} style={ADMIN_PAGE_FRAME_STYLE}>
       <Link to="/qm-admin/restaurants" className="text-sm text-[#7FAEC2] hover:underline flex items-center gap-1 mb-4">
         <ArrowLeft size={14} /> Back to Restaurants
       </Link>

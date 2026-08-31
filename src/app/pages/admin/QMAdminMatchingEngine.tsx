@@ -56,6 +56,7 @@ import {
   type AdminCatalogStats,
   type AdminCatalogProductsResponse,
 } from '../../services/adminApi';
+import { ADMIN_PAGE_FRAME, ADMIN_PAGE_FRAME_STYLE } from '../../components/admin/adminPageFrame';
 
 type Tab = 'rules' | 'synonyms' | 'training' | 'concepts' | 'changelog' | 'diagnose' | 'catalogs' | 'exclusions' | 'cluster_list';
 
@@ -2222,7 +2223,7 @@ export function QMAdminMatchingEngine() {
   ];
 
   return (
-    <div className="p-6 max-w-5xl mx-auto">
+    <div className={ADMIN_PAGE_FRAME} style={ADMIN_PAGE_FRAME_STYLE}>
       <h1 className="text-2xl font-bold text-[#2A2A2A] mb-1" style={{ fontFamily: "'Playfair Display', serif" }}>Matching Engine</h1>
       <p className="text-sm text-[#4F4F4F] mb-6">Manage matching rules, train the engine, and review changes.</p>
 

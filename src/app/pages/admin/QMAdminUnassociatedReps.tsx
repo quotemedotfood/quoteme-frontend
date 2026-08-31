@@ -26,6 +26,7 @@ import {
   searchDistributors,
   AdminUser,
 } from '../../services/adminApi';
+import { ADMIN_PAGE_FRAME, ADMIN_PAGE_FRAME_STYLE } from '../../components/admin/adminPageFrame';
 
 type SortField = 'name' | 'email' | 'distributor_name' | 'created_at';
 type SortDir = 'asc' | 'desc';
@@ -155,7 +156,7 @@ export function QMAdminUnassociatedReps() {
   const formatDate = (d: string) => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
   return (
-    <div className="p-6 md:p-10 max-w-7xl">
+    <div className={ADMIN_PAGE_FRAME} style={ADMIN_PAGE_FRAME_STYLE}>
       <h1 className="text-2xl font-bold text-[#2A2A2A] mb-6" style={{ fontFamily: "'Playfair Display', serif" }}>
         Unassociated Reps
       </h1>
