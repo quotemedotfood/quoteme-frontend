@@ -328,6 +328,8 @@ export function QMAdminDistributors() {
                             className="text-xs text-[#7FAEC2] hover:text-[#6A9AB0]"
                             disabled={impersonating === d.admin_user_id}
                             onClick={() => handleImpersonate(d.admin_user_id!, d.admin_user_name || d.name, setImpersonating, setError)}
+                            aria-label={`Sign in as ${d.admin_user_name || d.name}`}
+                            title={`Sign in as ${d.admin_user_name || d.name}`}
                           >
                             <UserCheck size={14} className="mr-1" />
                             {impersonating === d.admin_user_id ? 'Switching...' : 'Impersonate'}

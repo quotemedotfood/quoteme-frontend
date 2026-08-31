@@ -296,7 +296,8 @@ export function QMAdminBrandDetail() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          title="Impersonate"
+                          title={`Sign in as ${[u.first_name, u.last_name].filter(Boolean).join(' ') || u.email}`}
+                          aria-label={`Sign in as ${[u.first_name, u.last_name].filter(Boolean).join(' ') || u.email}`}
                           className="text-xs text-[#7FAEC2] hover:text-[#6A9AB0] px-2"
                           disabled={impersonatingId === u.id}
                           onClick={() =>
