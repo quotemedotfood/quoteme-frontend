@@ -16,6 +16,13 @@ import { Loader2, Check, Send, UserPlus, Users, X, LogIn, RefreshCw, UserX } fro
 import { inviteRep, getDistributorAdminReps, impersonateRep, cancelRepInvite, resendRepInvite, disableRep } from '../services/api';
 import type { DistributorRep } from '../services/api';
 
+// One name for a rep, used by every row action's accessible name and by both
+// confirms. Falls back through last name to email so the label is never empty:
+// an action that cannot name its target is the defect this page was fixed for.
+function repLabel(rep: DistributorRep): string {
+  return [rep.first_name, rep.last_name].filter(Boolean).join(' ') || rep.email;
+}
+
 export function DistributorRepsPage() {
   const [reps, setReps] = useState<DistributorRep[]>([]);
   const [loading, setLoading] = useState(true);
@@ -35,6 +42,11 @@ export function DistributorRepsPage() {
   const [resendSuccess, setResendSuccess] = useState<string | null>(null);
   const [disabling, setDisabling] = useState<string | null>(null);
   const [disableError, setDisableError] = useState<string | null>(null);
+  // The two destructive row actions hold their target here while the confirm
+  // is open; null when nothing is pending. Both revoke access and neither can
+  // be undone from this page, so neither fires straight off a click any more.
+  const [confirmDeactivate, setConfirmDeactivate] = useState<DistributorRep | null>(null);
+  const [confirmCancelInvite, setConfirmCancelInvite] = useState<DistributorRep | null>(null);
   // Holds the existing rep/admin row a typed invite email matched, while the
   // confirm dialog is open. Null when no confirm is pending.
   const [confirmMatch, setConfirmMatch] = useState<DistributorRep | null>(null);
@@ -196,7 +208,9 @@ export function DistributorRepsPage() {
     }
   };
 
-  const handleCancelInvite = async (rep: DistributorRep) => {
+  // Only the confirm's action reaches the API; the row button opens the dialog.
+  const performCancelInvite = async (rep: DistributorRep) => {
+    setConfirmCancelInvite(null);
     setCancelling(rep.id);
     setCancelError(null);
     const res = await cancelRepInvite(rep.id);
@@ -223,14 +237,19 @@ export function DistributorRepsPage() {
     setResending(null);
   };
 
-  const handleDisable = async (rep: DistributorRep) => {
+  // Only the confirm's action reaches the API; the row button opens the dialog.
+  // The endpoint is PATCH .../reps/:id/disable, which sets is_active: false.
+  // Nothing is destroyed, but there is no re-enable on this page, so the
+  // confirm must not offer one.
+  const performDeactivate = async (rep: DistributorRep) => {
+    setConfirmDeactivate(null);
     setDisabling(rep.id);
     setDisableError(null);
     const res = await disableRep(rep.id);
     if (res.data) {
       await loadReps();
     } else {
-      setDisableError(res.error || 'Failed to disable rep');
+      setDisableError(res.error || `Failed to deactivate ${repLabel(rep)}`);
     }
     setDisabling(null);
   };
@@ -418,7 +437,8 @@ export function DistributorRepsPage() {
                           disabled={impersonating === rep.id || disabling === rep.id}
                           onClick={() => handleImpersonate(rep)}
                           className="text-gray-500 hover:text-[#2A2A2A] text-xs"
-                          title={`Sign in as ${rep.first_name || rep.email}`}
+                          aria-label={`Sign in as ${repLabel(rep)}`}
+                          title={`Sign in as ${repLabel(rep)}`}
                         >
                           {impersonating === rep.id
                             ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -426,19 +446,23 @@ export function DistributorRepsPage() {
                           }
                           {impersonating === rep.id ? '' : 'Sign in as'}
                         </Button>
+                        {/* A read-only action and an access-revoking one are not
+                            interchangeable, so they do not sit flush together. */}
+                        <span className="w-px h-4 bg-gray-200" aria-hidden="true" />
                         <Button
                           variant="ghost"
                           size="sm"
                           disabled={disabling === rep.id || impersonating === rep.id}
-                          onClick={() => handleDisable(rep)}
-                          className="text-gray-400 hover:text-red-600 text-xs"
-                          title={`Disable ${rep.first_name || rep.email}`}
+                          onClick={() => setConfirmDeactivate(rep)}
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50 text-xs"
+                          aria-label={`Deactivate ${repLabel(rep)}`}
+                          title={`Deactivate ${repLabel(rep)}`}
                         >
                           {disabling === rep.id
                             ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
                             : <UserX className="w-3.5 h-3.5 mr-1" />
                           }
-                          {disabling === rep.id ? '' : 'Disable'}
+                          {disabling === rep.id ? '' : 'Deactivate'}
                         </Button>
                       </div>
                     )}
@@ -480,7 +504,8 @@ export function DistributorRepsPage() {
                         disabled={resending === rep.id}
                         onClick={() => handleResend(rep)}
                         className="text-gray-500 hover:text-[#2A2A2A] text-xs"
-                        title={`Resend invite to ${rep.email}`}
+                        aria-label={`Resend invite to ${repLabel(rep)}`}
+                        title={`Resend invite to ${repLabel(rep)}`}
                       >
                         {resending === rep.id
                           ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -488,13 +513,17 @@ export function DistributorRepsPage() {
                         }
                         {resending === rep.id ? '' : 'Resend'}
                       </Button>
+                      {/* Same separation as the active rows: cancelling burns a
+                          single-use invite token and sits beside a safe action. */}
+                      <span className="w-px h-4 bg-gray-200" aria-hidden="true" />
                       <Button
                         variant="ghost"
                         size="sm"
                         disabled={cancelling === rep.id}
-                        onClick={() => handleCancelInvite(rep)}
-                        className="text-gray-400 hover:text-red-600 text-xs"
-                        title={`Cancel invite for ${rep.first_name || rep.email}`}
+                        onClick={() => setConfirmCancelInvite(rep)}
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50 text-xs"
+                        aria-label={`Cancel invite for ${repLabel(rep)}`}
+                        title={`Cancel invite for ${repLabel(rep)}`}
                       >
                         {cancelling === rep.id
                           ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -577,6 +606,64 @@ export function DistributorRepsPage() {
           <AlertDialogFooter>
             <AlertDialogCancel onClick={confirmMatch ? handleCancelConfirm : handleCancelBeGate}>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={confirmMatch ? handleConfirmAddAnyway : handleConfirmBeGate}>Add anyway</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Deactivate confirm. The copy states only what happens and stops there:
+          the endpoint sets is_active: false and no surface in this product sets
+          it back, so promising the operator they can re-enable the rep later
+          would be false. Ruling B, 2026-08-31. */}
+      <AlertDialog
+        open={!!confirmDeactivate}
+        onOpenChange={(open) => { if (!open) setConfirmDeactivate(null); }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Deactivate {confirmDeactivate ? repLabel(confirmDeactivate) : ''}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              They lose access to QuoteMe immediately and move to Inactive on this
+              page. Nothing is deleted.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep active</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+              onClick={() => confirmDeactivate && performDeactivate(confirmDeactivate)}
+            >
+              Deactivate
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Cancel-invite confirm. DELETE .../reps/invitations/:id collapses
+          expires_at to now, so the emailed link stops working the moment this
+          is confirmed. Same defect class as deactivate, different label. */}
+      <AlertDialog
+        open={!!confirmCancelInvite}
+        onOpenChange={(open) => { if (!open) setConfirmCancelInvite(null); }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Cancel the invite for {confirmCancelInvite ? repLabel(confirmCancelInvite) : ''}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Their invite link stops working immediately.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep the invite</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+              onClick={() => confirmCancelInvite && performCancelInvite(confirmCancelInvite)}
+            >
+              Cancel invite
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
