@@ -1237,7 +1237,13 @@ export async function extractMenuText(payload: { file?: File; url?: string }): P
   }
 }
 
-export async function createMenu(menuData: { raw_text: string; name: string; restaurant_id?: string; menu_id?: string; contact_id?: string }): Promise<ApiResponse<MenuCreateResponse>> {
+// open_quote is EXPLICIT. The backend guard at menus_controller#create returns
+// 422 when no customer is named, which is correct for a customer-attached quote
+// and was wrong for an Open Quote, where having no customer is the point. The
+// backend deliberately does not infer open-quote from a missing restaurant_id
+// (that inference is the BUG #19 guess Build 1 removed), so this flag is the
+// only way an Open Quote gets through.
+export async function createMenu(menuData: { raw_text: string; name: string; restaurant_id?: string; menu_id?: string; contact_id?: string; open_quote?: boolean }): Promise<ApiResponse<MenuCreateResponse>> {
   return fetchWithAuth('/api/v1/menus', {
     method: 'POST',
     body: JSON.stringify(menuData),

@@ -773,7 +773,7 @@ export function StartNewQuotePage() {
           navigate(`/chef/status/${response.data.quote_id}`, { state: { completionTarget: 'map-ingredients' } });
         }
       } else {
-        const response = await createMenu({ raw_text: menuText, name: selectedRestaurant?.name || 'New Quote', restaurant_id: selectedRestaurant?.id, menu_id: extractedMenuId ?? undefined, contact_id: resolveContactIdForCreate(selectedContactIds, selectedRestaurant?.contacts || []) });
+        const response = await createMenu({ raw_text: menuText, name: isQuoteOpened ? 'Open Quote' : (selectedRestaurant?.name || 'New Quote'), restaurant_id: selectedRestaurant?.id, menu_id: extractedMenuId ?? undefined, contact_id: resolveContactIdForCreate(selectedContactIds, selectedRestaurant?.contacts || []), open_quote: isQuoteOpened });
         if (response.error) {
           if (isServiceBusyError(response.error)) { setServiceBusy(true); return; }
           if (response.error.includes('2 quotes in progress')) { setDraftLimitReached(true); return; }
@@ -851,7 +851,7 @@ export function StartNewQuotePage() {
           navigate(`/chef/status/${response.data.quote_id}`, { state: { completionTarget: 'export-finalize' } });
         }
       } else {
-        const response = await createMenu({ raw_text: menuText, name: selectedRestaurant?.name || 'New Quote', restaurant_id: selectedRestaurant?.id, menu_id: extractedMenuId ?? undefined, contact_id: resolveContactIdForCreate(selectedContactIds, selectedRestaurant?.contacts || []) });
+        const response = await createMenu({ raw_text: menuText, name: isQuoteOpened ? 'Open Quote' : (selectedRestaurant?.name || 'New Quote'), restaurant_id: selectedRestaurant?.id, menu_id: extractedMenuId ?? undefined, contact_id: resolveContactIdForCreate(selectedContactIds, selectedRestaurant?.contacts || []), open_quote: isQuoteOpened });
         if (response.error) {
           if (isServiceBusyError(response.error)) { setServiceBusy(true); return; }
           if (response.error.includes('2 quotes in progress')) { setDraftLimitReached(true); return; }
