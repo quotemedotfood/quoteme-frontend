@@ -40,6 +40,7 @@ import {
 } from '../../components/ui/alert-dialog';
 import { handleImpersonate } from '../../utils/impersonate';
 import { regionsForCountry } from '../../constants/regions';
+import { ADMIN_PAGE_FRAME, ADMIN_PAGE_FRAME_STYLE } from '../../components/admin/adminPageFrame';
 
 // ─── StatesServedEditor ───────────────────────────────────────────────────────
 // Chip-based multi-select for the region codes served (US states/DC or CA
@@ -479,7 +480,7 @@ export function QMAdminDistributorDetailPage() {
   if (!dist) return null;
 
   return (
-    <div className="p-6 md:p-10 max-w-6xl">
+    <div className={ADMIN_PAGE_FRAME} style={ADMIN_PAGE_FRAME_STYLE}>
       <Link to="/qm-admin/distributors" className="text-sm text-[#7FAEC2] hover:underline flex items-center gap-1 mb-4">
         <ArrowLeft size={14} /> Back to Distributors
       </Link>

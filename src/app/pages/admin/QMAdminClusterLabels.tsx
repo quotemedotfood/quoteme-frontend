@@ -18,6 +18,7 @@ import {
   rollbackClusterLabel,
   updateClusterLabelV2,
 } from '../../services/adminApi';
+import { ADMIN_PAGE_FRAME, ADMIN_PAGE_FRAME_STYLE } from '../../components/admin/adminPageFrame';
 
 // ─── Valid option sets ─────────────────────────────────────────────────────────
 
@@ -770,7 +771,7 @@ export function QMAdminClusterLabels() {
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div className="p-6 max-w-3xl">
+    <div className={ADMIN_PAGE_FRAME} style={ADMIN_PAGE_FRAME_STYLE}>
       {/* Header */}
       <div className="mb-6">
         <h1

@@ -17,6 +17,7 @@ import {
   TableCell,
 } from '../../components/ui/table';
 import { handleImpersonate } from '../../utils/impersonate';
+import { ADMIN_PAGE_FRAME, ADMIN_PAGE_FRAME_STYLE } from '../../components/admin/adminPageFrame';
 
 const STALE_MS = 14 * 24 * 60 * 60 * 1000;
 
@@ -144,7 +145,7 @@ export function QMAdminBrandDetail() {
   const initials = brand.name.slice(0, 2).toUpperCase();
 
   return (
-    <div className="p-6 md:p-10 max-w-6xl">
+    <div className={ADMIN_PAGE_FRAME} style={ADMIN_PAGE_FRAME_STYLE}>
       {/* Back link */}
       <Link to="/qm-admin/brands" className="text-sm text-[#7FAEC2] hover:underline flex items-center gap-1 mb-4">
         <ArrowLeft size={14} /> Back to Brands

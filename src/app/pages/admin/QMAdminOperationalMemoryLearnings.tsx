@@ -17,6 +17,7 @@ import {
   OperationalMemoryLearning,
   AdminDistributor,
 } from '../../services/adminApi';
+import { ADMIN_PAGE_FRAME, ADMIN_PAGE_FRAME_STYLE } from '../../components/admin/adminPageFrame';
 
 // ─── QMAdminOperationalMemoryLearnings ────────────────────────────────────
 // Operational Memory Epic, Lane 2. QM-admin-ONLY read + revert view over
@@ -141,7 +142,7 @@ export function QMAdminOperationalMemoryLearnings() {
   }
 
   return (
-    <div className="p-6 md:p-10 max-w-7xl">
+    <div className={ADMIN_PAGE_FRAME} style={ADMIN_PAGE_FRAME_STYLE}>
       <div className="flex items-center justify-between mb-2">
         <h1
           className="text-2xl font-bold text-[#2A2A2A]"

@@ -20,6 +20,7 @@ import {
   undoKnowledgeGapTail,
   recordTailClusterDecision,
 } from '../../services/adminApi';
+import { ADMIN_PAGE_FRAME, ADMIN_PAGE_FRAME_STYLE } from '../../components/admin/adminPageFrame';
 
 // ── Feature flag: grouped-by-cluster view (suspected-tail clumping v1) ────────
 // Set VITE_FEATURE_CLUMP_VIEW=true in the deploy environment to activate.
@@ -2112,7 +2113,7 @@ export function QMAdminKnowledgeGapFiller() {
   );
 
   return (
-    <div className="p-6 max-w-7xl">
+    <div className={ADMIN_PAGE_FRAME} style={ADMIN_PAGE_FRAME_STYLE}>
       <div className="mb-6 flex items-start justify-between">
         <div>
           <h1

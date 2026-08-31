@@ -19,6 +19,7 @@ import {
   AdminRestaurantGroup,
   AdminRestaurantGroupDetail,
 } from '../../services/adminApi';
+import { ADMIN_PAGE_FRAME, ADMIN_PAGE_FRAME_STYLE } from '../../components/admin/adminPageFrame';
 
 export function QMAdminRestaurantGroups() {
   const [groups, setGroups] = useState<AdminRestaurantGroup[]>([]);
@@ -141,7 +142,7 @@ export function QMAdminRestaurantGroups() {
   );
 
   return (
-    <div className="p-6 md:p-10 max-w-5xl">
+    <div className={ADMIN_PAGE_FRAME} style={ADMIN_PAGE_FRAME_STYLE}>
       <h1
         className="text-2xl font-bold text-[#2A2A2A] mb-6"
         style={{ fontFamily: "'Playfair Display', serif" }}

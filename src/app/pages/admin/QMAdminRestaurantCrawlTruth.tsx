@@ -17,6 +17,7 @@ import {
   AdminRestaurantCrawlTruth,
   AdminRestaurantCrawlTruthSource,
 } from '../../services/adminApi';
+import { ADMIN_PAGE_FRAME, ADMIN_PAGE_FRAME_STYLE } from '../../components/admin/adminPageFrame';
 
 // D3 restaurant-truth screen. Renders the payload described in
 // D3_restaurant_truth_payload_contract.md. Two rules from that contract
@@ -210,7 +211,7 @@ export function QMAdminRestaurantCrawlTruth() {
   const visibleSources = showSuperseded ? data.sources : activeSources;
 
   return (
-    <div className="p-6 md:p-10 max-w-6xl">
+    <div className={ADMIN_PAGE_FRAME} style={ADMIN_PAGE_FRAME_STYLE}>
       <Link
         to={`/qm-admin/restaurants/${id}`}
         className="text-sm text-[#7FAEC2] hover:underline flex items-center gap-1 mb-4"

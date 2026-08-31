@@ -5,6 +5,7 @@ import {
   getAdminHealth, HealthCheck,
   getAdminHealthHistory, HealthHistory, HealthHistoryEntry
 } from '../../services/adminApi';
+import { ADMIN_PAGE_FRAME, ADMIN_PAGE_FRAME_STYLE } from '../../components/admin/adminPageFrame';
 
 const STATUS_ICON: Record<string, JSX.Element> = {
   ok: <CheckCircle2 className="w-5 h-5 text-green-500" />,
@@ -108,7 +109,7 @@ export function QMAdminHealth() {
   const overall = OVERALL_CONFIG[overallKey] || OVERALL_CONFIG.healthy;
 
   return (
-    <div className="p-6 md:p-10 max-w-4xl">
+    <div className={ADMIN_PAGE_FRAME} style={ADMIN_PAGE_FRAME_STYLE}>
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1
