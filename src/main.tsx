@@ -4,12 +4,13 @@ import * as Sentry from '@sentry/react';
 import App from './app/App';
 import { ErrorFallback } from './app/components/ErrorFallback';
 import { scrubSentryEvent, scrubSentrySpan } from './app/utils/scrubSentryEvent';
+import { normalizeReleaseName } from './app/utils/releaseName';
 import './styles/index.css';
 
 Sentry.init({
   dsn: import.meta.env.VITE_SENTRY_DSN,
   environment: import.meta.env.VITE_SENTRY_ENVIRONMENT || 'development',
-  release: import.meta.env.VITE_RELEASE_SHA || 'dev',
+  release: normalizeReleaseName(import.meta.env.VITE_RELEASE_SHA),
   integrations: [
     Sentry.browserTracingIntegration(),
     Sentry.replayIntegration({
