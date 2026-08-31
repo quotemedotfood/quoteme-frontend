@@ -121,8 +121,18 @@ function signalFor(init: RequestInit | undefined, timeoutMs: number): AbortSigna
 }
 
 /**
- * Single entry point for both clients. Applies the timeout, then the
- * retry-once-on-network-failure rule for safe methods only.
+ * Single entry point for the two QuoteMe clients: api.ts (which aliases it as
+ * `fetchWithRetry`, so every call site there is covered, including
+ * POST /users/sign_in) and adminApi.ts (which calls it directly).
+ *
+ * IT DOES NOT COVER PAIRME. apps/pairme/src/lib/api.js is a separate client in
+ * this same repo and calls bare `fetch()` with no signal and no timeout, so it
+ * gets none of the behaviour below. This comment previously read "both clients",
+ * which reads as a claim that PairMe is protected. It is not. Do not widen this
+ * wording again without widening the code first.
+ *
+ * Applies the timeout, then the retry-once-on-network-failure rule for safe
+ * methods only.
  *
  * Throws NetworkFetchFailedError or RequestTimedOutError, both carrying
  * plain-language copy in `.message`. Callers whose catch blocks already do
