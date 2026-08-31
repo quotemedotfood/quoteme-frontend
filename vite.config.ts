@@ -4,6 +4,7 @@ import path from 'path'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 import { sentryVitePlugin } from '@sentry/vite-plugin'
+import { normalizeReleaseName } from './src/app/utils/releaseName'
 
 export default defineConfig({
   plugins: [
@@ -20,6 +21,11 @@ export default defineConfig({
             org: process.env.SENTRY_ORG,
             project: process.env.SENTRY_PROJECT,
             authToken: process.env.SENTRY_AUTH_TOKEN,
+            // Pinned to the SAME expression the browser SDK tags events with
+            // (src/main.tsx). Left unset, the plugin auto-detects a release
+            // from CI, which is not guaranteed to equal VITE_RELEASE_SHA, and
+            // a mismatch means uploaded source maps never resolve.
+            release: { name: normalizeReleaseName(process.env.VITE_RELEASE_SHA) },
           }),
         ]
       : []),
