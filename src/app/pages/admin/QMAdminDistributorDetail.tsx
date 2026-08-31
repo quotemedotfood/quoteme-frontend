@@ -837,6 +837,8 @@ export function QMAdminDistributorDetailPage() {
                         className="text-xs text-[#7FAEC2] hover:text-[#6A9AB0]"
                         disabled={impersonating === a.user_id}
                         onClick={() => handleImpersonate(a.user_id, a.name, setImpersonating, setError)}
+                        aria-label={`Sign in as ${a.name}`}
+                        title={`Sign in as ${a.name}`}
                       >
                         <UserCheck size={14} className="mr-1" />
                         {impersonating === a.user_id ? 'Switching...' : 'Impersonate'}
@@ -897,6 +899,8 @@ export function QMAdminDistributorDetailPage() {
                         className="text-xs text-[#7FAEC2] hover:text-[#6A9AB0]"
                         disabled={impersonating === r.user_id}
                         onClick={() => handleImpersonate(r.user_id, r.name, setImpersonating, setError)}
+                        aria-label={`Sign in as ${r.name}`}
+                        title={`Sign in as ${r.name}`}
                       >
                         <UserCheck size={14} className="mr-1" />
                         {impersonating === r.user_id ? 'Switching...' : 'Impersonate'}

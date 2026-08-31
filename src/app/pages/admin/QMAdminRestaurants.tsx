@@ -351,18 +351,37 @@ export function QMAdminRestaurants() {
                           {r.restaurant_admin_id ? 'Manage Admin' : 'Add Admin'}
                         </Button>
 
-                        {/* Impersonate button */}
+                        {/* Impersonate button.
+                            This does NOT sign you in as the restaurant admin.
+                            admin_user_id is serialized as `created_by_user ||
+                            first rep of the first attached distributor`
+                            (restaurants_controller.rb:457), so the target is
+                            whoever happened to create the row, and it is a
+                            different person from restaurant_admin_name in the
+                            common case. The control used to read a bare
+                            "Impersonate" and name nobody at all, which left the
+                            operator to assume the restaurant's own admin.
+                            Naming the actual target is the honest half; the
+                            question of whether this SHOULD target that user is
+                            a behaviour change and sits with Moose. */}
                         {r.admin_user_id ? (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-xs text-[#7FAEC2] hover:text-[#6A9AB0]"
-                            disabled={impersonating === r.admin_user_id}
-                            onClick={() => handleImpersonate(r.admin_user_id!, r.admin_user_name || r.name, setImpersonating, setError)}
-                          >
-                            <UserCheck size={14} className="mr-1" />
-                            {impersonating === r.admin_user_id ? 'Switching...' : 'Impersonate'}
-                          </Button>
+                          <div className="flex flex-col items-end">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-xs text-[#7FAEC2] hover:text-[#6A9AB0]"
+                              disabled={impersonating === r.admin_user_id}
+                              onClick={() => handleImpersonate(r.admin_user_id!, r.admin_user_name || r.name, setImpersonating, setError)}
+                              aria-label={`Sign in as ${r.admin_user_name || 'the user who created this restaurant'}`}
+                              title={`Sign in as ${r.admin_user_name || 'the user who created this restaurant'}`}
+                            >
+                              <UserCheck size={14} className="mr-1" />
+                              {impersonating === r.admin_user_id ? 'Switching...' : 'Sign in as'}
+                            </Button>
+                            <span className="text-[11px] text-gray-400 pr-2 max-w-[12rem] truncate">
+                              {r.admin_user_name || 'unnamed user'}
+                            </span>
+                          </div>
                         ) : (
                           <span className="text-xs text-gray-400 px-2">No user</span>
                         )}
