@@ -146,19 +146,23 @@ describe('QMAdminOperationalMemoryLearnings', () => {
     expect(screen.getAllByText('Test Distributor').length).toBeGreaterThan(0);
   });
 
+  // The Revert control now carries an aria-label naming the learning it
+  // reverts ("Revert the learning for produce|tomato|1"), so a query for the
+  // bare verb no longer matches. That is the point of the change: the old
+  // accessible name did not say which of the three rows the button acted on.
   it('shows an Active status for a non-reverted row and a Revert action', async () => {
     renderPage();
 
     await waitFor(() => expect(screen.getAllByText('Active').length).toBe(3));
-    expect(screen.getAllByRole('button', { name: 'Revert' }).length).toBe(3);
+    expect(screen.getAllByRole('button', { name: /^Revert the learning for / }).length).toBe(3);
   });
 
   it('reverts a row and reloads the list, future-only (no historical mutation UI)', async () => {
     renderPage();
 
-    await waitFor(() => expect(screen.getAllByRole('button', { name: 'Revert' }).length).toBe(3));
+    await waitFor(() => expect(screen.getAllByRole('button', { name: /^Revert the learning for / }).length).toBe(3));
 
-    const revertButtons = screen.getAllByRole('button', { name: 'Revert' });
+    const revertButtons = screen.getAllByRole('button', { name: /^Revert the learning for / });
     fireEvent.click(revertButtons[0]);
 
     await waitFor(() => expect(revertOperationalMemoryLearning).toHaveBeenCalledWith(repLearning.id));

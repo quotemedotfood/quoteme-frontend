@@ -319,6 +319,7 @@ export function QMAdminDistributors() {
                         <button
                           onClick={() => loadExclusions(d.id)}
                           className="text-xs px-2 py-1 border border-gray-300 rounded hover:bg-gray-50"
+                          aria-label={`Subcategory exclusions for ${d.name}`}
                         >
                           Subcategory Exclusions
                         </button>
