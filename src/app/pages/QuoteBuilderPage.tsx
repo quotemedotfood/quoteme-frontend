@@ -181,6 +181,18 @@ export function QuoteBuilderPage() {
   const adminViewer = isAdminViewerRole(auth?.user?.role);
   const readOnlyMarker = quoteReadOnlyMarker(adminViewer, sentLocked);
 
+  // Two INDEPENDENT reasons pricing is read-only, and they must not share a
+  // sentence. quoteLocked folds the admin-viewer gate into the sent-immutability
+  // gate (deliberately, so every write guard covers both), but the COPY was
+  // never split to match: an admin opening a DRAFT was told "Pricing is locked
+  // once a quote is sent", which makes an unsent quote look sent. That is a
+  // permission statement wearing a lifecycle statement's words.
+  // quoteImmutability.ts already names the two reasons separately for the
+  // marker; this does the same for the pricing explanation.
+  const pricingLockReason = adminViewer && !sentLocked
+    ? 'Pricing is read-only while you are viewing as an admin.'
+    : 'Pricing is locked once a quote is sent.';
+
   // Sent immutability, dismiss-on-flip. These drawers' presence is keyed on
   // their own open state, not on quoteLocked, so a drawer already open when the
   // quote goes out mid-session stays open. Every such drawer needs SOME render
@@ -669,7 +681,7 @@ export function QuoteBuilderPage() {
               className="border-gray-300 text-[#2A2A2A]"
               onClick={savePrices}
               disabled={saving || quoteLocked}
-              title={quoteLocked ? 'Pricing is locked once a quote is sent' : undefined}
+              title={quoteLocked ? pricingLockReason : undefined}
             >
               {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
               {saving ? 'Saving...' : 'Save Draft'}
@@ -706,7 +718,7 @@ export function QuoteBuilderPage() {
           {quoteLocked ? (
             <div className="flex items-center gap-2 text-sm text-gray-500 mt-2">
               <Lock className="w-4 h-4 flex-shrink-0" />
-              <p>Pricing is locked once a quote is sent.</p>
+              <p>{pricingLockReason}</p>
             </div>
           ) : (
             <>
@@ -841,7 +853,7 @@ export function QuoteBuilderPage() {
                   setEditMode(!editMode);
                 }}
                 disabled={saving || quoteLocked}
-                title={quoteLocked ? 'Pricing is locked once a quote is sent' : undefined}
+                title={quoteLocked ? pricingLockReason : undefined}
               >
                 {quoteLocked ? (
                   <Lock className="w-4 h-4 mr-1" />

@@ -2317,8 +2317,15 @@ export async function uploadAdminDistributorLogo(
 // Distinct from the Knowledge Gap Filler (corpus/ontology tail-clumping tool
 // above). This surfaces components the matching engine could NOT confidently
 // resolve on live quotes -- deduped by (distributor_id, canonical_key) and
-// frequency-ranked by the BE -- so an admin can pick the right catalog product
-// once and have it stick for every future occurrence.
+// frequency-ranked by the BE.
+//
+// READ-ONLY. There is no pick endpoint. The routes are GET
+// admin/gap_filler_needs_pick and GET admin/gap_filler_needs_pick/:id/quotes,
+// and this file exports only the two matching getters. The original wording
+// here ("so an admin can pick the right catalog product once and have it stick
+// for every future occurrence") described a capability that was never built,
+// which is why the Memory Learnings panel beside it reads zero promoted
+// learnings. Do not restore that sentence without the endpoint.
 
 export interface GapFillerNeedPick {
   canonical_key: string;
