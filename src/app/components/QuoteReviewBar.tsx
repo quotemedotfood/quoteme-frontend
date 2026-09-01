@@ -10,6 +10,36 @@ interface QuoteReviewBarProps {
 
 type ReviewState = 'idle' | 'expanded' | 'submitting' | 'dismissed';
 
+// Dismissal is per quote and stays on the client. It must NEVER reach the
+// backend: quote_feedbacks carries no field separating a genuine positive from
+// someone closing the card, and rep_reviewed_at is stamped on every review, so
+// persisting a dismissal server-side would both contaminate the feedback data
+// and unlock the send gate for an operator who never rated anything.
+//
+// Per quote rather than per session: "I have seen this quote's matches and do
+// not want to be asked again about this quote" is the honest scope. A
+// per-session flag would suppress the card on every other quote the operator
+// opened afterwards.
+const dismissKey = (quoteId: string) => `quoteme_review_dismissed_${quoteId}`;
+
+function readDismissed(quoteId: string): boolean {
+  try {
+    return localStorage.getItem(dismissKey(quoteId)) === '1';
+  } catch {
+    // Private mode, or storage blocked entirely. Showing the card is the safe
+    // failure: the operator can always dismiss it again.
+    return false;
+  }
+}
+
+function persistDismissed(quoteId: string): void {
+  try {
+    localStorage.setItem(dismissKey(quoteId), '1');
+  } catch {
+    // Dismissal simply does not survive the reload. Never breaks the click.
+  }
+}
+
 export function QuoteReviewBar({ quoteId, onMatchesUpdated }: QuoteReviewBarProps) {
   // BUG #30/#31 — compact floating card (not a full-width bar), stacked above
   // the floating Adjust Pricing / Finish Quote button. Right-justified (moved
@@ -35,7 +65,11 @@ export function QuoteReviewBar({ quoteId, onMatchesUpdated }: QuoteReviewBarProp
   // `w-[calc(100%-2rem)]` -- calc()-driven percentage widths are a known
   // layout-thrash trigger for libraries that observe element size.
   const cardClass = 'fixed bottom-[144px] right-4 md:right-6 z-40 w-[380px] max-w-[92vw]';
-  const [state, setState] = useState<ReviewState>('idle');
+  // Seeded from storage so a dismissal survives remount and navigating back,
+  // which is what makes it a dismissal rather than a temporary hide.
+  const [state, setState] = useState<ReviewState>(() =>
+    readDismissed(quoteId) ? 'dismissed' : 'idle',
+  );
   const [comment, setComment] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [rulesCreated, setRulesCreated] = useState<number | null>(null);
@@ -45,6 +79,17 @@ export function QuoteReviewBar({ quoteId, onMatchesUpdated }: QuoteReviewBarProp
 
   const handleThumbsUp = async () => {
     await reviewQuote(quoteId, 'positive');
+    persistDismissed(quoteId);
+    setState('dismissed');
+  };
+
+  // The whole point of Justin's second criterion: a way out that submits
+  // nothing. Before this, the ONLY path to 'dismissed' ran through
+  // handleThumbsUp, so every operator who just wanted the card gone was
+  // recorded as positive feedback and reviewQuote(..., 'positive') counted
+  // something other than what it claims.
+  const handleDismiss = () => {
+    persistDismissed(quoteId);
     setState('dismissed');
   };
 
@@ -162,6 +207,17 @@ export function QuoteReviewBar({ quoteId, onMatchesUpdated }: QuoteReviewBarProp
               <ThumbsDown className="w-5 h-5 text-white" aria-hidden="true" />
             </button>
           </div>
+          {/* Justin's second criterion: a way out that submits nothing. Kept
+              visually apart from the two rating controls so it does not read
+              as a third answer to the question. */}
+          <button
+            onClick={handleDismiss}
+            className="p-2 rounded-full hover:bg-white/20 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+            aria-label="Dismiss without rating these matches"
+            title="Dismiss"
+          >
+            <X className="w-4 h-4 text-white/80" aria-hidden="true" />
+          </button>
         </div>
       </div>
     </div>

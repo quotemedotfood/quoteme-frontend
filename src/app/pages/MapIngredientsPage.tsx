@@ -228,6 +228,12 @@ export function MapIngredientsPage() {
   const [selectedDish, setSelectedDish] = useState<Dish | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadingStatus, setLoadingStatus] = useState('Processing menu…');
+  // Justin's third criterion: no feedback surface before there is an actual
+  // match state to review. `loading` cannot answer that -- it is set false on
+  // the failure and 30-attempt-timeout paths too, so gating on !loading would
+  // ask "how do these matches look?" over a menu that never processed. Set
+  // true ONLY where matching genuinely finished.
+  const [matchingComplete, setMatchingComplete] = useState(false);
 
   // Operational Memory Epic, Lane 1 revision (Ruling 3): ChainToggle is a
   // real bidirectional lock, not a read-only bookmark, so its state can
@@ -341,6 +347,15 @@ export function MapIngredientsPage() {
 
   // ─── Build dish list from quote lines ─────────────────────────────────────
 
+  // A "match" here is exactly what getMatchStatus calls one: a line carrying a
+  // product. A line with no product renders as "No Match", so counting lines
+  // would let the card appear over a list where nothing matched at all.
+  const matchCount = dishes.reduce(
+    (total, dish) =>
+      total + dish.components.filter((c) => dish.componentLines[c]?.product).length,
+    0,
+  );
+
   function buildDishesFromLines(lines: QuoteLine[]): Dish[] {
     const dishMap: Record<string, Dish> = {};
     for (const line of lines) {
@@ -419,6 +434,10 @@ export function MapIngredientsPage() {
           const built = buildDishesFromLines((res.data as QuoteData).lines || []);
           setDishes(built);
           setSelectedDish(built[0] || null);
+          // Entering with an existing quoteId skips the poll entirely, because
+          // matching finished on a previous visit. Without this the card would
+          // never appear on a revisit.
+          setMatchingComplete(true);
           setLoading(false);
           return;
         }
@@ -461,6 +480,9 @@ export function MapIngredientsPage() {
         const built = buildDishesFromLines((fullQuote.data as QuoteData).lines || []);
         setDishes(built);
         setSelectedDish(built[0] || null);
+        // Only reachable once the poll broke on 'processed'/'completed'; the
+        // 'failed' branch and the 30-attempt timeout both throw above.
+        setMatchingComplete(true);
         setLoading(false);
       } catch (e: any) {
         if (!cancelled) {
@@ -1231,8 +1253,17 @@ export function MapIngredientsPage() {
 
       {/* Quote review bar — the Looks good / Needs fixes feedback loop is a
           write path (reviewQuote + match redo), so it never renders on a
-          read-only view (admin viewer / sent quote). */}
-      {quoteId && !readOnly && <QuoteReviewBar quoteId={quoteId} onMatchesUpdated={handleMatchesUpdated} />}
+          read-only view (admin viewer / sent quote).
+
+          It also never renders before there is something to review (Justin's
+          third criterion). `quoteId` alone was the old gate, and a quoteId
+          exists from the moment the quote is created, so the card could ask
+          "How do these matches look?" over a still-processing or empty list.
+          Now it waits for matching to have finished AND produced at least one
+          match. */}
+      {quoteId && !readOnly && matchingComplete && matchCount > 0 && (
+        <QuoteReviewBar quoteId={quoteId} onMatchesUpdated={handleMatchesUpdated} />
+      )}
 
     </div>
   );
