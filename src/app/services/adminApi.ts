@@ -1396,6 +1396,16 @@ export interface BrandRule {
   product_count: number;
   category_distribution: Record<string, number>;
   last_audited_at: string | null;
+  /** Brand-rule hierarchy. All three are serialized by
+   *  admin/brand_rules_controller.rb:137-139 and were simply not declared
+   *  here, so QMAdminBrandRules read them through `as any` casts. They are
+   *  declared now because the delete confirm has to state what deleting a
+   *  parent does to the variants under it: BrandRule
+   *  `has_many :child_brands, dependent: :nullify`, so those rows survive but
+   *  are silently detached. */
+  parent_brand_id: string | null;
+  parent_brand_name: string | null;
+  child_brands: Array<{ id: string; brand_name: string }>;
   created_at: string;
 }
 

@@ -24,6 +24,7 @@ import {
 import { userStatusPill } from '../../utils/userDisplayStatus';
 import { AdminEmptyState } from './_adminEmptyState';
 import { ADMIN_PAGE_FRAME, ADMIN_PAGE_FRAME_STYLE } from '../../components/admin/adminPageFrame';
+import { userLabel } from '../../utils/userLabel';
 
 type SortField = 'name' | 'email' | 'status' | 'last_login_at' | 'created_at';
 type SortDir = 'asc' | 'desc';
@@ -87,13 +88,6 @@ function roleBadge(role: string) {
 
 // One row, one human label, used by every row-scoped control in the Actions
 // cell. Falls back to the email because first/last are nullable on an
-// invited-but-never-completed account, and an unnamed row still has to be
-// tellable apart from its neighbours. Extracted from the expression that was
-// already inlined on the edit pencil so there is one copy rather than several.
-function userLabel(u: AdminUser): string {
-  return [u.first_name, u.last_name].filter(Boolean).join(' ') || u.email;
-}
-
 export function QMAdminUsers() {
   const navigate = useNavigate();
   const [users, setUsers] = useState<AdminUser[]>([]);
