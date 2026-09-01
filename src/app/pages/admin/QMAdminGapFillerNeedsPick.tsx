@@ -209,8 +209,10 @@ export function QMAdminGapFillerNeedsPick() {
         </h1>
       </div>
       <p className="text-sm text-gray-500 mb-6">
-        Components the matching engine could not confidently resolve on live quotes. Pick the
-        right catalog product once and it applies to every future occurrence.
+        Components the matching engine could not confidently resolve on live quotes, deduped
+        by distributor and ingredient and ranked by how often they occur. This screen is a
+        read-only view: expand a row to see the quotes it affects. Choosing a catalog product
+        from here is not built yet, so nothing on this page promotes a learning.
       </p>
 
       <div className="flex items-center gap-3 mb-5">
