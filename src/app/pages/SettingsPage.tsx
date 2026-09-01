@@ -31,6 +31,13 @@ function roleLabel(role: string | undefined): string {
   return ROLE_LABEL[role] ?? role;
 }
 
+// Roles the backend exempts from the 2-draft limit at EVERY enforcement point:
+// menus#create, quotes#create and buyer_quotes#create each skip the check with
+// `current_user.role.in?(%w[quoteme_admin distributor_admin])`. The page used to
+// read only `user.unlimited_drafts`, so it told every distributor_admin they were
+// "Limited to 2 draft quotes at a time" -- a limit that has never applied to them.
+const DRAFT_LIMIT_EXEMPT_ROLES = ['quoteme_admin', 'distributor_admin'];
+
 // Below 768px the distributor_admin settings page must NOT wrap in the
 // ManagerSidebar shell: that sidebar holds a fixed 280px and has no responsive
 // handling, so on a phone it crushed the form column to ~26px and pinned the
@@ -159,7 +166,7 @@ export function SettingsPage() {
     const resolvedCompanyName =
       user?.distributor?.name || user?.distributor_name || profile.distributorName;
     setCompanyName(resolvedCompanyName);
-    setCompanyLogo(profile.distributorLogo);
+    setCompanyLogo(user?.distributor?.logo_url || null);
     originalValues.current = {
       fullName: profile.fullName,
       email: profile.email,
@@ -184,8 +191,12 @@ export function SettingsPage() {
       if (s.delivery_days) setDeliveryDays(s.delivery_days);
       if (s.minimum_order) setMinimumOrder(s.minimum_order);
       if (s.payment_terms) setPaymentTerms(s.payment_terms);
-      // Prefer rep_settings logo, fall back to distributor.logo_url
-      const logoUrl = s.company_logo_url || user.distributor?.logo_url || null;
+      // The distributor's logo IS the rep's logo, and it only goes down
+      // (Moose ruling 2026-09-01). Single source: distributors.logo_url, which is
+      // what all three export surfaces already resolve via
+      // DistributorLogoRenderable. The old rep_settings.company_logo_url branch
+      // is gone along with its writer -- see handleLogoUpload.
+      const logoUrl = user.distributor?.logo_url || null;
       setCompanyLogo(logoUrl || null);
       setLogoLoadError(false);
       if (user.avatar_url) setProfilePhoto(user.avatar_url);
@@ -293,7 +304,6 @@ export function SettingsPage() {
         delivery_days: deliveryDays,
         minimum_order: minimumOrder,
         payment_terms: paymentTerms,
-        company_logo_url: companyLogo || undefined,
       },
     });
     setIsSavingCompany(false);
@@ -312,8 +322,8 @@ export function SettingsPage() {
   };
 
   const handleCancelDistributorEdit = () => {
-    setCompanyName(profile.distributorName);
-    setCompanyLogo(profile.distributorLogo);
+    setCompanyName(user?.distributor?.name || user?.distributor_name || profile.distributorName);
+    setCompanyLogo(user?.distributor?.logo_url || null);
     // Reset to saved values from user
     const s = user?.rep_settings || {};
     setCompanyEmail(s.company_email || '');
@@ -345,26 +355,23 @@ export function SettingsPage() {
 
     setLogoUploadError(null);
 
-    if (isDistributorAdmin) {
-      // For distributor_admin: POST to backend
-      setLogoUploading(true);
-      const res = await uploadDistributorAdminLogo(file);
-      setLogoUploading(false);
-      if (res.error) {
-        setLogoUploadError(res.error);
-        return;
-      }
-      setLogoLoadError(false);
-      setCompanyLogo(res.data!.logo_url);
-    } else {
-      // For rep: local data URL only (saved on form submit via rep_settings)
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setLogoLoadError(false);
-        setCompanyLogo(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+    // Distributor-admin only. The rep branch that used to live here read the
+    // file into a base64 data URL and stashed it in
+    // rep_settings.company_logo_url: a field with NO backend reader (grep over
+    // app/ and lib/ finds none), rendered by no surface, and unrenderable in a
+    // document even if it were wired -- DistributorLogoRenderable#fetch_remote_logo
+    // requires URI::HTTP and a "data:" URL is not one. Deleted rather than left
+    // as a dead path.
+    if (!isDistributorAdmin) return;
+    setLogoUploading(true);
+    const res = await uploadDistributorAdminLogo(file);
+    setLogoUploading(false);
+    if (res.error) {
+      setLogoUploadError(res.error);
+      return;
     }
+    setLogoLoadError(false);
+    setCompanyLogo(res.data!.logo_url);
   };
 
   const handleProfilePhotoClick = () => {
@@ -413,6 +420,26 @@ export function SettingsPage() {
   const isBuyer = isBuyerRole(user?.role);
   const accountFieldsReadOnly = !isGuest && !isEditingAccount;
   const distributorFieldsReadOnly = !isEditingDistributor;
+  // Company name and logo are distributor-level assets with exactly one write
+  // path each, both gated to distributor_admin: PATCH distributor_admin/settings
+  // (name) and POST distributor_admin/settings/logo. A rep editing either was
+  // writing to local React context only -- gone on reload. Read-only, sourced
+  // from the distributor, is the honest surface.
+  const canEditCompanyIdentity = isDistributorAdmin;
+  const companyNameReadOnly = !canEditCompanyIdentity || distributorFieldsReadOnly;
+  // Draft limit is a status, not a control: the flag is admin-only and the
+  // backend strips it from every self-service PATCH (Moose ruling 2026-09-01).
+  const isDraftLimitExemptRole = DRAFT_LIMIT_EXEMPT_ROLES.includes(user?.role ?? '');
+  const draftLimitStatus = isDraftLimitExemptRole
+    ? 'Your role is exempt from the draft limit.'
+    : user?.unlimited_drafts
+      ? 'You can have unlimited draft quotes at once.'
+      : 'Limited to 2 draft quotes at a time.';
+  const draftLimitBadge = isDraftLimitExemptRole
+    ? 'Exempt'
+    : user?.unlimited_drafts
+      ? 'Unlimited drafts'
+      : '2 drafts';
 
   const isGroupAdmin = locations.some((l) => l.membership_role === 'group_admin');
 
@@ -749,25 +776,8 @@ export function SettingsPage() {
                       )}
                     </div>
                   )}
-                  {!isDistributorAdmin && !isBuyer && (
-                    <div>
-                      <label className="cursor-pointer">
-                        <input
-                          type="file"
-                          accept="image/jpeg,image/png,image/webp"
-                          className="hidden"
-                          onChange={handleLogoUpload}
-                        />
-                        <div className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 px-3 mb-1">
-                          <Upload className="w-4 h-4 mr-2" />
-                          {companyLogo && !logoLoadError ? 'Replace Logo' : 'Upload Logo'}
-                        </div>
-                      </label>
-                      <p className="text-xs text-[#4F4F4F]">JPEG, PNG, or WebP. Max 5 MB.</p>
-                      {logoUploadError && (
-                        <p className="text-xs mt-1" style={{ color: '#B91C1C' }}>{logoUploadError}</p>
-                      )}
-                    </div>
+                  {!canEditCompanyIdentity && !isBuyer && (
+                    <p className="text-xs text-[#4F4F4F]">Set by your distributor admin.</p>
                   )}
                 </div>
               </div>
@@ -783,8 +793,11 @@ export function SettingsPage() {
                   value={companyName}
                   onChange={(e) => setCompanyName(e.target.value)}
                   className="bg-white"
-                  readOnly={distributorFieldsReadOnly}
+                  readOnly={companyNameReadOnly}
                 />
+                {!canEditCompanyIdentity && (
+                  <p className="text-xs text-[#4F4F4F] mt-1">Set by your distributor admin.</p>
+                )}
               </div>
 
               <div>
@@ -920,34 +933,24 @@ export function SettingsPage() {
             <p className="text-sm text-gray-500">Manage how quoting works for your account</p>
           </div>
 
+          {/* Was a toggle that PATCHed unlimited_drafts on /users/me. The backend
+              strips that param from every self-service caller regardless of role
+              and still returns 200, so the toggle reported success, refreshUser()
+              brought back the unchanged value, and it snapped back. Moose ruling
+              2026-09-01: the flag stays admin-only. So this is a status line that
+              states the rule the backend actually enforces -- including for the
+              exempt roles, who were previously told a limit they have never had. */}
           <div className="flex items-center justify-between py-3">
             <div>
               <p className="text-sm font-medium text-[#2A2A2A]">Draft Limit</p>
-              <p className="text-xs text-gray-500 mt-0.5">
-                {user?.unlimited_drafts
-                  ? 'You can have unlimited draft quotes at once'
-                  : 'Limited to 2 draft quotes at a time'}
-              </p>
+              <p className="text-xs text-gray-500 mt-0.5">{draftLimitStatus}</p>
             </div>
-            <button
-              onClick={async () => {
-                const newValue = !user?.unlimited_drafts;
-                const res = await updateCurrentUser({ unlimited_drafts: newValue });
-                if (res.data) {
-                  await refreshUser();
-                }
-              }}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                user?.unlimited_drafts ? 'bg-[#A5CFDD]' : 'bg-gray-200'
-              }`}
-            >
-              <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform shadow-sm ${
-                user?.unlimited_drafts ? 'translate-x-6' : 'translate-x-1'
-              }`} />
-            </button>
+            <span className="text-xs text-[#4F4F4F] bg-gray-100 px-2 py-1 rounded">
+              {draftLimitBadge}
+            </span>
           </div>
           <p className="text-xs text-gray-400 mt-1">
-            {user?.unlimited_drafts ? 'Unlimited drafts' : '2 drafts'}
+            {isDraftLimitExemptRole ? 'Determined by your role.' : 'Set by QuoteMe on your account.'}
           </p>
         </div>
         )}

@@ -19,7 +19,9 @@ export function AuthSyncProvider({ children }: AuthSyncProviderProps) {
         email: user.email,
         phoneNumber: user.phone || '',
         distributorName: user.distributor?.name || user.distributor_name || '',
-        distributorLogo: user.distributor?.logo_url || user.rep_settings?.company_logo_url || null,
+        // Single source. rep_settings.company_logo_url had no backend reader and
+        // no renderer; its writer is deleted (see SettingsPage#handleLogoUpload).
+        distributorLogo: user.distributor?.logo_url || null,
         isGuest: false,
         plan: 'free',
         quotesUsed: user.quotes_used ?? 0,

@@ -51,7 +51,6 @@ export interface RepSettings {
   delivery_days?: string;
   minimum_order?: string;
   payment_terms?: string;
-  company_logo_url?: string;
 }
 
 export interface User {
