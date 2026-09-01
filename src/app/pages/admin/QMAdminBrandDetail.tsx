@@ -17,6 +17,7 @@ import {
   TableCell,
 } from '../../components/ui/table';
 import { handleImpersonate } from '../../utils/impersonate';
+import { userLabel } from '../../utils/userLabel';
 import { ADMIN_PAGE_FRAME, ADMIN_PAGE_FRAME_STYLE } from '../../components/admin/adminPageFrame';
 
 const STALE_MS = 14 * 24 * 60 * 60 * 1000;
@@ -297,8 +298,8 @@ export function QMAdminBrandDetail() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          title={`Sign in as ${[u.first_name, u.last_name].filter(Boolean).join(' ') || u.email}`}
-                          aria-label={`Sign in as ${[u.first_name, u.last_name].filter(Boolean).join(' ') || u.email}`}
+                          title={`Sign in as ${userLabel(u)}`}
+                          aria-label={`Sign in as ${userLabel(u)}`}
                           className="text-xs text-[#7FAEC2] hover:text-[#6A9AB0] px-2"
                           disabled={impersonatingId === u.id}
                           onClick={() =>
@@ -319,7 +320,8 @@ export function QMAdminBrandDetail() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          title="Resend invite / reset password"
+                          title={`Resend invite to ${userLabel(u)}`}
+                          aria-label={`Resend invite to ${userLabel(u)}`}
                           className="text-xs text-gray-400 hover:text-gray-600 px-2"
                           disabled={resendingId === u.id}
                           onClick={() => handleResend(u.id)}

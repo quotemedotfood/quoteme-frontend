@@ -39,6 +39,7 @@ import {
   AlertDialogCancel,
 } from '../../components/ui/alert-dialog';
 import { handleImpersonate } from '../../utils/impersonate';
+import { userLabel } from '../../utils/userLabel';
 import { regionsForCountry } from '../../constants/regions';
 import { ADMIN_PAGE_FRAME, ADMIN_PAGE_FRAME_STYLE } from '../../components/admin/adminPageFrame';
 
@@ -468,6 +469,10 @@ export function QMAdminDistributorDetailPage() {
     setTimeout(() => closeAddRep(), 2000);
   }
 
+  // The selected user is held as an id in state, not passed to the handler, so
+  // the control that acts on it had nothing to name. Resolve it back to the row
+  // so the button can say who it is about.
+  const selectedExistingUser = existingUsers.find((u) => u.id === selectedUserId);
   const filteredExisting = existingUsers.filter(
     (u) =>
       !existingSearch ||
@@ -716,6 +721,11 @@ export function QMAdminDistributorDetailPage() {
                     type="button"
                     disabled={!selectedUserId || assignSubmitting}
                     onClick={() => handleAssignAdmin()}
+                    aria-label={
+                      selectedExistingUser
+                        ? `Assign ${userLabel(selectedExistingUser)} as distributor admin`
+                        : 'Assign a distributor admin'
+                    }
                     className="bg-[#7FAEC2] hover:bg-[#6a9ab0] text-white"
                   >
                     {assignSubmitting ? 'Assigning...' : 'Assign Admin'}

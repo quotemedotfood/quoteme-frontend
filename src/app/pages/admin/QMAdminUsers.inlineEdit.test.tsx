@@ -135,6 +135,32 @@ describe('QMAdminUsers - inline edit pencil', () => {
     expect(await screen.findByPlaceholderText('Phone')).toBeInTheDocument();
   });
 
+  it('names Save and Cancel after the row being edited (batch 2)', async () => {
+    renderPage();
+
+    await waitFor(() => {
+      expect(screen.getByText('jamie@testdistributor.com')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Jamie Rivera' }));
+    await screen.findByPlaceholderText('Phone');
+
+    // This page already named its other eight row actions with userLabel. Save
+    // and Cancel were the two that did not, and an open edit row sits inside a
+    // table of other rows: a bare "Save" does not say whose changes it writes.
+    expect(screen.getByRole('button', { name: 'Save changes to Jamie Rivera' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Cancel editing Jamie Rivera' })).toBeInTheDocument();
+
+    // Visible captions are unchanged: this batch adds the target to the
+    // accessible name and nothing else.
+    expect(screen.getByRole('button', { name: 'Save changes to Jamie Rivera' }).textContent).toContain('Save');
+    expect(screen.getByRole('button', { name: 'Cancel editing Jamie Rivera' }).textContent).toContain('Cancel');
+
+    // The bare verbs no longer resolve on their own.
+    expect(screen.queryByRole('button', { name: 'Save' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Cancel' })).toBeNull();
+  });
+
   it('discards changes on Cancel without calling updateAdminUser', async () => {
     renderPage();
 

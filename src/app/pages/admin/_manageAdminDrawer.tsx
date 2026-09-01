@@ -10,6 +10,7 @@ import {
   type AdminUser,
   type AdminRestaurant,
 } from '../../services/adminApi';
+import { userLabel } from '../../utils/userLabel';
 
 type Tab = 'invite' | 'assign';
 
@@ -163,6 +164,10 @@ export function ManageAdminDrawer({ open, restaurant, onClose, onAssigned }: Pro
     }, 2000);
   }
 
+  // As on QMAdminDistributorDetail: the selection lives in state rather than
+  // being passed to the handler, so the acting control had no entity to name.
+  const selectedUser = existingUsers.find((u) => u.id === selectedUserId);
+
   const filteredUsers = existingUsers.filter((u) =>
     !existingSearch ||
     u.email.toLowerCase().includes(existingSearch.toLowerCase()) ||
@@ -208,6 +213,7 @@ export function ManageAdminDrawer({ open, restaurant, onClose, onAssigned }: Pro
               <p className="text-sm font-medium text-[#2A2A2A]">{restaurant.restaurant_admin_name || 'Unknown'}</p>
               <button
                 onClick={() => setReplacing(true)}
+                aria-label={`Replace ${restaurant.restaurant_admin_name || 'the current admin'} as admin for ${restaurant.name}`}
                 className="mt-2 text-xs text-[#7FAEC2] underline hover:text-[#5C94AE]"
               >
                 Replace admin
@@ -383,6 +389,11 @@ export function ManageAdminDrawer({ open, restaurant, onClose, onAssigned }: Pro
                       type="button"
                       disabled={!selectedUserId || assignSubmitting || Boolean(assignSuccess)}
                       onClick={handleAssignSubmit}
+                      aria-label={
+                        selectedUser
+                          ? `Assign ${userLabel(selectedUser)} as admin for ${restaurant.name}`
+                          : `Assign an admin for ${restaurant.name}`
+                      }
                       className="bg-[#A5CFDD] hover:bg-[#7FAEC2] text-white"
                     >
                       {assignSubmitting ? (

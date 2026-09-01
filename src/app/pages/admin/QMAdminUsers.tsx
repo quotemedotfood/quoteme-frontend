@@ -564,6 +564,7 @@ export function QMAdminUsers() {
                               size="sm"
                               disabled={editSaving}
                               onClick={() => saveEdit(u.id)}
+                              aria-label={`Save changes to ${userLabel(u)}`}
                               className="text-xs text-green-600 hover:text-green-700"
                             >
                               <Check size={14} className="mr-1" />
@@ -574,6 +575,7 @@ export function QMAdminUsers() {
                               size="sm"
                               disabled={editSaving}
                               onClick={cancelEdit}
+                              aria-label={`Cancel editing ${userLabel(u)}`}
                               className="text-xs text-gray-500"
                             >
                               <X size={14} className="mr-1" />
