@@ -98,6 +98,11 @@ function renderPage() {
   );
 }
 
+// The submit used to be reachable as a bare 'Assign Admin' regardless of which
+// user was selected -- the defect this batch fixes. Its accessible name now
+// carries the selection, so the query names the user these cases pick.
+const ASSIGN_BUTTON = 'Assign Existing User as distributor admin';
+
 async function openAssignExistingTab() {
   renderPage();
   await waitFor(() => expect(screen.getByText('Test Distributor')).toBeInTheDocument());
@@ -120,6 +125,18 @@ describe('QMAdminDistributorDetail -- assign_admin role-conflict gate (item 1c)'
     cleanup();
   });
 
+  it('names the assign submit after the selected user, not a bare "Assign Admin" (batch 2)', async () => {
+    await openAssignExistingTab();
+
+    // The selection lives in state and never reaches handleAssignAdmin, so the
+    // control had no entity to name -- the closed-over blind spot batch 1 flagged.
+    expect(screen.getByRole('button', { name: ASSIGN_BUTTON })).toBeInTheDocument();
+    // Visible caption unchanged.
+    expect(screen.getByRole('button', { name: ASSIGN_BUTTON }).textContent).toContain('Assign Admin');
+    // And the name it used to answer to is gone.
+    expect(screen.queryByRole('button', { name: 'Assign Admin' })).toBeNull();
+  });
+
   it('holds the submit and shows a confirm dialog on a 409 role_conflict_requires_confirm, without completing', async () => {
     assignDistributorAdmin.mockImplementationOnce(async () => ({
       error: 'This user already has a role at another distributor.',
@@ -128,7 +145,7 @@ describe('QMAdminDistributorDetail -- assign_admin role-conflict gate (item 1c)'
     }));
 
     await openAssignExistingTab();
-    fireEvent.click(screen.getByRole('button', { name: 'Assign Admin' }));
+    fireEvent.click(screen.getByRole('button', { name: ASSIGN_BUTTON }));
 
     await waitFor(() => expect(assignDistributorAdmin).toHaveBeenCalledTimes(1));
     expect(assignDistributorAdmin).toHaveBeenCalledWith('d1', 'u-existing', false);
@@ -147,7 +164,7 @@ describe('QMAdminDistributorDetail -- assign_admin role-conflict gate (item 1c)'
     }));
 
     await openAssignExistingTab();
-    fireEvent.click(screen.getByRole('button', { name: 'Assign Admin' }));
+    fireEvent.click(screen.getByRole('button', { name: ASSIGN_BUTTON }));
     await screen.findByText('Assign admin anyway?');
 
     fireEvent.click(screen.getByRole('button', { name: 'Assign anyway' }));
@@ -170,7 +187,7 @@ describe('QMAdminDistributorDetail -- assign_admin role-conflict gate (item 1c)'
     }));
 
     await openAssignExistingTab();
-    fireEvent.click(screen.getByRole('button', { name: 'Assign Admin' }));
+    fireEvent.click(screen.getByRole('button', { name: ASSIGN_BUTTON }));
     await screen.findByText('Assign admin anyway?');
 
     // Scoped to the alert dialog -- the Add Admin modal behind it has its
@@ -186,7 +203,7 @@ describe('QMAdminDistributorDetail -- assign_admin role-conflict gate (item 1c)'
     assignDistributorAdmin.mockImplementationOnce(async () => ({ data: { ok: true } }));
 
     await openAssignExistingTab();
-    fireEvent.click(screen.getByRole('button', { name: 'Assign Admin' }));
+    fireEvent.click(screen.getByRole('button', { name: ASSIGN_BUTTON }));
 
     await waitFor(() => expect(assignDistributorAdmin).toHaveBeenCalledTimes(1));
     expect(assignDistributorAdmin).toHaveBeenCalledWith('d1', 'u-existing', false);

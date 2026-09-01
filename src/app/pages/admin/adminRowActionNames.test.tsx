@@ -76,6 +76,54 @@ const NAMED_ROW_ACTIONS: Array<{ file: string; handler: string; carries: RegExp;
   },
 ];
 
+// Batch 2 covers the four user-row surfaces that waited on utils/userLabel.
+// Three of them are asserted by RENDER, which is the stronger instrument and is
+// where batch 1 said these belong once a harness exists:
+//
+//   QMAdminUsers               -> QMAdminUsers.inlineEdit.test.tsx
+//   QMAdminDistributorDetail   -> QMAdminDistributorDetail.assignAdminGate.test.tsx
+//   _manageAdminDrawer         -> _manageAdminDrawer.rowActionNames.test.tsx (new)
+//
+// QMAdminBrandDetail is the one left here. Its existing test file is pure-helper
+// with no harness, and standing a page harness up -- route params, brand fetch,
+// user list -- to prove one aria-label is out of proportion to the claim. So it
+// keeps the source-level instrument, with the same caveat batch 1 recorded.
+const BATCH_2_BRAND_DETAIL: Array<{ file: string; handler: string; carries: RegExp; what: string }> = [
+  {
+    file: 'QMAdminBrandDetail.tsx',
+    handler: 'handleResend(u.id)',
+    carries: /aria-label=\{`Resend invite to \$\{userLabel\(u\)\}`\}/,
+    what: 'resend invite names the user',
+  },
+  {
+    file: 'QMAdminBrandDetail.tsx',
+    handler: 'handleImpersonate(',
+    carries: /aria-label=\{`Sign in as \$\{userLabel\(u\)\}`\}/,
+    what: 'impersonate names the user through userLabel, not a second inline copy',
+  },
+];
+
+describe('admin row actions name the record they act on (batch 2: brand detail)', () => {
+  afterEach(() => {
+    cleanup();
+  });
+
+  for (const { file, handler, carries, what } of BATCH_2_BRAND_DETAIL) {
+    it(`${file}: ${what}`, () => {
+      const src = read(file);
+      expect(src, `${file} no longer calls ${handler}; re-anchor this case`).toContain(handler);
+      expect(src).toMatch(carries);
+    });
+  }
+
+  it('the inline duplicate of userLabel is gone from this surface', () => {
+    // userLabel exists so there is one copy. QMAdminBrandDetail had spelled the
+    // same expression out inline, twice on one control.
+    const src = read('QMAdminBrandDetail.tsx');
+    expect(src).not.toContain("[u.first_name, u.last_name].filter(Boolean).join(' ') || u.email");
+  });
+});
+
 describe('admin row actions name the record they act on (batch 1)', () => {
   afterEach(() => {
     cleanup();
