@@ -286,6 +286,7 @@ export function QMAdminOperationalMemoryLearnings() {
                           type="button"
                           onClick={() => handleRevert(row)}
                           disabled={revertingId === row.id}
+                          aria-label={`Revert the learning for ${row.canonical_key}`}
                           className="text-xs font-medium text-red-600 hover:underline disabled:opacity-50 bg-transparent border-none cursor-pointer"
                         >
                           {revertingId === row.id ? 'Reverting...' : 'Revert'}

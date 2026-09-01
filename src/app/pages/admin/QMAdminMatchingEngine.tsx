@@ -315,7 +315,7 @@ export function RulesTab({ rules, onRefresh }: { rules: MatchingEngineRules | nu
                 </div>
               </div>
               {!mc.promoted ? (
-                <Button variant="outline" size="sm" onClick={() => handlePromote(mc.id)} disabled={promoting === mc.id} className="text-xs flex-shrink-0">
+                <Button variant="outline" size="sm" onClick={() => handlePromote(mc.id)} disabled={promoting === mc.id} className="text-xs flex-shrink-0" aria-label={`Promote the correction for ${mc.ingredient_name || 'this ingredient'} to a rule`}>
                   {promoting === mc.id ? 'Promoting...' : 'Promote to Rule'}
                 </Button>
               ) : (

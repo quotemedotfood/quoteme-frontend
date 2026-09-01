@@ -342,7 +342,8 @@ export function QMAdminRestaurants() {
                           size="sm"
                           className="text-xs text-[#7FAEC2] hover:text-[#6A9AB0]"
                           onClick={() => setManageAdminTarget(r)}
-                          title={r.restaurant_admin_id ? 'Manage admin user' : 'Add admin user'}
+                          aria-label={r.restaurant_admin_id ? `Manage the admin user for ${r.name}` : `Add an admin user for ${r.name}`}
+                          title={r.restaurant_admin_id ? `Manage the admin user for ${r.name}` : `Add an admin user for ${r.name}`}
                         >
                           {r.restaurant_admin_id ? (
                             <UserCog size={14} className="mr-1" />

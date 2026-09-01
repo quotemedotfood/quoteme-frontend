@@ -304,6 +304,7 @@ function AuditLogTable({ logs, onRevert }: AuditLogTableProps) {
                   type="button"
                   onClick={() => onRevert(log)}
                   className="text-xs text-[#7FAEC2] underline underline-offset-2 hover:text-[#5a8fa8] whitespace-nowrap"
+                  aria-label={`Revert ${log.field_name} to the value from ${new Date(log.changed_at).toLocaleString()}`}
                 >
                   Revert to this state
                 </button>

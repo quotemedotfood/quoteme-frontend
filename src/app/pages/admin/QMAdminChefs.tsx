@@ -38,6 +38,14 @@ function formatRelativeTime(dateStr: string | null): string {
   });
 }
 
+// One name for a chef row. Falls back to the email because a chef invited but
+// never signed in often has no name on file, and an action still has to say
+// who it acts on. Kept local rather than reaching for utils/userLabel, which
+// is typed to AdminUser and lands on main with a separate branch.
+function chefLabel(chef: { first_name?: string | null; last_name?: string | null; email: string }): string {
+  return [chef.first_name, chef.last_name].filter(Boolean).join(' ') || chef.email;
+}
+
 export function QMAdminChefs() {
   const [chefs, setChefs] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
@@ -302,6 +310,7 @@ export function QMAdminChefs() {
                         size="sm"
                         disabled={impersonatingId === chef.id || !hasSignedIn(chef)}
                         onClick={() => setShowReasonFor(chef.id)}
+                        aria-label={`Impersonate ${chefLabel(chef)}`}
                         style={{
                           borderColor: '#F39839',
                           color: '#F39839',
