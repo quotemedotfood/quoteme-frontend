@@ -840,6 +840,28 @@ export function ExportFinalizePage() {
                       {ackError}
                     </div>
                   )}
+                  {/* W5 — "Rep handles All" ABOVE the first row.
+                      The equivalent control already existed at the BOTTOM of
+                      this list ("Mark all N as Rep will handle"), which is
+                      exactly where it cannot be seen: the list it applies to is
+                      the thing pushing it off screen, so the longer the list the
+                      more hidden the bulk action. Same handler, same ids, same
+                      button styling as the per-row "Rep will handle" so it reads
+                      as the same decision applied to everything. The bottom link
+                      stays for a rep who has already scrolled. */}
+                  {outstanding.length > 1 && !quoteReadOnly && (
+                    <div className="flex justify-end mb-2">
+                      <button
+                        type="button"
+                        onClick={() => handleAcknowledgeUnmatched(outstanding.map(l => l.id), 'rep_will_handle')}
+                        disabled={ackingLineIds.length > 0}
+                        className="text-xs px-2.5 py-1.5 rounded-md border border-[#A5CFDD] text-[#2A5F6F] hover:bg-[#A5CFDD]/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                        data-testid="ack-all-rep-will-handle-top"
+                      >
+                        Rep handles All
+                      </button>
+                    </div>
+                  )}
                   <div className="space-y-2">
                     {allUnmatched.map(line => {
                       const acked = !!line.rep_handled;
