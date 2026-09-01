@@ -4,6 +4,16 @@ import { RefreshCw, Pencil, Trash2, Plus, Search, PlayCircle, Zap } from 'lucide
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogFooter,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from '../../components/ui/alert-dialog';
+import {
   Table,
   TableBody,
   TableCell,
@@ -162,6 +172,8 @@ export function QMAdminBrandRules() {
   const [showAddModal, setShowAddModal] = useState(false);
 
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  // Holds the rule whose delete confirm is open; null when none is pending.
+  const [confirmDelete, setConfirmDelete] = useState<BrandRule | null>(null);
   const [parentPickerId, setParentPickerId] = useState<string | null>(null);
   const [parentSearch, setParentSearch] = useState('');
 
@@ -210,7 +222,11 @@ export function QMAdminBrandRules() {
     setEditingId(null);
   }
 
-  async function handleDelete(id: string) {
+  // Only the confirm's action reaches the API. DELETE /admin/brand-rules/:id
+  // runs `rule.destroy!` (brand_rules_controller.rb:30). There is no
+  // soft-delete anywhere on this model, so the row is gone.
+  async function performDelete(id: string) {
+    setConfirmDelete(null);
     setDeletingId(id);
     const res = await deleteAdminBrandRule(id);
     if (res.data?.deleted || res.data) {
@@ -243,7 +259,7 @@ export function QMAdminBrandRules() {
   }
 
   async function handleSetParent(childId: string, parentId: string | null) {
-    const res = await updateAdminBrandRule(childId, { parent_brand_id: parentId } as any);
+    const res = await updateAdminBrandRule(childId, { parent_brand_id: parentId });
     if (res.data) {
       setRules((prev) => prev.map((r) => (r.id === childId ? res.data! : r)));
     }
@@ -256,7 +272,7 @@ export function QMAdminBrandRules() {
   }
 
   // Canonical brands (no parent) for the parent picker
-  const canonicalBrands = rules.filter((r) => !(r as any).parent_brand_id);
+  const canonicalBrands = rules.filter((r) => !r.parent_brand_id);
 
   const displayedRules = rules;
 
@@ -410,12 +426,12 @@ export function QMAdminBrandRules() {
                 <TableRow key={rule.id} className="hover:bg-gray-50/60 transition-colors">
                   {/* Brand Name */}
                   <TableCell className="font-medium text-[#2A2A2A]">
-                    {(rule as any).parent_brand_name && (
+                    {rule.parent_brand_name && (
                       <span className="text-xs text-gray-400 mr-1">↳</span>
                     )}
                     {rule.brand_name}
-                    {(rule as any).child_brands?.length > 0 && (
-                      <span className="text-xs text-gray-400 ml-1">({(rule as any).child_brands.length} variants)</span>
+                    {rule.child_brands?.length > 0 && (
+                      <span className="text-xs text-gray-400 ml-1">({rule.child_brands.length} variants)</span>
                     )}
                   </TableCell>
 
@@ -449,9 +465,9 @@ export function QMAdminBrandRules() {
                           )}
                         </div>
                       </div>
-                    ) : (rule as any).parent_brand_name ? (
+                    ) : rule.parent_brand_name ? (
                       <div className="flex items-center gap-1">
-                        <span className="text-xs text-[#7FAEC2] font-medium">{(rule as any).parent_brand_name}</span>
+                        <span className="text-xs text-[#7FAEC2] font-medium">{rule.parent_brand_name}</span>
                         <button
                           onClick={() => handleRemoveParent(rule.id)}
                           className="text-xs text-gray-400 hover:text-red-500"
@@ -555,15 +571,17 @@ export function QMAdminBrandRules() {
                       <button
                         onClick={() => { setEditingId(rule.id); setEditCategory(rule.category); }}
                         className="p-1.5 rounded hover:bg-gray-100 text-gray-400 hover:text-[#7FAEC2] transition-colors"
-                        title="Edit category"
+                        aria-label={`Edit the category for ${rule.brand_name}`}
+                        title={`Edit the category for ${rule.brand_name}`}
                       >
                         <Pencil className="w-3.5 h-3.5" />
                       </button>
                       <button
-                        onClick={() => handleDelete(rule.id)}
+                        onClick={() => setConfirmDelete(rule)}
                         disabled={deletingId === rule.id}
-                        className="p-1.5 rounded hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors"
-                        title="Delete rule"
+                        className="p-1.5 rounded hover:bg-red-50 text-red-600 hover:text-red-700 transition-colors"
+                        aria-label={`Delete the brand rule for ${rule.brand_name}`}
+                        title={`Delete the brand rule for ${rule.brand_name}`}
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
@@ -586,6 +604,47 @@ export function QMAdminBrandRules() {
           }}
         />
       )}
+
+      {/* Delete confirm. This endpoint runs `rule.destroy!`, so the copy says
+          the rule is gone and does NOT offer a recovery this page cannot
+          deliver. It also names the side effect: BrandRule
+          `has_many :child_brands, dependent: :nullify`, so deleting a parent
+          leaves its variants in place but silently detached from it. */}
+      <AlertDialog
+        open={!!confirmDelete}
+        onOpenChange={(open) => { if (!open) setConfirmDelete(null); }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Delete the brand rule for {confirmDelete?.brand_name}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This rule is deleted permanently and cannot be restored from this
+              page.
+              {confirmDelete && confirmDelete.child_brands?.length > 0 && (
+                <>
+                  {' '}
+                  {confirmDelete.child_brands.length} variant
+                  {confirmDelete.child_brands.length === 1 ? '' : 's'} sitting
+                  under it ({confirmDelete.child_brands.map((c) => c.brand_name).join(', ')})
+                  {confirmDelete.child_brands.length === 1 ? ' is' : ' are'} kept,
+                  but no longer grouped under this brand.
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep the rule</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+              onClick={() => confirmDelete && performDelete(confirmDelete.id)}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

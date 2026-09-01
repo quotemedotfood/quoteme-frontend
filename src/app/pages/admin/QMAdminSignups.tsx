@@ -14,6 +14,17 @@ import { getAdminUsers, updateAdminUser, AdminUser } from '../../services/adminA
 import { userStatusPill } from '../../utils/userDisplayStatus';
 import { AdminEmptyState } from './_adminEmptyState';
 import { ADMIN_PAGE_FRAME, ADMIN_PAGE_FRAME_STYLE } from '../../components/admin/adminPageFrame';
+import { userLabel } from '../../utils/userLabel';
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogFooter,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from '../../components/ui/alert-dialog';
 
 // Every role the backend will accept. Source of truth is the inclusion
 // validation on User (app/models/user.rb:17); keep this list in step with it.
@@ -41,6 +52,8 @@ export function QMAdminSignups() {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // Holds the user whose archive confirm is open; null when none is pending.
+  const [confirmArchive, setConfirmArchive] = useState<AdminUser | null>(null);
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
   const [flaggedFilter, setFlaggedFilter] = useState(false);
@@ -70,7 +83,9 @@ export function QMAdminSignups() {
     loadUsers();
   }, [roleFilter, flaggedFilter, includeArchived]);
 
-  async function handleArchive(userId: string) {
+  // Only the confirm's action reaches the API.
+  async function performArchive(userId: string) {
+    setConfirmArchive(null);
     const res = await updateAdminUser(userId, { status: 'archived' });
     if (res.data) loadUsers();
     else setError(res.error || 'Failed to archive user');
@@ -296,15 +311,17 @@ export function QMAdminSignups() {
                         <button
                           onClick={() => handleUnarchive(u.id)}
                           className="text-xs text-[#7FAEC2] hover:underline flex items-center gap-1"
-                          title="Unarchive"
+                          aria-label={`Unarchive ${userLabel(u)}`}
+                          title={`Unarchive ${userLabel(u)}`}
                         >
                           <ArchiveRestore size={12} /> Unarchive
                         </button>
                       ) : (
                         <button
-                          onClick={() => handleArchive(u.id)}
-                          className="text-xs text-gray-400 hover:text-red-500 flex items-center gap-1"
-                          title="Archive"
+                          onClick={() => setConfirmArchive(u)}
+                          className="text-xs text-red-600 hover:text-red-700 flex items-center gap-1"
+                          aria-label={`Archive ${userLabel(u)}`}
+                          title={`Archive ${userLabel(u)}`}
                         >
                           <Archive size={12} /> Archive
                         </button>
@@ -317,6 +334,38 @@ export function QMAdminSignups() {
           </div>
         </div>
       )}
+
+      {/* Archive confirm. Unlike the brand-rule delete, this one IS reversible
+          and the reverse control is on the same row: handleArchive sets
+          status 'archived' and handleUnarchive sets it back to 'active', and
+          the two render in mutually exclusive branches. So the copy says so.
+          The Team page confirm stays silent about recovery because no
+          re-enable exists there; here it exists and the operator can see it. */}
+      <AlertDialog
+        open={!!confirmArchive}
+        onOpenChange={(open) => { if (!open) setConfirmArchive(null); }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Archive {confirmArchive ? userLabel(confirmArchive) : ''}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              They lose access and drop out of the default list. Nothing is
+              deleted, and you can bring them back with Unarchive.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+              onClick={() => confirmArchive && performArchive(confirmArchive.id)}
+            >
+              Archive
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
