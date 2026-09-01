@@ -162,6 +162,11 @@ export function MatchDrawer({
   // server-provided candidate.rep_memory when no override exists yet.
   const [lockOverrides, setLockOverrides] = useState<Record<string, boolean>>({});
   const [lockPending, setLockPending] = useState<string | null>(null);
+  // W2 — the chain lock used to fail silently. The server writes real copy for
+  // every rejection and the client threw it away, so a rejected write reverted
+  // the chain with no modal, no toast and no text: indistinguishable from a
+  // dead button. This holds the server's own message so the rep can read it.
+  const [lockError, setLockError] = useState<string | null>(null);
 
   const isLocked = (productId: string, serverValue: boolean) =>
     lockOverrides[productId] ?? serverValue;
@@ -171,6 +176,7 @@ export function MatchDrawer({
     // Guard at the call site, not only where the toggle is rendered.
     if (readOnly) return;
     if (!quoteId || !quoteLineId || lockPending) return;
+    setLockError(null);
     setLockPending(productId);
     const nextLocked = !currentlyLocked;
     const res = await toggleRepMemoryLock(quoteId, {
@@ -180,11 +186,16 @@ export function MatchDrawer({
       locked: nextLocked,
     });
     setLockPending(null);
-    if (!res.error) {
-      setLockOverrides(prev => ({ ...prev, [productId]: nextLocked }));
+    if (res.error) {
+      // Surface the server's own words. rep_memory_lock returns specific,
+      // user-facing copy for each rejection ("Missing canonical_key for this
+      // component", "Quote has no assigned rep", "Quote has no catalog
+      // version") plus a catch-all "Could not update the lock. Please try
+      // again." Every one of those was written for a person and discarded here.
+      setLockError(res.error);
+      return;
     }
-    // Errors are swallowed quietly here by design -- no modal, no toast.
-    // The chain simply stays in its prior state if the call failed.
+    setLockOverrides(prev => ({ ...prev, [productId]: nextLocked }));
   };
 
   // BUG #26 precedent (MapComponentDrawer) — vaul's right-direction drawer
@@ -705,6 +716,9 @@ export function MatchDrawer({
               <Plus className="w-4 h-4" /> {addLabel}
             </button>
           </div>
+          )}
+          {lockError && (
+            <p className="px-[22px] pb-3 text-xs" style={{ color: '#B23A34' }}>{lockError}</p>
           )}
           {submitError && (
             <p className="px-[22px] pb-3 text-xs" style={{ color: '#B23A34' }}>{submitError}</p>

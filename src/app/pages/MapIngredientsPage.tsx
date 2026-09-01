@@ -242,6 +242,10 @@ export function MapIngredientsPage() {
   // server-provided candidate.rep_memory when no override exists yet.
   const [lockOverrides, setLockOverrides] = useState<Record<string, boolean>>({});
   const [lockPending, setLockPending] = useState<string | null>(null);
+  // W2 — same silent-failure defect as MatchDrawer, second site. Keyed by
+  // product so the message appears on the row the rep actually clicked rather
+  // than as a page-level banner detached from the control.
+  const [lockError, setLockError] = useState<{ productId: string; message: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // ── Tab / drawer state ──
@@ -665,6 +669,7 @@ export function MapIngredientsPage() {
       // stale tab or a direct call must not be able to write anyway.
       if (readOnly) return;
       if (!quoteId || !line?.id || !bestMatch || lockPending) return;
+      setLockError(null);
       setLockPending(bestMatch.id);
       const nextLocked = !bestMatchLocked;
       const res = await toggleRepMemoryLock(quoteId, {
@@ -674,10 +679,13 @@ export function MapIngredientsPage() {
         locked: nextLocked,
       });
       setLockPending(null);
-      if (!res.error) {
-        setLockOverrides(prev => ({ ...prev, [bestMatch.id]: nextLocked }));
+      if (res.error) {
+        // Show the server's own copy. rep_memory_lock rejects with text written
+        // for a person; discarding it made the chain look like a dead control.
+        setLockError({ productId: bestMatch.id, message: res.error });
+        return;
       }
-      // No modal/toast on failure by design -- the chain just stays put.
+      setLockOverrides(prev => ({ ...prev, [bestMatch.id]: nextLocked }));
     };
 
     return (
@@ -697,6 +705,9 @@ export function MapIngredientsPage() {
                     onToggle={handleToggleLock}
                     disabled={lockPending === bestMatch.id}
                   />
+                )}
+                {lockError?.productId === bestMatch.id && (
+                  <span className="text-[11px] font-normal" style={{ color: '#B23A34' }}>{lockError.message}</span>
                 )}
                 {bestMatchIsDistributorMemory && (
                   <DistributorMemoryBadge
