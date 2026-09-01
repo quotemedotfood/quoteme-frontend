@@ -265,7 +265,15 @@ describe('SettingsPage — controls that used to report success and persist noth
       expect(screen.queryByText('Upload Logo')).toBeNull();
       expect(screen.queryByText('Replace Logo')).toBeNull();
       // The deleted writer's only entry point was a file input in this section.
-      expect(container.querySelectorAll('input[type="file"][accept*="webp"]')).toHaveLength(0);
+      // Scoped to the distributor card, and matched on the input rather than on
+      // its accept value: the accept attribute is now "image/*" (one group, so
+      // the file dialog stops offering "PJP File"), and an [accept*="webp"]
+      // selector would match nothing whether or not the control existed.
+      const distributorCard = screen.getByText('Your Company Info').closest('div.bg-white');
+      expect(distributorCard).not.toBeNull();
+      expect(distributorCard!.querySelectorAll('input[type="file"]')).toHaveLength(0);
+      // The avatar's file input is elsewhere on the page and is not this control.
+      expect(container.querySelectorAll('input[type="file"]').length).toBeGreaterThan(0);
     });
 
     it('distributor_admin: keeps the upload control inside the distributor editor', async () => {

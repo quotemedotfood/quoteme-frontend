@@ -38,6 +38,35 @@ function roleLabel(role: string | undefined): string {
 // "Limited to 2 draft quotes at a time" -- a limit that has never applied to them.
 const DRAFT_LIMIT_EXEMPT_ROLES = ['quoteme_admin', 'distributor_admin'];
 
+// What the app will actually accept, enforced in JS on every image control.
+const IMAGE_ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+const IMAGE_MAX_BYTES = 5 * 1024 * 1024; // 5 MB
+const IMAGE_REJECT_MESSAGE = 'Only JPEG, PNG, or WebP images are accepted.';
+const IMAGE_TOO_LARGE_MESSAGE = 'Image must be 5 MB or smaller.';
+
+// ONE accept group, deliberately.
+//
+// These inputs used to list the three MIME types separately
+// (accept="image/jpeg,image/png,image/webp"). Chrome renders one dropdown entry
+// per group and labels each from the first extension it knows for that MIME --
+// for image/jpeg that is ".pjp", a legacy alias nobody has ever typed on
+// purpose. The file dialog therefore offered "PJP File" while the copy under
+// the button correctly said JPEG, PNG or WebP. The dropdown was the only thing
+// lying.
+//
+// One group collapses that to a single images entry (Chrome adds its own
+// all-files fallback). image/* is wider than what we accept, so the JS guard
+// below is what actually enforces the three types -- it is no longer a
+// belt-and-braces check, it is the enforcement.
+const IMAGE_ACCEPT = 'image/*';
+
+/** Returns an error message when the file is not an image we accept, else null. */
+function imageRejectionReason(file: File): string | null {
+  if (!IMAGE_ALLOWED_TYPES.includes(file.type)) return IMAGE_REJECT_MESSAGE;
+  if (file.size > IMAGE_MAX_BYTES) return IMAGE_TOO_LARGE_MESSAGE;
+  return null;
+}
+
 // Below 768px the distributor_admin settings page must NOT wrap in the
 // ManagerSidebar shell: that sidebar holds a fixed 280px and has no responsive
 // handling, so on a phone it crushed the form column to ~26px and pinned the
@@ -83,6 +112,7 @@ export function SettingsPage() {
 
   // Profile photo state
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
+  const [profilePhotoError, setProfilePhotoError] = useState<string | null>(null);
   const profilePhotoInputRef = useRef<HTMLInputElement>(null);
 
   // Local state for editing
@@ -180,6 +210,8 @@ export function SettingsPage() {
   // Logo upload status (distributor_admin backend upload)
   const [logoUploading, setLogoUploading] = useState(false);
   const [logoUploadError, setLogoUploadError] = useState<string | null>(null);
+  const [logoSavedMessage, setLogoSavedMessage] = useState<string | null>(null);
+  const logoInputRef = useRef<HTMLInputElement>(null);
 
   // Load rep_settings and avatar from authenticated user
   useEffect(() => {
@@ -322,6 +354,8 @@ export function SettingsPage() {
   };
 
   const handleCancelDistributorEdit = () => {
+    setLogoUploadError(null);
+    setLogoSavedMessage(null);
     setCompanyName(user?.distributor?.name || user?.distributor_name || profile.distributorName);
     setCompanyLogo(user?.distributor?.logo_url || null);
     // Reset to saved values from user
@@ -335,8 +369,6 @@ export function SettingsPage() {
     setIsEditingDistributor(false);
   };
 
-  const LOGO_ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
-  const LOGO_MAX_BYTES = 5 * 1024 * 1024; // 5 MB
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -344,16 +376,14 @@ export function SettingsPage() {
     // Reset so same file can be re-selected after an error
     e.target.value = '';
 
-    if (!LOGO_ALLOWED_TYPES.includes(file.type)) {
-      setLogoUploadError('Only JPEG, PNG, or WebP images are accepted.');
-      return;
-    }
-    if (file.size > LOGO_MAX_BYTES) {
-      setLogoUploadError('Image must be 5 MB or smaller.');
+    const rejection = imageRejectionReason(file);
+    if (rejection) {
+      setLogoUploadError(rejection);
       return;
     }
 
     setLogoUploadError(null);
+    setLogoSavedMessage(null);
 
     // Distributor-admin only. The rep branch that used to live here read the
     // file into a base64 data URL and stashed it in
@@ -372,21 +402,59 @@ export function SettingsPage() {
     }
     setLogoLoadError(false);
     setCompanyLogo(res.data!.logo_url);
+    // This upload already persisted -- it POSTs on selection rather than waiting
+    // for Save. Without refreshing, user.distributor.logo_url still held the old
+    // URL, so Cancel restored the OLD logo to the screen while the server held
+    // the new one: the page denying a save it had made. Refresh so every reader
+    // of user.distributor.logo_url, Cancel included, sees what was actually
+    // stored, and say so plainly since Cancel cannot take it back.
+    await refreshUser();
+    setLogoSavedMessage('Logo saved. This one applies immediately -- Cancel will not undo it.');
+  };
+
+  // The avatar was clickable at all times, but the only thing that persists it
+  // is handleSaveProfile, and Save exists only while the account section is in
+  // edit mode. Clicking it on a settled page opened a file dialog, swapped the
+  // image on screen, and offered nothing to save it with -- the same silent-write
+  // shape as the logo control, on a different control. Moose's rule: the change
+  // lives inside Edit so a Save button exists, and a click outside Edit opens
+  // Edit rather than doing nothing.
+  // Moose's rule applied to the logo: if a user clicks the image, open Edit
+  // rather than doing nothing.
+  const handleLogoPreviewClick = () => {
+    if (!isDistributorAdmin) return;
+    if (!isEditingDistributor) {
+      setIsEditingDistributor(true);
+      return;
+    }
+    logoInputRef.current?.click();
   };
 
   const handleProfilePhotoClick = () => {
+    if (accountFieldsReadOnly) {
+      setIsEditingAccount(true);
+      return;
+    }
     profilePhotoInputRef.current?.click();
   };
 
   const handleProfilePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setProfilePhoto(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+    e.target.value = '';
+    // accept="image/*" is wider than what the app takes, so this is the check
+    // that enforces the three types the copy promises.
+    const rejection = imageRejectionReason(file);
+    if (rejection) {
+      setProfilePhotoError(rejection);
+      return;
     }
+    setProfilePhotoError(null);
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setProfilePhoto(reader.result as string);
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleUpgradePlan = () => {
@@ -595,8 +663,17 @@ export function SettingsPage() {
             {/* Profile Photo */}
             <div className="flex-shrink-0 flex md:block flex-col items-center">
               <div
+                role="button"
+                tabIndex={0}
+                aria-label={accountFieldsReadOnly ? 'Edit account info to change your profile photo' : 'Change your profile photo'}
                 className="w-24 h-24 rounded-full bg-gray-200 overflow-hidden cursor-pointer relative group"
                 onClick={handleProfilePhotoClick}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    handleProfilePhotoClick();
+                  }
+                }}
               >
                 <img
                   src={profilePhoto || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&h=200&fit=crop'}
@@ -610,12 +687,15 @@ export function SettingsPage() {
               <input
                 ref={profilePhotoInputRef}
                 type="file"
-                accept="image/png, image/jpeg"
+                accept={IMAGE_ACCEPT}
                 className="hidden"
                 onChange={handleProfilePhotoChange}
               />
               <p className="text-xs text-center mt-2 text-[#4F4F4F]">{fullName}</p>
               <p className="text-xs text-center text-[#4F4F4F]">{email}</p>
+              {profilePhotoError && (
+                <p className="text-xs text-center mt-1" style={{ color: '#B91C1C' }}>{profilePhotoError}</p>
+              )}
             </div>
 
             {/* Form Fields */}
@@ -741,7 +821,30 @@ export function SettingsPage() {
               <div>
                 <label className="block text-sm text-[#4F4F4F] mb-2">Company Logo</label>
                 <div className="flex items-center gap-4">
-                  <div className="w-20 h-20 bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden">
+                  {/* Clicking the logo used to do nothing at all. For the one
+                      role that can change it, it now opens Edit (where the
+                      control and its Save live) or the picker if Edit is
+                      already open. For everyone else it stays inert, because an
+                      affordance that leads nowhere is the defect, not the fix. */}
+                  <div
+                    {...(isDistributorAdmin
+                      ? {
+                          role: 'button' as const,
+                          tabIndex: 0,
+                          'aria-label': isEditingDistributor
+                            ? 'Change the company logo'
+                            : 'Edit distributor settings to change the company logo',
+                          onClick: handleLogoPreviewClick,
+                          onKeyDown: (e: React.KeyboardEvent) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              handleLogoPreviewClick();
+                            }
+                          },
+                        }
+                      : {})}
+                    className={`w-20 h-20 bg-gray-100 rounded-lg flex items-center justify-center overflow-hidden${isDistributorAdmin ? ' cursor-pointer' : ''}`}
+                  >
                     {companyLogo && !logoLoadError ? (
                       <img
                         src={companyLogo}
@@ -759,8 +862,9 @@ export function SettingsPage() {
                     <div>
                       <label className={`cursor-pointer${logoUploading ? ' opacity-60 pointer-events-none' : ''}`}>
                         <input
+                          ref={logoInputRef}
                           type="file"
-                          accept="image/jpeg,image/png,image/webp"
+                          accept={IMAGE_ACCEPT}
                           className="hidden"
                           onChange={handleLogoUpload}
                           disabled={logoUploading}
@@ -773,6 +877,9 @@ export function SettingsPage() {
                       <p className="text-xs text-[#4F4F4F]">JPEG, PNG, or WebP. Max 5 MB.</p>
                       {logoUploadError && (
                         <p className="text-xs mt-1" style={{ color: '#B91C1C' }}>{logoUploadError}</p>
+                      )}
+                      {logoSavedMessage && (
+                        <p className="text-xs mt-1" style={{ color: '#15803D' }}>{logoSavedMessage}</p>
                       )}
                     </div>
                   )}
