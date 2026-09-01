@@ -13,7 +13,7 @@ import { useLocation2 } from '../contexts/LocationContext';
 import { useAuth } from '../contexts/AuthContext';
 import { UpgradeDrawer } from '../components/UpgradeDrawer';
 import { CategoryReviewPanel } from '../components/CategoryReviewPanel';
-import { createMenu, createGuestQuote, extractMenuText, extractMenuTextAsync, getCatalogs, uploadCatalogFile, getRestaurants, getRestaurant, createRestaurant, createContact, getStockQuotes, generateFromStockQuote, getDemoDistributor, getClassificationStatus, getQuotes, getMenuStatus, updateCurrentUser } from '../services/api';
+import { createMenu, createGuestQuote, extractMenuText, extractMenuTextAsync, getCatalogs, uploadCatalogFile, getRestaurants, getRestaurant, createRestaurant, createContact, getStockQuotes, generateFromStockQuote, getDemoDistributor, getClassificationStatus, getQuotes, getMenuStatus } from '../services/api';
 import type { CatalogSummary, RestaurantSummary, RestaurantDetail, StockQuoteResponse } from '../services/api';
 import { isDemoMode, isLiquorDemo, demoType } from '../utils/demoMode';
 import { isBuyerRole as checkBuyerRole } from '../utils/roles';
@@ -193,7 +193,7 @@ export function StartNewQuotePage() {
   const [isUpgradeDrawerOpen, setIsUpgradeDrawerOpen] = useState(false);
   const { hasQuotesRemaining, quotesRemaining, profile, initGuestSession } = useUser();
   const { selectedLocation } = useLocation2();
-  const { user, refreshUser } = useAuth();
+  const { user } = useAuth();
   const isBuyerRole = checkBuyerRole(user?.role);
   // B-182: an authenticated user (rep / distributor_admin / quoteme_admin / chef —
   // anyone holding a real bearer token or a loaded user) is NEVER a guest, even
@@ -226,8 +226,6 @@ export function StartNewQuotePage() {
 
   // Draft limit state (Fix 131 + Fix 139)
   const [draftLimitReached, setDraftLimitReached] = useState(false);
-  const [unlimitedDraftsEnabled, setUnlimitedDraftsEnabled] = useState(false);
-  const [enablingUnlimited, setEnablingUnlimited] = useState(false);
 
   // Catalog state
   const [catalogs, setCatalogs] = useState<CatalogSummary[]>([]);
@@ -1087,8 +1085,19 @@ export function StartNewQuotePage() {
           )}
         </div>
 
-        {/* Fix 131 + Fix 139: Draft limit block */}
-        {draftLimitReached && !unlimitedDraftsEnabled && (
+        {/* Fix 131 + Fix 139: Draft limit block.
+            The block used to offer "or allow unlimited drafts", which PATCHed
+            unlimited_drafts on /users/me. That param is stripped server-side for
+            every self-service caller regardless of role (users_controller
+            "Param hardening": only quoteme_admin may set it), and the PATCH
+            still returns 200 with a full user body. res.data was therefore
+            truthy, the success branch fired, a green "Unlimited drafts enabled"
+            banner rendered and the upload zone unlocked -- then menus#create
+            re-checked the same flag and returned 422 on that exact limit one
+            action later. The escape hatch never worked, so it is gone. The one
+            action that does clear the wall -- finish or delete a draft -- is the
+            link that was already sitting beside it. */}
+        {draftLimitReached && (
           <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
             <p className="text-sm text-amber-800">
               You have 2 quotes in progress.{' '}
@@ -1098,37 +1107,7 @@ export function StartNewQuotePage() {
               >
                 Go to your quotes &rarr;
               </button>
-              {' '}to finish or delete one, or{' '}
-              <button
-                onClick={async () => {
-                  setEnablingUnlimited(true);
-                  try {
-                    const res = await updateCurrentUser({ unlimited_drafts: true });
-                    if (res.data) {
-                      setUnlimitedDraftsEnabled(true);
-                      setDraftLimitReached(false);
-                      await refreshUser();
-                    }
-                  } catch { /* non-fatal */ }
-                  setEnablingUnlimited(false);
-                }}
-                disabled={enablingUnlimited}
-                className="text-[#A5CFDD] hover:text-[#7FAEC2] font-medium underline underline-offset-2"
-              >
-                {enablingUnlimited ? 'enabling...' : 'allow unlimited drafts'}
-              </button>
-              {' '}in your settings.
-            </p>
-          </div>
-        )}
-        {unlimitedDraftsEnabled && (
-          <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
-            <p className="text-sm text-green-800">
-              Unlimited drafts enabled. You can change this in{' '}
-              <button onClick={() => navigate('/settings')} className="text-[#A5CFDD] hover:text-[#7FAEC2] font-medium underline underline-offset-2">
-                Settings
-              </button>
-              {' '}anytime.
+              {' '}to finish or delete one before starting a new one.
             </p>
           </div>
         )}
