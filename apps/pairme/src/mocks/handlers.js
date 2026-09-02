@@ -72,7 +72,6 @@ export const handlers = [
         celebration_flag: null, likes: [], likes_free_text: null,
         dislikes: [], dislikes_free_text: null, not_drinking: null,
       },
-      safety: { allergies: [], dietary: [], allergies_free_text: null },
     })
   ),
 
@@ -80,7 +79,6 @@ export const handlers = [
     const body = await request.json().catch(() => ({}));
     return HttpResponse.json({
       preferences: { som_level: null, target_level: null, adventure: null, budget: null, celebration_flag: null, likes: [], likes_free_text: null, dislikes: [], dislikes_free_text: null, not_drinking: null, ...(body.preferences || {}) },
-      safety: { allergies: [], dietary: [], allergies_free_text: null, ...(body.safety || {}) },
     });
   }),
 

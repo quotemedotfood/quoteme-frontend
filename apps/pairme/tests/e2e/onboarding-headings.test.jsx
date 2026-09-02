@@ -4,7 +4,7 @@
  * Regression cover for the state.js off-by-one where the `ob` title table was
  * subscripted by the screen index `s` while its entries were laid out by
  * `step` (= s - 1). Every onboarding screen rendered the NEXT screen's
- * heading, and Q6Summary (s=7) ran off the end of the array and rendered no
+ * heading, and the summary ran off the end of the array and rendered no
  * heading and no subtitle at all.
  *
  * The bug shipped and was visible on the live demo. q1-knowledge-layout.test
@@ -19,7 +19,7 @@ import { renderPairMeApp } from './helpers/renderPairMeApp.jsx';
 
 /**
  * The contract, in one place. path is the deep link, step is what the
- * "Question N of 6" counter must read, title/sub are the header strings.
+ * "Question N of 5" counter must read, title/sub are the header strings.
  */
 const STEPS = [
   {
@@ -43,14 +43,9 @@ const STEPS = [
     sub: 'Regions, grapes, styles. Whatever comes to mind.',
   },
   {
-    step: 5, path: '/setup/5', screen: 'Q5MustKnow',
-    title: 'Anything we must know?',
-    sub: "This one isn't about taste. We take it seriously.",
-  },
-  {
-    step: 6, path: '/setup/6', screen: 'Q6Summary',
+    step: 5, path: '/setup/5', screen: 'Q6Summary',
     title: "That's everything.",
-    sub: 'Six questions, done. Have a full glass.',
+    sub: 'Five questions, done. Have a full glass.',
   },
 ];
 
@@ -67,9 +62,9 @@ describe('onboarding headings', () => {
     }
   );
 
-  it.each(STEPS)('step $step counts itself as "Question $step of 6"', ({ path, step }) => {
+  it.each(STEPS)('step $step counts itself as "Question $step of 5"', ({ path, step }) => {
     renderPairMeApp(path);
-    expect(screen.getByText(`Question ${step} of 6 · skippable`)).toBeInTheDocument();
+    expect(screen.getByText(`Question ${step} of 5 · skippable`)).toBeInTheDocument();
   });
 
   it('renders no heading belonging to another step', () => {
@@ -85,10 +80,10 @@ describe('onboarding headings', () => {
   });
 
   it('Q6Summary has a heading at all (it fell off the end of the table)', () => {
-    renderPairMeApp('/setup/6');
-    const header = screen.getByText('Question 6 of 6 · skippable').parentElement;
+    renderPairMeApp('/setup/5');
+    const header = screen.getByText('Question 5 of 5 · skippable').parentElement;
     expect(header.textContent).toContain("That's everything.");
-    expect(header.textContent.trim()).not.toBe('Question 6 of 6 · skippable');
+    expect(header.textContent.trim()).not.toBe('Question 5 of 5 · skippable');
   });
 
   it('carries the explain-not-select promise on Q1 only', () => {
@@ -104,10 +99,9 @@ describe('onboarding headings', () => {
     q2.unmount();
   });
 
-  it('fills the glass by step, one sixth per question, full on the last', () => {
+  it('fills the glass by step, one fifth per question, full on the last', () => {
     // Same root cause as the headings: the glass filled from raw `s`, so it
-    // started at 2/6 on Q1 and emptied to zero on Q6 where s=7 fell outside
-    // the guard. Height is 34 * step/6.
+    // started too full on Q1 and emptied on the summary. Height is 34 * step/5.
     const heights = STEPS.map(({ path }) => {
       const view = renderPairMeApp(path);
       const rect = document.querySelector('svg rect');
@@ -116,9 +110,9 @@ describe('onboarding headings', () => {
       return h;
     });
 
-    expect(heights[0]).toBeCloseTo(34 / 6, 5);
-    expect(heights[5]).toBeCloseTo(34, 5);
-    heights.forEach((h, i) => expect(h).toBeCloseTo((34 * (i + 1)) / 6, 5));
+    expect(heights[0]).toBeCloseTo(34 / 5, 5);
+    expect(heights[4]).toBeCloseTo(34, 5);
+    heights.forEach((h, i) => expect(h).toBeCloseTo((34 * (i + 1)) / 5, 5));
     // Strictly increasing: never flat, never draining.
     heights.slice(1).forEach((h, i) => expect(h).toBeGreaterThan(heights[i]));
   });

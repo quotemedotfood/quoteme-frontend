@@ -89,7 +89,7 @@ function WineListRoute({ vm }) {
 const AQUITAINE_DEMO_CODE = 'demo';
 
 function VenueRoute({ vm }) {
-  return <RouteBridge vm={vm} screenIndex={9} tableCode={AQUITAINE_DEMO_CODE} />;
+  return <RouteBridge vm={vm} screenIndex={8} tableCode={AQUITAINE_DEMO_CODE} />;
 }
 
 function TableCodeRoute({ vm }) {
@@ -107,7 +107,7 @@ function TableCodeRoute({ vm }) {
   // lib/api.js's getTableCode doc comment) and mocked in tests until the
   // backend catches up; `/t/demo` alone keeps using the already-built GET
   // /v1/demo, unchanged.
-  return <RouteBridge vm={vm} screenIndex={9} tableCode={code} />;
+  return <RouteBridge vm={vm} screenIndex={8} tableCode={code} />;
 }
 
 export default function PairMeApp() {
@@ -188,24 +188,23 @@ export default function PairMeApp() {
         <Route path="/setup/3" element={<RouteBridge vm={vm} screenIndex={4} />} />
         <Route path="/setup/4" element={<RouteBridge vm={vm} screenIndex={5} />} />
         <Route path="/setup/5" element={<RouteBridge vm={vm} screenIndex={6} />} />
-        <Route path="/setup/6" element={<RouteBridge vm={vm} screenIndex={7} />} />
-        <Route path="/venue" element={<RouteBridge vm={vm} screenIndex={8} />} />
+        <Route path="/venue" element={<RouteBridge vm={vm} screenIndex={7} />} />
         {/* Hand-provisioned demo venue. See VenueRoute above: nothing here
             mints, stores or resolves a token. The printed QR encodes this
             exact path, so it must not be renamed. */}
         <Route path="/v/aquitaine" element={<VenueRoute vm={vm} />} />
         <Route path="/t/:code" element={<TableCodeRoute vm={vm} />} />
-        <Route path="/capture" element={<RouteBridge vm={vm} screenIndex={18} />} />
-        <Route path="/menu" element={<RouteBridge vm={vm} screenIndex={9} />} />
-        <Route path="/direction" element={<RouteBridge vm={vm} screenIndex={10} />} />
-        <Route path="/wines" element={<RouteBridge vm={vm} screenIndex={11} />} />
+        <Route path="/capture" element={<RouteBridge vm={vm} screenIndex={17} />} />
+        <Route path="/menu" element={<RouteBridge vm={vm} screenIndex={8} />} />
+        <Route path="/direction" element={<RouteBridge vm={vm} screenIndex={9} />} />
+        <Route path="/wines" element={<RouteBridge vm={vm} screenIndex={10} />} />
         <Route path="/wines/list" element={<DeviceFrame keepNativeScrollbar><WineListRoute vm={vm} /></DeviceFrame>} />
-        <Route path="/wines/brief" element={<RouteBridge vm={vm} screenIndex={16} />} />
-        <Route path="/server" element={<RouteBridge vm={vm} screenIndex={12} />} />
-        <Route path="/rate" element={<RouteBridge vm={vm} screenIndex={13} />} />
-        <Route path="/profile" element={<RouteBridge vm={vm} screenIndex={14} />} />
-        <Route path="/profile/friend" element={<RouteBridge vm={vm} screenIndex={15} />} />
-        <Route path="/profile/settings" element={<RouteBridge vm={vm} screenIndex={17} />} />
+        <Route path="/wines/brief" element={<RouteBridge vm={vm} screenIndex={15} />} />
+        <Route path="/server" element={<RouteBridge vm={vm} screenIndex={11} />} />
+        <Route path="/rate" element={<RouteBridge vm={vm} screenIndex={12} />} />
+        <Route path="/profile" element={<RouteBridge vm={vm} screenIndex={13} />} />
+        <Route path="/profile/friend" element={<RouteBridge vm={vm} screenIndex={14} />} />
+        <Route path="/profile/settings" element={<RouteBridge vm={vm} screenIndex={16} />} />
         {/*
           AUTH CONTRACT (locked, feat/pairme-accounts-be). A real,
           bookmarkable route, not one of Phone's onboarding SCREENS above -

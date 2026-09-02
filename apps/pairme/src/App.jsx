@@ -8,7 +8,6 @@ import Q1Knowledge from './screens/Q1Knowledge';
 import Q2Adventure from './screens/Q2Adventure';
 import Q3Budget from './screens/Q3Budget';
 import Q4Taste from './screens/Q4Taste';
-import Q5MustKnow from './screens/Q5MustKnow';
 import Q6Summary from './screens/Q6Summary';
 import WhereTo from './screens/WhereTo';
 import Menu from './screens/Menu';
@@ -24,8 +23,8 @@ import Camera from './screens/Camera';
 
 /** Index is the screen number. Add a screen here and in state.js (usePairMe). */
 export const SCREENS = [
-  Welcome, SignIn, Q1Knowledge, Q2Adventure, Q3Budget, Q4Taste, Q5MustKnow,
-  Q6Summary, WhereTo, Menu, HowToDrink, TheWine, Present, RateIt,
+  Welcome, SignIn, Q1Knowledge, Q2Adventure, Q3Budget, Q4Taste, Q6Summary,
+  WhereTo, Menu, HowToDrink, TheWine, Present, RateIt,
   YourProfile, FriendProfile, BottleBrief, Settings, Camera,
 ];
 

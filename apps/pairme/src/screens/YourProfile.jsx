@@ -2,7 +2,7 @@ import React from 'react';
 
 /** Screen 15 · Your profile */
 export default function YourProfile(vm){
-  const { dietLine, connections, shareTable, shareNote, myLikes, myNots, historyCount, history, friends,
+  const { connections, shareTable, shareNote, myLikes, myNots, historyCount, history, friends,
     deleteAccountLabel, deleteAccountSub, deleteAccount, cancelDelete, showCancelDelete, deleteDone } = vm;
   return (
 <>
@@ -33,7 +33,6 @@ export default function YourProfile(vm){
 </React.Fragment>
 ))}
 </div>
-<div style={{border: "1px solid var(--pm-warnBd)", background: "var(--pm-warnBg)", borderRadius: "10px", padding: "11px", marginTop: "14px", font: "600 12.5px var(--font-body)", color: "var(--pm-ink)"}}>Allergies on file: {dietLine}</div>
 <div style={{border: "1px solid var(--pm-rule)", background: "var(--pm-card)", borderRadius: "10px", padding: "12px", marginTop: "12px", font: "400 12.5px/1.65 var(--font-body)", color: "var(--pm-muted)"}}>You lean toward Loire whites and lighter reds. Four of your last five were French. We're not going to pretend that's a coincidence.</div>
 <div style={{display: "flex", justifyContent: "space-between", alignItems: "baseline", margin: "22px 0 4px"}}>
 <div style={{font: "600 var(--pm-sec) var(--font-body)", color: "var(--pm-muted)", letterSpacing: ".08em", textTransform: "uppercase"}}>Your history</div>

@@ -1,13 +1,13 @@
 import React from 'react';
 
-/** Shared header for screens 3 to 8. Rendered by <Phone> when vm.onboarding is true. */
+/** Shared header for the five setup questions. Rendered by <Phone> when vm.onboarding is true. */
 export default function OnboardingHeader(vm){
   const { step, obTitle, obSub, glassY, glassH, skip } = vm;
   return (
 <>
 <div style={{background: "var(--pm-chrome)", padding: "16px 18px 18px", display: "flex", gap: "14px", alignItems: "flex-start"}}>
 <div style={{flex: "1"}}>
-<div style={{font: "600 11.5px var(--font-body)", color: "#EFB96B", letterSpacing: ".06em", textTransform: "uppercase"}}>Question {step} of 6 · skippable</div>
+<div style={{font: "600 11.5px var(--font-body)", color: "#EFB96B", letterSpacing: ".06em", textTransform: "uppercase"}}>Question {step} of 5 · skippable</div>
 <div style={{font: "600 20px/1.3 var(--font-display)", color: "#fff", marginTop: "5px"}}>{obTitle}</div>
 <div style={{font: "400 12.5px/1.55 var(--font-body)", color: "var(--pm-chromeSub)", marginTop: "7px"}}>{obSub}</div>
 </div>
