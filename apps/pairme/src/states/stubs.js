@@ -75,8 +75,6 @@ export const STUB_BLANK_PROFILE = {
   budget: null,
   likes: [],
   dislikes: [],
-  allergies: [],
-  dietary: [],
   notDrinking: false,
 };
 export const STUB_DISH_FOR_BLANK_PROFILE = {
