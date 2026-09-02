@@ -1,6 +1,6 @@
 import React from 'react';
 
-/** Screen 19 · Camera */
+/** Screen 18 · Camera */
 export default function Camera(vm){
   const { camTitle, camSub, camLines, camShot, camFire, camUpload, camPages, camPageNo, camNote } = vm;
   return (

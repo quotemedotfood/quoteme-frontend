@@ -1,7 +1,7 @@
 import React from 'react';
 import { Input } from '../lib/ds';
 
-/** Screen 10 · The menu */
+/** Screen 9 · The menu */
 export default function Menu(vm){
   const { fUnread, jumps, menu, venueName } = vm;
   return (

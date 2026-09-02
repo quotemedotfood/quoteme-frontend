@@ -1,6 +1,6 @@
 import React from 'react';
 
-/** Screen 11 · How to drink */
+/** Screen 10 · How to drink */
 export default function HowToDrink(vm){
   const { chosen, dishCount, modes, showSub, subLabel, subs, showScope, scopes, dirSummary, guests, conflict, resolutions, guestDrawer } = vm;
   return (
