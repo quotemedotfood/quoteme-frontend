@@ -14,13 +14,12 @@ function baseState(overrides = {}) {
       bump: null,
       likes: ['Burgundy'],
       dislikes: ['heavy oak'],
-      diet: ['shellfish'],
+      notDrinking: false,
       levelOwn: '',
       advOwn: '',
       budgetOwn: '',
       loveOwn: '',
       notOwn: '',
-      dietOwn: '',
     },
     overrides
   );
@@ -52,7 +51,6 @@ describe('buildProfilePayload - free_text', () => {
         budgetOwn: 'under $60 on a Tuesday',
         loveOwn: 'Chablis, and anything from the Jura',
         notOwn: 'anything that tastes like vanilla',
-        dietOwn: 'severe sesame allergy',
       })
     );
     expect(payload.preferences.free_text).toEqual({
@@ -63,7 +61,6 @@ describe('buildProfilePayload - free_text', () => {
         love: 'Chablis, and anything from the Jura',
         not: 'anything that tastes like vanilla',
       },
-      must_know: 'severe sesame allergy',
     });
   });
 
@@ -72,24 +69,21 @@ describe('buildProfilePayload - free_text', () => {
     expect(payload.preferences.free_text).toBeUndefined();
   });
 
-  it('includes only the screens that were actually filled in', () => {
-    const payload = buildProfilePayload(baseState({ dietOwn: 'severe sesame allergy' }));
-    expect(payload.preferences.free_text).toEqual({ must_know: 'severe sesame allergy' });
-  });
-
-  it('still nests the flat likes/dislikes/allergies free-text slots the contract documents', () => {
-    const payload = buildProfilePayload(baseState({ loveOwn: 'x', notOwn: 'y', dietOwn: 'z' }));
+  it('still nests the flat likes/dislikes free-text slots the contract documents', () => {
+    const payload = buildProfilePayload(baseState({ loveOwn: 'x', notOwn: 'y' }));
     expect(payload.preferences.likes_free_text).toBe('x');
     expect(payload.preferences.dislikes_free_text).toBe('y');
-    expect(payload.safety.allergies_free_text).toBe('z');
   });
 
-  it('sends preferences/safety nested, never flat top-level fields (contract G5)', () => {
+  it('never sends safety fields or the removed must_know key', () => {
     const payload = buildProfilePayload(baseState({ bMax: 140 }));
-    expect(payload.budget).toBeUndefined();
-    expect(payload.free_text).toBeUndefined();
-    expect(payload.preferences).toBeTruthy();
-    expect(payload.safety).toBeTruthy();
+    expect(payload.safety).toBeUndefined();
+    expect(payload.preferences.free_text?.must_know).toBeUndefined();
+  });
+
+  it('posts only the neutral not-drinking boolean', () => {
+    expect(buildProfilePayload(baseState({ notDrinking: true })).preferences.not_drinking).toBe(true);
+    expect(buildProfilePayload(baseState({ notDrinking: false })).preferences.not_drinking).toBe(false);
   });
 });
 

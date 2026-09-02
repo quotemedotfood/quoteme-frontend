@@ -3,7 +3,7 @@ import { Input } from '../lib/ds';
 
 /** Screen 6 · Question 4, taste */
 export default function Q4Taste(vm){
-  const { lovePills, notPills, fLove, fNot } = vm;
+  const { lovePills, notPills, fLove, fNot, notDrinking, toggleNotDrinking } = vm;
   return (
 <>
 <div style={{padding: "18px"}}>
@@ -47,6 +47,8 @@ export default function Q4Taste(vm){
 </div>
 <div style={{font: "500 11.5px var(--font-body)", color: "var(--pm-pearInk)", marginTop: "6px"}}>{fNot.hint}</div>
 </div>
+<div style={{font: "600 var(--pm-sec) var(--font-body)", color: "var(--pm-muted)", letterSpacing: ".08em", textTransform: "uppercase", margin: "20px 0 9px"}}>Tonight</div>
+<button onClick={toggleNotDrinking} aria-pressed={notDrinking} style={{width: "100%", textAlign: "left", border: `1px solid ${notDrinking ? "var(--pm-chrome)" : "var(--pm-rule)"}`, background: notDrinking ? "var(--pm-sel)" : "var(--pm-card)", color: "var(--pm-ink)", borderRadius: "999px", padding: "10px 14px", font: "500 12.5px var(--font-body)", cursor: "pointer", minHeight: "40px"}}>Not drinking tonight</button>
 </div>
 </>
   );

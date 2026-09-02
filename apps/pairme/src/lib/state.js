@@ -180,8 +180,8 @@ const ACCOUNTS=[
  {k:"Wine.com",status:"coming_soon",sub:"Read your order history"},
  {k:"Delectable",status:"coming_soon",sub:"Read your saved bottles"}];
 
-const RAIL=["Welcome","Sign in","1. Knowledge","2. Adventure","3. Budget","4. Taste","5. Must know","6. That's it","Where to","The menu","How to drink","The wine","Present","How was it","Your profile","Sarah's profile","Bottle brief","Settings","Camera"];
-const CTA=["Get going","Set my taste","Next","Next","Next","Next","Next","Find table","Continue","Pair it","Show wine","Present","Rate it","Save it","Her list","New table","Back to wine","Done","Use this"];
+const RAIL=["Welcome","Sign in","1. Knowledge","2. Adventure","3. Budget","4. Taste","5. That's it","Where to","The menu","How to drink","The wine","Present","How was it","Your profile","Sarah's profile","Bottle brief","Settings","Camera"];
+const CTA=["Get going","Set my taste","Next","Next","Next","Next","Find table","Continue","Pair it","Show wine","Present","Rate it","Save it","Her list","New table","Back to wine","Done","Use this"];
 
 const MY_HISTORY=[
  ["Domaine Huet, Vouvray Sec","Aquitaine . 12 Jul","with the sole meuniere",5],
@@ -215,19 +215,18 @@ const PATH_FOR_SCREEN = [
   '/setup/2',            // 3  Q2Adventure
   '/setup/3',            // 4  Q3Budget
   '/setup/4',            // 5  Q4Taste
-  '/setup/5',            // 6  Q5MustKnow
-  '/setup/6',            // 7  Q6Summary
-  '/venue',              // 8  WhereTo
-  '/menu',               // 9  Menu
-  '/direction',          // 10 HowToDrink
-  '/wines',              // 11 TheWine
-  '/server',             // 12 Present
-  '/rate',               // 13 RateIt
-  '/profile',            // 14 YourProfile
-  '/profile/friend',     // 15 FriendProfile
-  '/wines/brief',        // 16 BottleBrief
-  '/profile/settings',   // 17 Settings
-  '/capture',            // 18 Camera
+  '/setup/5',            // 6  Q6Summary
+  '/venue',              // 7  WhereTo
+  '/menu',               // 8  Menu
+  '/direction',          // 9  HowToDrink
+  '/wines',              // 10 TheWine
+  '/server',             // 11 Present
+  '/rate',               // 12 RateIt
+  '/profile',            // 13 YourProfile
+  '/profile/friend',     // 14 FriendProfile
+  '/wines/brief',        // 15 BottleBrief
+  '/profile/settings',   // 16 Settings
+  '/capture',            // 17 Camera
 ];
 
 // ---------------------------------------------------------------------------
@@ -237,16 +236,12 @@ const PATH_FOR_SCREEN = [
 // ---------------------------------------------------------------------------
 const LEVEL_OPTIONS = ["1. Just point at something","2. I know what I like","3. I read the list","4. I could write the list"];
 const WANT_OPTIONS = ["Happy where I am","I want to learn more","Take me all the way"];
-const ALLERGY_LABELS = new Set(['shellfish','nuts','dairy','gluten','egg','sulfite sensitive']);
-const DIETARY_LABELS = new Set(['vegetarian','vegan','pescatarian']);
-const NOT_DRINKING_LABELS = new Set(['no alcohol for me','pregnant']);
 const PARSER_VERSION = 'pairme-web-stub/0.0.0';
 
 // Every onboarding screen's free-text box, keyed by screen, so an answer
 // with no dedicated flat slot (levelOwn/advOwn/budgetOwn) is not silently
-// dropped. Additive to the flat likes_free_text/dislikes_free_text/
-// allergies_free_text slots the contract documents, not a replacement for
-// them (see buildProfilePayload below). BE CATCH-UP: preferences.free_text
+// dropped. Additive to the flat likes_free_text/dislikes_free_text slots
+// the contract documents, not a replacement for them. BE CATCH-UP: preferences.free_text
 // as a nested jsonb blob is not yet in the documented PairMe API Contract
 // v1; FE wires it ahead of the BE per the demo spec.
 function buildFreeText(st) {
@@ -255,14 +250,10 @@ function buildFreeText(st) {
   if (st.advOwn) ft.adventure = st.advOwn;
   if (st.budgetOwn) ft.budget = st.budgetOwn;
   if (st.loveOwn || st.notOwn) ft.taste = { love: st.loveOwn || null, not: st.notOwn || null };
-  if (st.dietOwn) ft.must_know = st.dietOwn;
   return ft;
 }
 
 function buildProfilePayload(st) {
-  const allergies = st.diet.filter((d) => ALLERGY_LABELS.has(d));
-  const dietary = st.diet.filter((d) => DIETARY_LABELS.has(d));
-  const notDrinking = st.diet.some((d) => NOT_DRINKING_LABELS.has(d));
   const hi = Math.max(st.bMin, st.bMax);
   const lo = Math.min(st.bMin, st.bMax);
   const somLevel = LEVEL_OPTIONS.indexOf(st.level) + 1;
@@ -286,16 +277,8 @@ function buildProfilePayload(st) {
       likes_free_text: st.loveOwn || null,
       dislikes: st.dislikes,
       dislikes_free_text: st.notOwn || null,
-      not_drinking: notDrinking,
+      not_drinking: st.notDrinking,
       free_text: Object.keys(freeText).length ? freeText : undefined,
-    },
-    safety: {
-      allergies,
-      dietary,
-      // dietOwn is one free text box under a combined "allergies and
-      // dietary" header in Q5MustKnow; there is no separate dietary free
-      // text slot in the contract, so it lands on allergies_free_text.
-      allergies_free_text: st.dietOwn || null,
     },
   };
 }
@@ -303,7 +286,6 @@ function buildProfilePayload(st) {
 function hydrateFromProfile(profile) {
   if (!profile) return {};
   const p = profile.preferences || {};
-  const s = profile.safety || {};
   const patch = {};
   if (p.som_level && LEVEL_OPTIONS[p.som_level - 1]) patch.level = LEVEL_OPTIONS[p.som_level - 1];
   if (p.target_level && WANT_OPTIONS[p.target_level - 1]) patch.want = WANT_OPTIONS[p.target_level - 1];
@@ -313,8 +295,7 @@ function hydrateFromProfile(profile) {
   if (p.likes_free_text) patch.loveOwn = p.likes_free_text;
   if (Array.isArray(p.dislikes) && p.dislikes.length) patch.dislikes = p.dislikes;
   if (p.dislikes_free_text) patch.notOwn = p.dislikes_free_text;
-  const diet = [].concat(s.allergies || [], s.dietary || []);
-  if (diet.length) patch.diet = diet;
+  if (typeof p.not_drinking === 'boolean') patch.notDrinking = p.not_drinking;
   return patch;
 }
 
@@ -377,13 +358,13 @@ export function usePairMe(opts = {}){
   const [st, set] = React.useState({s:0,dark:false,hc:false,
     level:"2. I know what I like",want:"I want to learn more",adv:3,
     bMin:60,bMax:140,bump:null,
-    likes:["Burgundy","Loire whites","Beaujolais"],dislikes:["heavy oak"],diet:["shellfish"],
-    levelOwn:"",advOwn:"",budgetOwn:"",loveOwn:"",notOwn:"",dietOwn:"",unreadable:"",why:"",
+    likes:["Burgundy","Loire whites","Beaujolais"],dislikes:["heavy oak"],notDrinking:false,
+    levelOwn:"",advOwn:"",budgetOwn:"",loveOwn:"",notOwn:"",unreadable:"",why:"",
     guestName:"",rel:null,added:[],
     venueQ:"",eatText:"",noList:false,blank:false,picked:["a2","a5","e6","e9","s2"],
     mode:null,sub:null,scope:null,present:["gim","trapet"],wineFormat:"both",
     guest:"me",guestDrawerOpen:false,guestShareNote:null,resolution:null,rate:{dish:4,wine:5,pair:4},fb:"",share:true,listening:null,listeningBase:null,speechState:"idle",speechMessage:null,skipped:0,
-    linked:[],connectionsOpen:false,connectionsSkipped:false,account:null,bottle:"trapet",back:11,saved:false,shared:null,
+    linked:[],connectionsOpen:false,connectionsSkipped:false,account:null,bottle:"trapet",back:10,saved:false,shared:null,
     // Integration state (not part of Desi's original demo model).
     apiError:null,apiLoading:false,
     anonId:null,
@@ -565,14 +546,14 @@ export function usePairMe(opts = {}){
   }, [st.venueQ]);
 
   const go=(n)=>{
-    // Onboarding screens are indices 2..7 (Q1Knowledge..Q6Summary); the
-    // event set numbers them screen_1..screen_6 (n-1).
+    // Onboarding screens are indices 2..6 (Q1Knowledge..Q6Summary); the
+    // event set numbers them screen_1..screen_5 (n-1).
     if (n===2 && !onboardStartFired.current) {
       onboardStartFired.current = true;
       track('onboard_start');
     }
-    if (n>=2 && n<=7) track('screen_'+(n-1));
-    if (n===12) track('show_server'); // Present: the wine is about to be shown to the table.
+    if (n>=2 && n<=6) track('screen_'+(n-1));
+    if (n===11) track('show_server'); // Present: the wine is about to be shown to the table.
     patch({s:n});
     if(bodyEl.current)bodyEl.current.scrollTop=0;
     const path = PATH_FOR_SCREEN[n];
@@ -640,7 +621,7 @@ export function usePairMe(opts = {}){
       track('parse_ok', { wines_found: rows.length, extraction_source: captureRes.source });
       await postCaptureRows(captureRes.capture_id, PARSER_VERSION, rows).catch(() => {});
       patch({ camShot: false, captureId: captureRes.capture_id, rawText, captureRows: rows });
-      go(9); // -> Menu, same destination as Desi's original demo timeout.
+      go(8); // -> Menu, same destination as Desi's original demo timeout.
     } catch (err) {
       patch({ camShot: false, apiError: err.message || 'We could not read that photo. Please try again.' });
     }
@@ -688,14 +669,14 @@ export function usePairMe(opts = {}){
       const wineListPickedDishes=chosen.map(dishToEngineDish);
       const blank=st.blank,conflict=st.guest==="sarah";
       const lo=Math.min(st.bMin,st.bMax),hi=Math.max(st.bMin,st.bMax);
-      // ONBOARDING HEADER. This table is laid out by STEP (1..6), not by
-      // screen index s. Screen indices run Q1Knowledge=2 .. Q6Summary=7 (see
+      // ONBOARDING HEADER. This table is laid out by STEP (1..5), not by
+      // screen index s. Screen indices run Q1Knowledge=2 .. Q6Summary=6 (see
       // PATH_FOR_SCREEN above), so step = s - 1, which is exactly what is
       // published as `step` at the vm seam below.
       //
       // It was previously subscripted [s], which shifted every heading one
       // screen early: Q1 rendered Q2's heading, Q5 rendered "That's
-      // everything.", and Q6 (s=7) ran off the end of the array and rendered
+      // everything.", and Q6 ran off the end of the array and rendered
       // no heading and no subtitle at all. The leading null is what made [s]
       // read as correctly 1-based on review. Index by obStep, never by s.
       const obStep=s-1;
@@ -704,11 +685,8 @@ export function usePairMe(opts = {}){
         {t:"How adventurous are you feeling?",s:"You can change this at any table, any night."},
         {t:"What's comfortable tonight?",s:"A floor and a ceiling. We never show you what you didn't ask to see."},
         {t:"What do you already love?",s:"Regions, grapes, styles. Whatever comes to mind."},
-        {t:"Anything we must know?",s:"This one isn't about taste. We take it seriously."},
-        {t:"That's everything.",s:"Six questions, done. Have a full glass."}][obStep];
-      // Same root cause: the glass filled from raw s, so it started at 2/6 on
-      // Q1 and emptied to 0 on Q6, where s=7 fell outside the s<=6 guard.
-      const glassH=34*Math.min(1,(obStep>=1&&obStep<=6?obStep:0)/6);
+        {t:"That's everything.",s:"Five questions, done. Have a full glass."}][obStep];
+      const glassH=34*Math.min(1,(obStep>=1&&obStep<=5?obStep:0)/5);
 
       const offerSet=blank?[
         {k:"vach",role:"Safe, and we mean that kindly",roleColor:t.muted,why:"You've told us nothing, so we won't pretend we know you. Sancerre disappoints the fewest people at a table with mussels and a steak on it.",covers:"Moules, the pate, most of the table"},
@@ -864,18 +842,18 @@ export function usePairMe(opts = {}){
 
         rail:RAIL.map((label,i)=>({label,num:i+1,go:()=>go(i),bg:i===s?"#FCF1E1":"#fff",border:i===s?NAVY:"#E3E1DB"})),
         screenNo:s+1,screenName:RAIL[s],
-        back:()=>go(Math.max(0,s-1)),fwd:()=>go(Math.min(17,s+1)),
+        back:()=>go(Math.max(0,s-1)),fwd:()=>go(Math.min(16,s+1)),
         bodyRef:el=>{bodyEl.current=el;},
         ctaLabel:CTA[s],
         cta:
-          s===7 ? async()=>{
+          s===6 ? async()=>{
             patch({apiLoading:true});
             try{ await putProfile(buildProfilePayload(st)); }
             catch(err){ patch({apiError:err.message||'Could not save your answers. Continuing anyway.'}); }
             patch({apiLoading:false});
-            go(8);
+            go(7);
           }
-          : s===10 ? async()=>{
+          : s===9 ? async()=>{
             track('pair_request');
             // Pairing is CLIENT-SIDE (POST /v1/pair was removed by design;
             // GET /v1/rules/bundle IS the pairing API). Runs only when a
@@ -976,9 +954,9 @@ export function usePairMe(opts = {}){
                 }
               }
             }
-            go(11);
+            go(10);
           }
-          : s===13 ? async()=>{
+          : s===12 ? async()=>{
             track('rate_submit', { dish: st.rate.dish, wine: st.rate.wine, pairing: st.rate.pair });
             if (st.captureId) {
               try{
@@ -990,21 +968,21 @@ export function usePairMe(opts = {}){
                 });
               }catch(err){ patch({apiError:err.message||'Could not save your rating.'}); }
             }
-            go(14);
+            go(13);
           }
-          : s===15?()=>go(8):(s===16||s===17)?()=>go(st.back):s===18?()=>patch({s:9,camShot:false}):()=>go(Math.min(15,s+1)),
-        hasAlt:s===0||s===1||s===11,
+          : s===14?()=>go(7):(s===15||s===16)?()=>go(st.back):s===17?()=>patch({s:8,camShot:false}):()=>go(Math.min(14,s+1)),
+        hasAlt:s===0||s===1||s===10,
         altLabel:s===0?"Skip setup":s===1?"Not now":"Something else",
-        // FIX 3: "Skip setup" was a raw patch({s:8,...}) - the URL stayed on
+        // FIX 3: "Skip setup" was a raw state patch, so the URL stayed on
         // '/' even though the screen moved to WhereTo. Split into the extra
-        // fields (still patch()) + go(8) so the route follows the screen.
-        alt:s===0?()=>{patch({blank:true,skipped:6,likes:[],dislikes:[],diet:[]});go(8);}
-          :s===1?()=>go(2):()=>go(10),
+        // fields (still patch()) + go(7) so the route follows the screen.
+        alt:s===0?()=>{patch({blank:true,skipped:5,likes:[],dislikes:[],notDrinking:false});go(7);}
+          :s===1?()=>go(2):()=>go(9),
         skip:()=>{
-          track('skip_screen_'+(s-1)); // s is 2..7 (Q1..Q6) whenever skip is reachable.
-          patch(x=>({s:Math.min(15,x.s+1),skipped:x.skipped+1}));
+          track('skip_screen_'+(s-1)); // s is 2..6 whenever skip is reachable.
+          patch(x=>({s:Math.min(14,x.s+1),skipped:x.skipped+1}));
         },
-        goMenu:()=>go(9),
+        goMenu:()=>go(8),
         // BROWSE THE FULL LIST: a standalone route (not one of the Phone
         // screen-index SCREENS - see routes.jsx), so this navigates
         // directly rather than through go()/PATH_FOR_SCREEN, same pattern
@@ -1024,13 +1002,13 @@ export function usePairMe(opts = {}){
         wineListWines,wineListPickedDishes,
         wineListTables:st.rulesTables||getOfflineTables(),
         wineListSay:say,
-        // FIX 3: was a raw patch({s:17,...}) - the URL never updated when
+        // FIX 3: was a raw state patch, so the URL never updated when
         // the chrome Settings gear was tapped. Now goes through go() like
         // every other screen transition.
-        goSettings:()=>{patch({back:s===17?st.back:s});go(17);},
-        goSignIn:()=>patch({s:1,back:17}),
-        s0:s===0,s1:s===1,s2:s===2,s3:s===3,s4:s===4,s5:s===5,s6:s===6,s7:s===7,s8:s===8,s9:s===9,s10:s===10,s11:s===11,s12:s===12,s13:s===13,s14:s===14,s15:s===15,s16:s===16,s17:s===17,s18:s===18,
-        goCamera:()=>go(18),
+        goSettings:()=>{patch({back:s===16?st.back:s});go(16);},
+        goSignIn:()=>patch({s:1,back:16}),
+        s0:s===0,s1:s===1,s2:s===2,s3:s===3,s4:s===4,s5:s===5,s6:s===6,s7:s===7,s8:s===8,s9:s===9,s10:s===10,s11:s===11,s12:s===12,s13:s===13,s14:s===14,s15:s===15,s16:s===16,s17:s===17,
+        goCamera:()=>go(17),
         camTitle:st.camShot?"Hold steady":"Fit the list in the frame",
         camSub:st.camShot?"Reading the list.":"Corner to corner. A little glare is fine, we have seen worse.",
         camLines:["72%","58%","81%","49%","77%","63%","85%","54%","70%"].map(w=>({w})),
@@ -1043,7 +1021,7 @@ export function usePairMe(opts = {}){
         camPages:()=>patch({camPage:(st.camPage||1)+1}),
         camPageNo:st.camPage||1,
         camNote:(st.camPage||1)>1?"Page "+(st.camPage||1)+". Keep going, we stitch them together.":"Long list? Shoot one page, tap plus, shoot the next.",
-        onboarding:s>=2&&s<=7,step:s-1,obTitle:ob?ob.t:"",obSub:ob?ob.s:"",
+        onboarding:s>=2&&s<=6,step:s-1,obTitle:ob?ob.t:"",obSub:ob?ob.s:"",
 
         signIns:[
           {k:"Apple",label:"Continue with Apple",icon:APPLE_MARK,fg:"#fff",bg:"#000",bd:"#000"},
@@ -1065,12 +1043,12 @@ export function usePairMe(opts = {}){
           dot:st.adv===i+1?PEAR:"var(--pm-sunken)"})),
         lovePills:pills(["Burgundy","Loire whites","Beaujolais","Champagne","Rhone syrah","Barolo","Rioja","German riesling","Napa cabernet","orange wine","rose all year","sherry"],"likes",true),
         notPills:pills(["heavy oak","very tannic","sweet","high alcohol","funky or natural","big California reds","bubbles"],"dislikes",true),
-        dietPills:pills(["shellfish","nuts","dairy","gluten","egg","vegetarian","vegan","pescatarian","sulfite sensitive"],"diet",true),
-        abstainPills:pills(["driving, one glass","no alcohol for me","pregnant"],"diet",true),
+        notDrinking:st.notDrinking,
+        toggleNotDrinking:()=>patch({notDrinking:!st.notDrinking}),
         relPills:pills(["partner","friend","parent","sibling","colleague","the boss"],"rel"),
 
         fLevel:field("levelOwn"),fAdv:field("advOwn"),fBudget:field("budgetOwn"),
-        fLove:field("loveOwn"),fNot:field("notOwn"),fDiet:field("dietOwn"),
+        fLove:field("loveOwn"),fNot:field("notOwn"),
         fUnread:field("unreadable"),fVenue:field("venueQ"),fWhy:field("why"),fEatText:field("eatText"),
         fFb:field("fb"),fGuestName:field("guestName"),
         // Speech bridge for the field mics: the app-level useSpeech (App.jsx)
@@ -1112,12 +1090,11 @@ export function usePairMe(opts = {}){
           {k:"Comfortable at",v:"$"+lo+" to $"+hi+(st.bump?", +"+st.bump+"% tonight":"")},
           {k:"Loves",v:st.likes.length?st.likes.join(", "):"not said, and that's allowed"},
           {k:"Rather not",v:st.dislikes.length?st.dislikes.join(", "):"not said"},
-          {k:"Must know",v:st.diet.length?st.diet.join(", "):"nothing"},
           {k:"Diners",v:st.added.length?st.added.join(", "):"Sarah"}],
         addDiner:()=>{const nm=(st.guestName||"").trim();if(!nm)return;
           patch({added:[...st.added,nm+(st.rel?" ("+st.rel+")":"")],guestName:"",rel:null,s:1});
           if(bodyEl.current)bodyEl.current.scrollTop=0;},
-        addDinerNote:st.guestName?"We'll start them at question one. You can answer for them, or send it over.":"Name them first. Then we'll run them through the same six.",
+        addDinerNote:st.guestName?"We'll start them at question one. You can answer for them, or send it over.":"Name them first. Then we'll run them through the same five.",
 
         // Real search: GET /v1/venues?q=. covered:false surfaces the
         // plain-language message in the same slot a hit would occupy since
@@ -1126,7 +1103,7 @@ export function usePairMe(opts = {}){
           ? [{label:st.venueMessage,go:()=>{},weight:400,color:"var(--pm-muted)"}]
           : (st.venueResults||[]).map((v,i)=>({
               label:v.name+" . "+v.city+", "+v.state,
-              go:()=>{patch({selectedVenueId:v.id});go(9);},
+              go:()=>{patch({selectedVenueId:v.id});go(8);},
               weight:i===0?600:400,color:i===0?"var(--pm-ink)":"var(--pm-muted)"})),
         noList:st.noList,hasList:!st.noList,
         noListLabel:st.noList?"a venue with no wine list, on":"a venue with no wine list, off",
@@ -1185,8 +1162,8 @@ export function usePairMe(opts = {}){
                 else if(typeof navigator!=="undefined"&&navigator.clipboard){navigator.clipboard.writeText(url).catch(()=>{});patch({guest:"add",guestDrawerOpen:false,guestShareNote:"Link copied. Send it to them."});}
                 else{patch({guest:"add",guestDrawerOpen:false,guestShareNote:url});}
               }},
-            {k:"tell",primary:false,h:"Tell us about them",b:"Answer the six for them yourself, right now.",
-              pick:()=>{patch({guest:"add",guestDrawerOpen:false});go(14);}},
+            {k:"tell",primary:false,h:"Tell us about them",b:"Answer the five for them yourself, right now.",
+              pick:()=>{patch({guest:"add",guestDrawerOpen:false});go(13);}},
           ],
         },
         conflict,
@@ -1197,7 +1174,7 @@ export function usePairMe(opts = {}){
           bd:st.resolution===k?"var(--pm-chrome)":"var(--pm-rule)",bg:st.resolution===k?"var(--pm-sel)":"var(--pm-card)"})),
 
         // /t/demo: usingEngine is true once HowToDrink's cta has run the
-        // scoring engine (see the s===10 branch above); otherwise this
+        // scoring engine (see the s===9 branch above); otherwise this
         // stays Desi's static offerSet/W demo data, unchanged.
         usingEngine,
         // ITEM 4: wines the venue pushed (from GET /v1/venues/:code/pairings),
@@ -1227,7 +1204,7 @@ export function usePairMe(opts = {}){
           chip:on?"presenting":"tap to add",chipBg:on?"#F9E4C7":"var(--pm-sunken)",
           pick:()=>patch(x=>({present:x.present.includes(o.k)?x.present.filter(y=>y!==o.k):[...x.present,o.k]})),
           speak:()=>say(w.speak||w.say||w.wine,w.lang),
-          open:()=>patch({s:16,bottle:o.k,back:11}),
+          open:()=>patch({s:15,bottle:o.k,back:10}),
           stockColor:w.stock<4?ORANGE:"var(--pm-muted)",
           stockNote:w.stock<4?"Only "+w.stock+" left tonight":"Plenty in the cellar",
           // WINE CARD ICONS: this static demo path (Desi's hand-authored W,
@@ -1272,7 +1249,6 @@ export function usePairMe(opts = {}){
           :shownKeys.map((k,i)=>{const w=W[k];return {
             label:shownKeys.length>1?(i===0?"Bottle one":"Bottle two"):"One bottle",
             prod:w.prod,wine:w.wine,meta:w.meta+" . $"+w.btl,say:w.say,tip:w.tip,speak:()=>say(w.speak||w.say||w.wine,w.lang),compromise:null};}),
-        hasDiet:st.diet.length>0,dietLine:st.diet.length?st.diet.join(" . "):"none",
 
         rateRows:[["dish","The food"],["wine","The wine"],["pair","How they went together"]].map(([k,label])=>({
           label,stars:stars(st.rate[k]).map(x=>Object.assign({},x,{
@@ -1337,12 +1313,11 @@ export function usePairMe(opts = {}){
         myNots:st.dislikes.length?st.dislikes:["nothing on file"],
         historyCount:MY_HISTORY.length+" bottles",
         history:MY_HISTORY.map(([w,where,dish,r],i)=>({w,where,dish,stars:stars(r),
-          // FIX 3: was a raw patch({s:16,...}) - opening a history row never
-          // updated the URL away from '/profile'. go(16) now does.
-          open:()=>{patch({bottle:["huet","foil","huet","trapet","gim"][i],back:14});go(16);}})),
-        friends:[{name:"Sarah",sub:"partner . loves Loire whites, never bubbles",initial:"S",go:()=>go(14)},
-          {name:"Dan",sub:"friend . Barolo, and nothing under 13%",initial:"D",go:()=>go(14)},
-          {name:"Priya",sub:"colleague . riesling, no red at lunch",initial:"P",go:()=>go(14)}],
+          // History-row navigation goes through go() so the URL updates too.
+          open:()=>{patch({bottle:["huet","foil","huet","trapet","gim"][i],back:13});go(15);}})),
+        friends:[{name:"Sarah",sub:"partner . loves Loire whites, never bubbles",initial:"S",go:()=>go(13)},
+          {name:"Dan",sub:"friend . Barolo, and nothing under 13%",initial:"D",go:()=>go(13)},
+          {name:"Priya",sub:"colleague . riesling, no red at lunch",initial:"P",go:()=>go(13)}],
 
         sarahLikes:["Loire whites","Sancerre","Barbaresco","a cold glass in the sun"],
         sarahNots:["bubbles","heavy oak","anything over $60"],

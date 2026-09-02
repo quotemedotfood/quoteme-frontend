@@ -2,8 +2,8 @@
  * App-wide RULE (following item-8/9 demo fixes, see q1-knowledge-layout.test.jsx):
  * every SELECTABLE option group renders one option per row, full width,
  * column direction - never a wrapping grid of pills. This spec covers the
- * remaining converted groups: Q4Taste (love/rather-not), Q5MustKnow
- * (diet/abstain), Q6Summary (relationship-to-you), and HowToDrink
+ * remaining converted groups: Q4Taste (love/rather-not), Q6Summary
+ * (relationship-to-you), and HowToDrink
  * (who's-at-the-table guests). It does NOT touch Q6Summary's summary-rows
  * list (a display list, already stacked, not a selectable option group) or
  * HowToDrink's modes/subs/scopes (modes is a fixed 2-across segmented
@@ -52,35 +52,17 @@ describe('Q4Taste layout (/setup/4)', () => {
       expect(btn.style.textAlign).toBe('left');
     });
   });
-});
-
-describe('Q5MustKnow layout (/setup/5)', () => {
-  it('both diet and abstain groups stack full-width, one option per row', async () => {
-    renderPairMeApp('/setup/5');
-    await screen.findByText('Allergies and dietary');
-    await screen.findByText('Not drinking tonight');
-
-    expectColumnGroup('shellfish');
-    expectColumnGroup('driving, one glass');
-
-    ['shellfish', 'nuts', 'dairy', 'gluten', 'egg', 'vegetarian', 'vegan',
-      'pescatarian', 'sulfite sensitive',
-    ].forEach((label) => {
-      const btn = screen.getByRole('button', { name: label });
-      expect(btn.style.width).toBe('100%');
-      expect(btn.style.textAlign).toBe('left');
-    });
-    ['driving, one glass', 'no alcohol for me', 'pregnant'].forEach((label) => {
-      const btn = screen.getByRole('button', { name: label });
-      expect(btn.style.width).toBe('100%');
-      expect(btn.style.textAlign).toBe('left');
-    });
+  it('offers one neutral not-drinking toggle with no reason choices', async () => {
+    renderPairMeApp('/setup/4');
+    const toggle = await screen.findByRole('button', { name: 'Not drinking tonight' });
+    expect(toggle).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getAllByRole('button', { name: 'Not drinking tonight' })).toHaveLength(1);
   });
 });
 
-describe('Q6Summary layout (/setup/6)', () => {
+describe('Q6Summary layout (/setup/5)', () => {
   it('the "who they are to you" relationship group stacks full-width, one option per row', async () => {
-    renderPairMeApp('/setup/6');
+    renderPairMeApp('/setup/5');
     await screen.findByText('Who they are to you');
 
     expectColumnGroup('partner');
@@ -93,7 +75,7 @@ describe('Q6Summary layout (/setup/6)', () => {
   });
 
   it('leaves the summary rows list untouched (a display list, not a selectable group)', async () => {
-    renderPairMeApp('/setup/6');
+    renderPairMeApp('/setup/5');
     await screen.findByText('Who they are to you');
     // The summary rows are plain key/value spans, not buttons - there is no
     // option group here to convert, and this asserts we did not add one.

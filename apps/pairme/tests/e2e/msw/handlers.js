@@ -190,7 +190,7 @@ export const handlers = [
 
   http.get(`${BASE_URL}/v1/profile`, async ({ request }) => {
     record(request);
-    return HttpResponse.json({ preferences: {}, safety: {} });
+    return HttpResponse.json({ preferences: {} });
   }),
 
   http.put(`${BASE_URL}/v1/profile`, async ({ request }) => {

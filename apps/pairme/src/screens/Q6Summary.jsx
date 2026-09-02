@@ -1,7 +1,7 @@
 import React from 'react';
 import { Button, Input } from '../lib/ds';
 
-/** Screen 8 · Question 6, that's it */
+/** Screen 7 · Question 5, that's it */
 export default function Q6Summary(vm){
   const { relPills, fGuestName, summary, addDiner, addDinerNote } = vm;
   return (
@@ -19,7 +19,7 @@ export default function Q6Summary(vm){
 </div>
 <div style={{border: "1px solid var(--pm-selBd)", background: "var(--pm-sel)", borderRadius: "12px", padding: "14px"}}>
 <div style={{font: "600 14px var(--font-body)", color: "var(--pm-ink)"}}>Add a diner</div>
-<div style={{font: "400 12px/1.55 var(--font-body)", color: "var(--pm-muted)", margin: "4px 0 11px"}}>Whoever you eat with most. Tell us who they are and we'll walk them through the same six questions. Their taste gets its own profile, so you can order for them later.</div>
+<div style={{font: "400 12px/1.55 var(--font-body)", color: "var(--pm-muted)", margin: "4px 0 11px"}}>Whoever you eat with most. Tell us who they are and we'll walk them through the same five questions. Their taste gets its own profile, so you can order for them later.</div>
 <div style={{position: "relative"}}>
 <Input value={fGuestName.v} onChange={fGuestName.set} placeholder="Their name" style={{width: "100%"}}></Input>
 {fGuestName.micVisible ? (

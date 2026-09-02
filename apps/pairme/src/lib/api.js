@@ -146,7 +146,7 @@ export function getProfile() {
   return request('/v1/profile');
 }
 
-/** payload must be { preferences?: {...}, safety?: {...} }, nested. */
+/** Profile updates send preference fields only. */
 export function putProfile(payload) {
   return request('/v1/profile', { method: 'PUT', body: payload });
 }

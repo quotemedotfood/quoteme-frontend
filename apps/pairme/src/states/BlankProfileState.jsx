@@ -4,9 +4,9 @@ import { STUB_BLANK_PROFILE, STUB_DISH_FOR_BLANK_PROFILE, STUB_WINE_LIST_FOR_BLA
 
 /**
  * State (d) - a diner who skipped every onboarding screen. Every field on
- * STUB_BLANK_PROFILE is null/empty, the same shape Q1-Q6's "Skip setup"
+ * STUB_BLANK_PROFILE is null/empty, the same shape the setup "Skip setup"
  * affordance leaves behind (state.js's `alt` for screen 0 sets
- * likes/dislikes/diet to [] and never sets level/want/budget at all).
+ * likes/dislikes to [] and never sets level/want/budget at all).
  *
  * The scoring engine (packages/pairing) never reads taste preferences in
  * the first place - only a dish's components, a wine list, and an optional

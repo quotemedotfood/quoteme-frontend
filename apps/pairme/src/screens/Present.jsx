@@ -2,7 +2,7 @@ import React from 'react';
 
 /** Screen 13 · Present */
 export default function Present(vm){
-  const { foodRows, handoff, hasDiet, dietLine } = vm;
+  const { foodRows, handoff } = vm;
   return (
 <>
 <div>
@@ -26,12 +26,6 @@ export default function Present(vm){
 </div>
 </React.Fragment>
 ))}
-{hasDiet ? (<>
-<div style={{border: "2px solid var(--pm-warnBd)", background: "var(--pm-warnBg)", borderRadius: "10px", padding: "13px", marginTop: "14px"}}>
-<div style={{font: "700 13px var(--font-body)", color: "var(--pm-warnInk)", letterSpacing: ".06em", textTransform: "uppercase"}}>Please tell them</div>
-<div style={{font: "700 19px/1.3 var(--font-body)", color: "var(--pm-ink)", marginTop: "5px"}}>{dietLine}</div>
-</div>
-</>) : null}
 <div style={{font: "600 12px var(--font-body)", color: "var(--pm-muted)", letterSpacing: ".06em", textTransform: "uppercase", margin: "20px 0 10px"}}>Wine</div>
 {(handoff || []).map((h, i) => (
 <React.Fragment key={i}>
