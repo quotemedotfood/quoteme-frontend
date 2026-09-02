@@ -17,6 +17,26 @@
 //     These are structural pattern fills with hard stops, not color blends.
 //     The one live use is the diagonal stripe placeholder in
 //     src/app/components/stack/StackProductDrawer.tsx.
+//   - HARD-STOP SHAPES: any gradient with at least one pair of ADJACENT COLOUR
+//     STOPS SHARING A POSITION. Ruled 2026-09-01. A shared position is an abrupt
+//     colour change with no distance to blend over, which is how CSS draws a
+//     shape -- a ring, a thumb, a track -- rather than a fade. The guard exists
+//     to catch blends, because blends are where brand drift lives.
+//
+//     The live case is the PairMe slider thumb:
+//       radial-gradient(circle at center,
+//                       var(--pm-card) 0 9px,         <- ends at 9px
+//                       var(--pm-accent2) 9px 11.5px, <- starts at 9px: hard stop
+//                       transparent 12px)
+//
+//     KNOWN WIDTH OF THIS CARVE-OUT, stated rather than papered over: the test
+//     is "at least one adjacent pair shares a position", not "every pair does".
+//     The PairMe thumb's last pair (11.5px -> 12px) is a half-pixel feather for
+//     antialiasing, and requiring EVERY pair to share would reject the very
+//     shape this rule was widened to admit. The cost is that a gradient which is
+//     mostly a blend but contains one hard stop would pass. That has not
+//     appeared, and tightening it later is a one-line change to the loop in
+//     hasAdjacentSharedStop.
 //   - anything inside a `//` or `/* */` comment. Nearly every occurrence of the
 //     word "gradient" in this codebase is a comment restating the rule; those
 //     are the rule being honored, not broken. For .ts/.tsx the TypeScript AST
@@ -63,6 +83,102 @@ const TW_RE = /\bbg-gradient-to-/;
 // (and repeating-radial / repeating-conic) through as structural pattern fills.
 const CSS_RE = /(?<!repeating-)\b(?:linear|radial|conic)-gradient\s*\(/;
 const ANY_RE = new RegExp(`${TW_RE.source}|${CSS_RE.source}`);
+// Same shape as CSS_RE but global, for walking every gradient call in a blob.
+//
+// A FACTORY, not a shared constant. A module-level /g regex carries lastIndex
+// between calls, and scanCss drives one exec loop while calling gradientCallArgs
+// inside it. Sharing one instance made the inner call reset lastIndex to 0 and
+// the outer loop never terminated -- a hang, not a wrong answer. It did not
+// surface on this repo because no .css file holds a gradient call, so that path
+// never ran; the fixture tests found it.
+const cssGradientMatcher = () => /(?<!repeating-)\b(?:linear|radial|conic)-gradient\s*\(/g;
+
+// ── Hard-stop detection ────────────────────────────────────────────────────
+// Returns the argument text of every non-repeating gradient call in `text`.
+// A call whose parens do not close (a truncated preview, a gradient assembled by
+// string concatenation) yields null, which is treated as "cannot prove it is a
+// shape" and therefore stays a violation.
+function gradientCallArgs(text) {
+  const out = [];
+  const re = cssGradientMatcher();
+  let m;
+  while ((m = re.exec(text)) !== null) {
+    let depth = 1;
+    let i = m.index + m[0].length;
+    const start = i;
+    while (i < text.length && depth > 0) {
+      if (text[i] === '(') depth++;
+      else if (text[i] === ')') depth--;
+      i++;
+    }
+    out.push(depth === 0 ? text.slice(start, i - 1) : null);
+  }
+  return out;
+}
+
+// Split on commas at paren depth 0, so rgba(0,0,0,.5) and var(--x, #fff) stay
+// whole.
+function splitTopLevel(args) {
+  const parts = [];
+  let depth = 0;
+  let cur = '';
+  for (const ch of args) {
+    if (ch === '(') depth++;
+    else if (ch === ')') depth--;
+    if (ch === ',' && depth === 0) {
+      parts.push(cur);
+      cur = '';
+    } else {
+      cur += ch;
+    }
+  }
+  parts.push(cur);
+  return parts.map((p) => p.trim()).filter(Boolean);
+}
+
+const POSITION_RE = /^(?:[-+]?[\d.]+(?:px|%|em|rem|vw|vh|vmin|vmax|ch|ex|deg|rad|grad|turn)?|calc\(.*\))$/i;
+
+// The first argument of a gradient may set direction or shape rather than be a
+// colour stop: "to right", "90deg", "circle at center", "from 0deg".
+function isDirectionArg(part) {
+  return (
+    /^(?:to\s|from\s|at\s|circle\b|ellipse\b|closest-|farthest-|in\s)/i.test(part) ||
+    /^[-+]?[\d.]+(?:deg|rad|grad|turn)$/i.test(part)
+  );
+}
+
+// Trailing position tokens of one stop. CSS allows two (the double-position
+// shorthand), e.g. "var(--pm-card) 0 9px".
+function stopPositions(part) {
+  const tokens = part.split(/\s+/);
+  const positions = [];
+  for (let i = tokens.length - 1; i >= 0; i--) {
+    if (POSITION_RE.test(tokens[i])) positions.unshift(tokens[i].toLowerCase());
+    else break;
+  }
+  return positions;
+}
+
+function hasAdjacentSharedStop(args) {
+  if (args === null || args === undefined) return false;
+  const stops = splitTopLevel(args).filter((p) => !isDirectionArg(p));
+  for (let i = 0; i + 1 < stops.length; i++) {
+    const a = stopPositions(stops[i]);
+    const b = stopPositions(stops[i + 1]);
+    if (a.length > 0 && b.length > 0 && a[a.length - 1] === b[0]) return true;
+  }
+  return false;
+}
+
+// A blob is allowed only if it carries no Tailwind gradient utility (those have
+// no stops at all, so they are always blends) and EVERY gradient call in it is a
+// hard-stop shape.
+function isAllowedGradientText(text) {
+  if (TW_RE.test(text)) return false;
+  const calls = gradientCallArgs(text);
+  if (calls.length === 0) return false;
+  return calls.every(hasAdjacentSharedStop);
+}
 
 // Out of scope: developer-facing files only. Note the absence of a
 // pages/admin exclusion, see SCOPE NOTE above.
@@ -117,7 +233,7 @@ function scanScript(file, text, offenders) {
         node.kind === ts.SyntaxKind.JsxText
           ? node.getFullText(sourceFile)
           : node.getText(sourceFile);
-      if (ANY_RE.test(nodeText)) {
+      if (ANY_RE.test(nodeText) && !isAllowedGradientText(nodeText)) {
         const { line } = sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile));
         offenders.push({ file, line: line + 1, text: nodeText.trim().slice(0, 120) });
       }
@@ -166,10 +282,25 @@ function stripCssComments(text) {
 function scanCss(file, text, offenders) {
   const stripped = stripCssComments(text);
   const lines = stripped.split('\n');
+
+  // Tailwind utilities carry no stops, so they are decided per line.
   for (let n = 0; n < lines.length; n++) {
-    if (ANY_RE.test(lines[n])) {
+    if (TW_RE.test(lines[n])) {
       offenders.push({ file, line: n + 1, text: lines[n].trim().slice(0, 120) });
     }
+  }
+
+  // CSS gradient calls are matched against the WHOLE text, not line by line: a
+  // multi-line gradient has unbalanced parens on each of its lines, and the
+  // hard-stop test needs the complete argument list to parse. The match index
+  // maps back to a line number for reporting.
+  const re = cssGradientMatcher();
+  let m;
+  while ((m = re.exec(stripped)) !== null) {
+    const args = gradientCallArgs(stripped.slice(m.index))[0];
+    if (hasAdjacentSharedStop(args)) continue;
+    const line = stripped.slice(0, m.index).split('\n').length;
+    offenders.push({ file, line, text: (lines[line - 1] || '').trim().slice(0, 120) });
   }
 }
 
@@ -197,8 +328,10 @@ if (offenders.length > 0) {
   console.log('Sacred Orange (#F2993D) per page. Replace the gradient with a flat');
   console.log('fill, using a palette token where one fits, and reach for a shadow');
   console.log('token (--qm-shadow-sm / -md / -lg) if the surface needs prominence.');
-  console.log('Structural pattern fills may use repeating-linear-gradient, which');
-  console.log('this guard allows. See scripts/check-gradients.mjs for scope.');
+  console.log('Structural pattern fills may use repeating-linear-gradient, and a');
+  console.log('gradient whose adjacent colour stops share a position is a hard-stop');
+  console.log('shape rather than a blend, which this guard also allows. See');
+  console.log('scripts/check-gradients.mjs for scope.');
   process.exit(1);
 } else {
   console.log(

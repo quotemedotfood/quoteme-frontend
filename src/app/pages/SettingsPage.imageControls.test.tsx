@@ -88,6 +88,13 @@ function renderSettings() {
   );
 }
 
+// The entry query in each case waits on getCurrentUser -> AuthContext ->
+// AuthSyncProvider -> profile.isGuest -> accountFieldsReadOnly -> the control's
+// accessible name. findBy's 1s default cleared that chain standalone but not
+// always inside a loaded full-suite run, which showed up as a load-dependent
+// failure rather than a real one. Widen the wait; the assertions are untouched.
+const LOAD = { timeout: 5000 };
+
 function file(name: string, type: string, bytes = 10) {
   return new File([new Uint8Array(bytes)], name, { type });
 }
@@ -111,7 +118,7 @@ describe('SettingsPage image controls: no picker without a save path', () => {
 
     const avatar = await screen.findByRole('button', {
       name: 'Edit account info to change your profile photo',
-    });
+    }, LOAD);
 
     // The hidden input must not be clicked: there would be no Save to persist it.
     const input = document.querySelector('input[type="file"][accept="image/*"]') as HTMLInputElement;
@@ -133,7 +140,7 @@ describe('SettingsPage image controls: no picker without a save path', () => {
 
     fireEvent.click(await screen.findByRole('button', {
       name: 'Edit account info to change your profile photo',
-    }));
+    }, LOAD));
 
     const avatar = await screen.findByRole('button', { name: 'Change your profile photo' });
     const input = document.querySelector('input[type="file"][accept="image/*"]') as HTMLInputElement;
@@ -149,7 +156,7 @@ describe('SettingsPage image controls: no picker without a save path', () => {
 
     fireEvent.click(await screen.findByRole('button', {
       name: 'Edit account info to change your profile photo',
-    }));
+    }, LOAD));
     await screen.findByRole('button', { name: 'Change your profile photo' });
 
     // accept="image/*" is wider than what the app takes, so a GIF now reaches
@@ -167,7 +174,7 @@ describe('SettingsPage image controls: no picker without a save path', () => {
 
     const preview = await screen.findByRole('button', {
       name: 'Edit distributor settings to change the company logo',
-    });
+    }, LOAD);
     fireEvent.click(preview);
 
     await waitFor(() => expect(screen.getByText('Upload Logo')).toBeTruthy());
@@ -178,7 +185,7 @@ describe('SettingsPage image controls: no picker without a save path', () => {
     getCurrentUser.mockResolvedValue({ data: makeUser() });
     renderSettings();
 
-    await waitFor(() => expect(screen.getByDisplayValue('Fish Guys')).toBeTruthy());
+    await waitFor(() => expect(screen.getByDisplayValue('Fish Guys')).toBeTruthy(), LOAD);
     expect(screen.queryByRole('button', { name: /company logo/i })).toBeNull();
     expect(screen.getAllByText('Set by your distributor admin.').length).toBeGreaterThan(0);
   });
@@ -195,7 +202,7 @@ describe('SettingsPage image controls: no picker without a save path', () => {
 
     fireEvent.click(await screen.findByRole('button', {
       name: 'Edit distributor settings to change the company logo',
-    }));
+    }, LOAD));
     await screen.findByText('Upload Logo');
 
     const logoInput = document.querySelector('#logo-input, input[type="file"][accept="image/*"]') as HTMLInputElement;
@@ -228,7 +235,7 @@ describe('SettingsPage image controls: no picker without a save path', () => {
 
     fireEvent.click(await screen.findByRole('button', {
       name: 'Edit distributor settings to change the company logo',
-    }));
+    }, LOAD));
     await screen.findByText('Upload Logo');
 
     const inputs = Array.from(container.querySelectorAll('input[type="file"]')) as HTMLInputElement[];
