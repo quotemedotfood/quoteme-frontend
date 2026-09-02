@@ -118,7 +118,7 @@ export function extractionFailureMessage(raw: string | undefined): string {
 
   // Retrying WILL NOT help for these. Offer the path that does.
   if (e.includes('pdf_too_large')) {
-    return 'That file is too big for us to read in one go. Send just the part you need — the dinner menu, or the drinks list — or paste the text below.';
+    return 'That file is too big for us to read in one go. Send just the part you need: the dinner menu, or the drinks list. You can also paste the text below.';
   }
   if (e.includes('url_unsupported_type')) {
     return "That link didn't lead to a menu we can read. If you have the file itself, upload it below, or paste the text.";
@@ -147,7 +147,7 @@ export function extractionFailureMessage(raw: string | undefined): string {
 // wait grows, and by saying what the chef can do instead of waiting.
 export function extractionProgressMessage(elapsedMs: number): string {
   if (elapsedMs < 8000) return 'Reading your menu…';
-  if (elapsedMs < 25000) return 'Still reading — long menus take a little longer.';
+  if (elapsedMs < 25000) return 'Still reading. Long menus take a little longer.';
   if (elapsedMs < 60000) return "This one's a big menu. Still going.";
   return "Still working. If you'd rather not wait, you can paste the text below instead.";
 }
