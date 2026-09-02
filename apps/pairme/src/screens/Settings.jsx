@@ -1,7 +1,7 @@
 import React from 'react';
 import { Button } from '../lib/ds';
 
-/** Screen 18 · Settings */
+/** Screen 17 · Settings */
 export default function Settings(vm){
   const { goSignIn, menu, settingRows, demoSpeak, acctTitle, acctSub, acctAction, connections, connectionsOpen, toggleConnections } = vm;
   return (

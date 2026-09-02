@@ -1,6 +1,6 @@
 import React from 'react';
 
-/** Screen 15 · Your profile */
+/** Screen 14 · Your profile */
 export default function YourProfile(vm){
   const { connections, shareTable, shareNote, myLikes, myNots, historyCount, history, friends,
     deleteAccountLabel, deleteAccountSub, deleteAccount, cancelDelete, showCancelDelete, deleteDone } = vm;

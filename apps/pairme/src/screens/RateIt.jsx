@@ -1,6 +1,6 @@
 import React from 'react';
 
-/** Screen 14 · How was it */
+/** Screen 13 · How was it */
 export default function RateIt(vm){
   const { fFb, rateRows, fb, setFb, shareBd, shareBg, toggleShare } = vm;
   return (

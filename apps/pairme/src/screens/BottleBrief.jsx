@@ -1,6 +1,6 @@
 import React from 'react';
 
-/** Screen 17 · Bottle brief */
+/** Screen 16 · Bottle brief */
 export default function BottleBrief(vm){
   const { bb, history } = vm;
   return (

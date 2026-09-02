@@ -1023,11 +1023,15 @@ export function usePairMe(opts = {}){
         camNote:(st.camPage||1)>1?"Page "+(st.camPage||1)+". Keep going, we stitch them together.":"Long list? Shoot one page, tap plus, shoot the next.",
         onboarding:s>=2&&s<=6,step:s-1,obTitle:ob?ob.t:"",obSub:ob?ob.s:"",
 
+        // Screen 16 is Settings (see PATH_FOR_SCREEN above). `pick` below:
+        // signing in from the Settings account block returns you to Settings;
+        // signing in from the Welcome -> SignIn onboarding path goes on to
+        // Q1Knowledge (2).
         signIns:[
           {k:"Apple",label:"Continue with Apple",icon:APPLE_MARK,fg:"#fff",bg:"#000",bd:"#000"},
           {k:"Google",label:"Continue with Google",icon:GOOGLE_MARK,fg:"var(--pm-ink)",bg:"var(--pm-card)",bd:"var(--pm-rule)"},
           {k:"Email",label:"Continue with email",icon:EMAIL_MARK,fg:"var(--pm-ink)",bg:"var(--pm-card)",bd:"var(--pm-rule)"}
-        ].map(o=>Object.assign({},o,{pick:()=>patch({account:o.k,s:st.back===17?17:2})})),
+        ].map(o=>Object.assign({},o,{pick:()=>patch({account:o.k,s:st.back===16?16:2})})),
         // No auth endpoint exists in the API contract v1 (identity is
         // anon_id only, "no login, no merge"). These sign-in affordances
         // stay local-only demo state until the backend adds one.

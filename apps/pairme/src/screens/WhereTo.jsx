@@ -1,7 +1,7 @@
 import React from 'react';
 import { Button, Input } from '../lib/ds';
 
-/** Screen 9 · Where to */
+/** Screen 8 · Where to */
 export default function WhereTo(vm){
   const { goMenu, goCamera, fVenue, venueHits, noList, hasList, noListLabel, toggleNoList, showNoListToggle, menu, fEatText, goTellUs } = vm;
   return (

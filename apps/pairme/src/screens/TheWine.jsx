@@ -2,7 +2,7 @@ import React from 'react';
 import { Input } from '../lib/ds';
 import WineCardIcons from './WineCardIcons';
 
-/** Screen 12 · The wine */
+/** Screen 11 · The wine */
 export default function TheWine(vm){
   const { fWhy, offerTitle, offerSub, blankLabel, toggleBlank, showBlankToggle, presentCount, offers, compromiseNote, blockedNote, showFormatTabs, formatTabs, showCoverage, coverageTitle, coverage, showFeatured, featured, goWineList } = vm;
   return (

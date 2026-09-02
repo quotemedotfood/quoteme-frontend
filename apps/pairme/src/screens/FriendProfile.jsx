@@ -1,7 +1,7 @@
 import React from 'react';
 import { Button } from '../lib/ds';
 
-/** Screen 16 · A friend */
+/** Screen 15 · A friend */
 export default function FriendProfile(vm){
   const { sarahLikes, sarahNots, sarahHistory } = vm;
   return (

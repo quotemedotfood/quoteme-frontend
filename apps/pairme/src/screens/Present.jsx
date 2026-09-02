@@ -1,6 +1,6 @@
 import React from 'react';
 
-/** Screen 13 · Present */
+/** Screen 12 · Present */
 export default function Present(vm){
   const { foodRows, handoff } = vm;
   return (
