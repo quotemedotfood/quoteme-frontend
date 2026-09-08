@@ -23,6 +23,17 @@
 // host-based resolution (e.g. lipari.quoteme.food → slug="lipari") swaps in.
 
 import React, { useState, useRef, useCallback, useEffect } from 'react';
+import { fileRejection, MENU_SURFACE } from '../utils/fileGate';
+import { extractMenuText } from '../services/api';
+import {
+  parseMenuText,
+  stripPrices,
+  reconstructText,
+  countIngredients,
+  extractionFailureMessage,
+  extractionProgressMessage,
+  type ParsedDish,
+} from '../utils/menuIngestion';
 import { useParams } from 'react-router';
 import { Upload, Check, FileText, AlertCircle } from 'lucide-react';
 import quotemeLogo from '../../assets/quoteme-logo.png';
@@ -311,6 +322,55 @@ function LanderForm({ config, desktop, onDelivered, slug }: LanderFormProps) {
   const [fileName, setFileName] = useState('');
   const [fileSize, setFileSize] = useState('');
   const [dropHover, setDropHover] = useState(false);
+
+  // ── W4: the ingestion block, brought to the public lander ────────────────
+  //
+  // The chef reading this page is not a rep. They have been handed a link and
+  // they get one page. So the same four ways in that the quoting page offers --
+  // drop a file, fetch a URL, paste, or edit what we read -- have to be here,
+  // and the parse has to be the SAME parse, which is why parseMenuText now
+  // lives in utils/menuIngestion rather than inside StartNewQuotePage.
+  const [menuUrl, setMenuUrl] = useState('');
+  const [parsedDishes, setParsedDishes] = useState<ParsedDish[]>([]);
+  const [isExtracting, setIsExtracting] = useState(false);
+  const [extractError, setExtractError] = useState<string | null>(null);
+  const [extractElapsed, setExtractElapsed] = useState(0);
+  const [editingIngredient, setEditingIngredient] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState('');
+  const [addingToDish, setAddingToDish] = useState<string | null>(null);
+  const [newIngredientName, setNewIngredientName] = useState('');
+  const [addingNewDish, setAddingNewDish] = useState(false);
+  const [newDishName, setNewDishName] = useState('');
+  const nextLocalId = useRef(1);
+
+  // Extraction takes real time, so the wait needs a clock behind it. Without
+  // this the page would show one string for up to four minutes.
+  useEffect(() => {
+    if (!isExtracting) { setExtractElapsed(0); return; }
+    const startedAt = Date.now();
+    const t = setInterval(() => setExtractElapsed(Date.now() - startedAt), 1000);
+    return () => clearInterval(t);
+  }, [isExtracting]);
+
+  // Paste -> parse, debounced. Mirrors the quoting page's 1.5s debounce.
+  useEffect(() => {
+    if (!textContent.trim()) { setParsedDishes([]); return; }
+    const t = setTimeout(() => setParsedDishes(parseMenuText(stripPrices(textContent))), 1500);
+    return () => clearTimeout(t);
+  }, [textContent]);
+
+  // ── Edits flow BACK into textContent. Load bearing.
+  //
+  //    This page submits TEXT: the request body is
+  //    { payload_type, text, contact_* }. The quoting page carries parsedDishes
+  //    forward directly, so it never needed this. Here, without it, a chef who
+  //    renames a chip, removes an ingredient or adds a dish would watch the
+  //    panel update, press submit, and send the text they never edited. That is
+  //    a control that reports success and persists nothing.
+  const commitDishes = useCallback((next: ParsedDish[]) => {
+    setParsedDishes(next);
+    setTextContent(reconstructText(next));
+  }, []);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Submission state
@@ -318,7 +378,49 @@ function LanderForm({ config, desktop, onDelivered, slug }: LanderFormProps) {
   const [submitError,  setSubmitError]  = useState<string | null>(null);
   const [fieldErrors,  setFieldErrors]  = useState<Record<string, string>>({});
 
+  // Read a local text file without a round trip. CSV and .txt are already text,
+  // so sending them to the extractor would be a network call to learn nothing.
+  const readLocalText = useCallback((f: File) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const text = (e.target?.result as string) || '';
+      setTextContent(text);
+      setParsedDishes(parseMenuText(stripPrices(text)));
+    };
+    reader.onerror = () => setExtractError(extractionFailureMessage('no_text'));
+    reader.readAsText(f);
+  }, []);
+
+  const runExtraction = useCallback(async (payload: { file?: File; url?: string }) => {
+    setIsExtracting(true);
+    setExtractError(null);
+    try {
+      const res = await extractMenuText(payload);
+      if (res.error) {
+        setExtractError(extractionFailureMessage(res.error));
+      } else if (res.data?.text?.trim()) {
+        setTextContent(res.data.text);
+        setParsedDishes(parseMenuText(stripPrices(res.data.text)));
+      } else {
+        // A 200 with nothing in it is a failure the chef can act on, not a success.
+        setExtractError(extractionFailureMessage('no_text'));
+      }
+    } catch {
+      setExtractError(extractionFailureMessage(undefined));
+    } finally {
+      setIsExtracting(false);
+    }
+  }, []);
+
   const acceptFile = useCallback((f: File) => {
+    // GATE FIRST, before any state is touched. The <input accept> attribute is
+    // only a picker hint and drag-and-drop bypasses it entirely, so this page
+    // accepted a dropped .xlsx and sent it. Same gate and same words as the
+    // quoting page, via MENU_SURFACE.
+    const rejection = fileRejection(f, MENU_SURFACE);
+    if (rejection) { setExtractError(rejection); return; }
+
+    setExtractError(null);
     setFile(f);
     setFileName(f.name);
     setFileSize(
@@ -326,7 +428,54 @@ function LanderForm({ config, desktop, onDelivered, slug }: LanderFormProps) {
         ? `${(f.size / 1_048_576).toFixed(1)} MB`
         : `${Math.max(1, Math.round(f.size / 1024))} KB`,
     );
-  }, []);
+
+    const lower = f.name.toLowerCase();
+    if (lower.endsWith('.csv') || lower.endsWith('.txt')) readLocalText(f);
+    else void runExtraction({ file: f });
+  }, [readLocalText, runExtraction]);
+
+  const handleUrlFetch = useCallback(() => {
+    const raw = menuUrl.trim();
+    if (!raw) return;
+    const url = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+    void runExtraction({ url });
+  }, [menuUrl, runExtraction]);
+
+  // ── Ingredient editing. Every one goes through commitDishes so the submitted
+  //    text and the panel can never disagree.
+  const removeIngredient = (dishId: string, ingId: string) =>
+    commitDishes(parsedDishes.map(d =>
+      d.id === dishId ? { ...d, ingredients: d.ingredients.filter(i => i.id !== ingId) } : d));
+
+  const saveIngredientEdit = (dishId: string, ingId: string) => {
+    if (!editValue.trim()) { setEditingIngredient(null); return; }
+    commitDishes(parsedDishes.map(d =>
+      d.id === dishId
+        ? { ...d, ingredients: d.ingredients.map(i => i.id === ingId ? { ...i, name: editValue.trim() } : i) }
+        : d));
+    setEditingIngredient(null);
+    setEditValue('');
+  };
+
+  const addIngredient = (dishId: string) => {
+    if (!newIngredientName.trim()) { setAddingToDish(null); setNewIngredientName(''); return; }
+    nextLocalId.current += 1;
+    commitDishes(parsedDishes.map(d =>
+      d.id === dishId
+        ? { ...d, ingredients: [...d.ingredients, { id: `ing-new-${nextLocalId.current}`, name: newIngredientName.trim(), confidence: 0.85 }] }
+        : d));
+    setNewIngredientName(''); // stays open for continuous entry
+  };
+
+  const addDish = () => {
+    if (!newDishName.trim()) { setAddingNewDish(false); setNewDishName(''); return; }
+    nextLocalId.current += 1;
+    const dishId = `dish-new-${nextLocalId.current}`;
+    commitDishes([...parsedDishes, { id: dishId, name: newDishName.trim(), ingredients: [] }]);
+    setNewDishName('');
+    setAddingNewDish(false);
+    setAddingToDish(dishId);
+  };
 
   const handleDrop = useCallback(
     (e: React.DragEvent<HTMLDivElement>) => {
@@ -675,6 +824,228 @@ function LanderForm({ config, desktop, onDelivered, slug }: LanderFormProps) {
         </div>
       )}
 
+      {/* ── W4: Menu URL + Fetch ─────────────────────────────────────────── */}
+      {inputMode === 'text' && (
+        <div style={fieldWrap}>
+          <label style={labelStyle} htmlFor="lander-menu-url">
+            {payloadType === 'menu' ? 'Or link to your menu' : 'Or link to your order guide'}
+          </label>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <input
+              id="lander-menu-url"
+              type="text"
+              value={menuUrl}
+              onChange={(e) => setMenuUrl(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleUrlFetch(); } }}
+              placeholder="yourrestaurant.com/menu"
+              style={{ ...inputStyle, flex: 1 }}
+              disabled={isExtracting}
+            />
+            <button
+              type="button"
+              onClick={handleUrlFetch}
+              disabled={!menuUrl.trim() || isExtracting}
+              style={{
+                ...sans,
+                padding: '11px 18px',
+                fontSize: desktop ? 14 : 13,
+                fontWeight: 600,
+                borderRadius: 4,
+                border: `1px solid ${C.accentRing}`,
+                background: !menuUrl.trim() || isExtracting ? C.warmPaper : '#fff',
+                color: !menuUrl.trim() || isExtracting ? C.gray500 : C.charcoal,
+                cursor: !menuUrl.trim() || isExtracting ? 'not-allowed' : 'pointer',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              Fetch
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── W4: what the page says WHILE extraction runs ─────────────────────
+          Extraction is slow enough that one static string would stop being
+          true. This changes as the wait grows and, once it is long, points at
+          the paste box rather than asking the chef to keep waiting. */}
+      {isExtracting && (
+        <div
+          role="status"
+          aria-live="polite"
+          style={{
+            ...sans, fontSize: 13, color: C.gray700,
+            background: C.accentBg, border: `1px solid ${C.accentRing}`,
+            borderRadius: 4, padding: '11px 13px', marginBottom: desktop ? 20 : 16,
+          }}
+        >
+          {extractionProgressMessage(extractElapsed)}
+        </div>
+      )}
+
+      {/* ── W4: what the page says when a file FAILS ─────────────────────────
+          Plain language, no backend codes, and no retry offered where retrying
+          cannot succeed. extractionFailureMessage owns that decision. */}
+      {extractError && !isExtracting && (
+        <div
+          role="alert"
+          style={{
+            ...sans, fontSize: 13, color: C.danger,
+            background: '#FDF2F4', border: `1px solid ${C.danger}`,
+            borderRadius: 4, padding: '11px 13px', marginBottom: desktop ? 20 : 16,
+          }}
+        >
+          {extractError}
+        </div>
+      )}
+
+      {/* ── W4: Extracted Ingredients ────────────────────────────────────────
+          Chips, edit in place, remove, add ingredient, add dish. Every edit
+          goes through commitDishes, which rewrites textContent, because this
+          page submits text. */}
+      {(parsedDishes.length > 0 || isExtracting) && (
+        <div style={fieldWrap}>
+          <label style={labelStyle}>
+            What we read {parsedDishes.length > 0 && `· ${countIngredients(parsedDishes)} ingredients`}
+          </label>
+          <div
+            style={{
+              border: `1px solid ${C.softLine}`, borderRadius: 4,
+              background: C.warmPaper, padding: desktop ? 16 : 13,
+            }}
+          >
+            {parsedDishes.length === 0 ? (
+              <p style={{ ...sans, fontSize: 13, color: C.gray500, margin: 0 }}>
+                Reading…
+              </p>
+            ) : (
+              <>
+                <p style={{ ...sans, fontSize: 12, color: C.gray500, margin: '0 0 12px' }}>
+                  Tap any ingredient to correct it. Your changes are what gets sent.
+                </p>
+                {parsedDishes.map(dish => (
+                  <div key={dish.id} style={{ marginBottom: 14 }}>
+                    <div style={{ ...sans, fontSize: 13, fontWeight: 600, color: C.charcoal, marginBottom: 6 }}>
+                      {dish.name}{' '}
+                      <span style={{ fontWeight: 400, color: C.gray500 }}>({dish.ingredients.length})</span>
+                    </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                      {dish.ingredients.map(ing => (
+                        editingIngredient === ing.id ? (
+                          <input
+                            key={ing.id}
+                            type="text"
+                            value={editValue}
+                            onChange={(e) => setEditValue(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') { e.preventDefault(); saveIngredientEdit(dish.id, ing.id); }
+                              if (e.key === 'Escape') setEditingIngredient(null);
+                            }}
+                            onBlur={() => saveIngredientEdit(dish.id, ing.id)}
+                            autoFocus
+                            aria-label={`Edit ${ing.name}`}
+                            style={{
+                              ...sans, fontSize: 12, padding: '4px 10px', width: 130,
+                              border: `1px solid ${C.accentRing}`, borderRadius: 999,
+                              outline: 'none', color: C.charcoal,
+                            }}
+                          />
+                        ) : (
+                          <span
+                            key={ing.id}
+                            style={{
+                              ...sans, display: 'inline-flex', alignItems: 'center', gap: 5,
+                              fontSize: 12, padding: '4px 10px', borderRadius: 999,
+                              border: `1px solid ${C.softLine}`, background: '#fff', color: C.charcoal,
+                            }}
+                          >
+                            <button
+                              type="button"
+                              onClick={() => { setEditingIngredient(ing.id); setEditValue(ing.name); }}
+                              aria-label={`Correct ${ing.name}`}
+                              style={{ ...sans, background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'inherit', cursor: 'pointer' }}
+                            >
+                              {ing.name}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => removeIngredient(dish.id, ing.id)}
+                              aria-label={`Remove ${ing.name}`}
+                              style={{ ...sans, background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: C.gray500, lineHeight: 1 }}
+                            >
+                              ×
+                            </button>
+                          </span>
+                        )
+                      ))}
+                    </div>
+                    {addingToDish === dish.id ? (
+                      <input
+                        type="text"
+                        value={newIngredientName}
+                        onChange={(e) => setNewIngredientName(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') { e.preventDefault(); addIngredient(dish.id); }
+                          if (e.key === 'Escape') { setAddingToDish(null); setNewIngredientName(''); }
+                        }}
+                        onBlur={() => { if (!newIngredientName.trim()) { setAddingToDish(null); setNewIngredientName(''); } }}
+                        autoFocus
+                        placeholder="Ingredient"
+                        aria-label={`Add an ingredient to ${dish.name}`}
+                        style={{
+                          ...sans, fontSize: 12, padding: '4px 10px', width: 150, marginTop: 8,
+                          border: `1px solid ${C.softLine}`, borderRadius: 999, outline: 'none', color: C.charcoal,
+                        }}
+                      />
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setAddingToDish(dish.id)}
+                        aria-label={`Add an ingredient to ${dish.name}`}
+                        style={{ ...sans, fontSize: 12, color: C.gray700, background: 'none', border: 'none', padding: 0, marginTop: 8, cursor: 'pointer', textDecoration: 'underline' }}
+                      >
+                        + Add ingredient
+                      </button>
+                    )}
+                  </div>
+                ))}
+                {addingNewDish ? (
+                  <input
+                    type="text"
+                    value={newDishName}
+                    onChange={(e) => setNewDishName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') { e.preventDefault(); addDish(); }
+                      if (e.key === 'Escape') { setAddingNewDish(false); setNewDishName(''); }
+                    }}
+                    onBlur={() => { if (!newDishName.trim()) { setAddingNewDish(false); setNewDishName(''); } }}
+                    autoFocus
+                    placeholder="Dish name"
+                    aria-label="Add a dish"
+                    style={{
+                      ...sans, fontSize: 13, padding: '6px 12px', width: 190,
+                      border: `1px solid ${C.softLine}`, borderRadius: 4, outline: 'none', color: C.charcoal,
+                      marginTop: 8, borderTop: `1px solid ${C.softLine}`,
+                    }}
+                  />
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setAddingNewDish(true)}
+                    style={{
+                      ...sans, fontSize: 13, fontWeight: 600, color: C.charcoal,
+                      background: 'none', border: 'none', padding: '10px 0 0', cursor: 'pointer',
+                      borderTop: `1px solid ${C.softLine}`, width: '100%', textAlign: 'left', marginTop: 6,
+                    }}
+                  >
+                    + Add dish
+                  </button>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* ── PDF drop zone ───────────────────────────────────────────────── */}
       {inputMode === 'file' && (
         <div style={fieldWrap}>
@@ -683,7 +1054,7 @@ function LanderForm({ config, desktop, onDelivered, slug }: LanderFormProps) {
           <input
             ref={fileInputRef}
             type="file"
-            accept=".pdf"
+            accept={MENU_SURFACE.exts.join(',')}
             style={{ display: 'none' }}
             onChange={handleFileInputChange}
           />
