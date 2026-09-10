@@ -7,17 +7,29 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from './ui/drawer';
-import { X, Check, Search, Plus, Repeat, Mic, Loader2 } from 'lucide-react';
+import { X, Check, Search, Plus, Repeat, Mic, Loader2, Ban, Undo2 } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogFooter,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from './ui/alert-dialog';
 import {
   searchCatalogProducts,
   submitYourCallSelection,
   toggleRepMemoryLock,
+  setComponentUnmatched,
   CORRECTION_TYPES,
   type AlignmentCandidateResponse,
   type CatalogSearchProduct,
   type CorrectionType,
 } from '../services/api';
 import { toTitleCase, formatProductName } from '../utils/format';
+import { REP_UNMATCHED_LABEL } from '../utils/unmatch';
 import { categoryLabel } from '../utils/categoryLabel';
 import { ChainToggle } from './ChainToggle';
 import { DistributorMemoryBadge } from './DistributorMemoryBadge';
@@ -124,6 +136,27 @@ interface MatchDrawerProps {
   readOnly?: boolean;
   /** Marker copy naming why the surface is read-only. */
   readOnlyMarker?: string | null;
+  /**
+   * Whether the Unmatch / Undo controls render at all.
+   *
+   * DEFAULTS TO FALSE ON PURPOSE, and nothing passes it yet. The endpoint's
+   * role guard is still with Moose (rep-only, matching rep_memory_lock, vs
+   * rep + distributor_admin), and rendering a write control for a role the
+   * endpoint refuses is the live ChainToggle defect: it renders on
+   * `!readOnly`, but rep_memory_lock resolves to rep-only, so a
+   * distributor_admin sees the control and gets a 403.
+   *
+   * `readOnly` is the wrong predicate for this either way. It answers "is
+   * this quote frozen, or am I a quoteme_admin" (isAdminViewerRole is
+   * `role === 'quoteme_admin'`, and a test pins distributor_admin to false),
+   * never "am I a rep". When the ruling lands, wire this from the role
+   * MapIngredientsPage already reads, via canUnmatchRole in utils/unmatch.
+   */
+  canUnmatch?: boolean;
+  /** Server state: this component is already marked not carried by this rep. */
+  isUnmatched?: boolean;
+  /** Fired after a successful unmatch/undo so the parent can refetch. */
+  onUnmatchChanged?: (unmatched: boolean) => void;
 }
 
 export function MatchDrawer({
@@ -140,6 +173,9 @@ export function MatchDrawer({
   onSubmitted,
   readOnly = false,
   readOnlyMarker = null,
+  canUnmatch = false,
+  isUnmatched = false,
+  onUnmatchChanged,
 }: MatchDrawerProps) {
   const [picks, setPicks] = useState<string[]>([]);
   const [notes, setNotes] = useState('');
@@ -167,6 +203,15 @@ export function MatchDrawer({
   // the chain with no modal, no toast and no text: indistinguishable from a
   // dead button. This holds the server's own message so the rep can read it.
   const [lockError, setLockError] = useState<string | null>(null);
+
+  // Unmatch. `unmatchedOverride` mirrors the lockOverrides pattern above: it
+  // reflects a flip made in THIS drawer session so the body updates without a
+  // full quote refetch, and falls back to the server value when unset.
+  const [unmatchedOverride, setUnmatchedOverride] = useState<boolean | null>(null);
+  const [unmatchPending, setUnmatchPending] = useState(false);
+  const [unmatchError, setUnmatchError] = useState<string | null>(null);
+  const [confirmUnmatchOpen, setConfirmUnmatchOpen] = useState(false);
+  const effectiveUnmatched = unmatchedOverride ?? isUnmatched;
 
   const isLocked = (productId: string, serverValue: boolean) =>
     lockOverrides[productId] ?? serverValue;
@@ -196,6 +241,38 @@ export function MatchDrawer({
       return;
     }
     setLockOverrides(prev => ({ ...prev, [productId]: nextLocked }));
+  };
+
+  // Unmatch / Undo. One handler for both directions, because they are the same
+  // claim with the flag flipped -- the same reason the client function wraps a
+  // single endpoint rather than a write and a separate revert.
+  const handleSetUnmatched = async (next: boolean) => {
+    // Guard at the call site as well as where the control renders, matching
+    // handleToggleLock: the drawer stays mounted if the quote goes out
+    // mid-session, so a render-time check alone is not enough.
+    if (readOnly || !canUnmatch) return;
+    if (!quoteId || !quoteLineId || unmatchPending) return;
+    setConfirmUnmatchOpen(false);
+    setUnmatchError(null);
+    setUnmatchPending(true);
+    const res = await setComponentUnmatched(quoteId, {
+      quote_line_id: quoteLineId,
+      canonical_key: canonicalKey ?? null,
+      dish_component_id: dishComponentId ?? null,
+      unmatched: next,
+    });
+    setUnmatchPending(false);
+    if (res.error) {
+      // Verbatim, no invented copy. The server writes its own user-facing
+      // rejections here the way rep_memory_lock does ("Missing canonical_key
+      // for this component", "Quote has no assigned rep", "Quote has no
+      // catalog version"), and deliberately keeps exception detail in Sentry
+      // rather than the response. Whatever it chose to say, the rep reads.
+      setUnmatchError(res.error);
+      return;
+    }
+    setUnmatchedOverride(next);
+    onUnmatchChanged?.(next);
   };
 
   // BUG #26 precedent (MapComponentDrawer) — vaul's right-direction drawer
@@ -350,6 +427,7 @@ export function MatchDrawer({
   const currentScore = scoreLabel(currentMatch?.score ?? null);
 
   return (
+    <>
     <Drawer open={open} onOpenChange={onOpenChange} direction="right">
       <DrawerContent
         className="w-full sm:max-w-[480px] h-full flex flex-col p-0 bg-white"
@@ -380,7 +458,7 @@ export function MatchDrawer({
         {/* ── Body ── */}
         <div className="qm-match-drawer-scroll flex-1 overflow-y-auto px-[22px] pt-[18px] pb-[10px] min-h-0">
           {/* Current Match — green, not clickable, no checkbox */}
-          {currentMatch && (
+          {!effectiveUnmatched && currentMatch && (
             <div className="mb-5">
               <div
                 className="text-[11px] font-bold uppercase mb-[9px]"
@@ -433,6 +511,55 @@ export function MatchDrawer({
                     </span>
                   )}
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* This drawer had no "there is no current match" branch at all: when
+              currentProduct was null the Current Match block simply did not
+              render and the body opened on Alternates. Unmatch needs a state to
+              land in, so both cases are named now. */}
+          {effectiveUnmatched && (
+            <div className="mb-5" data-testid="match-drawer-not-carried">
+              <div
+                className="text-[11px] font-bold uppercase mb-[9px]"
+                style={{ letterSpacing: '.06em', color: 'var(--qm-gray-700)' }}
+              >
+                Not Carried
+              </div>
+              <div
+                className="rounded-[10px] px-[14px] py-[13px]"
+                style={{ border: '1.5px solid var(--qm-soft-line)', background: '#FAF9F6' }}
+              >
+                <h4
+                  className="text-[13.5px] font-semibold leading-[1.3] flex items-center gap-[6px]"
+                  style={{ color: 'var(--qm-charcoal)' }}
+                >
+                  <Ban className="w-4 h-4" aria-hidden="true" />
+                  {REP_UNMATCHED_LABEL}
+                </h4>
+                <p className="text-[12.5px] mt-[6px] leading-[1.45]" style={{ color: 'var(--qm-gray-500)' }}>
+                  Nothing in this catalog is suggested for {toTitleCase(ingredientName)} on
+                  your future quotes. The claim is tied to the current catalog version and
+                  expires on its own when the assortment changes.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {!effectiveUnmatched && !currentMatch && (
+            <div className="mb-5" data-testid="match-drawer-no-current-match">
+              <div
+                className="text-[11px] font-bold uppercase mb-[9px]"
+                style={{ letterSpacing: '.06em', color: 'var(--qm-gray-700)' }}
+              >
+                Current Match
+              </div>
+              <div
+                className="rounded-[10px] px-[14px] py-[13px] text-[12.5px]"
+                style={{ border: '1px dashed var(--qm-soft-line)', color: 'var(--qm-gray-500)' }}
+              >
+                No product is matched to this component yet.
               </div>
             </div>
           )}
@@ -688,7 +815,39 @@ export function MatchDrawer({
             >
               {readOnlyMarker ?? 'Read-only'}: matches are locked.
             </div>
+          ) : effectiveUnmatched ? (
+            /* The claim is on. The one action offered is its reverse. Replace
+               and Add are withheld here on purpose: assigning a product while
+               the component is marked not carried is a contradiction, and the
+               undo is one click away. */
+            <div className="px-[22px] pt-[14px] pb-[18px]">
+              {canUnmatch ? (
+                <button
+                  type="button"
+                  onClick={() => handleSetUnmatched(false)}
+                  disabled={unmatchPending}
+                  aria-label={`Undo unmatch for ${toTitleCase(ingredientName)}`}
+                  title={`Undo unmatch for ${toTitleCase(ingredientName)}`}
+                  data-testid="match-drawer-undo-unmatch"
+                  className="w-full rounded-[8px] py-3 text-[13.5px] font-semibold flex items-center justify-center gap-[7px] cursor-pointer disabled:cursor-default"
+                  style={{
+                    background: '#fff',
+                    color: 'var(--qm-charcoal)',
+                    border: '1.5px solid var(--qm-charcoal)',
+                    opacity: unmatchPending ? 0.5 : 1,
+                  }}
+                >
+                  <Undo2 className="w-4 h-4" aria-hidden="true" />
+                  {unmatchPending ? 'Undoing...' : 'Undo unmatch'}
+                </button>
+              ) : (
+                <div className="text-[12.5px] font-semibold" style={{ color: 'var(--qm-gray-500)' }}>
+                  {REP_UNMATCHED_LABEL}.
+                </div>
+              )}
+            </div>
           ) : (
+          <>
           <div className="flex gap-[10px] px-[22px] pt-[14px] pb-[18px]">
             <button
               type="button"
@@ -716,12 +875,44 @@ export function MatchDrawer({
               <Plus className="w-4 h-4" /> {addLabel}
             </button>
           </div>
+          {/* Unmatch sits in the same action area as Replace and Add, on its
+              own row rather than crushed into a three-way split at 480px, and
+              styled below them: it is the stronger claim but by far the rarer
+              click. The accessible name carries the action AND the target --
+              "Unmatch" alone on a control is the shape that caught Moose on
+              the Team page. */}
+          {canUnmatch && (
+            <div className="px-[22px] pb-[18px] -mt-[6px]">
+              <button
+                type="button"
+                onClick={() => setConfirmUnmatchOpen(true)}
+                disabled={unmatchPending}
+                aria-label={`Unmatch ${toTitleCase(ingredientName)}`}
+                title={`Unmatch ${toTitleCase(ingredientName)}`}
+                data-testid="match-drawer-unmatch"
+                className="w-full rounded-[8px] py-[10px] text-[12.5px] font-semibold flex items-center justify-center gap-[7px] cursor-pointer disabled:cursor-default"
+                style={{
+                  background: 'transparent',
+                  color: '#8A4B44',
+                  border: '1px solid #E0CFCC',
+                  opacity: unmatchPending ? 0.5 : 1,
+                }}
+              >
+                <Ban className="w-[15px] h-[15px]" aria-hidden="true" />
+                {unmatchPending ? 'Unmatching...' : 'Unmatch'}
+              </button>
+            </div>
+          )}
+          </>
           )}
           {lockError && (
             <p className="px-[22px] pb-3 text-xs" style={{ color: '#B23A34' }}>{lockError}</p>
           )}
           {submitError && (
             <p className="px-[22px] pb-3 text-xs" style={{ color: '#B23A34' }}>{submitError}</p>
+          )}
+          {unmatchError && (
+            <p className="px-[22px] pb-3 text-xs" style={{ color: '#B23A34' }} data-testid="match-drawer-unmatch-error">{unmatchError}</p>
           )}
         </DrawerFooter>
 
@@ -736,6 +927,59 @@ export function MatchDrawer({
         `}</style>
       </DrawerContent>
     </Drawer>
+
+    {/* The confirm is the load-bearing part: Unmatch is considerably stronger
+        than Replace Match, so the copy states scope rather than asking "are
+        you sure". Three facts, each verifiable in the code:
+
+        1. It applies to the COMPONENT, not this one product.
+        2. It is bounded by catalog version. Catalog#catalog_version_key bumps
+           ONLY on an explicit publish AND only when the assortment changed;
+           the model comment is explicit that "PRICE CHANGES NEVER BUMP IT".
+           Every memory lookup filters on the current version, so the claim
+           really does expire on its own. We are not merely asserting it.
+        3. It is reversible, and the reversal is a control on this same
+           surface. That sentence is only honest because Undo ships with it:
+           the brand-rule confirm promised a recovery its endpoint could not
+           deliver (destroy!), and the Team page stays silent because no
+           re-enable exists. Here it exists and the rep can see it.
+
+        Rendered outside <Drawer> so vaul and Radix do not contend for focus. */}
+    <AlertDialog
+      open={confirmUnmatchOpen}
+      onOpenChange={(o) => { if (!o) setConfirmUnmatchOpen(false); }}
+    >
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>
+            Stop matching {toTitleCase(ingredientName)} in this catalog?
+          </AlertDialogTitle>
+          <AlertDialogDescription asChild>
+            <div className="space-y-2 text-muted-foreground text-sm">
+              <p>
+                This applies to the component, not just the product matched now.
+                Nothing in this catalog will be suggested for{' '}
+                {toTitleCase(ingredientName)} on your future quotes
+                {currentMatch ? ', and the match on this quote is cleared' : ''}.
+              </p>
+              <p>
+                The claim is tied to the current catalog version. When the assortment
+                changes it expires on its own and matching resumes. Price changes do
+                not affect it.
+              </p>
+              <p>You can undo this from this drawer.</p>
+            </div>
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Keep the match</AlertDialogCancel>
+          <AlertDialogAction onClick={() => handleSetUnmatched(true)}>
+            Unmatch
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }
 
