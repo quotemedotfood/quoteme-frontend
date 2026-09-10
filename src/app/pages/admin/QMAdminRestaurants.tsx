@@ -36,9 +36,11 @@ import { ManageAdminDrawer } from './_manageAdminDrawer';
 import { ADMIN_PAGE_FRAME, ADMIN_PAGE_FRAME_STYLE } from '../../components/admin/adminPageFrame';
 
 // Menu coverage is presence, not a quality score: six recognized menu kinds,
-// each rendered as an icon + a visible text label (never icon-only). The `main`
-// kind maps onto the dinner plate (in the trade a main menu and a dinner menu
-// are the same thing); the plate lights once even if a restaurant carries both.
+// each rendered as an icon alone, with the menu type on hover and in the
+// accessible name (Moose, production walk 2026-09-08 - the visible words made
+// the row too wide to read). The `main` kind maps onto the dinner plate (in the
+// trade a main menu and a dinner menu are the same thing); the plate lights
+// once even if a restaurant carries both.
 const MENU_KINDS: Array<{ kinds: string[]; label: string; Icon: typeof UtensilsCrossed }> = [
   { kinds: ['dinner', 'main'], label: 'Dinner', Icon: UtensilsCrossed },
   { kinds: ['lunch'], label: 'Lunch', Icon: Salad },
@@ -60,13 +62,6 @@ const DATA_FLAG_LABELS: Record<string, { label: string; title: string }> = {
     title: 'A Place ID lookup for this restaurant did not resolve to a single business.',
   },
 };
-
-function formatAddress(r: AdminRestaurant): string | null {
-  const line2 = r.address_line_2 ? `, ${r.address_line_2}` : '';
-  const street = r.address_line_1 ? `${r.address_line_1}${line2}` : null;
-  const parts = [street, r.zip].filter((p): p is string => Boolean(p));
-  return parts.length > 0 ? parts.join(' ') : null;
-}
 
 function parseDataFlags(raw: string | null): string[] {
   if (!raw) return [];
@@ -204,7 +199,6 @@ export function QMAdminRestaurants() {
                     <div className="flex items-center gap-1">City <SortIcon field="city" /></div>
                   </TableHead>
                   <TableHead>State</TableHead>
-                  <TableHead>Address</TableHead>
                   <TableHead>Website</TableHead>
                   <TableHead>Place ID</TableHead>
                   <TableHead>Source State</TableHead>
@@ -228,7 +222,6 @@ export function QMAdminRestaurants() {
               </TableHeader>
               <TableBody>
                 {filtered.map((r) => {
-                  const address = formatAddress(r);
                   const dataFlags = parseDataFlags(r.data_flags);
                   return (
                   <TableRow key={r.id} className="group hover:bg-gray-50">
@@ -251,9 +244,6 @@ export function QMAdminRestaurants() {
                     </TableCell>
                     <TableCell className="text-sm text-gray-500">{r.city || '-'}</TableCell>
                     <TableCell className="text-sm text-gray-500">{r.state || '-'}</TableCell>
-                    <TableCell className="text-sm text-gray-500 max-w-[220px] truncate" title={address || undefined}>
-                      {address || <span className="text-gray-300">-</span>}
-                    </TableCell>
                     <TableCell className="text-sm">
                       {r.website ? (
                         <a
@@ -277,29 +267,30 @@ export function QMAdminRestaurants() {
                       {r.source_state || <span className="text-gray-300">-</span>}
                     </TableCell>
                     <TableCell>
-                      <div
-                        className="flex items-center gap-2.5"
-                        title="Icons show which menus we have. Presence, not a quality score."
-                      >
+                      <div className="flex items-center gap-2">
                         {MENU_KINDS.map(({ kinds, label, Icon }) => {
                           const present = kinds.some((k) => r.menu_coverage.includes(k));
+                          // Presence is carried visually by opacity and colour alone, so
+                          // sighted and non-sighted operators were reading different data:
+                          // the accessible name used to be just "Dinner" whether we held a
+                          // dinner menu or not. Now that the visible word is gone too, the
+                          // icon is the entire visible control, and two separate affordances
+                          // have to carry the menu type: `title` for a sighted operator on
+                          // hover, `aria-label` for everyone else. A tooltip is NOT an
+                          // accessible name, so dropping the aria-label in favour of the
+                          // title would re-open the exact defect this replaced.
+                          const indicatorName = `${label} menu: ${present ? 'present' : 'not present'}`;
                           return (
-                            // Presence is carried visually by opacity and colour alone, so
-                            // sighted and non-sighted operators were reading different data:
-                            // the accessible name used to be just "Dinner" whether we held a
-                            // dinner menu or not. role=img + aria-label makes the state part
-                            // of the name; the icon and the visible label are then decoration
-                            // for that one name rather than two separate announcements.
                             <span
                               key={label}
                               role="img"
-                              aria-label={`${label} menu: ${present ? 'present' : 'not present'}`}
-                              className={`flex items-center gap-1 text-xs ${
+                              aria-label={indicatorName}
+                              title={indicatorName}
+                              className={`inline-flex ${
                                 present ? 'text-gray-600 opacity-100' : 'text-gray-400 opacity-30'
                               }`}
                             >
-                              <Icon size={14} aria-hidden="true" />
-                              {label}
+                              <Icon size={16} aria-hidden="true" />
                             </span>
                           );
                         })}
