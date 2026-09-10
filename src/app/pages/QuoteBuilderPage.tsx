@@ -6,6 +6,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useUser } from '../contexts/UserContext';
 import { isDemoMode } from '../utils/demoMode';
 import { formatProductName } from '../utils/format';
+import { unresolvedChipLabel } from '../utils/unmatch';
 import { formatCurrency } from '../utils/formatCurrency';
 import { categoryLabel } from '../utils/categoryLabel';
 import { getQuote, getGuestQuote, updateQuote, updateGuestQuote, addGuestQuoteLine, addQuoteLine, removeGuestQuoteLine, removeQuoteLine, createStockQuote, getMoreMatches } from '../services/api';
@@ -75,6 +76,7 @@ interface ProductItem {
   percentChange: number;
   unmatched?: boolean;
   resolution_label?: string | null;
+  miss_reason?: string | null;
   chefNote?: string | null;
   matchScore?: number | null;
   alignmentCandidates?: AlignmentCandidate[];
@@ -268,6 +270,7 @@ export function QuoteBuilderPage() {
           percentChange: 0,
           unmatched: isUnmatched,
           resolution_label: (line as any).resolution_label ?? null,
+          miss_reason: line.miss_reason ?? null,
           chefNote: line.chef_note,
           matchScore: bestCandidate?.score ?? null,
           alignmentCandidates: line.alignment_candidates || [],
@@ -926,7 +929,10 @@ export function QuoteBuilderPage() {
                     }}
                     className="inline-flex bg-amber-50 text-amber-800 border border-amber-200 px-2 py-0.5 rounded text-xs mb-1 cursor-pointer hover:opacity-80 transition-opacity"
                   >
-                    {item.resolution_label || 'Awaiting rep review'}
+                    {unresolvedChipLabel(
+                      { availability_status: 'not_in_catalog', miss_reason: item.miss_reason },
+                      item.resolution_label,
+                    )}
                   </span>
                 )}
 
@@ -1143,7 +1149,10 @@ export function QuoteBuilderPage() {
                             }}
                             className="inline-flex self-start bg-amber-50 text-amber-800 border border-amber-200 px-2 py-0.5 rounded text-xs cursor-pointer hover:opacity-80 transition-opacity"
                           >
-                            {item.resolution_label || 'Awaiting rep review'}
+                            {unresolvedChipLabel(
+                              { availability_status: 'not_in_catalog', miss_reason: item.miss_reason },
+                              item.resolution_label,
+                            )}
                           </span>
                         )}
                       </div>

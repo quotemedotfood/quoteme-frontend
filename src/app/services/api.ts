@@ -321,6 +321,14 @@ export interface QuoteLineResponse {
    * "Rep will handle" / "Can't source" (see acknowledgeUnmatchedLines). No
    * effect on matched lines. */
   rep_handled?: boolean;
+  /** Why this line is a miss. Already sent by the backend for every
+   * rep-facing caller (quote_serializable.rb nils it only on chef_facing
+   * paths); the rep surfaces simply never read it until Unmatch needed to
+   * tell a rep-authored miss apart from an engine one. Engine values are
+   * no_retrieval | gate_failure | threshold_failure | cross_family_block |
+   * no_defensible_candidate; see REP_UNMATCHED_MISS_REASON for the
+   * rep-authored one. */
+  miss_reason?: string | null;
   chef_note: string | null;
   component: {
     id: string;
@@ -1693,6 +1701,43 @@ export async function toggleRepMemoryLock(
   payload: RepMemoryLockPayload
 ): Promise<ApiResponse<RepMemoryLockResponse>> {
   return fetchWithGuest(`/api/v1/quotes/${quoteId}/rep_memory_lock`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+// Unmatch (Moose, production walk). Records a rep's claim that a COMPONENT has
+// no answer in this catalog, rather than rejecting one product. Deliberately
+// shaped like rep_memory_lock above -- one endpoint, one boolean -- because
+// Unmatch and its Undo are the same claim in two directions, and a separate
+// revert endpoint would let the two drift.
+//
+// SCOPE IS REP: the row is keyed to the acting rep and bounded by the
+// catalog version, so it expires on its own when the assortment changes.
+//
+// NOT acknowledge_unmatched. That endpoint marks a per-quote acknowledgement
+// and, once every unmatched line is acknowledged, stamps rep_reviewed_at and
+// clears the send gate (see acknowledgeUnmatchedLines). Routing a durable
+// catalog claim through it would make Unmatch a second control that satisfies
+// a review gate as a side effect, which is the defect the feedback banner
+// already taught us.
+export interface RepUnmatchPayload {
+  quote_line_id: string;
+  canonical_key?: string | null;
+  dish_component_id?: string | null;
+  /** true = suppress this component, false = undo that claim. */
+  unmatched: boolean;
+}
+
+export interface RepUnmatchResponse {
+  unmatched: boolean;
+}
+
+export async function setComponentUnmatched(
+  quoteId: string,
+  payload: RepUnmatchPayload
+): Promise<ApiResponse<RepUnmatchResponse>> {
+  return fetchWithGuest(`/api/v1/quotes/${quoteId}/rep_unmatch`, {
     method: 'POST',
     body: JSON.stringify(payload),
   });

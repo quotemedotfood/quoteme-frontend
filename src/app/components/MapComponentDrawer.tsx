@@ -9,10 +9,11 @@ import {
   DrawerTitle,
 } from './ui/drawer';
 import { Button } from './ui/button';
-import { X, Loader2, ArrowRightLeft, Plus } from 'lucide-react';
+import { X, Loader2, ArrowRightLeft, Plus, Ban, Undo2 } from 'lucide-react';
 import { CatalogProductSearch } from './CatalogProductSearch';
 import type { CatalogSearchProduct } from '../services/api';
 import { toTitleCase, formatProductName } from '../utils/format';
+import { REP_UNMATCHED_LABEL } from '../utils/unmatch';
 import { categoryLabel } from '../utils/categoryLabel';
 
 interface CandidateProduct {
@@ -57,6 +58,23 @@ interface MapComponentDrawerProps {
   readOnly?: boolean;
   /** Marker copy naming why the surface is read-only. */
   readOnlyMarker?: string | null;
+  /**
+   * This component is a miss because a REP marked it not carried, not because
+   * the engine found nothing. Distinct from `isUnmatched`, which is true for
+   * both. Drives the copy: a rep who has just said "we don't carry this" must
+   * not be told a match "was not found automatically" and invited to go search
+   * for one, which is the loop this feature would otherwise create.
+   */
+  repUnmatched?: boolean;
+  /**
+   * Undo affordance for a rep-authored miss. Presentational on purpose: this
+   * drawer has no quote_line_id or canonical_key to write with, so the parent
+   * owns the call. No callback, no button.
+   */
+  onUndoUnmatch?: () => void;
+  undoPending?: boolean;
+  /** Server's own words for a failed undo. Rendered verbatim. */
+  undoError?: string | null;
 }
 
 function tierLabel(tier: string, position: number): string {
@@ -85,6 +103,10 @@ export function MapComponentDrawer({
   isUnmatched = false,
   readOnly = false,
   readOnlyMarker = null,
+  repUnmatched = false,
+  onUndoUnmatch,
+  undoPending = false,
+  undoError = null,
 }: MapComponentDrawerProps) {
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [notes, setNotes] = useState('');
@@ -321,12 +343,47 @@ export function MapComponentDrawer({
             </div>
           )}
 
+          {/* A rep-authored miss states itself, and offers its reverse. This is
+              the surface an unmatched row actually opens from QuoteBuilderPage,
+              so the undo has to live here too and not only in MatchDrawer. */}
+          {repUnmatched && (
+            <div className="rounded-lg border border-gray-200 bg-gray-50 p-4" data-testid="map-drawer-not-carried">
+              <h3 className="text-sm font-medium text-[#2A2A2A] flex items-center gap-2">
+                <Ban className="w-4 h-4" aria-hidden="true" />
+                {REP_UNMATCHED_LABEL}
+              </h3>
+              <p className="text-xs text-gray-500 mt-1.5 leading-relaxed">
+                Nothing in this catalog is suggested for {toTitleCase(componentName)} on
+                your future quotes. The claim is tied to the current catalog version and
+                expires on its own when the assortment changes.
+              </p>
+              {onUndoUnmatch && !readOnly && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-3 text-[#2A2A2A] border-gray-300"
+                  onClick={onUndoUnmatch}
+                  disabled={undoPending}
+                  aria-label={`Undo unmatch for ${toTitleCase(componentName)}`}
+                  title={`Undo unmatch for ${toTitleCase(componentName)}`}
+                  data-testid="map-drawer-undo-unmatch"
+                >
+                  <Undo2 className="w-4 h-4 mr-2" aria-hidden="true" />
+                  {undoPending ? 'Undoing...' : 'Undo unmatch'}
+                </Button>
+              )}
+              {undoError && (
+                <p className="text-xs mt-2" style={{ color: '#B23A34' }} data-testid="map-drawer-undo-error">{undoError}</p>
+              )}
+            </div>
+          )}
+
           {/* Catalog Search — shown prominently for unmatched items, as secondary for matched items */}
           <div>
             <h3 className="text-sm font-medium text-[#2A2A2A] mb-3">
               {isUnmatched ? 'Search Catalog' : 'Search Catalog Manually'}
             </h3>
-            {isUnmatched && (
+            {isUnmatched && !repUnmatched && (
               <p className="text-xs text-gray-500 mb-3">
                 No catalog match was found automatically. Search below to find and assign a product.
               </p>
