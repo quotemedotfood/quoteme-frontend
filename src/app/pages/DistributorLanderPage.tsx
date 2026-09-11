@@ -90,16 +90,107 @@ interface DistributorMeta {
 }
 
 interface LanderConfig {
-  distributor:           DistributorMeta;
-  branding:              DistributorBranding;
-  accepted_payload:      string[];   // ["menu","order_guide"]
-  accepted_content_types: string[];  // ["text","pdf"]
+  distributor:            DistributorMeta;
+  branding:               DistributorBranding;
+  accepted_payload:       PayloadType[];        // ["menu","order_guide"]
+  accepted_content_types: Array<'text' | 'pdf'>; // ["text","pdf"]
 }
 
 // ─── Page state machine ───────────────────────────────────────────────────────
 type PageState = 'loading' | 'idle' | 'sent' | 'not_found' | 'error';
 type PayloadType = 'menu' | 'order_guide';
 type InputMode = 'text' | 'file';
+
+// ─── Config normalization boundary ───────────────────────────────────────────
+// The BE response shape is asserted by the fetch site, not guaranteed at
+// runtime. Production has already sent a body where accepted_payload was a
+// bare string ("chef_source", not an array) and accepted_content_types held
+// raw MIME types (["application/pdf","text/plain"]) instead of the FE's
+// short vocabulary. With a bare `as LanderConfig` cast, that bad data flowed
+// straight into gates written as array operations, which silently became
+// String.prototype operations instead (substring test, string .length) and
+// answered wrong without ever throwing. normalizeLanderConfig() is the ONE
+// place a raw fetch body is allowed to become a LanderConfig — never bare-cast
+// the response elsewhere.
+const RECOGNIZED_PAYLOAD_TYPES: readonly PayloadType[] = ['menu', 'order_guide'];
+
+// Maps the MIME types the BE currently sends (and tolerates already-correct
+// short tokens) to the FE's content-type vocabulary. Anything else is dropped.
+const CONTENT_TYPE_MAP: Record<string, 'text' | 'pdf'> = {
+  'application/pdf': 'pdf',
+  'text/plain':      'text',
+  pdf:               'pdf',
+  text:              'text',
+};
+
+// Defensive membership test used by the render-time gates below. LanderConfig
+// guarantees accepted_payload / accepted_content_types are arrays once they
+// come out of normalizeLanderConfig(), but the gates use this helper (instead
+// of calling `.includes` straight on the field) so a future caller that
+// builds a LanderConfig some other way cannot silently turn these back into
+// string operations the way the original bug did.
+function includesRecognized<T extends string>(list: readonly T[] | unknown, value: T): boolean {
+  return Array.isArray(list) && list.includes(value);
+}
+
+function normalizePayloadList(raw: unknown): PayloadType[] {
+  const candidates: unknown[] = Array.isArray(raw) ? raw : raw != null ? [raw] : [];
+  const recognized = candidates.filter(
+    (v): v is PayloadType => typeof v === 'string' && RECOGNIZED_PAYLOAD_TYPES.includes(v as PayloadType),
+  );
+  // An empty, missing, or unrecognized-only list would leave the payload
+  // toggle and the default-selection logic with nothing to select, which
+  // renders a toggle with no options. 'menu' is the more common distributor
+  // use case, so it is the safe fallback rather than an empty array.
+  return recognized.length > 0 ? recognized : ['menu'];
+}
+
+function normalizeContentTypeList(raw: unknown): Array<'text' | 'pdf'> {
+  const candidates: unknown[] = Array.isArray(raw) ? raw : raw != null ? [raw] : [];
+  const mapped = candidates
+    .map((v) => (typeof v === 'string' ? CONTENT_TYPE_MAP[v] : undefined))
+    .filter((v): v is 'text' | 'pdf' => v !== undefined);
+  const deduped = Array.from(new Set(mapped));
+  // The BE text path is always available (see the showFile comment below), so
+  // 'text' is the safe fallback when nothing in the response survives mapping.
+  return deduped.length > 0 ? deduped : ['text'];
+}
+
+function normalizeBranding(raw: unknown): DistributorBranding {
+  const b = (raw && typeof raw === 'object' ? raw : {}) as Partial<DistributorBranding>;
+  const verbiage =
+    b.quoteme_verbiage && typeof b.quoteme_verbiage === 'object' && !Array.isArray(b.quoteme_verbiage)
+      ? (b.quoteme_verbiage as Record<string, string>)
+      : null;
+  return {
+    logo_url:         typeof b.logo_url === 'string' ? b.logo_url : null,
+    primary_hex:      typeof b.primary_hex === 'string' ? b.primary_hex : '',
+    secondary_hex:    typeof b.secondary_hex === 'string' ? b.secondary_hex : '',
+    custom_notes:     typeof b.custom_notes === 'string' ? b.custom_notes : null,
+    quoteme_verbiage: verbiage,
+  };
+}
+
+function normalizeDistributor(raw: unknown): DistributorMeta {
+  const d = (raw && typeof raw === 'object' ? raw : {}) as Partial<DistributorMeta>;
+  return {
+    id:           typeof d.id === 'string' ? d.id : '',
+    name:         typeof d.name === 'string' ? d.name : '',
+    display_name: typeof d.display_name === 'string' ? d.display_name : '',
+  };
+}
+
+// Boundary function: coerces an unknown fetch body into a well-formed
+// LanderConfig. Call this at every fetch site instead of casting.
+export function normalizeLanderConfig(body: unknown): LanderConfig {
+  const raw = (body && typeof body === 'object' ? body : {}) as Record<string, unknown>;
+  return {
+    distributor:            normalizeDistributor(raw.distributor),
+    branding:               normalizeBranding(raw.branding),
+    accepted_payload:       normalizePayloadList(raw.accepted_payload),
+    accepted_content_types: normalizeContentTypeList(raw.accepted_content_types),
+  };
+}
 
 // ─── Validation helpers ───────────────────────────────────────────────────────
 function isValidEmail(s: string): boolean {
@@ -305,12 +396,12 @@ function LanderForm({ config, desktop, onDelivered, slug }: LanderFormProps) {
 
   // Payload type toggle (menu / order_guide)
   const defaultPayload: PayloadType =
-    accepted_payload.includes('menu') ? 'menu' : 'order_guide';
+    includesRecognized(accepted_payload, 'menu') ? 'menu' : 'order_guide';
   const [payloadType, setPayloadType] = useState<PayloadType>(defaultPayload);
 
   // Input mode: always offer both paste-text and PDF upload regardless of
   // accepted_content_types — the BE text path is always available.
-  const showFile = accepted_content_types.includes('pdf');
+  const showFile = includesRecognized(accepted_content_types, 'pdf');
   const defaultMode: InputMode = 'text';
   const [inputMode, setInputMode] = useState<InputMode>(defaultMode);
 
@@ -674,12 +765,15 @@ function LanderForm({ config, desktop, onDelivered, slug }: LanderFormProps) {
       />
 
       {/* ── Payload type toggle ─────────────────────────────────────────── */}
-      {accepted_payload.length > 1 && (
+      {/* "More than one RECOGNIZED payload" — count only values from the
+          fixed vocabulary, not raw array/string length, so this cannot
+          silently degrade back into a string-length check. */}
+      {RECOGNIZED_PAYLOAD_TYPES.filter((p) => includesRecognized(accepted_payload, p)).length > 1 && (
         <div style={{ ...fieldWrap }}>
           <span style={labelStyle}>I'm sending a</span>
           <div style={{ display: 'flex', gap: 10 }}>
             {(['menu', 'order_guide'] as PayloadType[])
-              .filter((p) => accepted_payload.includes(p))
+              .filter((p) => includesRecognized(accepted_payload, p))
               .map((p) => {
                 const active = payloadType === p;
                 return (
@@ -1402,7 +1496,7 @@ export function DistributorLanderPage() {
           return;
         }
         const body = await res.json();
-        setConfig(body as LanderConfig);
+        setConfig(normalizeLanderConfig(body));
         setPageState('idle');
       })
       .catch(() => {
