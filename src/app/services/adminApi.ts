@@ -514,8 +514,44 @@ export async function addRepToDistributor(
 
 // ============= ADMIN RESTAURANTS =============
 
-export async function getAdminRestaurants(): Promise<ApiResponse<AdminRestaurant[]>> {
-  return fetchWithAuth('/api/v1/admin/restaurants');
+export interface AdminRestaurantsPage {
+  restaurants: AdminRestaurant[];
+  meta: { page: number; per_page: number; total_count: number; total_pages: number };
+}
+
+export interface AdminRestaurantsQuery {
+  page: number;
+  per_page: number;
+  /** Matched server-side against name, city and restaurant group name. */
+  q?: string;
+  sort?: 'name' | 'city' | 'status' | 'contact_count' | 'created_at';
+  dir?: 'asc' | 'desc';
+}
+
+/**
+ * Paged, searched and sorted SERVER-SIDE.
+ *
+ * The unpaginated form of this endpoint returns every row: 5,865,033 bytes
+ * across 10,333 restaurants, which timed the screen out. Passing `page` is what
+ * opts into the bounded response.
+ *
+ * `q` and `sort` must travel with it. The page used to filter and sort the full
+ * array in the browser, and leaving that in place against a paged response
+ * would mean a search only ever matched rows on the current page, so a
+ * restaurant on page 7 would report as not existing. Wrong beats slow.
+ */
+export async function getAdminRestaurants(
+  query: AdminRestaurantsQuery
+): Promise<ApiResponse<AdminRestaurantsPage>> {
+  const params = new URLSearchParams({
+    page: String(query.page),
+    per_page: String(query.per_page),
+  });
+  if (query.q) params.set('q', query.q);
+  if (query.sort) params.set('sort', query.sort);
+  if (query.dir) params.set('dir', query.dir);
+
+  return fetchWithAuth(`/api/v1/admin/restaurants?${params.toString()}`);
 }
 
 export async function getAdminRestaurant(id: string): Promise<ApiResponse<AdminRestaurantDetail>> {

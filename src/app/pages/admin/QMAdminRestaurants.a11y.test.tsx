@@ -55,7 +55,22 @@ const { rows, getAdminRestaurants, getAdminDistributors, getAdminUsers } = vi.ho
 
   return {
     rows,
-    getAdminRestaurants: vi.fn(async () => ({ data: rows })),
+    // Search is server-side now, so the mock has to honour `q` the way the
+    // endpoint does. A mock that ignored it would report a match for every
+    // query and the empty-state example below could never fail.
+    getAdminRestaurants: vi.fn(async (query?: { q?: string }) => {
+      const q = (query?.q || '').toLowerCase();
+      const matched = q
+        ? rows.filter((r: { name: string; city?: string | null; restaurant_group?: { name: string } | null }) =>
+            `${r.name} ${r.city ?? ''} ${r.restaurant_group?.name ?? ''}`.toLowerCase().includes(q))
+        : rows;
+      return {
+        data: {
+          restaurants: matched,
+          meta: { page: 1, per_page: 50, total_count: matched.length, total_pages: matched.length ? 1 : 0 },
+        },
+      };
+    }),
     getAdminDistributors: vi.fn(async () => ({ data: [] })),
     getAdminUsers: vi.fn(async () => ({ data: [] })),
   };

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router';
 import {
   Search,
@@ -88,6 +88,10 @@ const STICKY_IDENTITY_HEAD = `${STICKY_IDENTITY} z-20 bg-gray-50`;
 // the <tr> background it would otherwise inherit.
 const STICKY_IDENTITY_CELL = `${STICKY_IDENTITY} z-10 bg-white group-hover:bg-gray-50`;
 
+// One screenful at a time. The endpoint caps per_page at 200.
+const PER_PAGE = 50;
+const SEARCH_DEBOUNCE_MS = 300;
+
 type SortField = 'name' | 'city' | 'status' | 'contact_count' | 'created_at';
 type SortDir = 'asc' | 'desc';
 
@@ -100,24 +104,53 @@ export function QMAdminRestaurants() {
   const [sortDir, setSortDir] = useState<SortDir>('asc');
   const [impersonating, setImpersonating] = useState<string | null>(null);
 
+  // Server-side paging. The unpaginated response is 5,865,033 bytes across
+  // 10,333 restaurants and timed this screen out.
+  const [page, setPage] = useState(1);
+  const [meta, setMeta] = useState({ page: 1, per_page: PER_PAGE, total_count: 0, total_pages: 0 });
+  // Search is debounced so a keystroke is not a request. It is matched
+  // server-side: filtering the current page in the browser would report a
+  // restaurant on page 7 as not existing.
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+
   // Feature 1: Add Restaurant modal
   const [addModalOpen, setAddModalOpen] = useState(false);
 
   // Feature 2: Manage Admin drawer
   const [manageAdminTarget, setManageAdminTarget] = useState<AdminRestaurant | null>(null);
 
-  async function loadRestaurants() {
-    const res = await getAdminRestaurants();
-    if (res.data) setRestaurants(res.data);
-    else setError(res.error || 'Failed to load');
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search), SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  const loadRestaurants = useCallback(async () => {
+    setLoading(true);
+    const res = await getAdminRestaurants({
+      page,
+      per_page: PER_PAGE,
+      q: debouncedSearch || undefined,
+      sort: sortField,
+      dir: sortDir,
+    });
+    if (res.data) {
+      setRestaurants(res.data.restaurants);
+      setMeta(res.data.meta);
+      setError(null);
+    } else {
+      setError(res.error || 'Failed to load');
+    }
     setLoading(false);
-  }
+  }, [page, debouncedSearch, sortField, sortDir]);
 
   useEffect(() => {
     loadRestaurants();
-  }, []);
+  }, [loadRestaurants]);
 
   const toggleSort = (field: SortField) => {
+    // Reordering the whole result set can move any row onto page 1, so staying
+    // on the current page number after a sort would show an arbitrary slice.
+    setPage(1);
     if (sortField === field) setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
     else {
       setSortField(field);
@@ -130,30 +163,8 @@ export function QMAdminRestaurants() {
     return sortDir === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />;
   };
 
-  const filtered = useMemo(() => {
-    let result = [...restaurants];
-    if (search) {
-      const q = search.toLowerCase();
-      result = result.filter(
-        (r) =>
-          r.name.toLowerCase().includes(q) ||
-          (r.city || '').toLowerCase().includes(q) ||
-          (r.restaurant_group?.name || '').toLowerCase().includes(q)
-      );
-    }
-    result.sort((a, b) => {
-      let cmp = 0;
-      switch (sortField) {
-        case 'name': cmp = a.name.localeCompare(b.name); break;
-        case 'city': cmp = (a.city || '').localeCompare(b.city || ''); break;
-        case 'status': cmp = a.status.localeCompare(b.status); break;
-        case 'contact_count': cmp = a.contact_count - b.contact_count; break;
-        case 'created_at': cmp = new Date(a.created_at).getTime() - new Date(b.created_at).getTime(); break;
-      }
-      return sortDir === 'asc' ? cmp : -cmp;
-    });
-    return result;
-  }, [restaurants, search, sortField, sortDir]);
+  // Filtering and sorting are server-side; `restaurants` is already the page
+  // the operator asked for.
 
   return (
     <div className={ADMIN_PAGE_FRAME} style={ADMIN_PAGE_FRAME_STYLE}>
@@ -164,9 +175,17 @@ export function QMAdminRestaurants() {
       <div className="flex items-center gap-3 mb-5">
         <div className="relative flex-1 max-w-sm">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search restaurants, groups..." className="pl-9" />
+          <Input
+            value={search}
+            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+            placeholder="Search restaurants, groups..."
+            className="pl-9"
+          />
         </div>
-        <span className="text-xs text-gray-400">{filtered.length} restaurants</span>
+        <span className="text-xs text-gray-400">
+          {meta.total_count} restaurants
+          {meta.total_pages > 1 && ` (page ${meta.page} of ${meta.total_pages})`}
+        </span>
         <Button
           onClick={() => setAddModalOpen(true)}
           className="ml-auto bg-[#A5CFDD] hover:bg-[#7FAEC2] text-white flex items-center gap-1.5"
@@ -179,9 +198,9 @@ export function QMAdminRestaurants() {
       {loading && <p className="text-sm text-gray-400 py-8">Loading...</p>}
       {error && <p className="text-sm text-red-500 py-8">{error}</p>}
 
-      {!loading && !error && filtered.length === 0 && <AdminEmptyState label="restaurants" />}
+      {!loading && !error && restaurants.length === 0 && <AdminEmptyState label="restaurants" />}
 
-      {!loading && filtered.length > 0 && (
+      {!loading && restaurants.length > 0 && (
         <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
           <div className="overflow-x-auto">
             <Table>
@@ -221,7 +240,7 @@ export function QMAdminRestaurants() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.map((r) => {
+                {restaurants.map((r) => {
                   const dataFlags = parseDataFlags(r.data_flags);
                   return (
                   <TableRow key={r.id} className="group hover:bg-gray-50">
@@ -385,6 +404,36 @@ export function QMAdminRestaurants() {
                 })}
               </TableBody>
             </Table>
+          </div>
+        </div>
+      )}
+
+      {!loading && meta.total_pages > 1 && (
+        <div className="flex items-center justify-between mt-4">
+          <span className="text-xs text-gray-400">
+            Showing {(meta.page - 1) * meta.per_page + 1} to{' '}
+            {Math.min(meta.page * meta.per_page, meta.total_count)} of {meta.total_count}
+          </span>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={meta.page <= 1}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+            >
+              Previous
+            </Button>
+            <span className="text-xs text-gray-500">
+              Page {meta.page} of {meta.total_pages}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={meta.page >= meta.total_pages}
+              onClick={() => setPage((p) => p + 1)}
+            >
+              Next
+            </Button>
           </div>
         </div>
       )}
