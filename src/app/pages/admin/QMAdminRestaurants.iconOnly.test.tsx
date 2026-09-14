@@ -50,7 +50,9 @@ const { getAdminRestaurants, getAdminDistributors, getAdminUsers } = vi.hoisted(
   ];
 
   return {
-    getAdminRestaurants: vi.fn(async () => ({ data: rows })),
+    getAdminRestaurants: vi.fn(async () => ({
+      data: { restaurants: rows, meta: { page: 1, per_page: 50, total_count: rows.length, total_pages: 1 } },
+    })),
     getAdminDistributors: vi.fn(async () => ({ data: [] })),
     getAdminUsers: vi.fn(async () => ({ data: [] })),
   };

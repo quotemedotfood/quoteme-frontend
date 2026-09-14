@@ -53,7 +53,9 @@ const { getAdminRestaurants } = vi.hoisted(() => {
     menu_coverage: [],
   };
   return {
-    getAdminRestaurants: vi.fn(async () => ({ data: [restaurant] })),
+    getAdminRestaurants: vi.fn(async () => ({
+      data: { restaurants: [restaurant], meta: { page: 1, per_page: 50, total_count: 1, total_pages: 1 } },
+    })),
   };
 });
 
@@ -100,7 +102,7 @@ describe('QMAdminRestaurants -- the impersonate control names who it acts as', (
 
   it('never leaves the control anonymous when the target has no name on file', async () => {
     getAdminRestaurants.mockImplementationOnce(async () => ({
-      data: [{
+      data: { meta: { page: 1, per_page: 50, total_count: 1, total_pages: 1 }, restaurants: [{
           id: 'rest-2',
           name: 'No Name Cafe',
           city: null,
@@ -121,7 +123,7 @@ describe('QMAdminRestaurants -- the impersonate control names who it acts as', (
           source_state: null,
           data_flags: null,
           menu_coverage: [],
-      }],
+      }] },
     }));
 
     render(
