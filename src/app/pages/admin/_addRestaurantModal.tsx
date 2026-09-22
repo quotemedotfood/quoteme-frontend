@@ -58,6 +58,17 @@ export function AddRestaurantModal({ open, onClose, onCreated }: Props) {
   const { error: placesError } = useGooglePlaces(
     autocompleteRef,
     (addr) => {
+      // CLEAR THE STALE BANNER. Moose, 2026-09-22, having created a
+      // restaurant successfully while "City is required." sat on screen: "I'm
+      // getting an error but it didn't stop me."
+      //
+      // errorMsg was only ever cleared inside handleSubmit. Hit Save before
+      // the address picker has run, get the validation error, then pick an
+      // address that fills City in, and the banner stays up contradicting the
+      // form. The save then works, which is the confusing part. The autofill
+      // is a correction, so it clears the complaint.
+      setErrorMsg('');
+      setDuplicateId('');
       setAddress(addr.addressLine1);
       setAddress2(addr.addressLine2);
       setCity(addr.city);
@@ -114,6 +125,15 @@ export function AddRestaurantModal({ open, onClose, onCreated }: Props) {
     setCreated(null);
     setErrorMsg('');
     setDuplicateId('');
+  }
+
+  // Typing into a field the validator reads is a correction, so it clears the
+  // complaint. Without this the banner outlives the problem it describes: only
+  // handleSubmit ever reset it, so "City is required." stayed on screen while
+  // the City field said Boston. See the Places callback above.
+  function clearError() {
+    if (errorMsg) setErrorMsg('');
+    if (duplicateId) setDuplicateId('');
   }
 
   function validate(): string | null {
@@ -271,7 +291,7 @@ export function AddRestaurantModal({ open, onClose, onCreated }: Props) {
               </Label>
               <Input
                 value={name}
-                onChange={(e) => setName(e.target.value)}
+                onChange={(e) => { setName(e.target.value); clearError(); }}
                 placeholder="e.g. The Spotted Owl"
                 className="mt-1"
               />
@@ -355,7 +375,7 @@ export function AddRestaurantModal({ open, onClose, onCreated }: Props) {
                 </Label>
                 <Input
                   value={city}
-                  onChange={(e) => setCity(e.target.value)}
+                  onChange={(e) => { setCity(e.target.value); clearError(); }}
                   placeholder="Portland"
                   className="mt-1"
                 />
@@ -366,7 +386,7 @@ export function AddRestaurantModal({ open, onClose, onCreated }: Props) {
                 </Label>
                 <select
                   value={state}
-                  onChange={(e) => setState(e.target.value)}
+                  onChange={(e) => { setState(e.target.value); clearError(); }}
                   className="mt-1 w-full h-9 rounded-md border border-gray-200 bg-white px-3 text-sm text-[#2A2A2A] focus:outline-none focus:ring-2 focus:ring-[#A5CFDD]"
                 >
                   <option value="">-</option>
