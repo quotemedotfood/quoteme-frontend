@@ -23,7 +23,7 @@
 //
 // NO gradients. No orange on this surface (read-only routing table).
 
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router';
 import { ChevronUp, ChevronDown, ArrowUpRight } from 'lucide-react';
 import {
@@ -33,7 +33,7 @@ import {
   C,
   CC_ACK_NAVY,
 } from './cc-atoms';
-import type { InboundRow } from '../../../services/api';
+import { convertInboundOpportunity, type InboundRow } from '../../../services/api';
 import { stripSeedPrefix, formatColdLandingArtifact } from '../../../utils/format';
 import { RepTypeahead } from './RepTypeahead';
 import { QuoteRowActions } from './QuoteRowActions';
@@ -232,6 +232,141 @@ function sortRows(rows: InboundRow[], col: SortCol, dir: SortDir): InboundRow[] 
   });
 }
 
+// ── Opportunity quote action ─────────────────────────────────────────────────
+// The primary action on an opportunity row. It replaces "Start Quote", which
+// navigated to /rep/quotes/new?opportunity_id=..., a route that never existed:
+// the :id route caught "new" and the admin landed on "We could not load this
+// quote" (100KM, 2026-09-24).
+//
+// Menu drop (a /d/:slug upload, artifact is a Menu): "Build Quote", offered with
+// or without an assigned rep. convert answers 202 and the BE builds the quote;
+// this refetches the inbound feed every 5s for up to 3 minutes until the quote
+// row replaces the lead (the row unmounts and the timer stops). Refused → the
+// server's message and "Retry".
+//
+// Anything else (brand package): unchanged gate, "Start Quote" when a rep is
+// assigned else "Assign first"; convert is synchronous and opens the quote.
+const BUILD_POLL_MS = 5_000;
+const BUILD_POLL_MAX = 36; // 3 minutes
+
+export function isMenuDrop(row: InboundRow): boolean {
+  return (
+    row.kind === 'opportunity' &&
+    (row.payload_type === 'menu' || row.payload_type === 'order_guide') &&
+    row.artifact?.type === 'Menu'
+  );
+}
+
+function OpportunityQuoteAction({
+  row,
+  onRefresh,
+  alignSelf,
+}: {
+  row: InboundRow;
+  onRefresh?: () => void;
+  alignSelf?: React.CSSProperties['alignSelf'];
+}) {
+  const navigate = useNavigate();
+  const [phase, setPhase] = useState<'idle' | 'sending' | 'building' | 'error'>('idle');
+  const [message, setMessage] = useState<string | null>(null);
+  // BUG #28 pattern: a ref, not state, so a second click in the same tick
+  // cannot fire a second convert before the re-render lands.
+  const inFlight = useRef(false);
+  const polls = useRef(0);
+
+  useEffect(() => {
+    if (phase !== 'building') return;
+    const t = window.setInterval(() => {
+      polls.current += 1;
+      if (polls.current > BUILD_POLL_MAX) {
+        window.clearInterval(t);
+        return;
+      }
+      onRefresh?.();
+    }, BUILD_POLL_MS);
+    return () => window.clearInterval(t);
+  }, [phase, onRefresh]);
+
+  const menuDrop = isMenuDrop(row);
+  const hasRep = !!row.assigned_rep;
+
+  async function handleClick() {
+    if (inFlight.current) return;
+    inFlight.current = true;
+    setPhase('sending');
+    setMessage(null);
+    const res = await convertInboundOpportunity(row.id);
+    inFlight.current = false;
+    if (res.error || !res.data) {
+      setPhase('error');
+      setMessage(res.error ?? 'Could not build this quote.');
+      return;
+    }
+    if (res.data.status === 'converted') {
+      navigate(`/distributor-admin/command-center/quotes/${res.data.quote_id}`);
+      return;
+    }
+    polls.current = 0;
+    setPhase('building');
+    onRefresh?.();
+  }
+
+  const base: React.CSSProperties = {
+    ...sans,
+    fontSize: 11.5,
+    background: 'none',
+    borderRadius: 5,
+    padding: '4px 10px',
+    whiteSpace: 'nowrap',
+    alignSelf,
+  };
+
+  if (!menuDrop && !hasRep) {
+    return (
+      <button
+        type="button"
+        disabled
+        title="Assign a rep first"
+        style={{ ...base, color: C.gray500, border: `1px solid ${C.softLine}`, cursor: 'default', opacity: 0.6 }}
+      >
+        Assign first
+      </button>
+    );
+  }
+
+  if (phase === 'building') {
+    return (
+      <span style={{ ...sans, fontSize: 11.5, color: C.gray500, alignSelf }}>Building quote…</span>
+    );
+  }
+
+  const label = phase === 'error' ? 'Retry' : menuDrop ? 'Build Quote' : 'Start Quote';
+  return (
+    <>
+      <button
+        type="button"
+        onClick={handleClick}
+        disabled={phase === 'sending'}
+        style={{
+          ...base,
+          color: CC_ACK_NAVY,
+          border: `1px solid ${CC_ACK_NAVY}`,
+          cursor: phase === 'sending' ? 'default' : 'pointer',
+          fontWeight: 500,
+          opacity: phase === 'sending' ? 0.6 : 1,
+        }}
+      >
+        {label}
+      </button>
+      {message && (
+        <span role="alert" style={{ ...sans, fontSize: 11, color: C.gray500, alignSelf }}>
+          {message}
+        </span>
+      )}
+    </>
+  );
+}
+
 // ── RoutingTable props ────────────────────────────────────────────────────────
 
 export interface RoutingTableProps {
@@ -244,6 +379,8 @@ export interface RoutingTableProps {
   loading?: boolean;
   /** Map of row.id → error message to show inline (e.g. 409 "Rep owns it" guard). */
   errorByRowId?: Record<string, string>;
+  /** Refetch the inbound feed (Build Quote polls this while a quote builds). */
+  onRefresh?: () => void;
 }
 
 // ── Skeleton row ──────────────────────────────────────────────────────────────
@@ -528,12 +665,14 @@ function DesktopRow({
   canForward,
   onForward,
   errorByRowId,
+  onRefresh,
 }: {
   row: InboundRow;
   reps: { id: string; name: string }[];
   canForward: boolean;
   onForward: (row: InboundRow, repId: string) => Promise<void>;
   errorByRowId?: Record<string, string>;
+  onRefresh?: () => void;
 }) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -654,7 +793,6 @@ function DesktopRow({
         ) : (
           (() => {
             const viewTarget = resolveOpportunityViewTarget(row.artifact);
-            const hasRep = !!row.assigned_rep;
             return (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                 {viewTarget && (
@@ -675,48 +813,7 @@ function DesktopRow({
                     View
                   </button>
                 )}
-                {hasRep ? (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      navigate(`/rep/quotes/new?opportunity_id=${encodeURIComponent(row.id)}`)
-                    }
-                    style={{
-                      ...sans,
-                      fontSize: 11.5,
-                      color: CC_ACK_NAVY,
-                      background: 'none',
-                      border: `1px solid ${CC_ACK_NAVY}`,
-                      borderRadius: 5,
-                      padding: '4px 10px',
-                      cursor: 'pointer',
-                      fontWeight: 500,
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
-                    Start Quote
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    disabled
-                    title="Assign a rep first"
-                    style={{
-                      ...sans,
-                      fontSize: 11.5,
-                      color: C.gray500,
-                      background: 'none',
-                      border: `1px solid ${C.softLine}`,
-                      borderRadius: 5,
-                      padding: '4px 10px',
-                      cursor: 'default',
-                      opacity: 0.6,
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
-                    Assign first
-                  </button>
-                )}
+                <OpportunityQuoteAction row={row} onRefresh={onRefresh} />
               </div>
             );
           })()
@@ -734,12 +831,14 @@ function MobileCard({
   canForward,
   onForward,
   errorByRowId,
+  onRefresh,
 }: {
   row: InboundRow;
   reps: { id: string; name: string }[];
   canForward: boolean;
   onForward: (row: InboundRow, repId: string) => Promise<void>;
   errorByRowId?: Record<string, string>;
+  onRefresh?: () => void;
 }) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -835,7 +934,6 @@ function MobileCard({
       ) : (
         (() => {
           const viewTarget = resolveOpportunityViewTarget(row.artifact);
-          const hasRep = !!row.assigned_rep;
           return (
             <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
               {viewTarget && (
@@ -857,48 +955,7 @@ function MobileCard({
                   View
                 </button>
               )}
-              {hasRep ? (
-                <button
-                  type="button"
-                  onClick={() =>
-                    navigate(`/rep/quotes/new?opportunity_id=${encodeURIComponent(row.id)}`)
-                  }
-                  style={{
-                    ...sans,
-                    fontSize: 11.5,
-                    color: CC_ACK_NAVY,
-                    background: 'none',
-                    border: `1px solid ${CC_ACK_NAVY}`,
-                    borderRadius: 5,
-                    padding: '4px 10px',
-                    cursor: 'pointer',
-                    fontWeight: 500,
-                    alignSelf: 'flex-start',
-                  }}
-                >
-                  Start Quote
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  disabled
-                  title="Assign a rep first"
-                  style={{
-                    ...sans,
-                    fontSize: 11.5,
-                    color: C.gray500,
-                    background: 'none',
-                    border: `1px solid ${C.softLine}`,
-                    borderRadius: 5,
-                    padding: '4px 10px',
-                    cursor: 'default',
-                    opacity: 0.6,
-                    alignSelf: 'flex-start',
-                  }}
-                >
-                  Assign first
-                </button>
-              )}
+              <OpportunityQuoteAction row={row} onRefresh={onRefresh} alignSelf="flex-start" />
             </div>
           );
         })()
@@ -916,6 +973,7 @@ export function RoutingTable({
   canForward,
   loading = false,
   errorByRowId = {},
+  onRefresh,
 }: RoutingTableProps) {
   const [isMobile, setIsMobile] = React.useState(() => window.innerWidth < 768);
   const [sortCol, setSortCol] = React.useState<SortCol>('date');
@@ -971,6 +1029,7 @@ export function RoutingTable({
             canForward={canForward}
             onForward={onForward}
             errorByRowId={errorByRowId}
+            onRefresh={onRefresh}
           />
         ) : (
           <DesktopRow
@@ -980,6 +1039,7 @@ export function RoutingTable({
             canForward={canForward}
             onForward={onForward}
             errorByRowId={errorByRowId}
+            onRefresh={onRefresh}
           />
         )
       )}

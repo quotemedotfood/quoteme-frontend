@@ -3513,6 +3513,28 @@ export async function convertRepInboundOpportunity(
 }
 
 /**
+ * convertInboundOpportunity: POST /api/v1/distributor_admin/inbound_opportunities/:id/convert
+ *
+ * Command Center "Build Quote". For a menu dropped on a /d/:slug page the BE
+ * starts the build and answers 202 { status: "processing", menu_id }; the
+ * finished quote replaces the lead in the inbound feed. For a brand package it
+ * converts synchronously and answers { quote_id, line_count, matched_lines,
+ * status: "converted" }.
+ */
+export type ConvertInboundResult =
+  | { status: 'processing'; menu_id: string }
+  | { status: 'converted'; quote_id: string; line_count: number; matched_lines: number };
+
+export async function convertInboundOpportunity(
+  opportunityId: string
+): Promise<ApiResponse<ConvertInboundResult>> {
+  return fetchWithAuth(
+    `/api/v1/distributor_admin/inbound_opportunities/${encodeURIComponent(opportunityId)}/convert`,
+    { method: 'POST' }
+  );
+}
+
+/**
  * getRepQuote — GET /api/v1/rep/quotes/:id (Bearer auth)
  *
  * Returns the full quote document for the rep to review/price.
