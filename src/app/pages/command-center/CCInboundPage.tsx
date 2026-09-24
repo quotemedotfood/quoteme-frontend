@@ -51,6 +51,13 @@ export function CCInboundPage() {
     return () => window.removeEventListener('resize', onResize);
   }, []);
 
+  // Quiet refetch for RoutingTable's Build Quote: no spinner, keeps rows on a
+  // failed poll. The finished quote row replaces the lead when the BE is done.
+  const refreshRows = useCallback(async () => {
+    const res = await getCommandCenterInbound();
+    if (res.data) setRows(res.data);
+  }, []);
+
   // ── Fetch on mount ──
   useEffect(() => {
     let cancelled = false;
@@ -269,6 +276,7 @@ export function CCInboundPage() {
               canForward
               loading={loading}
               errorByRowId={errorByRowId}
+              onRefresh={refreshRows}
             />
           </div>
         )}
