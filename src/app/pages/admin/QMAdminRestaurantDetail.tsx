@@ -22,6 +22,7 @@ import {
 import { stripSeedPrefix } from '../../utils/format';
 import { ManageAdminDrawer } from './_manageAdminDrawer';
 import { ADMIN_PAGE_FRAME, ADMIN_PAGE_FRAME_STYLE } from '../../components/admin/adminPageFrame';
+import { PairmeSection } from './_pairmeSection';
 
 const CONTACT_ROLE_OPTIONS = [
   { value: 'chef', label: 'Chef' },
@@ -367,6 +368,8 @@ export function QMAdminRestaurantDetailPage() {
           )}
         </div>
       </section>
+
+      <PairmeSection restaurantId={restaurant.id} />
 
       {/* Contacts */}
       <section className="mb-8">
