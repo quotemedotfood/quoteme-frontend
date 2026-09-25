@@ -7,8 +7,8 @@
 //                                    | 404 {error}
 //   POST {API_BASE}/api/v1/d/:slug/upload
 //     JSON body: {payload_type:"menu"|"order_guide", text, contact_name, contact_email, contact_phone, restaurant_name}
-//     OR multipart: file (PDF), contact_name, contact_email, contact_phone, restaurant_name
-//     → 201 {status:"delivered", distributor_name} | 422 {errors}
+//     OR multipart: file (PDF, JPEG, PNG or WEBP), contact_name, contact_email, contact_phone, restaurant_name
+//     → 201 {status:"delivered", distributor_name} | 422 {error, detail}
 //
 // Branding intent (locked):
 //   • primary_hex  → ONE primary action color (submit button bg). No other orange/blue CTA.
@@ -23,7 +23,12 @@
 // host-based resolution (e.g. lipari.quoteme.food → slug="lipari") swaps in.
 
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { fileRejection, MENU_SURFACE } from '../utils/fileGate';
+import {
+  fileRejection,
+  PUBLIC_MENU_SURFACE,
+  PUBLIC_MENU_ACCEPT,
+  PUBLIC_SUPPORTED_SENTENCE,
+} from '../utils/fileGate';
 import { extractMenuText } from '../services/api';
 import {
   parseMenuText,
@@ -35,7 +40,7 @@ import {
   type ParsedDish,
 } from '../utils/menuIngestion';
 import { useParams } from 'react-router';
-import { Upload, Check, FileText, AlertCircle } from 'lucide-react';
+import { Upload, Check, FileText, AlertCircle, Camera } from 'lucide-react';
 import quotemeLogo from '../../assets/quoteme-logo.png';
 
 // ─── API base — mirrors the mapping in src/app/services/api.ts ───────────────
@@ -93,8 +98,14 @@ interface LanderConfig {
   distributor:            DistributorMeta;
   branding:               DistributorBranding;
   accepted_payload:       PayloadType[];        // ["menu","order_guide"]
-  accepted_content_types: Array<'text' | 'pdf'>; // ["text","pdf"]
+  accepted_content_types: ContentKind[]; // ["pdf","photo"]
+  // GET /d/:slug sends accepts_paste: true. Absent means an older backend,
+  // which always took paste, so only an explicit false hides the paste box.
+  accepts_paste?:         boolean;
 }
+
+// 'text' is the legacy token for the paste path; 'photo' is a JPEG, PNG or WEBP.
+type ContentKind = 'text' | 'pdf' | 'photo';
 
 // ─── Page state machine ───────────────────────────────────────────────────────
 type PageState = 'loading' | 'idle' | 'sent' | 'not_found' | 'error';
@@ -116,8 +127,11 @@ const RECOGNIZED_PAYLOAD_TYPES: readonly PayloadType[] = ['menu', 'order_guide']
 
 // Maps the MIME types the BE currently sends (and tolerates already-correct
 // short tokens) to the FE's content-type vocabulary. Anything else is dropped.
-const CONTENT_TYPE_MAP: Record<string, 'text' | 'pdf'> = {
+const CONTENT_TYPE_MAP: Record<string, ContentKind> = {
   'application/pdf': 'pdf',
+  'image/jpeg':      'photo',
+  'image/png':       'photo',
+  'image/webp':      'photo',
   'text/plain':      'text',
   pdf:               'pdf',
   text:              'text',
@@ -145,11 +159,11 @@ function normalizePayloadList(raw: unknown): PayloadType[] {
   return recognized.length > 0 ? recognized : ['menu'];
 }
 
-function normalizeContentTypeList(raw: unknown): Array<'text' | 'pdf'> {
+function normalizeContentTypeList(raw: unknown): ContentKind[] {
   const candidates: unknown[] = Array.isArray(raw) ? raw : raw != null ? [raw] : [];
   const mapped = candidates
     .map((v) => (typeof v === 'string' ? CONTENT_TYPE_MAP[v] : undefined))
-    .filter((v): v is 'text' | 'pdf' => v !== undefined);
+    .filter((v): v is ContentKind => v !== undefined);
   const deduped = Array.from(new Set(mapped));
   // The BE text path is always available (see the showFile comment below), so
   // 'text' is the safe fallback when nothing in the response survives mapping.
@@ -189,6 +203,7 @@ export function normalizeLanderConfig(body: unknown): LanderConfig {
     branding:               normalizeBranding(raw.branding),
     accepted_payload:       normalizePayloadList(raw.accepted_payload),
     accepted_content_types: normalizeContentTypeList(raw.accepted_content_types),
+    ...(typeof raw.accepts_paste === 'boolean' ? { accepts_paste: raw.accepts_paste } : {}),
   };
 }
 
@@ -399,10 +414,17 @@ function LanderForm({ config, desktop, onDelivered, slug }: LanderFormProps) {
     includesRecognized(accepted_payload, 'menu') ? 'menu' : 'order_guide';
   const [payloadType, setPayloadType] = useState<PayloadType>(defaultPayload);
 
-  // Input mode: always offer both paste-text and PDF upload regardless of
-  // accepted_content_types — the BE text path is always available.
-  const showFile = includesRecognized(accepted_content_types, 'pdf');
-  const defaultMode: InputMode = 'text';
+  // Input mode. Paste is shown unless the backend explicitly says it is off;
+  // the file path is shown when the backend advertises a PDF or photo type.
+  const showPaste = config.accepts_paste !== false;
+  const showFile =
+    includesRecognized(accepted_content_types, 'pdf') ||
+    includesRecognized(accepted_content_types, 'photo');
+  const modes: InputMode[] = [
+    ...(showPaste ? (['text'] as InputMode[]) : []),
+    ...(showFile ? (['file'] as InputMode[]) : []),
+  ];
+  const defaultMode: InputMode = showPaste || !showFile ? 'text' : 'file';
   const [inputMode, setInputMode] = useState<InputMode>(defaultMode);
 
   // Text area
@@ -463,24 +485,12 @@ function LanderForm({ config, desktop, onDelivered, slug }: LanderFormProps) {
     setTextContent(reconstructText(next));
   }, []);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
 
   // Submission state
   const [submitting,   setSubmitting]   = useState(false);
   const [submitError,  setSubmitError]  = useState<string | null>(null);
   const [fieldErrors,  setFieldErrors]  = useState<Record<string, string>>({});
-
-  // Read a local text file without a round trip. CSV and .txt are already text,
-  // so sending them to the extractor would be a network call to learn nothing.
-  const readLocalText = useCallback((f: File) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const text = (e.target?.result as string) || '';
-      setTextContent(text);
-      setParsedDishes(parseMenuText(stripPrices(text)));
-    };
-    reader.onerror = () => setExtractError(extractionFailureMessage('no_text'));
-    reader.readAsText(f);
-  }, []);
 
   const runExtraction = useCallback(async (payload: { file?: File; url?: string }) => {
     setIsExtracting(true);
@@ -506,9 +516,9 @@ function LanderForm({ config, desktop, onDelivered, slug }: LanderFormProps) {
   const acceptFile = useCallback((f: File) => {
     // GATE FIRST, before any state is touched. The <input accept> attribute is
     // only a picker hint and drag-and-drop bypasses it entirely, so this page
-    // accepted a dropped .xlsx and sent it. Same gate and same words as the
-    // quoting page, via MENU_SURFACE.
-    const rejection = fileRejection(f, MENU_SURFACE);
+    // once accepted a dropped .xlsx and sent it. PUBLIC_MENU_SURFACE carries
+    // the same set and the same words the backend refuses with.
+    const rejection = fileRejection(f, PUBLIC_MENU_SURFACE);
     if (rejection) { setExtractError(rejection); return; }
 
     setExtractError(null);
@@ -520,10 +530,8 @@ function LanderForm({ config, desktop, onDelivered, slug }: LanderFormProps) {
         : `${Math.max(1, Math.round(f.size / 1024))} KB`,
     );
 
-    const lower = f.name.toLowerCase();
-    if (lower.endsWith('.csv') || lower.endsWith('.txt')) readLocalText(f);
-    else void runExtraction({ file: f });
-  }, [readLocalText, runExtraction]);
+    void runExtraction({ file: f });
+  }, [runExtraction]);
 
   const handleUrlFetch = useCallback(() => {
     const raw = menuUrl.trim();
@@ -600,7 +608,7 @@ function LanderForm({ config, desktop, onDelivered, slug }: LanderFormProps) {
       errs.content = 'Please paste your menu or order guide text.';
     }
     if (inputMode === 'file' && !file) {
-      errs.content = 'Please attach a PDF before submitting.';
+      errs.content = 'Please attach a file or photo before submitting.';
     }
     setFieldErrors(errs);
     return Object.keys(errs).length === 0;
@@ -615,7 +623,7 @@ function LanderForm({ config, desktop, onDelivered, slug }: LanderFormProps) {
       let response: Response;
 
       if (inputMode === 'file' && file) {
-        // Multipart — PDF upload path
+        // Multipart: PDF or photo upload path
         const fd = new FormData();
         fd.append('file',            file);
         fd.append('payload_type',    payloadType);
@@ -655,7 +663,10 @@ function LanderForm({ config, desktop, onDelivered, slug }: LanderFormProps) {
 
       // 422 — surface BE validation message if present
       const body = await response.json().catch(() => ({}));
+      // detail is the plain-language recovery copy (e.g. the file refusal);
+      // error is a machine code, shown only when no detail came back.
       const beMsg =
+        body?.detail ||
         body?.error ||
         (Array.isArray(body?.errors) ? body.errors.join(' ') : null) ||
         'Something went wrong. Please try again.';
@@ -859,12 +870,20 @@ function LanderForm({ config, desktop, onDelivered, slug }: LanderFormProps) {
         <p style={{ ...errorText, marginTop: -10, marginBottom: 16 }}>{fieldErrors.contact}</p>
       )}
 
-      {/* ── Input mode toggle — always shown (paste is always available) ── */}
-      {showFile ? (
+      {/* What this page takes, in the same words the backend refuses with. */}
+      <p
+        data-testid="lander-accepts-copy"
+        style={{ ...sans, fontSize: 12.5, color: C.gray700, margin: '0 0 12px', lineHeight: 1.5 }}
+      >
+        {PUBLIC_SUPPORTED_SENTENCE}
+      </p>
+
+      {/* ── Input mode toggle: shown when there is more than one way in ── */}
+      {modes.length > 1 ? (
         <div style={{ ...fieldWrap }}>
           <span style={labelStyle}>How are you sharing it?</span>
           <div style={{ display: 'flex', gap: 10 }}>
-            {(['text', 'file'] as InputMode[]).map((m) => {
+            {modes.map((m) => {
               const active = inputMode === m;
               return (
                 <button
@@ -885,7 +904,7 @@ function LanderForm({ config, desktop, onDelivered, slug }: LanderFormProps) {
                     transition: 'border-color .12s ease, background .12s ease',
                   }}
                 >
-                  {m === 'text' ? 'Paste text' : 'Upload PDF'}
+                  {m === 'text' ? 'Paste text' : 'Photo or file'}
                 </button>
               );
             })}
@@ -1140,18 +1159,63 @@ function LanderForm({ config, desktop, onDelivered, slug }: LanderFormProps) {
         </div>
       )}
 
-      {/* ── PDF drop zone ───────────────────────────────────────────────── */}
+      {/* ── Photo or file: camera, picker, or drop ──────────────────────── */}
       {inputMode === 'file' && (
         <div style={fieldWrap}>
-          <label style={labelStyle}>PDF file</label>
+          <label style={labelStyle}>Photo or file</label>
 
+          {/* Choose File: the public set only. */}
           <input
             ref={fileInputRef}
             type="file"
-            accept={MENU_SURFACE.exts.join(',')}
+            accept={PUBLIC_MENU_ACCEPT}
             style={{ display: 'none' }}
             onChange={handleFileInputChange}
           />
+          {/* Take Photo: opens the rear camera on a phone, a picker elsewhere.
+              What comes back still goes through the same gate. */}
+          <input
+            ref={cameraInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            style={{ display: 'none' }}
+            onChange={handleFileInputChange}
+          />
+
+          {!file && (
+            <div style={{ display: 'flex', gap: 10, marginBottom: 12 }}>
+              {([
+                { label: 'Take Photo', icon: <Camera size={15} color={C.charcoal} />, ref: cameraInputRef },
+                { label: 'Choose File', icon: <Upload size={15} color={C.charcoal} />, ref: fileInputRef },
+              ]).map(({ label, icon, ref }) => (
+                <button
+                  key={label}
+                  type="button"
+                  onClick={() => ref.current?.click()}
+                  style={{
+                    ...sans,
+                    flex: 1,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 8,
+                    padding: '11px 0',
+                    fontSize: desktop ? 13.5 : 12.5,
+                    fontWeight: 600,
+                    borderRadius: 4,
+                    border: `1px solid ${C.accentRing}`,
+                    background: '#fff',
+                    color: C.charcoal,
+                    cursor: 'pointer',
+                  }}
+                >
+                  {icon}
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
 
           <div
             onDragOver={(e) => { e.preventDefault(); setDropHover(true); }}
@@ -1160,7 +1224,7 @@ function LanderForm({ config, desktop, onDelivered, slug }: LanderFormProps) {
             onClick={() => { if (!file) fileInputRef.current?.click(); }}
             role="button"
             tabIndex={0}
-            aria-label={file ? 'Replace PDF' : 'Drop PDF or click to browse'}
+            aria-label={file ? 'Replace file' : 'Drop a file or click to browse'}
             onKeyDown={(e) => {
               if ((e.key === 'Enter' || e.key === ' ') && !file) fileInputRef.current?.click();
             }}
@@ -1219,6 +1283,7 @@ function LanderForm({ config, desktop, onDelivered, slug }: LanderFormProps) {
                     setFileName('');
                     setFileSize('');
                     if (fileInputRef.current) fileInputRef.current.value = '';
+                    if (cameraInputRef.current) cameraInputRef.current.value = '';
                   }}
                   style={{
                     ...sans,
@@ -1262,7 +1327,7 @@ function LanderForm({ config, desktop, onDelivered, slug }: LanderFormProps) {
                     lineHeight: 1.3,
                   }}
                 >
-                  Drop your PDF here
+                  Drop a file here
                 </div>
                 <div
                   style={{
