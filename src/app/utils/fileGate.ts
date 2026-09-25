@@ -33,6 +33,21 @@ export interface FileGateSurface {
   mimeExact: string[];
   /** Plain-language sentence naming what this surface takes. Appended to every rejection. */
   supportedSentence: string;
+  /**
+   * Families this surface refuses with their OWN recovery copy, checked before
+   * the accept test (so an 'image/heic' can never slip in on a prefix).
+   */
+  refusals?: SurfaceRefusal[];
+}
+
+/** A family refused with dedicated recovery copy instead of the generic clause. */
+export interface SurfaceRefusal {
+  /** Lower-case extensions including the leading dot. */
+  exts: string[];
+  /** Exact MIME strings, compared lower-case. */
+  mimes: string[];
+  /** The whole message shown to the chef. */
+  message: string;
 }
 
 // ─── Shared diagnosis vocabulary ─────────────────────────────────────────────
@@ -94,6 +109,43 @@ export const CATALOG_SURFACE: FileGateSurface = {
   supportedSentence: 'This takes a PDF, a spreadsheet, or photos of a printed price list.',
 };
 
+/**
+ * The PUBLIC distributor menu-drop page (DistributorLanderPage, /d/:slug).
+ *
+ * Justin founder ruling 1 (2026-09-25), accepted by Moose: PDF, JPG/JPEG, PNG,
+ * WEBP and a camera photo; paste is the public text path, so CSV and TXT files
+ * are not offered here. HEIC/HEIF is refused with recovery instructions.
+ *
+ * This set and these two strings MUST match the backend exactly:
+ * ChefSourceAdapter::PUBLIC_FILE_TYPES, PUBLIC_SUPPORTED_SENTENCE and
+ * PUBLIC_HEIC_MESSAGE (app/services/chef_source_adapter.rb). Both repos pin
+ * the same literals in their tests. MENU_SURFACE above is the authenticated
+ * menu reader and is deliberately untouched.
+ */
+export const PUBLIC_SUPPORTED_SENTENCE =
+  'This page takes a PDF, a JPG, PNG or WEBP photo, or pasted text.';
+
+export const PUBLIC_HEIC_MESSAGE =
+  "iPhone HEIC photos can't be read here. On iPhone, set Camera > Formats > " +
+  'Most Compatible, or share the photo as JPEG, or upload a PDF.';
+
+export const PUBLIC_MENU_SURFACE: FileGateSurface = {
+  exts: ['.pdf', '.jpg', '.jpeg', '.png', '.webp'],
+  mimePrefixes: [],
+  mimeExact: ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'],
+  supportedSentence: PUBLIC_SUPPORTED_SENTENCE,
+  refusals: [
+    {
+      exts: ['.heic', '.heif'],
+      mimes: ['image/heic', 'image/heif', 'image/heic-sequence', 'image/heif-sequence'],
+      message: PUBLIC_HEIC_MESSAGE,
+    },
+  ],
+};
+
+/** The Choose File picker hint for the public page: the same set, as exts then MIME types. */
+export const PUBLIC_MENU_ACCEPT = [...PUBLIC_MENU_SURFACE.exts, ...PUBLIC_MENU_SURFACE.mimeExact].join(',');
+
 // ─── The gate ────────────────────────────────────────────────────────────────
 
 /**
@@ -131,6 +183,13 @@ export function fileRejection(
 ): string | null {
   const name = (file.name || '').toLowerCase();
   const type = file.type || '';
+
+  for (const refusal of surface.refusals ?? []) {
+    const lowerType = type.toLowerCase();
+    if (refusal.exts.some((e) => name.endsWith(e)) || refusal.mimes.includes(lowerType)) {
+      return refusal.message;
+    }
+  }
 
   const extOk = surface.exts.some((e) => name.endsWith(e));
   const typeOk =
