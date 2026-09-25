@@ -629,6 +629,44 @@ export async function getAdminRestaurantCrawlTruth(id: string): Promise<ApiRespo
   return fetchWithAuth(`/api/v1/admin/restaurants/${id}/crawl_truth`);
 }
 
+// ============= PAIRME (QM admin only) =============
+// GET /api/v1/admin/restaurants/:id/pairme. Writer: the BE rake
+// pairme:load_venue. Legs join to wines on wine_id, never on a label.
+
+export interface AdminPairmeWine {
+  wine_id: string;
+  producer: string | null;
+  wine_name: string | null;
+  vintage: string | null;
+  list_source: string | null;
+  glass_cents: number | null;
+  bottle_cents: number | null;
+  say: string | null;
+  say_source: 'authored' | 'drafted' | 'grape_fallback' | null;
+}
+
+export interface AdminPairmeLeg {
+  wine_id: string;
+  why: string;
+}
+
+export interface AdminPairmeDish {
+  dish_id: string;
+  name: string;
+  course?: string;
+  pairings: AdminPairmeLeg[];
+}
+
+export interface AdminRestaurantPairme {
+  venue: { id: string; name: string } | null;
+  wines?: AdminPairmeWine[];
+  pairings?: AdminPairmeDish[];
+}
+
+export async function getAdminRestaurantPairme(id: string): Promise<ApiResponse<AdminRestaurantPairme>> {
+  return fetchWithAuth(`/api/v1/admin/restaurants/${id}/pairme`);
+}
+
 // ============= IMPERSONATE =============
 
 export async function impersonateUser(userId: string): Promise<ApiResponse<{ token: string; user: { id: string; email: string; first_name: string; last_name: string; role: string } }>> {
