@@ -81,6 +81,7 @@ import { ChefDistributorDetailPage } from "./pages/chef/ChefDistributorDetailPag
 import { ChefRequestSentPage } from "./pages/chef/ChefRequestSentPage";
 import { ChefShellLayout } from "./components/chef/ChefShellLayout";
 import { ChefMenusPage } from "./pages/chef/ChefMenusPage";
+import { ChefPairingsPage } from "./pages/chef/ChefPairingsPage";
 import { ChefMenuDetailPage } from "./pages/chef/ChefMenuDetailPage";
 import { ChefMenuStackPage } from "./pages/chef/ChefMenuStackPage";
 import { ChefDistributorsPage } from "./pages/chef/ChefDistributorsPage";
@@ -361,6 +362,9 @@ export const router = createBrowserRouter([
               { path: "chef/quotes/:id", Component: ChefQuoteReceiptPage },
               { path: "chef/order-guide/:id", Component: ChefOrderGuidePage },
               { path: "chef/menus/:id", Component: ChefMenuDetailPage },
+              // PairMe: what this restaurant's tables were shown, with the
+              // ticket or table number and what the house adds.
+              { path: "chef/pairings", Component: ChefPairingsPage },
               // STACK-FE-1: compare-spread table. Static segment 'stack' takes
               // precedence over future dynamic sibling if one is added.
               { path: "chef/menus/:menuId/stack", Component: ChefMenuStackPage },

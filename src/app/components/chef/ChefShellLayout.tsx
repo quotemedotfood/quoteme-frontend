@@ -23,7 +23,7 @@ import { Outlet, useLocation, useNavigate } from 'react-router';
 import { ChefTabBar, ChefTabDesktopShell } from './';
 import { useAuth } from '../../contexts/AuthContext';
 
-type ActiveTab = 'home' | 'dashboard' | 'menus' | 'order-guides' | 'distributors' | 'settings';
+type ActiveTab = 'home' | 'dashboard' | 'menus' | 'order-guides' | 'distributors' | 'pairings' | 'settings';
 type SidebarMode = 'open' | 'collapsed' | 'hidden';
 
 function initialModeFromPath(pathname: string): SidebarMode {
@@ -43,6 +43,7 @@ function activeTabFromPath(pathname: string): ActiveTab {
   if (pathname.startsWith('/chef/order-guide')) return 'order-guides';
   if (pathname.startsWith('/chef/quotes')) return 'home'; // Quotes destination
   if (pathname.startsWith('/chef/menus')) return 'menus'; // Menus and Order Guides tab
+  if (pathname.startsWith('/chef/pairings')) return 'pairings'; // PairMe tables
   if (pathname.startsWith('/chef/catalog')) return 'distributors';
   // B-124: /chef/distributors is now canonical for the consolidated view.
   // Must be checked BEFORE the '/chef/distributor' catch-all below.
@@ -99,6 +100,7 @@ export function ChefShellLayout() {
     // Quotes has a dedicated route — navigate there directly (c135)
     if (target === 'tab-home') return navigate('/chef/quotes');
     if (target === 'tab-menus') return navigate('/chef/menus');
+    if (target === 'tab-pairings') return navigate('/chef/pairings');
     if (target === 'tab-distributors') return navigate('/chef/distributors');
     if (target === 'tab-stack') return navigate('/chef/distributors');
     if (target === 'tab-settings') return navigate('/settings');

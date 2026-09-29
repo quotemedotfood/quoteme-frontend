@@ -14,7 +14,7 @@
 //   • CSS vars (--qm-*) → FE color constants.
 
 import React, { useState } from 'react';
-import { FileText, Settings, Home, PanelLeftClose, PanelLeftOpen, Plus, Truck, BookOpen } from 'lucide-react';
+import { FileText, Settings, Home, PanelLeftClose, PanelLeftOpen, Plus, Truck, BookOpen, Wine } from 'lucide-react';
 import quotemeLogo from '../../../assets/quoteme-logo.png';
 import { HelpField } from '../HelpField';
 
@@ -38,7 +38,7 @@ const sans: React.CSSProperties = {
 };
 
 type SidebarMode = 'open' | 'collapsed' | 'hidden';
-type ActiveTab = 'home' | 'dashboard' | 'menus' | 'order-guides' | 'distributors' | 'settings';
+type ActiveTab = 'home' | 'dashboard' | 'menus' | 'order-guides' | 'distributors' | 'pairings' | 'settings';
 
 export interface ChefTabDesktopShellProps {
   active: ActiveTab;
@@ -60,6 +60,7 @@ const NAV_ITEMS: { id: ActiveTab; label: string; target: string; Icon: React.Com
   { id: 'home',         label: 'Quotes',                target: 'tab-home',         Icon: FileText },
   { id: 'menus',        label: 'Menus and Order Guides', target: 'tab-menus',       Icon: BookOpen },
   { id: 'distributors', label: 'Distributors',          target: 'tab-distributors', Icon: Truck },
+  { id: 'pairings',     label: 'Pairings',              target: 'tab-pairings',     Icon: Wine },
   { id: 'settings',     label: 'Settings',              target: 'tab-settings',     Icon: Settings },
 ];
 
