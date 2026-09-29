@@ -4388,3 +4388,68 @@ export async function uploadDistributorAdminLogo(file: File): Promise<ApiRespons
     return { error: err instanceof Error ? err.message : 'Network error' };
   }
 }
+
+// ─── PairMe: what this restaurant's tables were shown (1a) ───────────────────
+// GET   /api/v1/chef/pairme_presentations?restaurant_id=
+// PATCH /api/v1/chef/pairme_presentations/:id
+// Writer of the presentation: the diner's PairMe app. The restaurant adds the
+// ticket or table number and any dishes or wines, picked from its OWN PairMe
+// menu and list by id (never typed). What the diner recorded is never changed.
+
+export interface PairmePresentedWine {
+  wine_id: string;
+  producer: string | null;
+  wine: string | null;
+  list: string | null;
+  unit: 'glass' | 'bottle';
+  price_cents: number | null;
+  dish_id?: string | null;
+  dish?: string | null;
+}
+
+export interface PairmePresentationRow {
+  id: string;
+  presented_at: string;
+  local_date: string | null;
+  local_time: string | null;
+  ticket_ref: string | null;
+  diner_name: string | null;
+  dishes: { dish_id: string; dish: string }[];
+  wines: PairmePresentedWine[];
+  added_dishes: { dish_id: string; dish: string }[];
+  added_wines: PairmePresentedWine[];
+  edited_at: string | null;
+}
+
+export interface PairmeMenuWine {
+  wine_id: string;
+  producer: string | null;
+  wine: string | null;
+  list: string | null;
+  glass_cents: number | null;
+  bottle_cents: number | null;
+}
+
+export interface PairmePresentationsResponse {
+  restaurant: { id: string; name: string } | null;
+  time_zone?: string | null;
+  menu?: { dishes: { dish_id: string; dish: string; course: string | null }[]; wines: PairmeMenuWine[] };
+  presentations: PairmePresentationRow[];
+}
+
+export async function getChefPairmePresentations(restaurantId?: string): Promise<ApiResponse<PairmePresentationsResponse>> {
+  const query = restaurantId ? `?restaurant_id=${encodeURIComponent(restaurantId)}` : '';
+  return fetchWithGuest<PairmePresentationsResponse>(`/api/v1/chef/pairme_presentations${query}`);
+}
+
+export async function updateChefPairmePresentation(
+  id: string,
+  body: { ticket_ref?: string; added_dish_ids?: string[]; added_wines?: { wine_id: string; unit: 'glass' | 'bottle' }[] },
+  restaurantId?: string,
+): Promise<ApiResponse<{ presentation: PairmePresentationRow }>> {
+  const query = restaurantId ? `?restaurant_id=${encodeURIComponent(restaurantId)}` : '';
+  return fetchWithGuest<{ presentation: PairmePresentationRow }>(`/api/v1/chef/pairme_presentations/${id}${query}`, {
+    method: 'PATCH',
+    body: JSON.stringify(body),
+  });
+}
