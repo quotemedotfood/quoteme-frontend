@@ -28,7 +28,7 @@ import {
   TableHead,
   TableCell,
 } from '../../components/ui/table';
-import { getAdminRestaurants, AdminRestaurant } from '../../services/adminApi';
+import { getAdminRestaurants, AdminRestaurant, setAdminPairmeReview, type PairmeReviewFilter, type AdminPairmeReview } from '../../services/adminApi';
 import { handleImpersonate } from '../../utils/impersonate';
 import { AdminEmptyState } from './_adminEmptyState';
 import { AddRestaurantModal } from './_addRestaurantModal';
@@ -100,6 +100,8 @@ export function QMAdminRestaurants() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+  // PAIRME REVIEW FILTER (Moose, 2026-09-30): server-side, like search.
+  const [pairmeFilter, setPairmeFilter] = useState<PairmeReviewFilter | ''>('');
   const [sortField, setSortField] = useState<SortField>('name');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
   const [impersonating, setImpersonating] = useState<string | null>(null);
@@ -132,6 +134,7 @@ export function QMAdminRestaurants() {
       q: debouncedSearch || undefined,
       sort: sortField,
       dir: sortDir,
+      pairme_review: pairmeFilter || undefined,
     });
     if (res.data) {
       setRestaurants(res.data.restaurants);
@@ -141,7 +144,18 @@ export function QMAdminRestaurants() {
       setError(res.error || 'Failed to load');
     }
     setLoading(false);
-  }, [page, debouncedSearch, sortField, sortDir]);
+  }, [page, debouncedSearch, sortField, sortDir, pairmeFilter]);
+
+  // The flag is clickable: needs review -> reviewed, and back. Only the
+  // clicked row changes; the list is not reloaded.
+  const toggleReview = async (r: AdminRestaurant) => {
+    if (!r.pairme_review) return;
+    const res = await setAdminPairmeReview(r.id, r.pairme_review.state !== 'reviewed');
+    if (res.data) {
+      const next = res.data.pairme_review;
+      setRestaurants((prev) => prev.map((x) => (x.id === r.id ? { ...x, pairme_review: next } : x)));
+    }
+  };
 
   useEffect(() => {
     loadRestaurants();
@@ -182,6 +196,18 @@ export function QMAdminRestaurants() {
             className="pl-9"
           />
         </div>
+        <select
+          aria-label="PairMe review"
+          data-testid="pairme-review-filter"
+          value={pairmeFilter}
+          onChange={(e) => { setPairmeFilter(e.target.value as PairmeReviewFilter | ''); setPage(1); }}
+          className="border border-gray-200 rounded-md px-2 py-1.5 text-sm"
+        >
+          <option value="">All restaurants</option>
+          <option value="any_pairme">On PairMe</option>
+          <option value="needs_review">PairMe: needs review</option>
+          <option value="reviewed">PairMe: reviewed</option>
+        </select>
         <span className="text-xs text-gray-400">
           {meta.total_count} restaurants
           {meta.total_pages > 1 && ` (page ${meta.page} of ${meta.total_pages})`}
@@ -227,6 +253,7 @@ export function QMAdminRestaurants() {
                     Menu Coverage
                   </TableHead>
                   <TableHead>Data Flags</TableHead>
+                  <TableHead title="Auto-paired restaurants go live flagged. Click the flag once you have looked at the pairings.">PairMe</TableHead>
                   <TableHead className="cursor-pointer text-right" onClick={() => toggleSort('contact_count')}>
                     <div className="flex items-center justify-end gap-1">Contacts <SortIcon field="contact_count" /></div>
                   </TableHead>
@@ -335,6 +362,7 @@ export function QMAdminRestaurants() {
                         <span className="text-gray-300">-</span>
                       )}
                     </TableCell>
+                    <TableCell><PairmeReviewFlag review={r.pairme_review} onToggle={() => toggleReview(r)} /></TableCell>
                     <TableCell className="text-sm text-right">{r.contact_count}</TableCell>
                     <TableCell>
                       <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${r.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
@@ -457,5 +485,29 @@ export function QMAdminRestaurants() {
         }}
       />
     </div>
+  );
+}
+
+// THE PAIRME REVIEW FLAG (Moose, 2026-09-30). An auto-paired restaurant goes
+// live flagged "Needs review"; clicking it marks it reviewed (and clicking
+// again flags it back). A hand-authored venue shows "Hand-paired", not
+// clickable. No PairMe venue shows a dash.
+export function PairmeReviewFlag({ review, onToggle }: { review?: AdminPairmeReview | null; onToggle: () => void }) {
+  if (!review) return <span className="text-sm text-gray-300">-</span>;
+  if (review.state === null) {
+    return <span data-testid="pairme-review-flag" className="text-xs text-gray-500">Hand-paired</span>;
+  }
+  const reviewed = review.state === 'reviewed';
+  const when = review.reviewed_at ? new Date(review.reviewed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
+  return (
+    <button
+      type="button"
+      data-testid="pairme-review-flag"
+      onClick={onToggle}
+      title={reviewed ? `Reviewed${review.reviewed_by_name ? ` by ${review.reviewed_by_name}` : ''}${when ? `, ${when}` : ''}. Click to flag it again.` : 'Auto-paired. Click once you have looked at the pairings.'}
+      className={`inline-block px-2 py-0.5 rounded text-xs font-medium border ${reviewed ? 'bg-green-50 text-green-700 border-green-200' : 'bg-amber-50 text-amber-800 border-amber-300'}`}
+    >
+      {reviewed ? 'Reviewed' : 'Needs review'}
+    </button>
   );
 }

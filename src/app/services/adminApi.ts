@@ -182,7 +182,20 @@ export interface AdminDistributorDetail extends AdminDistributor {
   }>;
 }
 
+/** The PairMe review flag (QuoteMe pairme_venues.review_state). null state =
+ * a venue nobody needs to review (hand-authored). */
+export interface AdminPairmeReview {
+  state: 'needs_review' | 'reviewed' | null;
+  authored_by: 'hand' | 'auto';
+  reviewed_at: string | null;
+  reviewed_by_name: string | null;
+}
+
+export type PairmeReviewFilter = 'needs_review' | 'reviewed' | 'any_pairme';
+
 export interface AdminRestaurant {
+  /** null when the restaurant has no PairMe venue. */
+  pairme_review?: AdminPairmeReview | null;
   id: string;
   name: string;
   city: string | null;
@@ -526,6 +539,8 @@ export interface AdminRestaurantsQuery {
   q?: string;
   sort?: 'name' | 'city' | 'status' | 'contact_count' | 'created_at';
   dir?: 'asc' | 'desc';
+  /** Server-side PairMe review filter. */
+  pairme_review?: PairmeReviewFilter;
 }
 
 /**
@@ -550,8 +565,17 @@ export async function getAdminRestaurants(
   if (query.q) params.set('q', query.q);
   if (query.sort) params.set('sort', query.sort);
   if (query.dir) params.set('dir', query.dir);
+  if (query.pairme_review) params.set('pairme_review', query.pairme_review);
 
   return fetchWithAuth(`/api/v1/admin/restaurants?${params.toString()}`);
+}
+
+/** PATCH /api/v1/admin/restaurants/:id/pairme_review (QM admin only). */
+export async function setAdminPairmeReview(id: string, reviewed: boolean): Promise<ApiResponse<{ pairme_review: AdminPairmeReview }>> {
+  return fetchWithAuth(`/api/v1/admin/restaurants/${id}/pairme_review`, {
+    method: 'PATCH',
+    body: JSON.stringify({ reviewed }),
+  });
 }
 
 export async function getAdminRestaurant(id: string): Promise<ApiResponse<AdminRestaurantDetail>> {
