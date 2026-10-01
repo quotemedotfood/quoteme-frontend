@@ -3156,6 +3156,11 @@ export interface ChefMenuRow {
   source_url?: string | null;
   /** Role of the user who uploaded/created this menu (e.g. "chef", "rep"). */
   uploaded_by_role?: string | null;
+  /** The tag on the Menus tab's history (PairMe 1c): a wine list is menu_type "wine". */
+  kind?: 'menu' | 'wine_list';
+  /** Name of the uploaded file, when the restaurant uploaded one. */
+  file_name?: string | null;
+  restaurant_name?: string | null;
 }
 
 export interface ChefMenusIndexResponse {
@@ -4452,4 +4457,39 @@ export async function updateChefPairmePresentation(
     method: 'PATCH',
     body: JSON.stringify(body),
   });
+}
+
+
+// ─── Upload a menu or a wine list (PairMe 1c) ────────────────────────────────
+// POST /api/v1/chef/menus with kind "menu" | "wine_list" and a file (PDF or a
+// photo, up to 20 MB) or pasted text. Stored pending on the chef's restaurant;
+// nothing is parsed or published by this call.
+export async function uploadChefMenuDocument(args: {
+  kind: 'menu' | 'wine_list';
+  name: string;
+  file?: File | null;
+  rawText?: string;
+  restaurantId?: string;
+}): Promise<ApiResponse<ChefMenuRow>> {
+  const authToken = getAuthToken();
+  const guestToken = getGuestToken();
+  const headers: Record<string, string> = {};
+  if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
+  if (guestToken) headers['X-Guest-Token'] = guestToken;
+  const form = new FormData();
+  form.append('kind', args.kind);
+  if (args.name) form.append('name', args.name);
+  if (args.file) form.append('file', args.file);
+  if (args.rawText) form.append('raw_text', args.rawText);
+  if (args.restaurantId) form.append('restaurant_id', args.restaurantId);
+  try {
+    const response = await fetchWithRetry(`${API_BASE_URL}/api/v1/chef/menus`, { method: 'POST', headers, body: form });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      return { error: errorData.error || `HTTP ${response.status}`, error_data: errorData, status: response.status };
+    }
+    return { data: await response.json() };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : 'Upload failed' };
+  }
 }

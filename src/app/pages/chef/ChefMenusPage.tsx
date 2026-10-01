@@ -35,6 +35,7 @@ import {
   type ChefOrderGuideRow,
 } from '../../services/api';
 import { useAsyncMutation } from '../../hooks/useAsyncMutation';
+import { UploadMenuDrawer, type UploadKind } from '../../components/chef/UploadMenuDrawer';
 
 // ─── Palette ──────────────────────────────────────────────────────────────────
 
@@ -193,6 +194,25 @@ function DraftPill() {
       }}
     >
       Draft
+    </span>
+  );
+}
+
+// THE TAG on the Menus history (PairMe 1c): menus and wine lists live in one
+// list, and each row says which it is.
+function KindTag({ kind }: { kind?: 'menu' | 'wine_list' }) {
+  const wine = kind === 'wine_list';
+  return (
+    <span
+      data-testid="menu-kind-tag"
+      style={{
+        ...sans, fontSize: 10, fontWeight: 600, flexShrink: 0, padding: '2px 7px', borderRadius: 999,
+        color: wine ? '#7C2D12' : '#1F2A44',
+        background: wine ? '#FDF2E9' : '#EEF2F7',
+        border: `1px solid ${wine ? '#F5D0B5' : '#D5DDE8'}`,
+      }}
+    >
+      {wine ? 'Wine list' : 'Menu'}
     </span>
   );
 }
@@ -461,6 +481,7 @@ function MenuRow({
             >
               {menuDisplayName}
             </span>
+            <KindTag kind={menu.kind} />
             {isDraft && <DraftPill />}
             <SourceBadge sourceType={menu.source_type} />
           </button>
@@ -725,6 +746,7 @@ function SectionHeader({ title, count }: { title: string; count?: number }) {
 
 export function ChefMenusPage() {
   const navigate = useNavigate();
+  const [uploadKind, setUploadKind] = useState<UploadKind | null>(null);
 
   // Menus state
   const [menusLoad, setMenusLoad] = useState<'loading' | 'ready' | 'error'>('loading');
@@ -836,7 +858,27 @@ export function ChefMenusPage() {
         >
           Every menu you've built or quoted from, and the order guides generated from them.
         </p>
+        <div style={{ display: 'flex', gap: 8, marginTop: 14, flexWrap: 'wrap' }}>
+          {(['menu', 'wine_list'] as UploadKind[]).map((k) => (
+            <button
+              key={k}
+              type="button"
+              onClick={() => setUploadKind(k)}
+              style={{ ...sans, fontSize: 13, fontWeight: 600, border: `1px solid ${C.softLine}`, borderRadius: 999, padding: '7px 14px', background: '#fff', color: C.charcoal, cursor: 'pointer' }}
+            >
+              {k === 'menu' ? 'Upload menu' : 'Upload wine list'}
+            </button>
+          ))}
+        </div>
       </div>
+
+      {uploadKind && (
+        <UploadMenuDrawer
+          kind={uploadKind}
+          onClose={() => setUploadKind(null)}
+          onUploaded={(row) => { setMenus((prev) => [row, ...prev]); setMenusLoad('ready'); setUploadKind(null); }}
+        />
+      )}
 
       {/* ── Menus section ─────────────────────────────────────────── */}
       <div style={{ marginBottom: 40 }}>
