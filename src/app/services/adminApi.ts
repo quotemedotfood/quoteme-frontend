@@ -471,6 +471,8 @@ export interface AdminRestaurantDetail {
     email: string | null;
     phone: string | null;
     is_primary: boolean;
+    /** The account behind the contact (restaurant_contacts.user_id); null when none. */
+    user?: { id: string; role: string; signed_in: boolean } | null;
   }>;
   recent_quotes: Array<{
     id: string;
