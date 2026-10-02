@@ -1,4 +1,5 @@
 import { impersonateUser } from '../services/adminApi';
+import { impersonateChef } from '../services/api';
 
 /**
  * True when an admin is inside an impersonated session.
@@ -59,6 +60,38 @@ export async function handleImpersonate(
     window.location.href = '/';
   } else {
     setError(res.error || 'Failed to impersonate');
+    setImpersonating(null);
+  }
+}
+
+/**
+ * Chef impersonation, shared so a surface other than the Chefs page can offer
+ * it (the admin restaurant page's contacts, Moose 2026-10-02). Same contract
+ * as QMAdminChefs.handleImpersonate: POST /api/v1/admin/impersonate_chef/:id
+ * (audit-logged, 1-hour token), verify the server named the chef we asked
+ * for before touching storage, stash the admin token, land on /dashboard.
+ */
+export async function handleImpersonateChef(
+  chefId: string,
+  setImpersonating: (id: string | null) => void,
+  setError: (msg: string | null) => void,
+): Promise<void> {
+  setImpersonating(chefId);
+  const res = await impersonateChef(chefId);
+  if (res.data?.token) {
+    const returned = res.data.chef;
+    if (!returned || returned.id !== chefId) {
+      setError('Impersonation target mismatch; not switching.');
+      setImpersonating(null);
+      return;
+    }
+    localStorage.setItem('quoteme_admin_token', localStorage.getItem('quoteme_token') || '');
+    localStorage.setItem('quoteme_chef_impersonating', `${returned.first_name} ${returned.last_name}`);
+    localStorage.setItem('quoteme_chef_impersonation_event_id', res.data.event_id);
+    localStorage.setItem('quoteme_token', res.data.token);
+    window.location.href = '/dashboard';
+  } else {
+    setError(res.error || 'Failed to impersonate chef');
     setImpersonating(null);
   }
 }

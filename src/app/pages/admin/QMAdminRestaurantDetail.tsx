@@ -23,6 +23,7 @@ import { stripSeedPrefix } from '../../utils/format';
 import { ManageAdminDrawer } from './_manageAdminDrawer';
 import { ADMIN_PAGE_FRAME, ADMIN_PAGE_FRAME_STYLE } from '../../components/admin/adminPageFrame';
 import { PairmeSection } from './_pairmeSection';
+import { handleImpersonate, handleImpersonateChef } from '../../utils/impersonate';
 
 const CONTACT_ROLE_OPTIONS = [
   { value: 'chef', label: 'Chef' },
@@ -53,6 +54,11 @@ export function QMAdminRestaurantDetailPage() {
 
   // --- 2a: link / create admin user ---
   const [manageAdminOpen, setManageAdminOpen] = useState(false);
+
+  // Sign in as a contact (Moose, 2026-10-02: "i don't have an impersonate
+  // button here"). Holds the user id being switched to.
+  const [impersonating, setImpersonating] = useState<string | null>(null);
+  const [impersonateError, setImpersonateError] = useState<string | null>(null);
 
   // --- 2b: add contact ---
   const [addContactOpen, setAddContactOpen] = useState(false);
@@ -482,6 +488,7 @@ export function QMAdminRestaurantDetailPage() {
           </form>
         )}
 
+        {impersonateError ? <p className="text-sm text-red-500 mb-2" role="alert">{impersonateError}</p> : null}
         {restaurant.contacts.length === 0 ? (
           <p className="text-sm text-gray-400 py-4">No contacts yet</p>
         ) : (
@@ -494,6 +501,7 @@ export function QMAdminRestaurantDetailPage() {
                   <TableHead>Phone</TableHead>
                   <TableHead>Role</TableHead>
                   <TableHead>Primary</TableHead>
+                  <TableHead className="text-right">Sign in</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -511,6 +519,36 @@ export function QMAdminRestaurantDetailPage() {
                           Primary
                         </span>
                       )}
+                    </TableCell>
+                    <TableCell className="text-right" data-testid="contact-sign-in">
+                      {(() => {
+                        const u = c.user;
+                        const who = [c.first_name, c.last_name].filter(Boolean).join(' ') || c.email || 'this contact';
+                        if (!u) return <span className="text-xs text-gray-400">No account</span>;
+                        const isChef = u.role === 'chef';
+                        if (!isChef && u.role !== 'rep' && u.role !== 'distributor_admin') {
+                          return <span className="text-xs text-gray-400">{u.role} account</span>;
+                        }
+                        // Same gate as the Chefs page: a chef who has never
+                        // signed in has no session to step into.
+                        const blocked = isChef && !u.signed_in;
+                        return (
+                          <button
+                            type="button"
+                            disabled={blocked || impersonating === u.id}
+                            onClick={() => {
+                              setImpersonateError(null);
+                              if (isChef) handleImpersonateChef(u.id, setImpersonating, setImpersonateError);
+                              else handleImpersonate(u.id, who, setImpersonating, setImpersonateError);
+                            }}
+                            aria-label={`Sign in as ${who}`}
+                            title={blocked ? `${who} has not signed in yet` : `Sign in as ${who}`}
+                            className="text-xs font-medium text-[#7FAEC2] hover:text-[#6A9AB0] disabled:text-gray-300 disabled:cursor-not-allowed"
+                          >
+                            {impersonating === u.id ? 'Switching...' : blocked ? 'Not signed in yet' : 'Sign in as'}
+                          </button>
+                        );
+                      })()}
                     </TableCell>
                   </TableRow>
                 ))}
