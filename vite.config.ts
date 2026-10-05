@@ -57,5 +57,11 @@ export default defineConfig({
     // Only pick up files explicitly named *.test.ts / *.test.tsx so the broad
     // glob doesn't accidentally match storybook or playground files.
     include: ['src/**/*.test.{ts,tsx}'],
+    // UNDER LOAD, NOT BROKEN. The full suite runs ~22 files at once here, and
+    // the heavy page tests (ExportFinalizePage, QuoteBuilderPage) overran
+    // vitest's 5s default while passing alone; a different pair failed each
+    // full run on unchanged main (measured 2026-10-05). A longer ceiling only
+    // lets a slow pass finish; a real failure still fails on its assertion.
+    testTimeout: 20000,
   },
 })
