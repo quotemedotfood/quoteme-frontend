@@ -298,6 +298,24 @@ export function QMAdminRestaurantDetailPage() {
                 </button>
               </>
             )}
+            {/* SIGN IN AS THE RESTAURANT'S ADMIN (Moose's walk, 2026-10-11:
+                "impersonate, both the contact (me) or the admins"). Audited,
+                through users#impersonate (restaurant_admin, QuoteMe #488). */}
+            {restaurant.restaurant_admin_id && (
+              <button
+                type="button"
+                data-testid="admin-sign-in"
+                disabled={impersonating === restaurant.restaurant_admin_id}
+                onClick={() => {
+                  setImpersonateError(null);
+                  handleImpersonate(restaurant.restaurant_admin_id!, restaurant.restaurant_admin_name || 'the restaurant admin', setImpersonating, setImpersonateError);
+                }}
+                aria-label={`Sign in as ${restaurant.restaurant_admin_name || 'the restaurant admin'}`}
+                className="px-3 py-1.5 rounded text-xs font-medium bg-gray-100 hover:bg-gray-200 text-[#2A2A2A] disabled:opacity-50 transition-colors"
+              >
+                {impersonating === restaurant.restaurant_admin_id ? 'Switching...' : 'Sign in as admin'}
+              </button>
+            )}
             {/* 2a: link an existing user by email, or create one, as the restaurant's admin */}
             <button
               type="button"
@@ -526,26 +544,28 @@ export function QMAdminRestaurantDetailPage() {
                         const who = [c.first_name, c.last_name].filter(Boolean).join(' ') || c.email || 'this contact';
                         if (!u) return <span className="text-xs text-gray-400">No account</span>;
                         const isChef = u.role === 'chef';
-                        if (!isChef && u.role !== 'rep' && u.role !== 'distributor_admin') {
+                        if (!isChef && !['rep', 'distributor_admin', 'restaurant_admin'].includes(u.role)) {
                           return <span className="text-xs text-gray-400">{u.role} account</span>;
                         }
-                        // Same gate as the Chefs page: a chef who has never
-                        // signed in has no session to step into.
-                        const blocked = isChef && !u.signed_in;
+                        // NO "has signed in" gate here any more (Moose's walk,
+                        // 2026-10-11: "I need to be able to impersonate ...
+                        // the contact (me)"). The server never required it;
+                        // stepping in before a first sign-in is what lets an
+                        // admin set an account up.
                         return (
                           <button
                             type="button"
-                            disabled={blocked || impersonating === u.id}
+                            disabled={impersonating === u.id}
                             onClick={() => {
                               setImpersonateError(null);
                               if (isChef) handleImpersonateChef(u.id, setImpersonating, setImpersonateError);
                               else handleImpersonate(u.id, who, setImpersonating, setImpersonateError);
                             }}
                             aria-label={`Sign in as ${who}`}
-                            title={blocked ? `${who} has not signed in yet` : `Sign in as ${who}`}
+                            title={`Sign in as ${who}`}
                             className="text-xs font-medium text-[#7FAEC2] hover:text-[#6A9AB0] disabled:text-gray-300 disabled:cursor-not-allowed"
                           >
-                            {impersonating === u.id ? 'Switching...' : blocked ? 'Not signed in yet' : 'Sign in as'}
+                            {impersonating === u.id ? 'Switching...' : 'Sign in as'}
                           </button>
                         );
                       })()}

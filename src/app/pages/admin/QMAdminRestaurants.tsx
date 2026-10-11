@@ -186,8 +186,10 @@ export function QMAdminRestaurants() {
         Restaurants & Groups
       </h1>
 
-      <div className="flex items-center gap-3 mb-5">
-        <div className="relative flex-1 max-w-sm">
+      {/* On a phone the search box takes its own line and the filters sit
+          under it (Moose's walk, 2026-10-11); from sm up it is one row. */}
+      <div className="flex flex-wrap items-center gap-3 mb-5">
+        <div data-testid="restaurants-search" className="relative basis-full sm:basis-auto sm:flex-1 sm:max-w-sm">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           <Input
             value={search}
