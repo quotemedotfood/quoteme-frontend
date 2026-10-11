@@ -79,12 +79,42 @@ describe('contacts: Sign in as', () => {
     expect(localStorage.getItem('quoteme_token')).toBe('ADMIN');
   });
 
-  it('a chef who has never signed in is shown but cannot be stepped into; no account says so', async () => {
+  // CHANGED 2026-10-11 by Moose's ruling ("I need to be able to impersonate,
+  // both the contact (me) or the admins"). This pinned a disabled "Not signed
+  // in yet" for a chef who had never signed in; that gate is gone.
+  it('signs in as a chef who has never signed in; no account still says so', async () => {
+    m.impersonateChef.mockResolvedValue({ data: { token: 'NEVER', event_id: 'e2', chef: { id: 'u-never', first_name: 'Never', last_name: 'Test', email: '', role: 'chef' } } });
     const cell = await renderPage();
     const never = within(cell('Never')).getByRole('button');
-    expect(never).toBeDisabled();
-    expect(never).toHaveTextContent('Not signed in yet');
+    expect(never).toBeEnabled();
+    expect(never).toHaveTextContent('Sign in as');
+    fireEvent.click(never);
+    await waitFor(() => expect(localStorage.getItem('quoteme_token')).toBe('NEVER'));
+    expect(m.impersonateChef).toHaveBeenCalledWith('u-never');
     expect(cell('Nobody')).toHaveTextContent('No account');
     expect(within(cell('Nobody')).queryByRole('button')).toBeNull();
+  });
+
+  it('a restaurant admin contact goes through the user path', async () => {
+    m.getAdminRestaurant.mockResolvedValue({ data: { ...restaurant, contacts: [contact('Boss', { id: 'u-boss', role: 'restaurant_admin', signed_in: false })] } });
+    m.impersonateUser.mockResolvedValue({ data: { token: 'BOSS', user: { id: 'u-boss', email: '', first_name: 'Boss', last_name: 'Test', role: 'restaurant_admin' } } });
+    render(<MemoryRouter initialEntries={['/admin/restaurants/r1']}><Routes><Route path="/admin/restaurants/:id" element={<Page />} /></Routes></MemoryRouter>);
+    fireEvent.click(await screen.findByRole('button', { name: 'Sign in as Boss Test' }));
+    await waitFor(() => expect(localStorage.getItem('quoteme_token')).toBe('BOSS'));
+    expect(m.impersonateUser).toHaveBeenCalledWith('u-boss');
+  });
+
+  it("signs in as the restaurant's admin from the admin block", async () => {
+    m.getAdminRestaurant.mockResolvedValue({ data: { ...restaurant, restaurant_admin_id: 'u-admin', restaurant_admin_name: 'Rita Admin' } });
+    m.impersonateUser.mockResolvedValue({ data: { token: 'RITA', user: { id: 'u-admin', email: '', first_name: 'Rita', last_name: 'Admin', role: 'restaurant_admin' } } });
+    await renderPage();
+    fireEvent.click(screen.getByRole('button', { name: 'Sign in as Rita Admin' }));
+    await waitFor(() => expect(localStorage.getItem('quoteme_token')).toBe('RITA'));
+    expect(m.impersonateUser).toHaveBeenCalledWith('u-admin');
+  });
+
+  it('shows no admin sign-in when the restaurant has no admin', async () => {
+    await renderPage();
+    expect(screen.queryByTestId('admin-sign-in')).toBeNull();
   });
 });

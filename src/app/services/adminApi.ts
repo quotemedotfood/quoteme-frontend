@@ -1947,9 +1947,13 @@ export async function createAdminRestaurantGroup(data: {
   name: string;
   status?: string;
 }): Promise<ApiResponse<AdminRestaurantGroup>> {
+  // TOP-LEVEL fields: RestaurantGroupsController reads params[:name] and
+  // params[:status], not a restaurant_group wrapper. Wrapped, every create
+  // failed with "param is missing or the value is empty or invalid: name"
+  // (Moose's walk, 2026-10-11).
   return fetchWithAuth('/api/v1/restaurant_groups', {
     method: 'POST',
-    body: JSON.stringify({ restaurant_group: data }),
+    body: JSON.stringify(data),
   });
 }
 
@@ -1957,9 +1961,10 @@ export async function updateAdminRestaurantGroup(
   id: string,
   data: { name?: string; status?: string }
 ): Promise<ApiResponse<AdminRestaurantGroup>> {
+  // Top-level, for the same reason as create: update reads params[:name].
   return fetchWithAuth(`/api/v1/restaurant_groups/${id}`, {
     method: 'PATCH',
-    body: JSON.stringify({ restaurant_group: data }),
+    body: JSON.stringify(data),
   });
 }
 

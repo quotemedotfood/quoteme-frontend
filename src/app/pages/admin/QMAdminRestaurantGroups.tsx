@@ -151,7 +151,7 @@ export function QMAdminRestaurantGroups() {
       </h1>
 
       {/* Create new group */}
-      <div className="flex items-center gap-2 mb-6">
+      <div className="flex flex-wrap items-center gap-2 mb-6">
         <Input
           value={newName}
           onChange={(e) => setNewName(e.target.value)}
@@ -167,7 +167,7 @@ export function QMAdminRestaurantGroups() {
           <Plus size={15} />
           {creating ? 'Creating…' : 'New Group'}
         </Button>
-        {createError && <span className="text-xs text-red-500">{createError}</span>}
+        {createError && <span role="alert" className="basis-full text-xs text-red-500">{createError}</span>}
       </div>
 
       {/* Search + count */}
