@@ -468,6 +468,8 @@ export interface AdminRestaurantDetail {
   address_verified: boolean;
   restaurant_admin_id: string | null;
   restaurant_admin_name: string | null;
+  /** True when the linked admin is the blank sign-in account, not a person. */
+  restaurant_admin_placeholder?: boolean;
   restaurant_group: { id: string; name: string } | null;
   /** The diner link and its QR code; null until the pairings are made. */
   pairme_flow?: PairmeFlow | null;
@@ -590,6 +592,26 @@ export async function setAdminPairmeReview(id: string, reviewed: boolean): Promi
 
 export async function getAdminRestaurant(id: string): Promise<ApiResponse<AdminRestaurantDetail>> {
   return fetchWithAuth(`/api/v1/admin/restaurants/${id}`);
+}
+
+/**
+ * The account to sign in as for a restaurant: its admin, or a blank one made
+ * on the spot (QuoteMe placeholder_admin). Sends no email.
+ */
+export async function ensureRestaurantSignInAdmin(
+  restaurantId: string,
+): Promise<ApiResponse<{ restaurant_admin: { id: string; name: string; placeholder: boolean }; created: boolean }>> {
+  return fetchWithAuth(`/api/v1/admin/restaurants/${restaurantId}/placeholder_admin`, { method: 'POST' });
+}
+
+/** The restaurant admin's home: their restaurants, each with its PairMe link. */
+export interface RestaurantAdminHome {
+  user: { id: string; first_name: string | null; last_name: string | null };
+  restaurants: Array<{ id: string; name: string; city: string | null; state: string | null; pairme_flow: PairmeFlow | null }>;
+}
+
+export async function getRestaurantAdminHome(): Promise<ApiResponse<RestaurantAdminHome>> {
+  return fetchWithAuth('/api/v1/restaurant_admin/home');
 }
 
 // ============= ADMIN RESTAURANT CRAWL TRUTH =============

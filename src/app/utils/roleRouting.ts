@@ -14,6 +14,9 @@ export function routeByRole(role?: string): string {
     case 'rep': return '/rep/quotes/inbound';
     // ROOT CAUSE FIX: brand users have their own shell - never put them in rep/distributor.
     case 'brand': return '/brand';
+    // Restaurant admins had no case here and fell to /start-new-quote, a rep
+    // surface. Their own home shows their PairMe link and QR code.
+    case 'restaurant_admin': return '/restaurant-admin';
     default: return '/start-new-quote';
   }
 }
