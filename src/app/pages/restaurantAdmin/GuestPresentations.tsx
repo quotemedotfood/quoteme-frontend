@@ -9,7 +9,8 @@
 // price (wineLine). The time is the restaurant's local time where the server
 // knows the zone, else the viewer's.
 import { useEffect, useState } from 'react';
-import { getRestaurantAdminPresentations, type RestaurantAdminPresentation } from '../../services/adminApi';
+import { getRestaurantAdminPresentations } from '../../services/api';
+import type { RestaurantAdminPresentation } from '../../services/adminApi';
 import { wineLine } from '../chef/ChefPairingsPage';
 
 function when(row: RestaurantAdminPresentation) {

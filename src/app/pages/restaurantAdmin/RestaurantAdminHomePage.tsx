@@ -16,7 +16,8 @@ import { useEffect, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router';
 import { useAuth } from '../../contexts/AuthContext';
 import { PairmeFlowCard } from '../../components/PairmeFlowCard';
-import { getRestaurantAdminHome, getRestaurantAdminPairme, RestaurantAdminHome } from '../../services/adminApi';
+import { getRestaurantAdminHome, getRestaurantAdminPairme } from '../../services/api';
+import type { RestaurantAdminHome } from '../../services/adminApi';
 import { PairmeSection } from '../admin/_pairmeSection';
 import { GuestPresentations } from './GuestPresentations';
 

@@ -1,6 +1,8 @@
 // Railway API Service
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://web-production-9f6e9.up.railway.app';
 
+import type { RestaurantAdminHome, RestaurantAdminPairme, RestaurantAdminPresentations } from './adminApi';
+
 interface ApiResponse<T> {
   data?: T;
   error?: string;
@@ -4493,3 +4495,24 @@ export async function uploadChefMenuDocument(args: {
     return { error: error instanceof Error ? error.message : 'Upload failed' };
   }
 }
+
+// ============= THE RESTAURANT ADMIN'S OWN READS =============
+// These go through THIS client, which sends quoteme_token: the signed-in
+// restaurant admin, or the one a QM admin is signed in as. They must never
+// live in adminApi.ts, whose client prefers quoteme_admin_token during
+// impersonation; there the server saw the QM admin and answered "Forbidden"
+// (Moose, 2026-10-13, signing in as Alexa at Aquitaine). Pinned by
+// api.restaurantAdminToken.test.ts. Reader of RestaurantAdminHomeController.
+
+export async function getRestaurantAdminHome(): Promise<ApiResponse<RestaurantAdminHome>> {
+  return fetchWithAuth('/api/v1/restaurant_admin/home');
+}
+
+export async function getRestaurantAdminPairme(id: string): Promise<ApiResponse<RestaurantAdminPairme>> {
+  return fetchWithAuth(`/api/v1/restaurant_admin/restaurants/${id}/pairme`);
+}
+
+export async function getRestaurantAdminPresentations(id: string): Promise<ApiResponse<RestaurantAdminPresentations>> {
+  return fetchWithAuth(`/api/v1/restaurant_admin/restaurants/${id}/pairme_presentations`);
+}
+

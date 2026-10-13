@@ -13,12 +13,13 @@ const m = vi.hoisted(() => ({
   adminPairme: vi.fn(),
   auth: { user: { role: 'restaurant_admin' } as any, isAuthenticated: true, isLoading: false, logout: vi.fn() },
 }));
-vi.mock('../../services/adminApi', () => ({
+vi.mock('../../services/api', async (orig) => ({
+  ...(await orig<typeof import('../../services/api')>()),
   getRestaurantAdminHome: m.home,
   getRestaurantAdminPairme: m.pairme,
   getRestaurantAdminPresentations: m.presentations,
-  getAdminRestaurantPairme: m.adminPairme,
 }));
+vi.mock('../../services/adminApi', () => ({ getAdminRestaurantPairme: m.adminPairme }));
 vi.mock('../../contexts/AuthContext', () => ({ useAuth: () => m.auth }));
 
 import { RestaurantAdminHomePage } from './RestaurantAdminHomePage';

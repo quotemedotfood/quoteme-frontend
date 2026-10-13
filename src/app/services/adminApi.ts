@@ -617,20 +617,14 @@ export interface RestaurantAdminHome {
   restaurants: Array<{ id: string; name: string; city: string | null; state: string | null; pairme_flow: PairmeFlow | null }>;
 }
 
-export async function getRestaurantAdminHome(): Promise<ApiResponse<RestaurantAdminHome>> {
-  return fetchWithAuth('/api/v1/restaurant_admin/home');
-}
-
-// THE RESTAURANT ADMIN'S OWN PAIRINGS. Same payload the QM admin reads
+// THE RESTAURANT ADMIN'S OWN PAIRINGS (types only; the calls live in api.ts,
+// see getRestaurantAdminHome there). Same payload the QM admin reads
 // (BE Pairme::RestaurantPairings), only for a restaurant this person runs.
 // pairings_updated_at: when the offer to guests last changed; null with no venue.
 export interface RestaurantAdminPairme extends AdminRestaurantPairme {
   pairings_updated_at: string | null;
 }
 
-export async function getRestaurantAdminPairme(id: string): Promise<ApiResponse<RestaurantAdminPairme>> {
-  return fetchWithAuth(`/api/v1/restaurant_admin/restaurants/${id}/pairme`);
-}
 
 // What guests at the restaurant were shown, newest first. local_* are null
 // when the restaurant's time zone is unknown.
@@ -649,9 +643,6 @@ export interface RestaurantAdminPresentations {
   presentations: RestaurantAdminPresentation[];
 }
 
-export async function getRestaurantAdminPresentations(id: string): Promise<ApiResponse<RestaurantAdminPresentations>> {
-  return fetchWithAuth(`/api/v1/restaurant_admin/restaurants/${id}/pairme_presentations`);
-}
 
 // ============= ADMIN RESTAURANT CRAWL TRUTH =============
 // D3 restaurant-truth screen. Field names mirror the payload contract
