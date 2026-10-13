@@ -4516,3 +4516,26 @@ export async function getRestaurantAdminPresentations(id: string): Promise<ApiRe
   return fetchWithAuth(`/api/v1/restaurant_admin/restaurants/${id}/pairme_presentations`);
 }
 
+// The server cheat sheet PDF (BE Pairme::CheatSheetPdf via
+// RestaurantAdminHomeController#cheat_sheet). Same token rule as above:
+// quoteme_token, so a QM admin signed in as the restaurant admin gets theirs.
+// Reader: ServerCheatSheetButton.
+export async function downloadRestaurantAdminCheatSheet(id: string): Promise<{ blob?: Blob; error?: string }> {
+  const token = getAuthToken();
+  const headers: Record<string, string> = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  try {
+    const response = await fetchWithRetry(`${API_BASE_URL}/api/v1/restaurant_admin/restaurants/${id}/cheat_sheet`, {
+      headers,
+      cache: 'no-store',
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      return { error: errorData.error || `HTTP ${response.status}` };
+    }
+    return { blob: await response.blob() };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : 'Network error' };
+  }
+}
+
