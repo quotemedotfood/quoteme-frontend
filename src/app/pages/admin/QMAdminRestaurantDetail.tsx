@@ -23,6 +23,7 @@ import { stripSeedPrefix } from '../../utils/format';
 import { ManageAdminDrawer } from './_manageAdminDrawer';
 import { ADMIN_PAGE_FRAME, ADMIN_PAGE_FRAME_STYLE } from '../../components/admin/adminPageFrame';
 import { PairmeSection } from './_pairmeSection';
+import { PairmeFlowCard } from '../../components/PairmeFlowCard';
 import { handleImpersonate, handleImpersonateChef } from '../../utils/impersonate';
 
 const CONTACT_ROLE_OPTIONS = [
@@ -251,6 +252,9 @@ export function QMAdminRestaurantDetailPage() {
           </div>
         )}
       </div>
+
+      {/* PairMe link and QR, once the pairings are made. */}
+      {restaurant.pairme_flow && <PairmeFlowCard flow={restaurant.pairme_flow} />}
 
       {/* ── Admin user section ─────────────────────────────────── */}
       {/* B-177: Always render this section so Reset Password / Resend Welcome

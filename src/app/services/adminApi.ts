@@ -446,6 +446,12 @@ export async function downloadDistributorExport(distributorId: string, type: 'ca
   URL.revokeObjectURL(url);
 }
 
+/** The PairMe diner link for a restaurant, and its QR code (PNG data URI). */
+export interface PairmeFlow {
+  url: string;
+  qr_png: string;
+}
+
 export interface AdminRestaurantDetail {
   id: string;
   name: string;
@@ -463,6 +469,8 @@ export interface AdminRestaurantDetail {
   restaurant_admin_id: string | null;
   restaurant_admin_name: string | null;
   restaurant_group: { id: string; name: string } | null;
+  /** The diner link and its QR code; null until the pairings are made. */
+  pairme_flow?: PairmeFlow | null;
   contacts: Array<{
     id: string;
     first_name: string;
