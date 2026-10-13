@@ -53,6 +53,14 @@ export function RootLayout() {
     return <Navigate to="/brand" replace />;
   }
 
+  // Restaurant admins see their PairMe link and QR code at /restaurant-admin,
+  // which lives outside this layout. Moose, 2026-10-13: they "shouldn't have"
+  // customers or quotes. Any route under this layout (a typed /customers, a
+  // stale bookmark) sends them home before a rep page mounts or fetches.
+  if (isAuthenticated && user?.role === 'restaurant_admin') {
+    return <Navigate to="/restaurant-admin" replace />;
+  }
+
   // Track 13: role guard for /chef/* routes. The chef flow is for chef /
   // group_admin users (+ buyers, who are chef-adjacent) and unauthenticated
   // guests building a quote via magic link. Before this guard, an
