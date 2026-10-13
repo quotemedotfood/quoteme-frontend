@@ -349,9 +349,15 @@ export async function resendInvite(userId: string): Promise<ApiResponse<{ messag
   });
 }
 
-export async function resendWelcome(userId: string): Promise<ApiResponse<{ ok: boolean; sent_to: string }>> {
+/**
+ * Resend a welcome email. For a restaurant admin, restaurantId names which
+ * restaurant's PairMe link and QR code to send (QuoteMe #493); without it
+ * the server picks the one they run.
+ */
+export async function resendWelcome(userId: string, restaurantId?: string): Promise<ApiResponse<{ ok: boolean; sent_to: string }>> {
   return fetchWithAuth(`/api/v1/admin/users/${userId}/resend_welcome`, {
     method: 'POST',
+    ...(restaurantId ? { body: JSON.stringify({ restaurant_id: restaurantId }) } : {}),
   });
 }
 
