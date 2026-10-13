@@ -101,6 +101,7 @@ import { DistributorLanderPage } from "./pages/DistributorLanderPage";
 import { BrandShellLayout } from "./components/brand/BrandShellLayout";
 import { CCQuoteFlowShell } from "./components/distributor-admin/command-center/CCQuoteFlowShell";
 import { BrandSignupPage } from "./pages/brand/BrandSignupPage";
+import { RestaurantAdminHomePage } from "./pages/restaurantAdmin/RestaurantAdminHomePage";
 import { BrandDashboardPage } from "./pages/brand/BrandDashboardPage";
 import { BrandCatalogPage } from "./pages/brand/BrandCatalogPage";
 import { BrandCapturePage } from "./pages/brand/BrandCapturePage";
@@ -206,6 +207,13 @@ export const router = createBrowserRouter([
           { path: "profile",       Component: BrandProfilePage },
           { path: "team",          Component: BrandTeamPage },
         ],
+      },
+      {
+        // The restaurant admin's home: their PairMe link and QR code. Outside
+        // RootLayout so no rep or chef chrome renders; the page guards itself
+        // (signed out goes to /auth, any other role to /dashboard).
+        path: "restaurant-admin",
+        Component: RestaurantAdminHomePage,
       },
       {
         path: "chef/signup",
