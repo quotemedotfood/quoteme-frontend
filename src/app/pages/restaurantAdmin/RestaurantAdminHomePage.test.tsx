@@ -9,12 +9,13 @@ import { routeByRole } from '../../utils/roleRouting';
 const m = vi.hoisted(() => ({ getRestaurantAdminHome: vi.fn(), auth: { user: { role: 'restaurant_admin' } as any, isAuthenticated: true, isLoading: false, logout: vi.fn() } }));
 // The pairings and guest sections below the card load on their own; they
 // have their own test (RestaurantAdminHomePage.pairings.test.tsx).
-vi.mock('../../services/adminApi', () => ({
+vi.mock('../../services/api', async (orig) => ({
+  ...(await orig<typeof import('../../services/api')>()),
   getRestaurantAdminHome: m.getRestaurantAdminHome,
   getRestaurantAdminPairme: () => new Promise(() => {}),
   getRestaurantAdminPresentations: () => new Promise(() => {}),
-  getAdminRestaurantPairme: () => new Promise(() => {}),
 }));
+vi.mock('../../services/adminApi', () => ({ getAdminRestaurantPairme: () => new Promise(() => {}) }));
 vi.mock('../../contexts/AuthContext', () => ({ useAuth: () => m.auth }));
 
 import { RestaurantAdminHomePage } from './RestaurantAdminHomePage';
