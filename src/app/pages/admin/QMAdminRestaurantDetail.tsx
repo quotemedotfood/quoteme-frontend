@@ -133,7 +133,7 @@ export function QMAdminRestaurantDetailPage() {
     if (!restaurant?.restaurant_admin_id) return;
     setWelcomeStatus('loading');
     setWelcomeMsg(null);
-    const res = await resendWelcome(restaurant.restaurant_admin_id);
+    const res = await resendWelcome(restaurant.restaurant_admin_id, restaurant.id);
     if (res.error) {
       setWelcomeStatus('error');
       setWelcomeMsg(res.error);
