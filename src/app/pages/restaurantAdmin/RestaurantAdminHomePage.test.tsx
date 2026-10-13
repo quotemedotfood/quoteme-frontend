@@ -7,7 +7,14 @@ import { MemoryRouter, Routes, Route } from 'react-router';
 import { routeByRole } from '../../utils/roleRouting';
 
 const m = vi.hoisted(() => ({ getRestaurantAdminHome: vi.fn(), auth: { user: { role: 'restaurant_admin' } as any, isAuthenticated: true, isLoading: false, logout: vi.fn() } }));
-vi.mock('../../services/adminApi', () => ({ getRestaurantAdminHome: m.getRestaurantAdminHome }));
+// The pairings and guest sections below the card load on their own; they
+// have their own test (RestaurantAdminHomePage.pairings.test.tsx).
+vi.mock('../../services/adminApi', () => ({
+  getRestaurantAdminHome: m.getRestaurantAdminHome,
+  getRestaurantAdminPairme: () => new Promise(() => {}),
+  getRestaurantAdminPresentations: () => new Promise(() => {}),
+  getAdminRestaurantPairme: () => new Promise(() => {}),
+}));
 vi.mock('../../contexts/AuthContext', () => ({ useAuth: () => m.auth }));
 
 import { RestaurantAdminHomePage } from './RestaurantAdminHomePage';

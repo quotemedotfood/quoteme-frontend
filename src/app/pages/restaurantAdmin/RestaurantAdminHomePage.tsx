@@ -8,11 +8,17 @@
 // Reads GET /api/v1/restaurant_admin/home. pairme_flow is null until the
 // pairings are made; the page says so in words instead of showing a code
 // that would land a guest on an empty page.
+//
+// Below the card, once paired (Moose, 2026-10-13): the same pairings the QM
+// admin sees, stamped with when they were last updated, and what guests were
+// shown, with the time.
 import { useEffect, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router';
 import { useAuth } from '../../contexts/AuthContext';
 import { PairmeFlowCard } from '../../components/PairmeFlowCard';
-import { getRestaurantAdminHome, RestaurantAdminHome } from '../../services/adminApi';
+import { getRestaurantAdminHome, getRestaurantAdminPairme, RestaurantAdminHome } from '../../services/adminApi';
+import { PairmeSection } from '../admin/_pairmeSection';
+import { GuestPresentations } from './GuestPresentations';
 
 export function RestaurantAdminHomePage() {
   const { user, isAuthenticated, isLoading, logout } = useAuth();
@@ -40,7 +46,7 @@ export function RestaurantAdminHomePage() {
 
   return (
     <div className="min-h-screen bg-[#FAF8F5]">
-      <div className="max-w-3xl mx-auto px-4 py-8">
+      <div className="max-w-5xl mx-auto px-4 py-8">
         <div className="flex items-center justify-between gap-4 mb-6">
           <h1 className="text-2xl font-bold text-[#2A2A2A]" style={{ fontFamily: "'Playfair Display', serif" }}>
             {data?.user.first_name ? `Welcome, ${data.user.first_name}` : 'Welcome'}
@@ -72,7 +78,11 @@ export function RestaurantAdminHomePage() {
               {[r.city, r.state].filter(Boolean).length > 0 && `, ${[r.city, r.state].filter(Boolean).join(', ')}`}
             </p>
             {r.pairme_flow ? (
-              <PairmeFlowCard flow={r.pairme_flow} />
+              <>
+                <PairmeFlowCard flow={r.pairme_flow} />
+                <PairmeSection restaurantId={r.id} load={getRestaurantAdminPairme} title="Pairings your guests are offered" />
+                <GuestPresentations restaurantId={r.id} />
+              </>
             ) : (
               <div className="bg-white border border-gray-200 rounded-lg p-4 text-sm text-[#4F4F4F]" data-testid="ra-flow-pending">
                 Your PairMe link and QR code will appear here as soon as your pairings are ready.

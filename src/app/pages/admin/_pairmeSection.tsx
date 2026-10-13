@@ -6,7 +6,10 @@
 //   BY DISH: one row per dish, course tabs, search, the wines side by side.
 //   BY WINE: one row per wine on the list, what it is paired with, and the
 //            wines that are never paired.
-// Reads GET /api/v1/admin/restaurants/:id/pairme (QM admin only).
+// Reads GET /api/v1/admin/restaurants/:id/pairme (QM admin only), or, on the
+// restaurant admin's home, the same payload from their own scoped read
+// (`load`), which also carries pairings_updated_at (Moose, 2026-10-13: "show
+// the pairings that the qmadmin can see to the restaurant admin").
 //
 // Rules this section keeps:
 //  - JOIN ON ID. A pairing leg names a wine_id; the wine is looked up by that
@@ -22,7 +25,10 @@ import {
   AdminRestaurantPairme,
   AdminPairmeWine,
   AdminPairmeDish,
+  type ApiResponse,
 } from '../../services/adminApi';
+
+type PairmeData = AdminRestaurantPairme & { pairings_updated_at?: string | null };
 
 const LIST_LABEL: Record<string, string> = {
   wine_list: 'Wine list',
@@ -59,8 +65,16 @@ type WineFilter = 'all' | 'paired' | 'never';
 const tabBtn = (on: boolean) =>
   `px-3 py-1.5 rounded-full text-sm border ${on ? 'bg-[#2A2A2A] text-white border-[#2A2A2A]' : 'bg-white text-gray-700 border-gray-200 hover:border-gray-400'}`;
 
-export function PairmeSection({ restaurantId }: { restaurantId: string }) {
-  const [data, setData] = useState<AdminRestaurantPairme | null>(null);
+export function PairmeSection({
+  restaurantId,
+  load = getAdminRestaurantPairme,
+  title = 'PairMe',
+}: {
+  restaurantId: string;
+  load?: (id: string) => Promise<ApiResponse<PairmeData>>;
+  title?: string;
+}) {
+  const [data, setData] = useState<PairmeData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>('dish');
   const [course, setCourse] = useState<string>('all');
@@ -69,7 +83,7 @@ export function PairmeSection({ restaurantId }: { restaurantId: string }) {
 
   useEffect(() => {
     let live = true;
-    getAdminRestaurantPairme(restaurantId).then((res) => {
+    load(restaurantId).then((res) => {
       if (!live) return;
       if (res.data) setData(res.data);
       else setError(res.error || 'Could not load PairMe data');
@@ -77,7 +91,7 @@ export function PairmeSection({ restaurantId }: { restaurantId: string }) {
     return () => {
       live = false;
     };
-  }, [restaurantId]);
+  }, [restaurantId, load]);
 
   const wines = data?.wines ?? [];
   const dishes = data?.pairings ?? [];
@@ -99,7 +113,7 @@ export function PairmeSection({ restaurantId }: { restaurantId: string }) {
 
   const heading = (
     <h2 className="text-lg font-semibold text-[#2A2A2A] mb-3" style={{ fontFamily: "'Playfair Display', serif" }}>
-      PairMe
+      {title}
     </h2>
   );
 
@@ -147,6 +161,11 @@ export function PairmeSection({ restaurantId }: { restaurantId: string }) {
   return (
     <section className="mb-8" data-testid="pairme-section">
       {heading}
+      {data.pairings_updated_at ? (
+        <p className="text-sm text-[#4F4F4F] mb-1" data-testid="pairme-updated-at">
+          Last updated {new Date(data.pairings_updated_at).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}
+        </p>
+      ) : null}
       <p className="text-sm text-gray-500 mb-4" data-testid="pairme-summary">
         {wines.length} wines · {dishes.length} dishes paired
         {fewer ? ` · ${fewer} with fewer than three wines` : ''}

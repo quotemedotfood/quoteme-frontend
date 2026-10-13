@@ -1,4 +1,5 @@
 import { fetchWithPolicy } from './requestPolicy';
+import type { PairmePresentedWine } from './api';
 
 // Every request in this file goes through fetchWithPolicy, which supplies the
 // timeout this client never had (a request that never settles left a permanent
@@ -10,7 +11,7 @@ import { fetchWithPolicy } from './requestPolicy';
 // user it failed, because the server may already have acted.
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://web-production-9f6e9.up.railway.app';
 
-interface ApiResponse<T> {
+export interface ApiResponse<T> {
   data?: T;
   error?: string;
   // item 1c: dual-role prevention gates (assign_distributor, assign_admin)
@@ -618,6 +619,38 @@ export interface RestaurantAdminHome {
 
 export async function getRestaurantAdminHome(): Promise<ApiResponse<RestaurantAdminHome>> {
   return fetchWithAuth('/api/v1/restaurant_admin/home');
+}
+
+// THE RESTAURANT ADMIN'S OWN PAIRINGS. Same payload the QM admin reads
+// (BE Pairme::RestaurantPairings), only for a restaurant this person runs.
+// pairings_updated_at: when the offer to guests last changed; null with no venue.
+export interface RestaurantAdminPairme extends AdminRestaurantPairme {
+  pairings_updated_at: string | null;
+}
+
+export async function getRestaurantAdminPairme(id: string): Promise<ApiResponse<RestaurantAdminPairme>> {
+  return fetchWithAuth(`/api/v1/restaurant_admin/restaurants/${id}/pairme`);
+}
+
+// What guests at the restaurant were shown, newest first. local_* are null
+// when the restaurant's time zone is unknown.
+export interface RestaurantAdminPresentation {
+  id: string;
+  presented_at: string;
+  local_date: string | null;
+  local_time: string | null;
+  signed_in: boolean;
+  wines: PairmePresentedWine[];
+}
+
+export interface RestaurantAdminPresentations {
+  restaurant_id: string;
+  time_zone: string | null;
+  presentations: RestaurantAdminPresentation[];
+}
+
+export async function getRestaurantAdminPresentations(id: string): Promise<ApiResponse<RestaurantAdminPresentations>> {
+  return fetchWithAuth(`/api/v1/restaurant_admin/restaurants/${id}/pairme_presentations`);
 }
 
 // ============= ADMIN RESTAURANT CRAWL TRUTH =============
