@@ -31,6 +31,9 @@ export function DashboardRoleRouter() {
   // /dashboard is the post-login default; send brand users straight to /brand.
   if (user?.role === 'brand') return <Navigate to="/brand" replace />;
 
+  // Restaurant admins have their own home (link and QR code), not a rep shell.
+  if (user?.role === 'restaurant_admin') return <Navigate to="/restaurant-admin" replace />;
+
   // Flag A fix: buyer + group_admin inherit chef-side dashboard (Justin doctrine lock).
   // isChefShellUser in ChefShellLayout already treats these roles as chef-chrome users;
   // this aligns content routing to match that chrome decision.

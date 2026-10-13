@@ -10,6 +10,7 @@ import {
   addRestaurantToGroup,
   AdminRestaurantGroup,
   createAdminRestaurantContact,
+  ensureRestaurantSignInAdmin,
 } from '../../services/adminApi';
 import {
   Table,
@@ -60,6 +61,8 @@ export function QMAdminRestaurantDetailPage() {
   // button here"). Holds the user id being switched to.
   const [impersonating, setImpersonating] = useState<string | null>(null);
   const [impersonateError, setImpersonateError] = useState<string | null>(null);
+  // Its own message, shown under the Admin user card, for Sign in as this restaurant.
+  const [restaurantSignInError, setRestaurantSignInError] = useState<string | null>(null);
 
   // --- 2b: add contact ---
   const [addContactOpen, setAddContactOpen] = useState(false);
@@ -130,7 +133,7 @@ export function QMAdminRestaurantDetailPage() {
     if (!restaurant?.restaurant_admin_id) return;
     setWelcomeStatus('loading');
     setWelcomeMsg(null);
-    const res = await resendWelcome(restaurant.restaurant_admin_id);
+    const res = await resendWelcome(restaurant.restaurant_admin_id, restaurant.id);
     if (res.error) {
       setWelcomeStatus('error');
       setWelcomeMsg(res.error);
@@ -279,10 +282,16 @@ export function QMAdminRestaurantDetailPage() {
             ) : (
               <p className="text-sm text-gray-400">No admin user linked</p>
             )}
+            {restaurant.restaurant_admin_placeholder && (
+              <p className="text-xs text-gray-500 mt-0.5" data-testid="admin-placeholder-note">
+                Blank sign-in account, not a person. Adding a real admin replaces it.
+              </p>
+            )}
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            {/* Buttons — only shown when a user is linked */}
-            {restaurant.restaurant_admin_id && (
+            {/* Buttons, only shown when a person is linked; the blank
+                sign-in account has an undeliverable address. */}
+            {restaurant.restaurant_admin_id && !restaurant.restaurant_admin_placeholder && (
               <>
                 <button
                   type="button"
@@ -320,6 +329,33 @@ export function QMAdminRestaurantDetailPage() {
                 {impersonating === restaurant.restaurant_admin_id ? 'Switching...' : 'Sign in as admin'}
               </button>
             )}
+            {/* SIGN IN AS THIS RESTAURANT with no admin yet (Moose, 2026-10-13:
+                "i don't have to create an account in order to impersonate that
+                restaurant"). Makes the blank restaurant admin on the spot
+                (QuoteMe placeholder_admin, no email), then the same audited
+                sign-in as above. */}
+            {!restaurant.restaurant_admin_id && (
+              <button
+                type="button"
+                data-testid="restaurant-sign-in"
+                disabled={impersonating === 'placeholder'}
+                onClick={async () => {
+                  setRestaurantSignInError(null);
+                  setImpersonating('placeholder');
+                  const res = await ensureRestaurantSignInAdmin(restaurant.id);
+                  const admin = res.data?.restaurant_admin;
+                  if (!admin) {
+                    setRestaurantSignInError(res.error || 'Could not make the sign-in account');
+                    setImpersonating(null);
+                    return;
+                  }
+                  handleImpersonate(admin.id, admin.name, setImpersonating, setRestaurantSignInError);
+                }}
+                className="px-3 py-1.5 rounded text-xs font-medium bg-gray-100 hover:bg-gray-200 text-[#2A2A2A] disabled:opacity-50 transition-colors"
+              >
+                {impersonating === 'placeholder' ? 'Switching...' : 'Sign in as this restaurant'}
+              </button>
+            )}
             {/* 2a: link an existing user by email, or create one, as the restaurant's admin */}
             <button
               type="button"
@@ -330,6 +366,9 @@ export function QMAdminRestaurantDetailPage() {
             </button>
           </div>
         </div>
+        {restaurantSignInError && (
+          <p className="mt-2 text-xs text-red-500" data-testid="restaurant-sign-in-error">{restaurantSignInError}</p>
+        )}
         {/* Inline feedback */}
         {resetMsg && (
           <p className={`mt-2 text-xs ${resetStatus === 'error' ? 'text-red-500' : 'text-green-600'}`}>
