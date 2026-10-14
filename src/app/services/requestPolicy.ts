@@ -50,6 +50,9 @@ export const SLOW_ENDPOINTS: readonly string[] = [
   '/api/v1/admin/matching-engine/catalog-reclassify',
   '/api/v1/admin/matching-engine/catalog-bulk-update',
   '/api/v1/admin/conference-leads/ocr',
+  // The restaurant admin's learning sheet: its first download of a list waits
+  // on Claude drafting tasting notes (BE Pairme::LearningNotes).
+  '/learning_sheet',
 ];
 
 export function timeoutForEndpoint(url: string): number {
