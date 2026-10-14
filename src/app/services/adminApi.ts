@@ -611,10 +611,24 @@ export async function ensureRestaurantSignInAdmin(
   return fetchWithAuth(`/api/v1/admin/restaurants/${restaurantId}/placeholder_admin`, { method: 'POST' });
 }
 
+/**
+ * The servers' tablet for one restaurant (BE RestaurantAdminHomeController
+ * #staff_tablet): its address and whether a staff PIN is set. Never the PIN.
+ * null until the restaurant is paired.
+ */
+export interface StaffTablet {
+  url: string;
+  pin_set: boolean;
+  pin_set_at: string | null;
+}
+
 /** The restaurant admin's home: their restaurants, each with its PairMe link. */
 export interface RestaurantAdminHome {
   user: { id: string; first_name: string | null; last_name: string | null };
-  restaurants: Array<{ id: string; name: string; city: string | null; state: string | null; pairme_flow: PairmeFlow | null }>;
+  restaurants: Array<{
+    id: string; name: string; city: string | null; state: string | null; pairme_flow: PairmeFlow | null;
+    staff_tablet?: StaffTablet | null;
+  }>;
 }
 
 // THE RESTAURANT ADMIN'S OWN PAIRINGS (types only; the calls live in api.ts,

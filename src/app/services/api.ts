@@ -1,7 +1,7 @@
 // Railway API Service
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://web-production-9f6e9.up.railway.app';
 
-import type { RestaurantAdminHome, RestaurantAdminPairme, RestaurantAdminPresentations } from './adminApi';
+import type { RestaurantAdminHome, RestaurantAdminPairme, RestaurantAdminPresentations, StaffTablet } from './adminApi';
 
 interface ApiResponse<T> {
   data?: T;
@@ -4506,6 +4506,16 @@ export async function uploadChefMenuDocument(args: {
 
 export async function getRestaurantAdminHome(): Promise<ApiResponse<RestaurantAdminHome>> {
   return fetchWithAuth('/api/v1/restaurant_admin/home');
+}
+
+// Sets the staff tablet's PIN, 4 to 8 digits, sent as text so a leading zero
+// survives (BE RestaurantAdminHomeController#staff_pin). A new PIN locks every
+// tablet opened with the old one. Reader: StaffTabletCard.
+export async function setRestaurantAdminStaffPin(id: string, pin: string): Promise<ApiResponse<{ staff_tablet: StaffTablet }>> {
+  return fetchWithAuth(`/api/v1/restaurant_admin/restaurants/${id}/staff_pin`, {
+    method: 'PATCH',
+    body: JSON.stringify({ pin }),
+  });
 }
 
 export async function getRestaurantAdminPairme(id: string): Promise<ApiResponse<RestaurantAdminPairme>> {

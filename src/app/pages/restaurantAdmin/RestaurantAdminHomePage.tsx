@@ -22,6 +22,7 @@ import { PairmeSection } from '../admin/_pairmeSection';
 import { GuestPresentations } from './GuestPresentations';
 import { ServerCheatSheetButton } from './ServerCheatSheetButton';
 import { LearningSheetButton } from './LearningSheetButton';
+import { StaffTabletCard } from './StaffTabletCard';
 import { QrInsertsMenu } from './QrInsertsMenu';
 
 export function RestaurantAdminHomePage() {
@@ -87,6 +88,7 @@ export function RestaurantAdminHomePage() {
                 <QrInsertsMenu restaurantId={r.id} flowUrl={r.pairme_flow.url} />
                 <ServerCheatSheetButton restaurantId={r.id} flowUrl={r.pairme_flow.url} />
                 <LearningSheetButton restaurantId={r.id} flowUrl={r.pairme_flow.url} />
+                {r.staff_tablet ? <StaffTabletCard restaurantId={r.id} tablet={r.staff_tablet} /> : null}
                 <PairmeSection restaurantId={r.id} load={getRestaurantAdminPairme} title="Pairings your guests are offered" />
                 <GuestPresentations restaurantId={r.id} />
               </>
