@@ -21,6 +21,7 @@ import type { RestaurantAdminHome } from '../../services/adminApi';
 import { PairmeSection } from '../admin/_pairmeSection';
 import { GuestPresentations } from './GuestPresentations';
 import { ServerCheatSheetButton } from './ServerCheatSheetButton';
+import { QrInsertsMenu } from './QrInsertsMenu';
 
 export function RestaurantAdminHomePage() {
   const { user, isAuthenticated, isLoading, logout } = useAuth();
@@ -82,6 +83,7 @@ export function RestaurantAdminHomePage() {
             {r.pairme_flow ? (
               <>
                 <PairmeFlowCard flow={r.pairme_flow} />
+                <QrInsertsMenu restaurantId={r.id} flowUrl={r.pairme_flow.url} />
                 <ServerCheatSheetButton restaurantId={r.id} flowUrl={r.pairme_flow.url} />
                 <PairmeSection restaurantId={r.id} load={getRestaurantAdminPairme} title="Pairings your guests are offered" />
                 <GuestPresentations restaurantId={r.id} />
