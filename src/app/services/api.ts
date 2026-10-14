@@ -4539,6 +4539,29 @@ export async function downloadRestaurantAdminCheatSheet(id: string): Promise<{ b
   }
 }
 
+// The staff wine learning sheet (BE Pairme::LearningSheetPdf via
+// RestaurantAdminHomeController#learning_sheet). The first download of a list
+// drafts its tasting notes server-side, so it is on SLOW_ENDPOINTS. Same token
+// rule as above. Reader: LearningSheetButton.
+export async function downloadRestaurantAdminLearningSheet(id: string): Promise<{ blob?: Blob; error?: string }> {
+  const token = getAuthToken();
+  const headers: Record<string, string> = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  try {
+    const response = await fetchWithRetry(`${API_BASE_URL}/api/v1/restaurant_admin/restaurants/${id}/learning_sheet`, {
+      headers,
+      cache: 'no-store',
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      return { error: errorData.error || `HTTP ${response.status}` };
+    }
+    return { blob: await response.blob() };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : 'Network error' };
+  }
+}
+
 // The printable QR table inserts (BE Pairme::QrInsertsPdf via
 // RestaurantAdminHomeController#qr_inserts), vertical 3x3 or horizontal 2x6.
 // Same token rule as above. Reader: QrInsertsMenu.
