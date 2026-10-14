@@ -102,6 +102,7 @@ import { BrandShellLayout } from "./components/brand/BrandShellLayout";
 import { CCQuoteFlowShell } from "./components/distributor-admin/command-center/CCQuoteFlowShell";
 import { BrandSignupPage } from "./pages/brand/BrandSignupPage";
 import { RestaurantAdminHomePage } from "./pages/restaurantAdmin/RestaurantAdminHomePage";
+import { RestaurantAdminSettingsPage } from "./pages/restaurantAdmin/RestaurantAdminSettingsPage";
 import { BrandDashboardPage } from "./pages/brand/BrandDashboardPage";
 import { BrandCatalogPage } from "./pages/brand/BrandCatalogPage";
 import { BrandCapturePage } from "./pages/brand/BrandCapturePage";
@@ -214,6 +215,12 @@ export const router = createBrowserRouter([
         // (signed out goes to /auth, any other role to /dashboard).
         path: "restaurant-admin",
         Component: RestaurantAdminHomePage,
+      },
+      {
+        // Their settings: profile, restaurant details, the PairMe plan and
+        // its invoices. Outside RootLayout like the home above.
+        path: "restaurant-admin/:restaurantId/settings",
+        Component: RestaurantAdminSettingsPage,
       },
       {
         path: "chef/signup",

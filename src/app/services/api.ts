@@ -4516,6 +4516,51 @@ export async function getRestaurantAdminPresentations(id: string): Promise<ApiRe
   return fetchWithAuth(`/api/v1/restaurant_admin/restaurants/${id}/pairme_presentations`);
 }
 
+// The settings page (BE RestaurantAdminSettingsController): profile,
+// restaurant details, the PairMe plan and its invoices. Reader:
+// RestaurantAdminSettingsPage.
+export interface RestaurantAdminInvoice {
+  number: string | null;
+  date: string;
+  amount_cents: number;
+  state: 'paid' | 'outstanding';
+  url: string | null;
+}
+export interface RestaurantAdminSettings {
+  user: { email: string; first_name: string | null; last_name: string | null; phone: string | null };
+  restaurant: {
+    id: string; name: string; phone: string | null; website: string | null;
+    address_line_1: string | null; address_line_2: string | null; city: string | null; state: string | null; zip: string | null;
+  };
+  billing: {
+    configured: boolean;
+    status: string | null;
+    self_managed: boolean;
+    current_period_end: string | null;
+    invoices: RestaurantAdminInvoice[] | null;
+  };
+}
+export type RestaurantAdminSettingsUpdate = {
+  user?: Partial<Pick<RestaurantAdminSettings['user'], 'first_name' | 'last_name' | 'phone'>>;
+  restaurant?: Partial<Omit<RestaurantAdminSettings['restaurant'], 'id'>>;
+};
+
+export async function getRestaurantAdminSettings(id: string): Promise<ApiResponse<RestaurantAdminSettings>> {
+  return fetchWithAuth(`/api/v1/restaurant_admin/restaurants/${id}/settings`);
+}
+
+export async function updateRestaurantAdminSettings(id: string, body: RestaurantAdminSettingsUpdate): Promise<ApiResponse<RestaurantAdminSettings>> {
+  return fetchWithAuth(`/api/v1/restaurant_admin/restaurants/${id}/settings`, { method: 'PATCH', body: JSON.stringify(body) });
+}
+
+export async function startRestaurantAdminCheckout(id: string): Promise<ApiResponse<{ checkout_url: string }>> {
+  return fetchWithAuth(`/api/v1/restaurant_admin/restaurants/${id}/billing/checkout`, { method: 'POST' });
+}
+
+export async function openRestaurantAdminBillingPortal(id: string): Promise<ApiResponse<{ portal_url: string }>> {
+  return fetchWithAuth(`/api/v1/restaurant_admin/restaurants/${id}/billing/portal`, { method: 'POST' });
+}
+
 // The server cheat sheet PDF (BE Pairme::CheatSheetPdf via
 // RestaurantAdminHomeController#cheat_sheet). Same token rule as above:
 // quoteme_token, so a QM admin signed in as the restaurant admin gets theirs.
