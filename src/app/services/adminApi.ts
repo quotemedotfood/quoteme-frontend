@@ -1995,17 +1995,29 @@ export interface AdminRestaurantGroup {
   status: string;
   restaurant_count: number;
   created_at: string;
+  /** The group's PairMe plan status (subscriptions.status); null when it has none. QM admin only. */
+  billing_status?: string | null;
+}
+
+/** One payment for every restaurant in the group (Pairme::GroupBilling). */
+export interface AdminRestaurantGroupBilling {
+  /** STRIPE_PAIRME_GROUP_PRICE_ID is set on the backend. */
+  configured: boolean;
+  status: string | null;
+  /** Active, so every restaurant in the group is covered. */
+  paid: boolean;
+  current_period_end: string | null;
+  has_customer: boolean;
 }
 
 export interface AdminRestaurantGroupDetail extends AdminRestaurantGroup {
+  billing?: AdminRestaurantGroupBilling | null;
   restaurants: Array<{
     id: string;
     name: string;
     city: string | null;
     state: string | null;
     status: string;
-    contact_count: number;
-    created_at: string;
   }>;
 }
 
@@ -2042,14 +2054,49 @@ export async function updateAdminRestaurantGroup(
   });
 }
 
+/**
+ * The backend answers with the RESTAURANT it moved, not the group. Callers
+ * reload the group afterwards. billing_sync says what happened to Stripe's
+ * quantity for each paying group touched ("updated", "unchanged", "failed").
+ */
+export interface GroupMembershipChange {
+  id: string;
+  name: string;
+  restaurant_group_id: string | null;
+  billing_sync?: Record<string, string>;
+}
+
 export async function addRestaurantToGroup(
   groupId: string,
   data: { restaurant_id: string } | { name: string; city?: string; state?: string }
-): Promise<ApiResponse<AdminRestaurantGroupDetail>> {
+): Promise<ApiResponse<GroupMembershipChange>> {
   return fetchWithAuth(`/api/v1/restaurant_groups/${groupId}/add_restaurant`, {
     method: 'POST',
     body: JSON.stringify(data),
   });
+}
+
+/** QM admin only. Takes the restaurant out of the group; its group coverage ends. */
+export async function removeRestaurantFromGroup(
+  groupId: string,
+  restaurantId: string
+): Promise<ApiResponse<GroupMembershipChange>> {
+  return fetchWithAuth(`/api/v1/restaurant_groups/${groupId}/remove_restaurant`, {
+    method: 'POST',
+    body: JSON.stringify({ restaurant_id: restaurantId }),
+  });
+}
+
+/**
+ * QM admin only. A Stripe Checkout link that pays for every restaurant in
+ * the group (quantity = restaurant count). Whoever pays needs no login.
+ * 503 "Billing is not set up yet" until the group price is set; 409 when
+ * the group is already paying.
+ */
+export async function createGroupPaymentLink(
+  groupId: string
+): Promise<ApiResponse<{ checkout_url: string; quantity: number; billing: AdminRestaurantGroupBilling }>> {
+  return fetchWithAuth(`/api/v1/restaurant_groups/${groupId}/payment_link`, { method: 'POST' });
 }
 
 // ============= RESTAURANT CREATE =============

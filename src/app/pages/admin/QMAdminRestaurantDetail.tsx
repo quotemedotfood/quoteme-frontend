@@ -8,6 +8,7 @@ import {
   resendWelcome,
   getAdminRestaurantGroups,
   addRestaurantToGroup,
+  removeRestaurantFromGroup,
   AdminRestaurantGroup,
   createAdminRestaurantContact,
   ensureRestaurantSignInAdmin,
@@ -156,6 +157,26 @@ export function QMAdminRestaurantDetailPage() {
       const gName = groups?.find((g) => g.id === selectedGroupId)?.name ?? selectedGroupId;
       setGroupMsg(`Added to "${gName}".`);
       // Refresh restaurant detail to reflect new group
+      const refreshed = await getAdminRestaurant(restaurant.id);
+      if (refreshed.data) setRestaurant(refreshed.data);
+    }
+  }
+
+  // Takes this restaurant out of its group. If the group pays for PairMe,
+  // this restaurant stops being covered by that payment.
+  async function handleRemoveFromGroup() {
+    const current = restaurant?.restaurant_group;
+    if (!restaurant || !current) return;
+    setGroupStatus('loading');
+    setGroupMsg(null);
+    const res = await removeRestaurantFromGroup(current.id, restaurant.id);
+    if (res.error) {
+      setGroupStatus('error');
+      setGroupMsg(res.error);
+    } else {
+      setGroupStatus('ok');
+      setGroupMsg(`Removed from "${current.name}".`);
+      setSelectedGroupId('');
       const refreshed = await getAdminRestaurant(restaurant.id);
       if (refreshed.data) setRestaurant(refreshed.data);
     }
@@ -427,6 +448,16 @@ export function QMAdminRestaurantDetailPage() {
             >
               {groupStatus === 'loading' ? 'Saving…' : restaurant.restaurant_group ? 'Change group' : 'Add to group'}
             </button>
+            {restaurant.restaurant_group && (
+              <button
+                type="button"
+                disabled={groupStatus === 'loading'}
+                onClick={handleRemoveFromGroup}
+                className="px-3 py-1.5 rounded text-xs font-medium border border-gray-200 text-red-600 hover:bg-red-50 disabled:opacity-50 transition-colors"
+              >
+                Remove from group
+              </button>
+            )}
           </div>
           {groupMsg && (
             <p className={`mt-2 text-xs ${groupStatus === 'error' ? 'text-red-500' : 'text-green-600'}`}>
