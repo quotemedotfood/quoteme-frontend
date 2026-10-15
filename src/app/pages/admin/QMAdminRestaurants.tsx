@@ -256,6 +256,7 @@ export function QMAdminRestaurants() {
                   </TableHead>
                   <TableHead>Data Flags</TableHead>
                   <TableHead title="Auto-paired restaurants go live flagged. Click the flag once you have looked at the pairings.">PairMe</TableHead>
+                  <TableHead title="Percent of the eight launch checklist steps done. $ means the restaurant is paying.">Launch</TableHead>
                   <TableHead className="cursor-pointer text-right" onClick={() => toggleSort('contact_count')}>
                     <div className="flex items-center justify-end gap-1">Contacts <SortIcon field="contact_count" /></div>
                   </TableHead>
@@ -365,6 +366,25 @@ export function QMAdminRestaurants() {
                       )}
                     </TableCell>
                     <TableCell><PairmeReviewFlag review={r.pairme_review} onToggle={() => toggleReview(r)} /></TableCell>
+                    {/* LAUNCH CHECKLIST, reader of onboarding_percent and paying (QuoteMe
+                        Admin::RestaurantsController#serialize_index). Moose, 2026-10-15:
+                        "% of the SOP done for each restaurant so we know where they're at.
+                        plus a $ symbol when they're paying." */}
+                    <TableCell className="text-sm whitespace-nowrap" data-testid={`restaurants-launch-${r.id}`}>
+                      <span className={r.onboarding_percent === 100 ? 'font-semibold text-green-700' : 'text-[#2A2A2A]'}>
+                        {r.onboarding_percent ?? 0}%
+                      </span>
+                      {r.paying && (
+                        <span
+                          className="ml-2 inline-block px-1.5 rounded text-xs font-semibold bg-green-100 text-green-700"
+                          title="Paying"
+                          aria-label="Paying"
+                          data-testid={`restaurants-paying-${r.id}`}
+                        >
+                          $
+                        </span>
+                      )}
+                    </TableCell>
                     <TableCell className="text-sm text-right">{r.contact_count}</TableCell>
                     <TableCell>
                       <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${r.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
