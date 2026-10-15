@@ -2669,7 +2669,12 @@ export type QrInsertLayout = 'vertical' | 'horizontal';
 export interface OnboardingStep {
   key: OnboardingStepKey;
   position: number;
-  label: string;
+  /** One or two words (Moose, 2026-10-15: "1/2 word titles"). From the backend step list. */
+  title: string;
+  /** One plain line saying what done means. */
+  description: string;
+  /** A lucide-react icon name, e.g. "qr-code". The section maps it to a component. */
+  icon: string;
   /** Steps 1 to 4: a PDF that can be downloaded and emailed. */
   document: boolean;
   done: boolean;

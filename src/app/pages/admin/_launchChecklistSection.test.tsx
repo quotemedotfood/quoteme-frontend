@@ -18,11 +18,12 @@ vi.mock('../../services/adminApi', () => m);
 import { LaunchChecklistSection } from './_launchChecklistSection';
 
 const KEYS = ['qr_inserts', 'cheat_sheet', 'wine_workbook', 'tablet_setup', 'staff_meeting', 'qr_on_menus', 'first_guest', 'first_staff_pairing'];
-const LABELS = ['QR code inserts', 'Server cheat sheet', 'Wine workbook', 'Staff tablet setup', 'Meeting with the staff', 'QR codes on every menu', 'First guest pairing with the app', 'First server pairing with the staff app'];
+const LABELS = ['QR inserts', 'Cheat sheet', 'Wine workbook', 'Tablet setup', 'Staff meeting', 'Menus done', 'First guest', 'First server'];
+const ICONS = ['qr-code', 'clipboard-list', 'book-open', 'tablet', 'users', 'menu-square', 'wine', 'user-check'];
 
 function step(i: number, extra: Record<string, unknown> = {}) {
   return {
-    key: KEYS[i], position: i + 1, label: LABELS[i], document: i < 4, done: false, done_at: null, done_by: null,
+    key: KEYS[i], position: i + 1, title: LABELS[i], description: `What done means for ${LABELS[i]}.`, icon: ICONS[i], document: i < 4, done: false, done_at: null, done_by: null,
     note: null, sent_to: null, cc: null, layout: null, ...extra,
   };
 }
@@ -45,6 +46,19 @@ describe('Launch checklist section', () => {
     const boxes = screen.getAllByRole('checkbox');
     expect(boxes.map((b) => b.getAttribute('aria-label'))).toEqual(LABELS.map((l, i) => `${i + 1}. ${l}`));
     expect(m.getRestaurantOnboarding).toHaveBeenCalledWith('r1');
+  });
+
+  it('shows each step\'s title, description and icon from the server', async () => {
+    await renderWith(checklist());
+    KEYS.forEach((k, i) => {
+      const row = screen.getByTestId(`launch-step-${k}`);
+      expect(row).toHaveTextContent(`${i + 1}. ${LABELS[i]}`);
+      expect(row).toHaveTextContent(`What done means for ${LABELS[i]}.`);
+      const icon = within(row).getByTestId(`launch-icon-${k}`);
+      expect(icon).toHaveAttribute('data-icon', ICONS[i]);
+      expect(icon.tagName.toLowerCase()).toBe('svg');
+      expect(icon.getAttribute('class')).toContain(`lucide-${ICONS[i] === 'menu-square' ? 'square-menu' : ICONS[i]}`);
+    });
   });
 
   it('offers Download and Send to the admin on steps 1 to 4 only, with a layout choice on the QR inserts', async () => {
@@ -90,8 +104,8 @@ describe('Launch checklist section', () => {
     m.setRestaurantOnboardingStep.mockResolvedValue({
       data: checklist({ percent: 12 }, KEYS.map((_, i) => (i === 4 ? step(4, { done: true, done_at: '2026-10-16T15:00:00Z', done_by: 'Moose M', note: 'All servers' }) : step(i)))),
     });
-    fireEvent.change(screen.getByLabelText('Note for Meeting with the staff'), { target: { value: 'All servers' } });
-    fireEvent.click(screen.getByRole('checkbox', { name: '5. Meeting with the staff' }));
+    fireEvent.change(screen.getByLabelText('Note for Staff meeting'), { target: { value: 'All servers' } });
+    fireEvent.click(screen.getByRole('checkbox', { name: '5. Staff meeting' }));
     await waitFor(() => expect(m.setRestaurantOnboardingStep).toHaveBeenCalledWith('r1', 'staff_meeting', true, 'All servers'));
     expect(await screen.findByTestId('launch-done-staff_meeting')).toHaveTextContent('Done Oct 16, 2026 by Moose M');
     expect(screen.getByText('All servers')).toBeInTheDocument();
@@ -100,7 +114,7 @@ describe('Launch checklist section', () => {
   it('unticks a done step', async () => {
     await renderWith(checklist({ percent: 12 }, KEYS.map((_, i) => (i === 5 ? step(5, { done: true, done_at: '2026-10-16T15:00:00Z' }) : step(i)))));
     m.setRestaurantOnboardingStep.mockResolvedValue({ data: checklist() });
-    fireEvent.click(screen.getByRole('checkbox', { name: '6. QR codes on every menu' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: '6. Menus done' }));
     await waitFor(() => expect(m.setRestaurantOnboardingStep).toHaveBeenCalledWith('r1', 'qr_on_menus', false, undefined));
   });
 

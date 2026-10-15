@@ -48,7 +48,9 @@ describe('QMAdminRestaurants: launch percent and paying', () => {
     expect(screen.getByTestId('restaurants-launch-r-free')).toHaveTextContent('100%');
     expect(screen.queryByTestId('restaurants-paying-r-free')).toBeNull();
 
-    expect(screen.getByTestId('restaurants-launch-r-old')).toHaveTextContent('0%');
+    // No key (the backend withholds it from anyone but a QM admin): a dash, never a made-up 0%.
+    expect(screen.getByTestId('restaurants-launch-r-old')).toHaveTextContent('-');
+    expect(screen.getByTestId('restaurants-launch-r-old')).not.toHaveTextContent('%');
     expect(screen.queryByTestId('restaurants-paying-r-old')).toBeNull();
   });
 });

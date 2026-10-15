@@ -17,6 +17,18 @@
 // server stored.
 import { useEffect, useState } from 'react';
 import {
+  QrCode,
+  ClipboardList,
+  BookOpen,
+  Tablet,
+  Users,
+  SquareMenu,
+  Wine,
+  UserCheck,
+  CircleDot,
+  type LucideIcon,
+} from 'lucide-react';
+import {
   getRestaurantOnboarding,
   setRestaurantOnboardingStep,
   sendRestaurantOnboardingDocument,
@@ -25,6 +37,20 @@ import {
   type OnboardingStep,
   type QrInsertLayout,
 } from '../../services/adminApi';
+
+// Titles, descriptions and icon NAMES come from the backend step list (the
+// one source, Pairme::OnboardingChecklist::STEPS). This only turns a name into
+// a component; an unknown name gets a plain dot rather than nothing.
+const STEP_ICONS: Record<string, LucideIcon> = {
+  'qr-code': QrCode,
+  'clipboard-list': ClipboardList,
+  'book-open': BookOpen,
+  tablet: Tablet,
+  users: Users,
+  'menu-square': SquareMenu,
+  wine: Wine,
+  'user-check': UserCheck,
+};
 
 function shortDate(iso: string | null): string {
   if (!iso) return '';
@@ -96,7 +122,7 @@ export function LaunchChecklistSection({ restaurantId }: { restaurantId: string 
   async function send(step: OnboardingStep) {
     const to = data?.recipient.email;
     if (!to) return;
-    const what = step.key === 'qr_inserts' ? `${step.label} (${layout})` : step.label;
+    const what = step.key === 'qr_inserts' ? `${step.title} (${layout})` : step.title;
     if (!window.confirm(`Email the ${what} to ${to}? You will be copied.`)) return;
     setBusy(step.key);
     say(step.key, 'Sending...');
@@ -168,12 +194,19 @@ export function LaunchChecklistSection({ restaurantId }: { restaurantId: string 
                     checked={step.done}
                     disabled={isBusy}
                     onChange={() => toggle(step)}
-                    aria-label={`${step.position}. ${step.label}`}
+                    aria-label={`${step.position}. ${step.title}`}
                   />
                   <div className="flex-1 min-w-[12rem]">
-                    <p className="text-sm font-medium text-[#2A2A2A]">
-                      {step.position}. {step.label}
+                    <p className="text-sm font-medium text-[#2A2A2A] flex items-center gap-1.5">
+                      {(() => {
+                        const Icon = STEP_ICONS[step.icon] ?? CircleDot;
+                        return <Icon className="h-4 w-4 shrink-0 text-[#7FAEC2]" aria-hidden="true" data-testid={`launch-icon-${step.key}`} data-icon={step.icon} />;
+                      })()}
+                      <span>
+                        {step.position}. {step.title}
+                      </span>
                     </p>
+                    <p className="text-xs text-gray-500">{step.description}</p>
                     {step.done && (
                       <p className="text-xs text-gray-500" data-testid={`launch-done-${step.key}`}>
                         {step.sent_to
@@ -221,7 +254,7 @@ export function LaunchChecklistSection({ restaurantId }: { restaurantId: string 
                     value={notes[step.key] ?? ''}
                     onChange={(e) => setNotes((n) => ({ ...n, [step.key]: e.target.value }))}
                     placeholder="Note (optional), saved when you tick the box"
-                    aria-label={`Note for ${step.label}`}
+                    aria-label={`Note for ${step.title}`}
                     className="ml-7 text-xs border border-gray-200 rounded px-2 py-1.5 max-w-md"
                   />
                 )}

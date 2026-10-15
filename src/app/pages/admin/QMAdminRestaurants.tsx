@@ -371,9 +371,15 @@ export function QMAdminRestaurants() {
                         "% of the SOP done for each restaurant so we know where they're at.
                         plus a $ symbol when they're paying." */}
                     <TableCell className="text-sm whitespace-nowrap" data-testid={`restaurants-launch-${r.id}`}>
-                      <span className={r.onboarding_percent === 100 ? 'font-semibold text-green-700' : 'text-[#2A2A2A]'}>
-                        {r.onboarding_percent ?? 0}%
-                      </span>
+                      {/* The key is QM admin only (Moose, 2026-10-15: "no just qm
+                          admins"); absent means not shown to this viewer, never 0. */}
+                      {r.onboarding_percent == null ? (
+                        <span className="text-gray-300">-</span>
+                      ) : (
+                        <span className={r.onboarding_percent === 100 ? 'font-semibold text-green-700' : 'text-[#2A2A2A]'}>
+                          {r.onboarding_percent}%
+                        </span>
+                      )}
                       {r.paying && (
                         <span
                           className="ml-2 inline-block px-1.5 rounded text-xs font-semibold bg-green-100 text-green-700"
