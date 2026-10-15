@@ -80,7 +80,15 @@ export function RestaurantGroupDetail({
   }, [groupId]);
 
   // A Stripe quantity that could not be updated is a person's job in Stripe.
-  function syncNotice(sync?: Record<string, string>): string | null {
+  // own: what happened to a joining restaurant's own plan (it ends at the end
+  // of its paid period once the group covers it).
+  function syncNotice(sync?: Record<string, string>, own?: Record<string, string>): string | null {
+    if (own && Object.values(own).includes('failed')) {
+      return "Added, but Stripe did not take the change to the restaurant's own plan. End it at period end in Stripe.";
+    }
+    if (own && Object.values(own).includes('cancel_at_period_end')) {
+      return "Added. The group covers it now, and its own plan ends when the period it paid for ends.";
+    }
     if (!sync) return null;
     if (Object.values(sync).includes('failed')) {
       return 'Moved, but Stripe did not take the new restaurant count. Fix the quantity in Stripe.';
@@ -104,7 +112,7 @@ export function RestaurantGroupDetail({
     const res = await addRestaurantToGroup(groupId, { restaurant_id: restaurantId });
     if (res.error) setActionError(res.error);
     else {
-      setNotice(syncNotice(res.data?.billing_sync));
+      setNotice(syncNotice(res.data?.billing_sync, res.data?.own_plans));
       setResults((prev) => prev.filter((r) => r.id !== restaurantId));
       await load();
     }
@@ -151,6 +159,10 @@ export function RestaurantGroupDetail({
   if (error || !detail) return <p className="text-sm text-red-500">{error}</p>;
 
   const memberIds = new Set(detail.restaurants.map((r) => r.id));
+  // Only active restaurants are paid for, and an inactive group covers nobody
+  // (Moose, 2026-10-15).
+  const activeCount = detail.restaurants.filter((r) => r.status === 'active').length;
+  const groupActive = detail.status === 'active';
   const billing = detail.billing;
   const live = ['active', 'trialing', 'past_due', 'unpaid', 'paused'].includes(billing?.status ?? '');
 
@@ -166,6 +178,7 @@ export function RestaurantGroupDetail({
                 <th className="text-left px-4 py-2 font-medium text-gray-600 text-xs">Name</th>
                 <th className="text-left px-4 py-2 font-medium text-gray-600 text-xs">City</th>
                 <th className="text-left px-4 py-2 font-medium text-gray-600 text-xs">State</th>
+                <th className="text-left px-4 py-2 font-medium text-gray-600 text-xs">Status</th>
                 <th className="text-right px-4 py-2 font-medium text-gray-600 text-xs">In group</th>
               </tr>
             </thead>
@@ -175,6 +188,7 @@ export function RestaurantGroupDetail({
                   <td className="px-4 py-2 font-medium text-[#2A2A2A]">{r.name}</td>
                   <td className="px-4 py-2 text-gray-500">{r.city || '-'}</td>
                   <td className="px-4 py-2 text-gray-500">{r.state || '-'}</td>
+                  <td className="px-4 py-2 text-gray-500">{r.status === 'active' ? 'active' : `${r.status} (not paid for)`}</td>
                   <td className="px-4 py-2 text-right">
                     <Button
                       variant="ghost"
@@ -251,16 +265,19 @@ export function RestaurantGroupDetail({
           <Button
             size="sm"
             className="bg-[#7FAEC2] hover:bg-[#6a9aae] text-white text-xs h-8"
-            disabled={linkBusy || detail.restaurants.length === 0}
+            disabled={linkBusy || activeCount === 0 || !groupActive}
             onClick={makeLink}
           >
             <Link2 size={13} className="mr-1" />
             {linkBusy ? 'Making link…' : 'Create payment link'}
           </Button>
         )}
-        {!live && detail.restaurants.length > 0 && (
+        {!groupActive && (
+          <p className="text-xs text-gray-500">This group is inactive, so it covers no restaurants. Make it active to take payment.</p>
+        )}
+        {!live && groupActive && activeCount > 0 && (
           <p className="text-xs text-gray-500">
-            One payment for all {detail.restaurants.length} restaurant{detail.restaurants.length === 1 ? '' : 's'} in this group. Whoever pays does not need a QuoteMe sign-in.
+            One payment for the {activeCount} active restaurant{activeCount === 1 ? '' : 's'} in this group. Whoever pays does not need a QuoteMe sign-in.
           </p>
         )}
         {link && (

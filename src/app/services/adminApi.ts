@@ -2064,6 +2064,8 @@ export interface GroupMembershipChange {
   name: string;
   restaurant_group_id: string | null;
   billing_sync?: Record<string, string>;
+  /** A joining restaurant's own plan: "cancel_at_period_end", "already" or "failed". */
+  own_plans?: Record<string, string>;
 }
 
 export async function addRestaurantToGroup(

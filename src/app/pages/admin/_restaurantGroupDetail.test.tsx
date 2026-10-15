@@ -69,7 +69,7 @@ describe('RestaurantGroupDetail', () => {
       data: { checkout_url: 'https://checkout.stripe.com/c/pay_grp', quantity: 3, billing: { ...noPlan, status: 'incomplete', has_customer: true } },
     });
     render(<RestaurantGroupDetail groupId="g1" />);
-    expect(await screen.findByText(/One payment for all 3 restaurants/)).toBeTruthy();
+    expect(await screen.findByText(/One payment for the 3 active restaurants/)).toBeTruthy();
     fireEvent.click(screen.getByText('Create payment link'));
     await waitFor(() => expect(m.createGroupPaymentLink).toHaveBeenCalledWith('g1'));
     expect(((await screen.findByLabelText('Payment link')) as HTMLInputElement).value).toBe('https://checkout.stripe.com/c/pay_grp');
@@ -100,6 +100,35 @@ describe('RestaurantGroupDetail', () => {
     render(<RestaurantGroupDetail groupId="g1" />);
     fireEvent.click(await screen.findByLabelText('Remove Aquitaine (Boston) from the group'));
     expect((await screen.findByRole('status')).textContent).toMatch(/Fix the quantity in Stripe/);
+  });
+});
+
+describe('Moose rulings, 2026-10-15', () => {
+  it('counts only active restaurants toward the payment', async () => {
+    m.getAdminRestaurantGroup.mockResolvedValue(group([metropolis, aqBoston, { ...aqChestnut, status: 'inactive' }]));
+    render(<RestaurantGroupDetail groupId="g1" />);
+    expect(await screen.findByText(/One payment for the 2 active restaurants/)).toBeTruthy();
+    expect(screen.getByText('inactive (not paid for)')).toBeTruthy();
+  });
+
+  it('offers no payment link for an inactive group', async () => {
+    const inactive = group([metropolis, aqBoston]);
+    inactive.data.status = 'inactive';
+    m.getAdminRestaurantGroup.mockResolvedValue(inactive);
+    render(<RestaurantGroupDetail groupId="g1" />);
+    expect(await screen.findByText(/This group is inactive, so it covers no restaurants/)).toBeTruthy();
+    expect((screen.getByText('Create payment link').closest('button') as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it("says a joining restaurant's own plan ends at the end of its paid period", async () => {
+    m.getAdminRestaurantGroup.mockResolvedValue(group([metropolis], { ...noPlan, status: 'active', paid: true }));
+    m.getAdminRestaurants.mockResolvedValue({ data: { restaurants: [{ ...aqChestnut, restaurant_group: null }], meta: {} } });
+    m.addRestaurantToGroup.mockResolvedValue({ data: { id: 'r3', name: 'Aquitaine', restaurant_group_id: 'g1', own_plans: { r3: 'cancel_at_period_end' } } });
+    render(<RestaurantGroupDetail groupId="g1" />);
+    fireEvent.change(await screen.findByLabelText('Find a restaurant to add'), { target: { value: 'Aquitaine' } });
+    fireEvent.click(screen.getByText('Search'));
+    fireEvent.click(await screen.findByLabelText('Add Aquitaine (Chestnut Hill) to the group'));
+    expect((await screen.findByRole('status')).textContent).toMatch(/its own plan ends when the period it paid for ends/);
   });
 });
 
