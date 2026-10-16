@@ -13,6 +13,9 @@ import {
   addRestaurantToGroup,
   removeRestaurantFromGroup,
   createGroupPaymentLink,
+  getGroupPaymentOffers,
+  GroupPaymentOffer,
+  GroupPaymentCoupon,
   AdminRestaurantGroupDetail,
   AdminRestaurantGroupBilling,
   AdminRestaurant,
@@ -38,6 +41,34 @@ export function groupBillingSentence(billing: AdminRestaurantGroupBilling | null
   }
 }
 
+/** Integer cents as dollars, e.g. 10000 -> "$100.00". */
+export function formatCents(cents: number, currency = 'usd'): string {
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency: currency.toUpperCase() }).format(cents / 100);
+}
+
+function everyLabel(offer: GroupPaymentOffer): string {
+  return offer.interval_count === 1 ? offer.interval : `${offer.interval_count} ${offer.interval}s`;
+}
+
+/** "Monthly per restaurant: $100.00 per restaurant per month. 2 active restaurants: $200.00 per month." */
+export function offerLabel(offer: GroupPaymentOffer, activeCount: number): string {
+  const every = everyLabel(offer);
+  const name = offer.nickname || offer.lookup_key;
+  const each = formatCents(offer.unit_amount, offer.currency);
+  const total = formatCents(offer.unit_amount * activeCount, offer.currency);
+  return `${name}: ${each} per restaurant per ${every}. ${activeCount} active restaurant${activeCount === 1 ? '' : 's'}: ${total} per ${every}.`;
+}
+
+/** "First 3 months: $100.00 off each bill for 3 months" */
+export function couponLabel(c: GroupPaymentCoupon): string {
+  const off = c.percent_off != null ? `${c.percent_off}% off` : `${formatCents(c.amount_off ?? 0, c.currency ?? 'usd')} off`;
+  const when =
+    c.duration === 'once' ? 'the first bill'
+    : c.duration === 'forever' ? 'every bill'
+    : `each bill for ${c.duration_in_months} month${c.duration_in_months === 1 ? '' : 's'}`;
+  return `${c.name || c.id}: ${off} ${when}`;
+}
+
 export function RestaurantGroupDetail({
   groupId,
   onCountChange,
@@ -58,6 +89,10 @@ export function RestaurantGroupDetail({
 
   const [link, setLink] = useState<string | null>(null);
   const [linkBusy, setLinkBusy] = useState(false);
+  const [offersBusy, setOffersBusy] = useState(false);
+  const [menu, setMenu] = useState<{ offers: GroupPaymentOffer[]; coupons: GroupPaymentCoupon[]; active_restaurant_count: number } | null>(null);
+  const [offerKey, setOfferKey] = useState('');
+  const [couponId, setCouponId] = useState('');
   const [copied, setCopied] = useState(false);
 
   async function load() {
@@ -131,13 +166,32 @@ export function RestaurantGroupDetail({
     setBusyId(null);
   }
 
+  // "Create payment link" opens the offer form (Moose, 2026-10-16): pick an
+  // offer, optionally a coupon, then make the link.
+  async function openOffers() {
+    setOffersBusy(true);
+    setActionError(null);
+    setLink(null);
+    const res = await getGroupPaymentOffers(groupId);
+    if (res.data) {
+      setMenu(res.data);
+      setOfferKey(res.data.offers[0]?.lookup_key ?? '');
+      setCouponId('');
+    } else {
+      setActionError(res.error || 'Could not load the offers');
+    }
+    setOffersBusy(false);
+  }
+
   async function makeLink() {
+    if (!offerKey) return;
     setLinkBusy(true);
     setActionError(null);
     setCopied(false);
-    const res = await createGroupPaymentLink(groupId);
+    const res = await createGroupPaymentLink(groupId, couponId ? { lookup_key: offerKey, coupon: couponId } : { lookup_key: offerKey });
     if (res.data) {
       setLink(res.data.checkout_url);
+      setMenu(null);
       setDetail((prev) => (prev ? { ...prev, billing: res.data!.billing } : prev));
     } else {
       setActionError(res.error || 'Could not make the payment link');
@@ -261,16 +315,60 @@ export function RestaurantGroupDetail({
         {billing?.current_period_end && billing.paid && (
           <p className="text-xs text-gray-500">Paid through {new Date(billing.current_period_end).toLocaleDateString()}.</p>
         )}
-        {!live && (
+        {!live && !menu && (
           <Button
             size="sm"
             className="bg-[#7FAEC2] hover:bg-[#6a9aae] text-white text-xs h-8"
-            disabled={linkBusy || activeCount === 0 || !groupActive}
-            onClick={makeLink}
+            disabled={offersBusy || activeCount === 0 || !groupActive}
+            onClick={openOffers}
           >
             <Link2 size={13} className="mr-1" />
-            {linkBusy ? 'Making link…' : 'Create payment link'}
+            {offersBusy ? 'Loading offers…' : 'Create payment link'}
           </Button>
+        )}
+        {!live && menu && (
+          <div className="space-y-2 border border-gray-100 rounded-md p-3" data-testid="payment-offer-form">
+            <label className="block text-xs text-gray-600">
+              Offer
+              <select
+                value={offerKey}
+                onChange={(e) => setOfferKey(e.target.value)}
+                className="mt-1 block w-full text-sm border border-gray-200 rounded px-2 py-1.5 bg-white"
+                aria-label="Offer"
+              >
+                {menu.offers.map((o) => (
+                  <option key={o.lookup_key} value={o.lookup_key}>{offerLabel(o, menu.active_restaurant_count)}</option>
+                ))}
+              </select>
+            </label>
+            <label className="block text-xs text-gray-600">
+              Coupon
+              <select
+                value={couponId}
+                onChange={(e) => setCouponId(e.target.value)}
+                className="mt-1 block w-full text-sm border border-gray-200 rounded px-2 py-1.5 bg-white"
+                aria-label="Coupon"
+              >
+                <option value="">None</option>
+                {menu.coupons.map((c) => (
+                  <option key={c.id} value={c.id}>{couponLabel(c)}</option>
+                ))}
+              </select>
+            </label>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                size="sm"
+                className="bg-[#7FAEC2] hover:bg-[#6a9aae] text-white text-xs h-8"
+                disabled={linkBusy || !offerKey}
+                onClick={makeLink}
+              >
+                {linkBusy ? 'Making link…' : 'Make link'}
+              </Button>
+              <Button size="sm" variant="ghost" className="text-xs h-8" onClick={() => setMenu(null)}>
+                Cancel
+              </Button>
+            </div>
+          </div>
         )}
         {!groupActive && (
           <p className="text-xs text-gray-500">This group is inactive, so it covers no restaurants. Make it active to take payment.</p>

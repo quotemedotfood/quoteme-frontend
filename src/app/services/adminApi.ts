@@ -2093,16 +2093,54 @@ export async function removeRestaurantFromGroup(
   });
 }
 
+/** One Stripe price on the PairMe group product, named by its lookup_key. */
+export interface GroupPaymentOffer {
+  lookup_key: string;
+  price_id: string;
+  nickname: string | null;
+  /** Integer cents per restaurant per interval. */
+  unit_amount: number;
+  currency: string;
+  interval: 'day' | 'week' | 'month' | 'year';
+  interval_count: number;
+}
+
+/** A Stripe coupon. amount_off is integer cents. */
+export interface GroupPaymentCoupon {
+  id: string;
+  name: string | null;
+  percent_off: number | null;
+  amount_off: number | null;
+  currency: string | null;
+  duration: 'once' | 'repeating' | 'forever';
+  duration_in_months: number | null;
+}
+
 /**
- * QM admin only. A Stripe Checkout link that pays for every restaurant in
- * the group (quantity = restaurant count). Whoever pays needs no login.
- * 503 "Billing is not set up yet" until the group price is set; 409 when
+ * QM admin only. The offer menu: active Stripe prices for the allowed lookup
+ * keys, the valid coupons, and how many active restaurants the group has.
+ * 503 "Billing is not set up yet" when no allowed price exists in Stripe.
+ */
+export async function getGroupPaymentOffers(
+  groupId: string
+): Promise<ApiResponse<{ offers: GroupPaymentOffer[]; coupons: GroupPaymentCoupon[]; active_restaurant_count: number }>> {
+  return fetchWithAuth(`/api/v1/restaurant_groups/${groupId}/payment_offers`);
+}
+
+/**
+ * QM admin only. A Stripe Checkout link for one offer (lookup_key) and an
+ * optional coupon, quantity = the group's active restaurants. Whoever pays
+ * needs no login. 422 for an offer or coupon Stripe will not take; 409 when
  * the group is already paying.
  */
 export async function createGroupPaymentLink(
-  groupId: string
+  groupId: string,
+  choice: { lookup_key: string; coupon?: string }
 ): Promise<ApiResponse<{ checkout_url: string; quantity: number; billing: AdminRestaurantGroupBilling }>> {
-  return fetchWithAuth(`/api/v1/restaurant_groups/${groupId}/payment_link`, { method: 'POST' });
+  return fetchWithAuth(`/api/v1/restaurant_groups/${groupId}/payment_link`, {
+    method: 'POST',
+    body: JSON.stringify(choice.coupon ? choice : { lookup_key: choice.lookup_key }),
+  });
 }
 
 // ============= RESTAURANT CREATE =============

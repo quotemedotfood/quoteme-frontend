@@ -5,7 +5,7 @@
 //
 // @vitest-environment jsdom
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { createAdminRestaurantGroup, updateAdminRestaurantGroup } from './adminApi';
+import { createAdminRestaurantGroup, updateAdminRestaurantGroup, createGroupPaymentLink } from './adminApi';
 
 const sent: Array<{ url: string; method?: string; body: any }> = [];
 afterEach(() => { vi.unstubAllGlobals(); sent.length = 0; });
@@ -31,5 +31,14 @@ describe('restaurant group requests', () => {
     await updateAdminRestaurantGroup('g1', { name: 'Renamed' });
     expect(sent[0].method).toBe('PATCH');
     expect(sent[0].body).toEqual({ name: 'Renamed' });
+  });
+
+  it('payment link sends the offer, and the coupon only when one is picked', async () => {
+    stubFetch();
+    await createGroupPaymentLink('g1', { lookup_key: 'pairme_group_monthly' });
+    await createGroupPaymentLink('g1', { lookup_key: 'pairme_group_monthly', coupon: 'INTRO3' });
+    expect(sent[0].url).toMatch(/\/api\/v1\/restaurant_groups\/g1\/payment_link$/);
+    expect(sent[0].body).toEqual({ lookup_key: 'pairme_group_monthly' });
+    expect(sent[1].body).toEqual({ lookup_key: 'pairme_group_monthly', coupon: 'INTRO3' });
   });
 });
