@@ -53,6 +53,9 @@ export const SLOW_ENDPOINTS: readonly string[] = [
   // The restaurant admin's learning sheet: its first download of a list waits
   // on Claude drafting tasting notes (BE Pairme::LearningNotes).
   '/learning_sheet',
+  // The same workbook from the QM admin's launch checklist, downloaded or
+  // emailed (BE Admin::RestaurantOnboardingController): the same drafting.
+  '/onboarding/wine_workbook/',
 ];
 
 export function timeoutForEndpoint(url: string): number {

@@ -220,6 +220,10 @@ export interface AdminRestaurant {
   data_flags: string | null;
   // Menu kinds present among CURRENT menu sources, e.g. ["wine","dinner"].
   menu_coverage: string[];
+  /** Whole percent of the eight launch checklist steps done (0 to 100). */
+  onboarding_percent?: number;
+  /** True when the restaurant pays (QuoteMe Restaurant#paying?). Shows "$". */
+  paying?: boolean;
 }
 
 export interface ConferenceLead {
@@ -2639,4 +2643,107 @@ export async function revertOperationalMemoryLearning(
   id: string
 ): Promise<ApiResponse<OperationalMemoryLearning>> {
   return fetchWithAuth(`/api/v1/admin/operational_memory_learnings/${id}/revert`, { method: 'POST' });
+}
+
+// ============= LAUNCH CHECKLIST =============
+//
+// Moose, 2026-10-15: "set an SOP checklist for every restaurant in the QM
+// admin page ... checkboxes for each resource, that triggers the creation,
+// send, cc me, and confirmation in the admin." QM admin only; the backend is
+// Admin::RestaurantOnboardingController (QuoteMe), storage
+// restaurants.onboarding_checklist. Reader: the Launch checklist section on
+// the QM admin restaurant page (_launchChecklistSection.tsx).
+
+export type OnboardingStepKey =
+  | 'qr_inserts'
+  | 'cheat_sheet'
+  | 'wine_workbook'
+  | 'tablet_setup'
+  | 'staff_meeting'
+  | 'qr_on_menus'
+  | 'first_guest'
+  | 'first_staff_pairing';
+
+export type QrInsertLayout = 'vertical' | 'horizontal';
+
+export interface OnboardingStep {
+  key: OnboardingStepKey;
+  position: number;
+  /** One or two words (Moose, 2026-10-15: "1/2 word titles"). From the backend step list. */
+  title: string;
+  /** One plain line saying what done means. */
+  description: string;
+  /** A lucide-react icon name, e.g. "qr-code". The section maps it to a component. */
+  icon: string;
+  /** Steps 1 to 4: a PDF that can be downloaded and emailed. */
+  document: boolean;
+  done: boolean;
+  done_at: string | null;
+  done_by: string | null;
+  note: string | null;
+  sent_to: string | null;
+  cc: string | null;
+  layout: QrInsertLayout | null;
+}
+
+export interface OnboardingChecklist {
+  percent: number;
+  steps: OnboardingStep[];
+  /** The documents are built from the pairings; false until they exist. */
+  paired: boolean;
+  /** Who Send emails. `blocked` says why it cannot, when it cannot. */
+  recipient: { email: string | null; name: string | null; blocked: string | null };
+}
+
+export async function getRestaurantOnboarding(id: string): Promise<ApiResponse<OnboardingChecklist>> {
+  return fetchWithAuth(`/api/v1/admin/restaurants/${id}/onboarding`);
+}
+
+export async function setRestaurantOnboardingStep(
+  id: string,
+  step: OnboardingStepKey,
+  done: boolean,
+  note?: string,
+): Promise<ApiResponse<OnboardingChecklist>> {
+  return fetchWithAuth(`/api/v1/admin/restaurants/${id}/onboarding/${step}`, {
+    method: 'PATCH',
+    body: JSON.stringify(note ? { done, note } : { done }),
+  });
+}
+
+/** Emails the document to the restaurant admin, cc the signed-in QM admin, and marks it sent. */
+export async function sendRestaurantOnboardingDocument(
+  id: string,
+  step: OnboardingStepKey,
+  layout?: QrInsertLayout,
+): Promise<ApiResponse<OnboardingChecklist>> {
+  return fetchWithAuth(`/api/v1/admin/restaurants/${id}/onboarding/${step}/send`, {
+    method: 'POST',
+    body: JSON.stringify(layout ? { layout } : {}),
+  });
+}
+
+/** The PDF for a document step, for the QM admin to download. Marks nothing. */
+export async function downloadRestaurantOnboardingDocument(
+  id: string,
+  step: OnboardingStepKey,
+  layout?: QrInsertLayout,
+): Promise<{ blob?: Blob; filename?: string; error?: string }> {
+  const token = getAuthToken();
+  const qs = layout ? `?layout=${layout}` : '';
+  try {
+    const response = await fetchWithPolicy(
+      `${API_BASE_URL}/api/v1/admin/restaurants/${id}/onboarding/${step}/document${qs}`,
+      { headers: token ? { Authorization: `Bearer ${token}` } : {} },
+    );
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      return { error: err.error || `Download failed (${response.status})` };
+    }
+    const disposition = response.headers.get('content-disposition');
+    const filename = disposition?.match(/filename="?([^";]+)"?/)?.[1];
+    return { blob: await response.blob(), filename };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : 'Network error' };
+  }
 }

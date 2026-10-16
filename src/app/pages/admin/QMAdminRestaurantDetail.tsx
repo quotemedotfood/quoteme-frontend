@@ -24,6 +24,7 @@ import { stripSeedPrefix } from '../../utils/format';
 import { ManageAdminDrawer } from './_manageAdminDrawer';
 import { ADMIN_PAGE_FRAME, ADMIN_PAGE_FRAME_STYLE } from '../../components/admin/adminPageFrame';
 import { PairmeSection } from './_pairmeSection';
+import { LaunchChecklistSection } from './_launchChecklistSection';
 import { PairmeFlowCard } from '../../components/PairmeFlowCard';
 import { handleImpersonate, handleImpersonateChef } from '../../utils/impersonate';
 
@@ -381,6 +382,8 @@ export function QMAdminRestaurantDetailPage() {
           </p>
         )}
       </section>
+
+      <LaunchChecklistSection restaurantId={restaurant.id} />
 
       <ManageAdminDrawer
         open={manageAdminOpen}
