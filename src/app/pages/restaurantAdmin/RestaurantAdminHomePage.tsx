@@ -13,7 +13,7 @@
 // admin sees, stamped with when they were last updated, and what guests were
 // shown, with the time.
 import { useEffect, useState } from 'react';
-import { Navigate, useNavigate } from 'react-router';
+import { Link, Navigate, useNavigate } from 'react-router';
 import { useAuth } from '../../contexts/AuthContext';
 import { PairmeFlowCard } from '../../components/PairmeFlowCard';
 import { getRestaurantAdminHome, getRestaurantAdminPairme } from '../../services/api';
@@ -78,10 +78,15 @@ export function RestaurantAdminHomePage() {
 
         {data?.restaurants.map((r) => (
           <div key={r.id} className="mb-8" data-testid="ra-restaurant">
-            <p className="text-sm text-[#4F4F4F] mb-2">
-              <span className="font-medium text-[#2A2A2A]">{r.name}</span>
-              {[r.city, r.state].filter(Boolean).length > 0 && `, ${[r.city, r.state].filter(Boolean).join(', ')}`}
-            </p>
+            <div className="flex items-center justify-between gap-3 mb-2">
+              <p className="text-sm text-[#4F4F4F]">
+                <span className="font-medium text-[#2A2A2A]">{r.name}</span>
+                {[r.city, r.state].filter(Boolean).length > 0 && `, ${[r.city, r.state].filter(Boolean).join(', ')}`}
+              </p>
+              <Link to={`/restaurant-admin/${r.id}/settings`} className="text-sm text-[#7FAEC2] hover:underline" data-testid="ra-settings-link">
+                Settings and billing
+              </Link>
+            </div>
             {r.pairme_flow ? (
               <>
                 <PairmeFlowCard flow={r.pairme_flow} />
