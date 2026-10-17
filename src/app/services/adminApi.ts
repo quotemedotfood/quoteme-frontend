@@ -1999,17 +1999,29 @@ export interface AdminRestaurantGroup {
   status: string;
   restaurant_count: number;
   created_at: string;
+  /** The group's PairMe plan status (subscriptions.status); null when it has none. QM admin only. */
+  billing_status?: string | null;
+}
+
+/** One payment for every restaurant in the group (Pairme::GroupBilling). */
+export interface AdminRestaurantGroupBilling {
+  /** STRIPE_PAIRME_GROUP_PRICE_ID is set on the backend. */
+  configured: boolean;
+  status: string | null;
+  /** Active, so every restaurant in the group is covered. */
+  paid: boolean;
+  current_period_end: string | null;
+  has_customer: boolean;
 }
 
 export interface AdminRestaurantGroupDetail extends AdminRestaurantGroup {
+  billing?: AdminRestaurantGroupBilling | null;
   restaurants: Array<{
     id: string;
     name: string;
     city: string | null;
     state: string | null;
     status: string;
-    contact_count: number;
-    created_at: string;
   }>;
 }
 
@@ -2046,13 +2058,88 @@ export async function updateAdminRestaurantGroup(
   });
 }
 
+/**
+ * The backend answers with the RESTAURANT it moved, not the group. Callers
+ * reload the group afterwards. billing_sync says what happened to Stripe's
+ * quantity for each paying group touched ("updated", "unchanged", "failed").
+ */
+export interface GroupMembershipChange {
+  id: string;
+  name: string;
+  restaurant_group_id: string | null;
+  billing_sync?: Record<string, string>;
+  /** A joining restaurant's own plan: "cancel_at_period_end", "already" or "failed". */
+  own_plans?: Record<string, string>;
+}
+
 export async function addRestaurantToGroup(
   groupId: string,
   data: { restaurant_id: string } | { name: string; city?: string; state?: string }
-): Promise<ApiResponse<AdminRestaurantGroupDetail>> {
+): Promise<ApiResponse<GroupMembershipChange>> {
   return fetchWithAuth(`/api/v1/restaurant_groups/${groupId}/add_restaurant`, {
     method: 'POST',
     body: JSON.stringify(data),
+  });
+}
+
+/** QM admin only. Takes the restaurant out of the group; its group coverage ends. */
+export async function removeRestaurantFromGroup(
+  groupId: string,
+  restaurantId: string
+): Promise<ApiResponse<GroupMembershipChange>> {
+  return fetchWithAuth(`/api/v1/restaurant_groups/${groupId}/remove_restaurant`, {
+    method: 'POST',
+    body: JSON.stringify({ restaurant_id: restaurantId }),
+  });
+}
+
+/** One Stripe price on the PairMe group product, named by its lookup_key. */
+export interface GroupPaymentOffer {
+  lookup_key: string;
+  price_id: string;
+  nickname: string | null;
+  /** Integer cents per restaurant per interval. */
+  unit_amount: number;
+  currency: string;
+  interval: 'day' | 'week' | 'month' | 'year';
+  interval_count: number;
+}
+
+/** A Stripe coupon. amount_off is integer cents. */
+export interface GroupPaymentCoupon {
+  id: string;
+  name: string | null;
+  percent_off: number | null;
+  amount_off: number | null;
+  currency: string | null;
+  duration: 'once' | 'repeating' | 'forever';
+  duration_in_months: number | null;
+}
+
+/**
+ * QM admin only. The offer menu: active Stripe prices for the allowed lookup
+ * keys, the valid coupons, and how many active restaurants the group has.
+ * 503 "Billing is not set up yet" when no allowed price exists in Stripe.
+ */
+export async function getGroupPaymentOffers(
+  groupId: string
+): Promise<ApiResponse<{ offers: GroupPaymentOffer[]; coupons: GroupPaymentCoupon[]; active_restaurant_count: number }>> {
+  return fetchWithAuth(`/api/v1/restaurant_groups/${groupId}/payment_offers`);
+}
+
+/**
+ * QM admin only. A Stripe Checkout link for one offer (lookup_key) and an
+ * optional coupon, quantity = the group's active restaurants. Whoever pays
+ * needs no login. 422 for an offer or coupon Stripe will not take; 409 when
+ * the group is already paying.
+ */
+export async function createGroupPaymentLink(
+  groupId: string,
+  choice: { lookup_key: string; coupon?: string }
+): Promise<ApiResponse<{ checkout_url: string; quantity: number; billing: AdminRestaurantGroupBilling }>> {
+  return fetchWithAuth(`/api/v1/restaurant_groups/${groupId}/payment_link`, {
+    method: 'POST',
+    body: JSON.stringify(choice.coupon ? choice : { lookup_key: choice.lookup_key }),
   });
 }
 

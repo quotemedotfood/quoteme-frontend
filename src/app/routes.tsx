@@ -1,5 +1,6 @@
 import { createBrowserRouter, Navigate, useParams, useSearchParams } from "react-router";
 import { RootWrapper } from "./components/RootWrapper";
+import { PairmeGroupPaidPage } from "./pages/PairmeGroupPaidPage";
 import { RootLayout } from "./components/RootLayout";
 import { useAuth } from "./contexts/AuthContext";
 import { QMAdminLayout } from "./components/QMAdminLayout";
@@ -178,6 +179,13 @@ export const router = createBrowserRouter([
       {
         path: "distributors",
         element: <Navigate to="/chef/distributor/new" replace />,
+      },
+      {
+        // PairMe group payment landing: PUBLIC. The person who pays a
+        // restaurant group's Stripe link has no sign-in. Writer of the URL:
+        // the backend's Pairme::GroupBilling success_url / cancel_url.
+        path: "pairme/paid",
+        Component: PairmeGroupPaidPage,
       },
       {
         // Brand signup — public, no JWT required.
