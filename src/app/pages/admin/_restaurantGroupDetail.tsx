@@ -3,8 +3,15 @@
 // bundle the restaurants into it, and send one payment link that covers them
 // all. Reads GET /api/v1/restaurant_groups/:id; writes add_restaurant,
 // remove_restaurant and payment_link (QM admin only on the backend).
+//
+// THE GROUP ADMIN (Moose, 2026-10-20: "let's make sure that groups have
+// admin's name, phone (optional), and emails going forward"). Shown and
+// edited here (PATCH /api/v1/restaurant_groups/:id with admin_name,
+// admin_email, admin_phone). The backend makes the group's Stripe customer
+// from it and refuses a payment link until name and email are set, so the
+// button waits for them too.
 import { useEffect, useState } from 'react';
-import { Plus, Copy, Link2 } from 'lucide-react';
+import { Plus, Copy, Link2, Pencil } from 'lucide-react';
 import { Input } from '../../components/ui/input';
 import { Button } from '../../components/ui/button';
 import {
@@ -14,12 +21,20 @@ import {
   removeRestaurantFromGroup,
   createGroupPaymentLink,
   getGroupPaymentOffers,
+  updateAdminRestaurantGroup,
   GroupPaymentOffer,
   GroupPaymentCoupon,
   AdminRestaurantGroupDetail,
   AdminRestaurantGroupBilling,
   AdminRestaurant,
 } from '../../services/adminApi';
+
+/** Name and email are set, so the group can be sent a payment link. */
+export function hasGroupAdminContact(g: { admin_name?: string | null; admin_email?: string | null } | null | undefined): boolean {
+  return !!(g?.admin_name?.trim() && g?.admin_email?.trim());
+}
+
+export const NO_ADMIN_CONTACT_REASON = "Add the group admin's name and email before making a payment link.";
 
 /** What the plan's status means for the restaurants in the group. */
 export function groupBillingSentence(billing: AdminRestaurantGroupBilling | null | undefined): string {
@@ -94,6 +109,13 @@ export function RestaurantGroupDetail({
   const [offerKey, setOfferKey] = useState('');
   const [couponId, setCouponId] = useState('');
   const [copied, setCopied] = useState(false);
+
+  const [editingContact, setEditingContact] = useState(false);
+  const [contactName, setContactName] = useState('');
+  const [contactEmail, setContactEmail] = useState('');
+  const [contactPhone, setContactPhone] = useState('');
+  const [contactBusy, setContactBusy] = useState(false);
+  const [contactError, setContactError] = useState<string | null>(null);
 
   async function load() {
     const res = await getAdminRestaurantGroup(groupId);
@@ -199,6 +221,34 @@ export function RestaurantGroupDetail({
     setLinkBusy(false);
   }
 
+  function startContactEdit() {
+    setContactName(detail?.admin_name ?? '');
+    setContactEmail(detail?.admin_email ?? '');
+    setContactPhone(detail?.admin_phone ?? '');
+    setContactError(null);
+    setEditingContact(true);
+  }
+
+  async function saveContact() {
+    setContactBusy(true);
+    setContactError(null);
+    const res = await updateAdminRestaurantGroup(groupId, {
+      admin_name: contactName.trim(),
+      admin_email: contactEmail.trim(),
+      admin_phone: contactPhone.trim(),
+    });
+    if (res.data) {
+      const saved = res.data;
+      setDetail((prev) =>
+        prev ? { ...prev, admin_name: saved.admin_name, admin_email: saved.admin_email, admin_phone: saved.admin_phone } : prev
+      );
+      setEditingContact(false);
+    } else {
+      setContactError(res.error || 'Could not save the group admin');
+    }
+    setContactBusy(false);
+  }
+
   async function copyLink() {
     if (!link) return;
     try {
@@ -219,9 +269,64 @@ export function RestaurantGroupDetail({
   const groupActive = detail.status === 'active';
   const billing = detail.billing;
   const live = ['active', 'trialing', 'past_due', 'unpaid', 'paused'].includes(billing?.status ?? '');
+  const hasContact = hasGroupAdminContact(detail);
 
   return (
     <div className="space-y-4" data-testid="restaurant-group-detail">
+      {/* The group admin: who runs the group and pays for it. */}
+      <div className="bg-white border border-gray-200 rounded-lg px-4 py-3 space-y-2" data-testid="group-admin-contact">
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-xs font-medium text-gray-600 uppercase tracking-wide">Group admin</p>
+          {!editingContact && (
+            <Button variant="ghost" size="sm" className="text-xs text-[#7FAEC2] hover:text-[#6A9AB0] h-7" onClick={startContactEdit}>
+              <Pencil size={13} className="mr-1" />
+              Edit
+            </Button>
+          )}
+        </div>
+        {!editingContact && (
+          detail.admin_name || detail.admin_email || detail.admin_phone ? (
+            <div className="text-sm text-[#2A2A2A] space-y-0.5">
+              <p>{detail.admin_name || 'No name yet'}</p>
+              <p className="text-gray-600">{detail.admin_email || 'No email yet'}</p>
+              {detail.admin_phone && <p className="text-gray-600">{detail.admin_phone}</p>}
+            </div>
+          ) : (
+            <p className="text-sm text-gray-400">No group admin yet.</p>
+          )
+        )}
+        {editingContact && (
+          <div className="space-y-2">
+            <label className="block text-xs text-gray-600">
+              Group admin
+              <Input value={contactName} onChange={(e) => setContactName(e.target.value)} className="mt-1 h-8 text-sm" />
+            </label>
+            <label className="block text-xs text-gray-600">
+              Email
+              <Input type="email" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} className="mt-1 h-8 text-sm" />
+            </label>
+            <label className="block text-xs text-gray-600">
+              Phone (optional)
+              <Input type="tel" value={contactPhone} onChange={(e) => setContactPhone(e.target.value)} className="mt-1 h-8 text-sm" />
+            </label>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                size="sm"
+                className="bg-[#7FAEC2] hover:bg-[#6a9aae] text-white text-xs h-8"
+                disabled={contactBusy || !contactName.trim() || !contactEmail.trim()}
+                onClick={saveContact}
+              >
+                {contactBusy ? 'Saving…' : 'Save'}
+              </Button>
+              <Button size="sm" variant="ghost" className="text-xs h-8" onClick={() => setEditingContact(false)}>
+                Cancel
+              </Button>
+            </div>
+            {contactError && <p className="text-xs text-red-500" role="alert">{contactError}</p>}
+          </div>
+        )}
+      </div>
+
       {detail.restaurants.length === 0 ? (
         <p className="text-sm text-gray-400">No restaurants in this group yet.</p>
       ) : (
@@ -319,7 +424,7 @@ export function RestaurantGroupDetail({
           <Button
             size="sm"
             className="bg-[#7FAEC2] hover:bg-[#6a9aae] text-white text-xs h-8"
-            disabled={offersBusy || activeCount === 0 || !groupActive}
+            disabled={offersBusy || activeCount === 0 || !groupActive || !hasContact}
             onClick={openOffers}
           >
             <Link2 size={13} className="mr-1" />
@@ -369,6 +474,9 @@ export function RestaurantGroupDetail({
               </Button>
             </div>
           </div>
+        )}
+        {!live && !hasContact && (
+          <p className="text-xs text-gray-500" data-testid="payment-link-needs-contact">{NO_ADMIN_CONTACT_REASON}</p>
         )}
         {!groupActive && (
           <p className="text-xs text-gray-500">This group is inactive, so it covers no restaurants. Make it active to take payment.</p>

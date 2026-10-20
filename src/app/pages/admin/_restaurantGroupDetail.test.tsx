@@ -23,7 +23,7 @@ afterEach(() => { cleanup(); vi.resetAllMocks(); });
 const r = (id: string, name: string, city: string) => ({ id, name, city, state: 'MA', status: 'active' });
 const noPlan = { configured: true, status: null, paid: false, current_period_end: null, has_customer: false };
 const group = (restaurants: ReturnType<typeof r>[], billing: any = noPlan) => ({
-  data: { id: 'g1', name: "Seth's Restaurants", status: 'active', created_at: '2026-10-15', restaurant_count: restaurants.length, billing, restaurants },
+  data: { id: 'g1', name: "Seth's Restaurants", status: 'active', created_at: '2026-10-15', restaurant_count: restaurants.length, billing, restaurants, admin_name: 'Pat Admin', admin_email: 'pat@example.com', admin_phone: null },
 });
 
 const metropolis = r('r1', 'Metropolis', 'Boston');
