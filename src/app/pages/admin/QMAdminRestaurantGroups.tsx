@@ -37,6 +37,12 @@ export function QMAdminRestaurantGroups() {
 
   // Create new group
   const [newName, setNewName] = useState('');
+  // The group admin, required for every new group (Moose, 2026-10-20:
+  // "let's make sure that groups have admin's name, phone (optional), and
+  // emails going forward"). The backend refuses a group without name and email.
+  const [newAdminName, setNewAdminName] = useState('');
+  const [newAdminEmail, setNewAdminEmail] = useState('');
+  const [newAdminPhone, setNewAdminPhone] = useState('');
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
 
@@ -63,18 +69,30 @@ export function QMAdminRestaurantGroups() {
 
   async function handleCreate() {
     const trimmed = newName.trim();
-    if (!trimmed) return;
+    if (!canCreate) return;
     setCreating(true);
     setCreateError(null);
-    const res = await createAdminRestaurantGroup({ name: trimmed, status: 'active' });
+    const phone = newAdminPhone.trim();
+    const res = await createAdminRestaurantGroup({
+      name: trimmed,
+      status: 'active',
+      admin_name: newAdminName.trim(),
+      admin_email: newAdminEmail.trim(),
+      ...(phone ? { admin_phone: phone } : {}),
+    });
     if (res.data) {
       setGroups((prev) => [res.data!, ...prev]);
       setNewName('');
+      setNewAdminName('');
+      setNewAdminEmail('');
+      setNewAdminPhone('');
     } else {
       setCreateError(res.error || 'Failed to create');
     }
     setCreating(false);
   }
+
+  const canCreate = !!(newName.trim() && newAdminName.trim() && newAdminEmail.trim());
 
   function startEdit(group: AdminRestaurantGroup) {
     setEditingId(group.id);
@@ -126,11 +144,38 @@ export function QMAdminRestaurantGroups() {
           onChange={(e) => setNewName(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
           placeholder="New group name…"
+          aria-label="New group name"
           className="max-w-xs"
+        />
+        <Input
+          value={newAdminName}
+          onChange={(e) => setNewAdminName(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
+          placeholder="Group admin"
+          aria-label="Group admin"
+          className="max-w-[12rem]"
+        />
+        <Input
+          type="email"
+          value={newAdminEmail}
+          onChange={(e) => setNewAdminEmail(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
+          placeholder="Email"
+          aria-label="Email"
+          className="max-w-[14rem]"
+        />
+        <Input
+          type="tel"
+          value={newAdminPhone}
+          onChange={(e) => setNewAdminPhone(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
+          placeholder="Phone (optional)"
+          aria-label="Phone (optional)"
+          className="max-w-[10rem]"
         />
         <Button
           onClick={handleCreate}
-          disabled={creating || !newName.trim()}
+          disabled={creating || !canCreate}
           className="bg-[#A5CFDD] hover:bg-[#7FAEC2] text-white flex items-center gap-1.5"
         >
           <Plus size={15} />

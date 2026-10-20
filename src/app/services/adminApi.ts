@@ -2001,6 +2001,15 @@ export interface AdminRestaurantGroup {
   created_at: string;
   /** The group's PairMe plan status (subscriptions.status); null when it has none. QM admin only. */
   billing_status?: string | null;
+  /**
+   * The group admin, who pays (Moose, 2026-10-20). QM admin only; null on
+   * groups made before then. Writer: create and update below. The backend
+   * puts them on the group's Stripe customer when the first payment link is
+   * made, and refuses a link until name and email are set.
+   */
+  admin_name?: string | null;
+  admin_email?: string | null;
+  admin_phone?: string | null;
 }
 
 /** One payment for every restaurant in the group (Pairme::GroupBilling). */
@@ -2036,6 +2045,10 @@ export async function getAdminRestaurantGroup(id: string): Promise<ApiResponse<A
 export async function createAdminRestaurantGroup(data: {
   name: string;
   status?: string;
+  /** Required by the backend for every new group (Moose, 2026-10-20). */
+  admin_name?: string;
+  admin_email?: string;
+  admin_phone?: string;
 }): Promise<ApiResponse<AdminRestaurantGroup>> {
   // TOP-LEVEL fields: RestaurantGroupsController reads params[:name] and
   // params[:status], not a restaurant_group wrapper. Wrapped, every create
@@ -2049,7 +2062,7 @@ export async function createAdminRestaurantGroup(data: {
 
 export async function updateAdminRestaurantGroup(
   id: string,
-  data: { name?: string; status?: string }
+  data: { name?: string; status?: string; admin_name?: string; admin_email?: string; admin_phone?: string }
 ): Promise<ApiResponse<AdminRestaurantGroup>> {
   // Top-level, for the same reason as create: update reads params[:name].
   return fetchWithAuth(`/api/v1/restaurant_groups/${id}`, {
