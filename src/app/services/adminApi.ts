@@ -564,6 +564,10 @@ export interface AdminRestaurantsQuery {
   dir?: 'asc' | 'desc';
   /** Server-side PairMe review filter. */
   pairme_review?: PairmeReviewFilter;
+  /** Two-letter state, exact match on restaurants.state. The server ignores a value that is not a valid region. */
+  state?: string;
+  /** true keeps only rows the crawler load wrote (restaurants.crawl_source_state present). */
+  crawled?: boolean;
 }
 
 /**
@@ -589,6 +593,8 @@ export async function getAdminRestaurants(
   if (query.sort) params.set('sort', query.sort);
   if (query.dir) params.set('dir', query.dir);
   if (query.pairme_review) params.set('pairme_review', query.pairme_review);
+  if (query.state) params.set('state', query.state);
+  if (query.crawled) params.set('crawled', 'true');
 
   return fetchWithAuth(`/api/v1/admin/restaurants?${params.toString()}`);
 }
