@@ -19,6 +19,7 @@ const m = vi.hoisted(() => ({
   getRestaurantLoadBatch: vi.fn(),
   applyRestaurantLoadBatch: vi.fn(),
   revertRestaurantLoadBatch: vi.fn(),
+  markRestaurantLoadBatchInterrupted: vi.fn(),
 }));
 vi.mock('../../services/adminApi', () => m);
 
@@ -181,5 +182,99 @@ describe('restaurant load detail', () => {
     expect(screen.queryByText(/would create Foo/)).toBeNull();
     fireEvent.click(button('Show dry run report'));
     expect(screen.getByText(/would create Foo/)).toBeTruthy();
+  });
+
+  // MARK AS INTERRUPTED (QuoteMe #588, POST mark_interrupted).
+  const stuck = (over: Record<string, unknown> = {}) =>
+    batch({
+      status: 'applying',
+      can_apply: false,
+      apply_refusal: 'A write needs a finished dry run first. This batch is applying.',
+      apply_started_at: '2026-10-24T13:00:00Z',
+      can_mark_interrupted: true,
+      mark_interrupted_refusal: null,
+      ...over,
+    });
+
+  it('offers Mark as interrupted only while applying or reverting', async () => {
+    for (const status of ['dry_run_done', 'applied', 'apply_failed', 'revert_failed', 'reverted']) {
+      m.getRestaurantLoadBatch.mockResolvedValue({
+        data: { restaurant_load_batch: batch({ status, can_mark_interrupted: false, mark_interrupted_refusal: `This batch is ${status}.` }) },
+      });
+      renderAt(60_000);
+      await screen.findByTestId('restaurant-load-status');
+      expect(screen.queryByRole('button', { name: 'Mark as interrupted' })).toBeNull();
+      cleanup();
+    }
+    for (const status of ['applying', 'reverting']) {
+      m.getRestaurantLoadBatch.mockResolvedValue({ data: { restaurant_load_batch: stuck({ status }) } });
+      renderAt(60_000);
+      await screen.findByTestId('restaurant-load-status');
+      expect(button('Mark as interrupted').disabled).toBe(false);
+      cleanup();
+    }
+  });
+
+  it('follows can_mark_interrupted and shows the server sentence when it is off', async () => {
+    m.getRestaurantLoadBatch.mockResolvedValue({
+      data: {
+        restaurant_load_batch: stuck({
+          can_mark_interrupted: false,
+          mark_interrupted_refusal: 'A job for this batch is running on railway-web, which last reported at 2026-10-24T13:05:00Z.',
+        }),
+      },
+    });
+    renderAt(60_000);
+
+    await screen.findByText('Writing to production');
+    expect(button('Mark as interrupted').disabled).toBe(true);
+    expect(screen.getByTestId('mark-interrupted-refusal').textContent).toMatch(/is running on railway-web/);
+  });
+
+  it('confirms that it only unblocks the queue and that written rows stay, then sends', async () => {
+    m.getRestaurantLoadBatch
+      .mockResolvedValueOnce({ data: { restaurant_load_batch: stuck() } })
+      .mockResolvedValue({
+        data: {
+          restaurant_load_batch: stuck({
+            status: 'apply_failed',
+            can_mark_interrupted: false,
+            error: 'Marked interrupted by moose@example.test at 2026-10-25T09:00:00Z',
+          }),
+        },
+      });
+    m.markRestaurantLoadBatchInterrupted.mockResolvedValue({ data: { restaurant_load_batch: stuck({ status: 'apply_failed' }) } });
+    renderAt(60_000);
+
+    await screen.findByText('Writing to production');
+    fireEvent.click(button('Mark as interrupted'));
+    const dialog = await screen.findByRole('alertdialog');
+    expect(dialog.textContent).toMatch(/only unblocks the queue/);
+    expect(dialog.textContent).toMatch(/already wrote to production stay/);
+    expect(dialog.textContent).toMatch(/reverted .* if the revert ledger covers them/);
+    expect(m.markRestaurantLoadBatchInterrupted).not.toHaveBeenCalled();
+
+    fireEvent.click(button('Unblock the queue'));
+    await waitFor(() => expect(m.markRestaurantLoadBatchInterrupted).toHaveBeenCalledWith('b1'));
+    await screen.findByText('Load stopped with an error');
+    expect(screen.getByRole('alert').textContent).toMatch(/Marked interrupted by moose@example.test/);
+    expect(screen.queryByRole('button', { name: 'Mark as interrupted' })).toBeNull();
+  });
+
+  it('a 409 on Mark as interrupted shows the server sentence', async () => {
+    m.getRestaurantLoadBatch.mockResolvedValue({ data: { restaurant_load_batch: stuck() } });
+    m.markRestaurantLoadBatchInterrupted.mockResolvedValue({
+      error: 'A job for this batch is queued and will run. It decides the batch itself; wait for it.',
+      error_code: 'REFUSED',
+      status: 409,
+    });
+    renderAt(60_000);
+
+    await screen.findByText('Writing to production');
+    fireEvent.click(button('Mark as interrupted'));
+    await screen.findByRole('alertdialog');
+    fireEvent.click(button('Unblock the queue'));
+    const alert = await screen.findByText(/A job for this batch is queued and will run/);
+    expect(alert.getAttribute('role')).toBe('alert');
   });
 });

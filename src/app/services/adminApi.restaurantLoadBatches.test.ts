@@ -15,6 +15,7 @@ import {
   getRestaurantLoadBatches,
   applyRestaurantLoadBatch,
   revertRestaurantLoadBatch,
+  markRestaurantLoadBatchInterrupted,
 } from './adminApi';
 
 type Sent = { url: string; method?: string; body: unknown; headers: Record<string, string> };
@@ -87,5 +88,20 @@ describe('restaurant load batch requests', () => {
     await revertRestaurantLoadBatch('b1');
     expect(sent[0].method).toBe('POST');
     expect(sent[0].url).toMatch(/\/api\/v1\/admin\/restaurant_load_batches\/b1\/revert$/);
+  });
+
+  it('mark interrupted posts to the member route the backend routes (post :mark_interrupted)', async () => {
+    stubFetch(200, { restaurant_load_batch: { id: 'b1', status: 'apply_failed' } });
+    const res = await markRestaurantLoadBatchInterrupted('b1');
+    expect(sent[0].method).toBe('POST');
+    expect(sent[0].url).toMatch(/\/api\/v1\/admin\/restaurant_load_batches\/b1\/mark_interrupted$/);
+    expect(res.data?.restaurant_load_batch.status).toBe('apply_failed');
+  });
+
+  it('a 409 on mark interrupted comes back with the server sentence', async () => {
+    stubFetch(409, { error: 'A job for this batch is queued and will run.', error_code: 'REFUSED' });
+    const res = await markRestaurantLoadBatchInterrupted('b1');
+    expect(res.status).toBe(409);
+    expect(res.error).toBe('A job for this batch is queued and will run.');
   });
 });

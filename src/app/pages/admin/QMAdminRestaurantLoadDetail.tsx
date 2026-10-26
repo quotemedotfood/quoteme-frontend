@@ -9,8 +9,15 @@
 // While a job is working on the batch (dry run, apply, revert) the page asks
 // for the batch again every few seconds and stops once the status settles.
 //
+// MARK AS INTERRUPTED. A deploy can kill the process mid-run and leave a
+// batch applying or reverting with nothing behind it, which blocks every
+// later apply and revert. The button shows only in those two statuses,
+// follows can_mark_interrupted, and shows mark_interrupted_refusal when off.
+// It changes the batch's status and nothing else.
+//
 // READS GET /api/v1/admin/restaurant_load_batches/:id.
-// WRITES POST .../:id/apply (optional pair_after_apply) and POST .../:id/revert.
+// WRITES POST .../:id/apply (optional pair_after_apply), POST .../:id/revert
+// and POST .../:id/mark_interrupted.
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router';
 import { ArrowLeft, Copy } from 'lucide-react';
@@ -28,6 +35,7 @@ import {
 import {
   applyRestaurantLoadBatch,
   getRestaurantLoadBatch,
+  markRestaurantLoadBatchInterrupted,
   revertRestaurantLoadBatch,
   type RestaurantLoadBatchDetail,
 } from '../../services/adminApi';
@@ -114,7 +122,7 @@ export function QMAdminRestaurantLoadDetail({ pollMs = RESTAURANT_LOAD_POLL_MS }
   const [fetchCount, setFetchCount] = useState(0);
 
   const [pairAfter, setPairAfter] = useState(false);
-  const [confirm, setConfirm] = useState<'apply' | 'revert' | null>(null);
+  const [confirm, setConfirm] = useState<'apply' | 'revert' | 'interrupt' | null>(null);
   const [acting, setActing] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
@@ -143,7 +151,7 @@ export function QMAdminRestaurantLoadDetail({ pollMs = RESTAURANT_LOAD_POLL_MS }
     return () => clearTimeout(timer);
   }, [running, fetchCount, load, pollMs]);
 
-  const runAction = async (kind: 'apply' | 'revert') => {
+  const runAction = async (kind: 'apply' | 'revert' | 'interrupt') => {
     if (!batch) return;
     setConfirm(null);
     setActing(true);
@@ -151,7 +159,9 @@ export function QMAdminRestaurantLoadDetail({ pollMs = RESTAURANT_LOAD_POLL_MS }
     const res =
       kind === 'apply'
         ? await applyRestaurantLoadBatch(batch.id, { pairAfterApply: pairAfter })
-        : await revertRestaurantLoadBatch(batch.id);
+        : kind === 'revert'
+          ? await revertRestaurantLoadBatch(batch.id)
+          : await markRestaurantLoadBatchInterrupted(batch.id);
     setActing(false);
     if (res.error) {
       setActionError(res.error);
@@ -182,6 +192,8 @@ export function QMAdminRestaurantLoadDetail({ pollMs = RESTAURANT_LOAD_POLL_MS }
   const counts = batch.ledger_counts;
   const pairWords = pairReportWords(batch.pair_report);
   const filename = batch.filename || 'this file';
+  // Only these two statuses can be left behind by a killed run.
+  const stuckWriting = batch.status === 'applying' || batch.status === 'reverting';
 
   return (
     <div className={ADMIN_PAGE_FRAME} style={ADMIN_PAGE_FRAME_STYLE}>
@@ -269,6 +281,28 @@ export function QMAdminRestaurantLoadDetail({ pollMs = RESTAURANT_LOAD_POLL_MS }
         )}
       </section>
 
+      {stuckWriting && (
+        <section className="bg-white border border-gray-200 rounded-xl p-4 mb-6">
+          <h2 className="text-sm font-semibold text-[#2A2A2A] mb-1">Stuck on this status?</h2>
+          <p className="text-xs text-gray-500 mb-3">
+            If a restart stopped this run, the batch stays here and blocks every other load and
+            revert until it is marked interrupted.
+          </p>
+          <Button
+            variant="outline"
+            onClick={() => { setActionError(null); setConfirm('interrupt'); }}
+            disabled={!batch.can_mark_interrupted || acting}
+          >
+            Mark as interrupted
+          </Button>
+          {!batch.can_mark_interrupted && batch.mark_interrupted_refusal && (
+            <p className="mt-3 text-xs text-gray-500" data-testid="mark-interrupted-refusal">
+              Mark as interrupted is not available: {batch.mark_interrupted_refusal}
+            </p>
+          )}
+        </section>
+      )}
+
       {batch.dry_run_report && <ReportBlock title="Dry run report" text={batch.dry_run_report} />}
       {batch.apply_report && <ReportBlock title="Load report" text={batch.apply_report} />}
       {batch.revert_report && <ReportBlock title="Revert report" text={batch.revert_report} />}
@@ -313,6 +347,26 @@ export function QMAdminRestaurantLoadDetail({ pollMs = RESTAURANT_LOAD_POLL_MS }
               onClick={() => runAction('revert')}
             >
               Revert in production
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={confirm === 'interrupt'} onOpenChange={(open) => { if (!open) setConfirm(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Mark this {batch.status === 'reverting' ? 'revert' : 'load'} as interrupted?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This only unblocks the queue so another load or revert can run. It does not undo
+              anything: rows this run already wrote to production stay as they are. They can be
+              reverted from this page afterwards if the revert ledger covers them; a run stopped
+              outright may have recorded none.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Not now</AlertDialogCancel>
+            <AlertDialogAction onClick={() => runAction('interrupt')}>
+              Unblock the queue
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

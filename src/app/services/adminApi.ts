@@ -2901,6 +2901,9 @@ export interface RestaurantLoadBatch {
   requested_by: RestaurantLoadUserRef | null;
   applied_by: RestaurantLoadUserRef | null;
   reverted_by: RestaurantLoadUserRef | null;
+  // Set by POST mark_interrupted. Optional: a server before that endpoint
+  // does not send it.
+  marked_interrupted_by?: RestaurantLoadUserRef | null;
   started_at: string | null;
   finished_at: string | null;
   apply_started_at: string | null;
@@ -2911,6 +2914,11 @@ export interface RestaurantLoadBatch {
 export interface RestaurantLoadBatchDetail extends RestaurantLoadBatch {
   apply_refusal: string | null;
   revert_refusal: string | null;
+  // Whether POST mark_interrupted would be accepted now, and the server's
+  // sentence when it would not (a job for the batch may still be running, or
+  // the batch is not applying or reverting).
+  can_mark_interrupted: boolean;
+  mark_interrupted_refusal: string | null;
   dry_run_report: string | null;
   apply_report: string | null;
   revert_report: string | null;
@@ -2994,6 +3002,22 @@ export async function applyRestaurantLoadBatch(
   return fetchWithAuth(`${RESTAURANT_LOAD_BATCHES_PATH}/${encodeURIComponent(id)}/apply`, {
     method: 'POST',
     body: JSON.stringify(options.pairAfterApply ? { pair_after_apply: true } : {}),
+  });
+}
+
+/**
+ * POST /api/v1/admin/restaurant_load_batches/:id/mark_interrupted. Releases a
+ * batch a killed process left applying or reverting (applying becomes
+ * apply_failed, reverting becomes revert_failed). Writes nothing to
+ * restaurants or menus. 409 REFUSED as above while a job for the batch may
+ * still be running.
+ */
+export async function markRestaurantLoadBatchInterrupted(
+  id: string,
+): Promise<ApiResponse<{ restaurant_load_batch: RestaurantLoadBatchDetail }>> {
+  return fetchWithAuth(`${RESTAURANT_LOAD_BATCHES_PATH}/${encodeURIComponent(id)}/mark_interrupted`, {
+    method: 'POST',
+    body: JSON.stringify({}),
   });
 }
 
