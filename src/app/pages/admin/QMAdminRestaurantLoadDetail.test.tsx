@@ -277,4 +277,16 @@ describe('restaurant load detail', () => {
     const alert = await screen.findByText(/A job for this batch is queued and will run/);
     expect(alert.getAttribute('role')).toBe('alert');
   });
+
+  it('says the revert ledger covers every committed row, even of a run stopped outright', async () => {
+    m.getRestaurantLoadBatch.mockResolvedValue({ data: { restaurant_load_batch: stuck() } });
+    renderAt(60_000);
+
+    await screen.findByText('Writing to production');
+    fireEvent.click(button('Mark as interrupted'));
+    const dialog = await screen.findByRole('alertdialog');
+    expect(dialog.textContent).toMatch(/for every row that committed/);
+    expect(dialog.textContent).toMatch(/even in a run\s+stopped outright/);
+    expect(dialog.textContent).not.toMatch(/may have recorded none/);
+  });
 });

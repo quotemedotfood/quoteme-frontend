@@ -359,8 +359,9 @@ export function QMAdminRestaurantLoadDetail({ pollMs = RESTAURANT_LOAD_POLL_MS }
             <AlertDialogDescription>
               This only unblocks the queue so another load or revert can run. It does not undo
               anything: rows this run already wrote to production stay as they are. They can be
-              reverted from this page afterwards if the revert ledger covers them; a run stopped
-              outright may have recorded none.
+              reverted from this page afterwards if the revert ledger covers them, which it does
+              for every row that committed: each row is recorded as it is written, even in a run
+              stopped outright.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
