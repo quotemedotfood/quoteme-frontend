@@ -20,6 +20,8 @@ import {
   LogOut,
   BookmarkCheck,
   FileUp,
+  Wine,
+  ListChecks,
 } from 'lucide-react';
 import logoSquare from '/src/assets/e549e7d27b183e98e791f43494c715b8cc6ce7e9.png';
 import { useAuth } from '../contexts/AuthContext';
@@ -45,6 +47,19 @@ const navItems = [
   { icon: Kanban, label: 'Product Pipeline', path: '/qm-admin/product-pipeline' },
   { icon: Radio, label: 'Command', path: '/qm-admin/conference-command' },
   { icon: Activity, label: 'Health', path: '/qm-admin/health' },
+];
+
+// Sidebar sections: each renders under its own heading after the main list.
+// Beverages is its own section (Moose, 2026-10-27): the beverage corpus and
+// its wine match review queue.
+export const navSections = [
+  {
+    label: 'Beverages',
+    items: [
+      { icon: Wine, label: 'Wines', path: '/qm-admin/beverages/wines' },
+      { icon: ListChecks, label: 'Review matches', path: '/qm-admin/beverages/review-matches' },
+    ],
+  },
 ];
 
 export function QMAdminLayout() {
@@ -102,7 +117,7 @@ export function QMAdminLayout() {
           </div>
         </div>
 
-        <nav className="flex-1 py-4">
+        <nav className="flex-1 py-4 overflow-y-auto">
           {navItems.map((item) => {
             const Icon = item.icon;
             const active = isActive(item.path);
@@ -121,6 +136,31 @@ export function QMAdminLayout() {
               </Link>
             );
           })}
+          {navSections.map((section) => (
+            <div key={section.label} className="mt-4" data-testid={`qm-admin-nav-section-${section.label.toLowerCase()}`}>
+              <div className="px-6 pb-1 text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+                {section.label}
+              </div>
+              {section.items.map((item) => {
+                const Icon = item.icon;
+                const active = isActive(item.path);
+                return (
+                  <Link
+                    key={item.path}
+                    to={item.path}
+                    className={`flex items-center gap-3 px-4 py-2.5 mx-2 rounded-lg text-sm transition-colors ${
+                      active
+                        ? 'bg-[#7FAEC2]/10 text-[#7FAEC2] font-medium'
+                        : 'text-[#4F4F4F] hover:bg-gray-50'
+                    }`}
+                  >
+                    <Icon size={18} />
+                    <span>{item.label}</span>
+                  </Link>
+                );
+              })}
+            </div>
+          ))}
         </nav>
 
         <div className="p-4 border-t border-gray-200 flex flex-col gap-3">
@@ -144,7 +184,7 @@ export function QMAdminLayout() {
       <div className="md:hidden fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200">
         <div className="flex items-center gap-2 px-3 py-2 overflow-x-auto">
           <img src={logoSquare} alt="QM" className="w-7 h-7 flex-shrink-0" />
-          {navItems.map((item) => {
+          {[...navItems, ...navSections.flatMap((section) => section.items)].map((item) => {
             const active = isActive(item.path);
             return (
               <Link
