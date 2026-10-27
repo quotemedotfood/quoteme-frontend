@@ -3102,6 +3102,8 @@ export interface AdminBeveragesQuery {
   region?: string;
   /** The producer brand id. */
   brand_id?: string;
+  /** Producer name search: partial, case-insensitive (brands.name ILIKE). */
+  brand_q?: string;
   distributor_id?: string;
   restaurant_id?: string;
   min_restaurants?: number;
@@ -3118,7 +3120,7 @@ export async function getAdminBeverages(query: AdminBeveragesQuery): Promise<Api
     per_page: String(query.per_page),
   });
   const text: Array<keyof AdminBeveragesQuery> = [
-    'q', 'kind', 'color', 'grape', 'country', 'region', 'brand_id', 'distributor_id', 'restaurant_id', 'sort', 'dir',
+    'q', 'kind', 'color', 'grape', 'country', 'region', 'brand_id', 'brand_q', 'distributor_id', 'restaurant_id', 'sort', 'dir',
   ];
   for (const key of text) {
     const value = query[key];

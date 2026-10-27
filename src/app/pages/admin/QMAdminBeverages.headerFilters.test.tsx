@@ -31,7 +31,7 @@ vi.mock('../../services/adminApi', async (importOriginal) => {
   return { ...actual, getAdminBeverages, getAdminBrands, getAdminDistributors };
 });
 
-import { QMAdminBeverages, producerIdFor } from './QMAdminBeverages';
+import { QMAdminBeverages } from './QMAdminBeverages';
 
 afterEach(() => { cleanup(); getAdminBeverages.mockClear(); });
 
@@ -71,7 +71,7 @@ describe('QMAdminBeverages: filters on the column headers', () => {
     await renderPage();
     const q = lastQuery();
     expect(q).toMatchObject({ page: 1, sort: 'name', dir: 'asc' });
-    for (const key of ['kind', 'color', 'grape', 'country', 'region', 'brand_id', 'distributor_id', 'min_restaurants', 'max_restaurants', 'needs_review']) {
+    for (const key of ['kind', 'color', 'grape', 'country', 'region', 'brand_id', 'brand_q', 'distributor_id', 'min_restaurants', 'max_restaurants', 'needs_review']) {
       expect(q[key]).toBeUndefined();
     }
   });
@@ -106,11 +106,18 @@ describe('QMAdminBeverages: filters on the column headers', () => {
     ));
   });
 
-  it('turns a producer name into its brand id', async () => {
+  // GET /admin/brands lists companies only (QuoteMe #613), so the producer
+  // box is a search the server runs (brand_q), not a lookup in that list.
+  it('sends the typed producer text as brand_q, partial, from page 1', async () => {
     await renderPage();
-    await waitFor(() => expect(document.querySelectorAll('#beverage-producer-options option')).toHaveLength(1));
-    fireEvent.change(screen.getByTestId('filter-producer'), { target: { value: 'domaine x' } });
-    await waitFor(() => expect(getAdminBeverages).toHaveBeenLastCalledWith(expect.objectContaining({ brand_id: 'brand-1' })));
+    fireEvent.change(screen.getByTestId('filter-producer'), { target: { value: 'domaine' } });
+    await waitFor(() => expect(getAdminBeverages).toHaveBeenLastCalledWith(expect.objectContaining({ brand_q: 'domaine', page: 1 })));
+    expect(lastQuery().brand_id).toBeUndefined();
+  });
+
+  it('never loads the brands list', async () => {
+    await renderPage();
+    expect(getAdminBrands).not.toHaveBeenCalled();
   });
 
   it('a header click sorts server-side', async () => {
@@ -126,16 +133,5 @@ describe('QMAdminBeverages: filters on the column headers', () => {
     expect(within(screen.getByTestId('beverage-row-bev-1')).getByTestId('needs-review-badge')).toBeTruthy();
     fireEvent.click(screen.getByTestId('beverage-row-bev-1'));
     expect(await screen.findByTestId('detail-page')).toBeTruthy();
-  });
-});
-
-describe('producerIdFor', () => {
-  const brands = [{ id: 'b1', name: 'Domaine X', status: 'active', created_at: '' }];
-  it('matches a whole name, ignoring case and spaces', () => {
-    expect(producerIdFor('  DOMAINE x ', brands)).toBe('b1');
-  });
-  it('sends nothing for a partial name', () => {
-    expect(producerIdFor('Domaine', brands)).toBeUndefined();
-    expect(producerIdFor('', brands)).toBeUndefined();
   });
 });

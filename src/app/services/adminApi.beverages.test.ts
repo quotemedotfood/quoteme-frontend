@@ -21,14 +21,14 @@ describe('getAdminBeverages', () => {
     stubFetch();
     await getAdminBeverages({
       page: 2, per_page: 50, q: 'cuvee', kind: 'wine', color: 'red', grape: 'Syrah', country: 'France',
-      region: 'Rhone', brand_id: 'b1', distributor_id: 'd1', min_restaurants: 0, max_restaurants: 3,
+      region: 'Rhone', brand_id: 'b1', brand_q: 'domaine', distributor_id: 'd1', min_restaurants: 0, max_restaurants: 3,
       needs_review: false, sort: 'restaurant_count', dir: 'desc',
     });
     const params = new URL(sent[0].url, 'http://x').searchParams;
     expect(new URL(sent[0].url, 'http://x').pathname).toBe('/api/v1/admin/beverages');
     expect(Object.fromEntries(params)).toEqual({
       page: '2', per_page: '50', q: 'cuvee', kind: 'wine', color: 'red', grape: 'Syrah', country: 'France',
-      region: 'Rhone', brand_id: 'b1', distributor_id: 'd1', min_restaurants: '0', max_restaurants: '3',
+      region: 'Rhone', brand_id: 'b1', brand_q: 'domaine', distributor_id: 'd1', min_restaurants: '0', max_restaurants: '3',
       needs_review: 'false', sort: 'restaurant_count', dir: 'desc',
     });
   });

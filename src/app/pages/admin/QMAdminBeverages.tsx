@@ -13,13 +13,11 @@ import {
 } from '../../components/ui/table';
 import {
   getAdminBeverages,
-  getAdminBrands,
   getAdminDistributors,
   BEVERAGE_KINDS,
   BEVERAGE_COLORS,
   type AdminBeverageRow,
   type AdminBeverageSort,
-  type AdminBrand,
   type AdminDistributor,
 } from '../../services/adminApi';
 import { AdminEmptyState } from './_adminEmptyState';
@@ -45,7 +43,7 @@ export interface BeverageFilters {
   grape: string;
   country: string;
   region: string;
-  /** What the producer box holds; the brand id is looked up from it. */
+  /** Producer name, partial and case-insensitive (sent as brand_q). */
   producer: string;
   distributor_id: string;
   min_restaurants: string;
@@ -77,15 +75,6 @@ function wholeNumber(value: string): number | undefined {
   return Number.isInteger(n) && n >= 0 ? n : undefined;
 }
 
-// The producer filter takes a brand id. The box matches a producer by its
-// exact name (case-insensitive) from the brands list; until it does, no
-// producer filter is sent.
-export function producerIdFor(text: string, brands: AdminBrand[]): string | undefined {
-  const key = text.trim().toLowerCase();
-  if (!key) return undefined;
-  return brands.find((b) => b.name.trim().toLowerCase() === key)?.id;
-}
-
 export function QMAdminBeverages() {
   const navigate = useNavigate();
   const [rows, setRows] = useState<AdminBeverageRow[]>([]);
@@ -100,12 +89,11 @@ export function QMAdminBeverages() {
   const [page, setPage] = useState(1);
   const [meta, setMeta] = useState({ page: 1, per_page: PER_PAGE, total_count: 0, total_pages: 0 });
 
-  // Option lists for the producer and distributor header filters.
-  const [brands, setBrands] = useState<AdminBrand[]>([]);
+  // Option list for the distributor header filter. The producer filter is a
+  // search box (brand_q): GET /admin/brands lists companies, never producers.
   const [distributors, setDistributors] = useState<AdminDistributor[]>([]);
 
   useEffect(() => {
-    getAdminBrands().then((res) => { if (res.data) setBrands(res.data); });
     getAdminDistributors().then((res) => { if (res.data) setDistributors(res.data); });
   }, []);
 
@@ -126,8 +114,6 @@ export function QMAdminBeverages() {
     return next;
   }, [filters, debouncedFilters]);
 
-  const brandId = producerIdFor(applied.producer, brands);
-
   const loadRows = useCallback(async () => {
     setLoading(true);
     const res = await getAdminBeverages({
@@ -141,7 +127,7 @@ export function QMAdminBeverages() {
       grape: applied.grape || undefined,
       country: applied.country || undefined,
       region: applied.region || undefined,
-      brand_id: brandId,
+      brand_q: applied.producer || undefined,
       distributor_id: applied.distributor_id || undefined,
       min_restaurants: wholeNumber(applied.min_restaurants),
       max_restaurants: wholeNumber(applied.max_restaurants),
@@ -160,7 +146,7 @@ export function QMAdminBeverages() {
       setError(res.error || 'Failed to load');
     }
     setLoading(false);
-  }, [page, debouncedSearch, sortField, sortDir, applied, brandId]);
+  }, [page, debouncedSearch, sortField, sortDir, applied]);
 
   useEffect(() => {
     loadRows();
@@ -204,7 +190,6 @@ export function QMAdminBeverages() {
   );
 
   const filterBox = 'w-full min-w-[6rem] border border-gray-200 rounded-md px-2 py-1 text-xs font-normal bg-white';
-  const producerUnmatched = filters.producer.trim() !== '' && brands.length > 0 && !producerIdFor(filters.producer, brands);
 
   return (
     <div className={ADMIN_PAGE_FRAME} style={ADMIN_PAGE_FRAME_STYLE}>
@@ -259,16 +244,11 @@ export function QMAdminBeverages() {
                     <input
                       aria-label="Filter by producer"
                       data-testid="filter-producer"
-                      list="beverage-producer-options"
                       value={filters.producer}
                       onChange={(e) => setFilter('producer', e.target.value)}
                       placeholder="Any producer"
-                      title={producerUnmatched ? 'Pick a producer from the list' : undefined}
-                      className={`${filterBox} ${producerUnmatched ? 'border-amber-400' : ''}`}
+                      className={filterBox}
                     />
-                    <datalist id="beverage-producer-options">
-                      {brands.map((b) => <option key={b.id} value={b.name} />)}
-                    </datalist>
                   </TableHead>
                   <TableHead className="py-2">
                     <select
