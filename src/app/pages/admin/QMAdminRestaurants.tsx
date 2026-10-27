@@ -92,6 +92,10 @@ const STICKY_IDENTITY_CELL = `${STICKY_IDENTITY} z-10 bg-white group-hover:bg-gr
 const PER_PAGE = 50;
 const SEARCH_DEBOUNCE_MS = 300;
 
+// The states the estate actually carries today. The server matches
+// restaurants.state exactly and ignores anything that is not a valid region.
+const STATE_FILTERS = ['CO', 'MN', 'MA'];
+
 type SortField = 'name' | 'city' | 'status' | 'contact_count' | 'created_at';
 type SortDir = 'asc' | 'desc';
 
@@ -102,6 +106,10 @@ export function QMAdminRestaurants() {
   const [search, setSearch] = useState('');
   // PAIRME REVIEW FILTER (Moose, 2026-09-30): server-side, like search.
   const [pairmeFilter, setPairmeFilter] = useState<PairmeReviewFilter | ''>('');
+  // STATE and CRAWLED filters: server-side, so an operator can see a finished
+  // crawler load (for example every crawled CO row) across all pages.
+  const [stateFilter, setStateFilter] = useState('');
+  const [crawledOnly, setCrawledOnly] = useState(false);
   const [sortField, setSortField] = useState<SortField>('name');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
   const [impersonating, setImpersonating] = useState<string | null>(null);
@@ -135,6 +143,8 @@ export function QMAdminRestaurants() {
       sort: sortField,
       dir: sortDir,
       pairme_review: pairmeFilter || undefined,
+      state: stateFilter || undefined,
+      crawled: crawledOnly || undefined,
     });
     if (res.data) {
       setRestaurants(res.data.restaurants);
@@ -144,7 +154,7 @@ export function QMAdminRestaurants() {
       setError(res.error || 'Failed to load');
     }
     setLoading(false);
-  }, [page, debouncedSearch, sortField, sortDir, pairmeFilter]);
+  }, [page, debouncedSearch, sortField, sortDir, pairmeFilter, stateFilter, crawledOnly]);
 
   // The flag is clickable: needs review -> reviewed, and back. Only the
   // clicked row changes; the list is not reloaded.
@@ -210,6 +220,27 @@ export function QMAdminRestaurants() {
           <option value="needs_review">PairMe: needs review</option>
           <option value="reviewed">PairMe: reviewed</option>
         </select>
+        <select
+          aria-label="State"
+          data-testid="state-filter"
+          value={stateFilter}
+          onChange={(e) => { setStateFilter(e.target.value); setPage(1); }}
+          className="border border-gray-200 rounded-md px-2 py-1.5 text-sm"
+        >
+          <option value="">All states</option>
+          {STATE_FILTERS.map((s) => (
+            <option key={s} value={s}>{s}</option>
+          ))}
+        </select>
+        <label className="flex items-center gap-1.5 text-sm text-gray-600">
+          <input
+            type="checkbox"
+            data-testid="crawled-filter"
+            checked={crawledOnly}
+            onChange={(e) => { setCrawledOnly(e.target.checked); setPage(1); }}
+          />
+          Crawled only
+        </label>
         <span className="text-xs text-gray-400">
           {meta.total_count} restaurants
           {meta.total_pages > 1 && ` (page ${meta.page} of ${meta.total_pages})`}
