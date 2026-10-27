@@ -2853,3 +2853,186 @@ export async function downloadRestaurantOnboardingDocument(
     return { error: error instanceof Error ? error.message : 'Network error' };
   }
 }
+
+// ============= RESTAURANT LOAD BATCHES =============
+//
+// The QM admin loads a crawler CSV export (Moose, 2026-10-24: "a page in the
+// qmadmin for me to plug in a list, and have it run soup to nuts").
+//
+// WRITER: Api::V1::Admin::RestaurantLoadBatchesController (QuoteMe #588) and
+// RestaurantLoadBatchJob. READERS: QMAdminRestaurantLoads and
+// QMAdminRestaurantLoadDetail. The server is the authority on what may run:
+// can_apply / can_revert and the refusal sentences come from it, and a 409
+// REFUSED carries the reason in `error`.
+
+export type RestaurantLoadBatchStatus =
+  | 'uploaded'
+  | 'dry_running'
+  | 'dry_run_done'
+  | 'dry_run_failed'
+  | 'applying'
+  | 'applied'
+  | 'apply_failed'
+  | 'reverting'
+  | 'reverted'
+  | 'revert_failed';
+
+export interface RestaurantLoadUserRef {
+  id: string;
+  email: string;
+}
+
+export interface RestaurantLoadLedgerCounts {
+  restaurants_created: number;
+  restaurants_updated: number;
+  menus_created: number;
+  menus_updated: number;
+}
+
+export interface RestaurantLoadBatch {
+  id: string;
+  status: RestaurantLoadBatchStatus | string;
+  filename: string | null;
+  byte_size: number | null;
+  file_sha256: string | null;
+  dry_run_sha256: string | null;
+  row_count: number | null;
+  load_batch_id: string | null;
+  error: string | null;
+  ledger_counts: RestaurantLoadLedgerCounts | null;
+  pair_after_apply: boolean;
+  pair_report: Record<string, unknown> | null;
+  can_apply: boolean;
+  can_revert: boolean;
+  requested_by: RestaurantLoadUserRef | null;
+  applied_by: RestaurantLoadUserRef | null;
+  reverted_by: RestaurantLoadUserRef | null;
+  // Set by POST mark_interrupted. Optional: a server before that endpoint
+  // does not send it.
+  marked_interrupted_by?: RestaurantLoadUserRef | null;
+  started_at: string | null;
+  finished_at: string | null;
+  apply_started_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface RestaurantLoadBatchDetail extends RestaurantLoadBatch {
+  apply_refusal: string | null;
+  revert_refusal: string | null;
+  // Whether POST mark_interrupted would be accepted now, and the server's
+  // sentence when it would not (a job for the batch may still be running, or
+  // the batch is not applying or reverting).
+  can_mark_interrupted: boolean;
+  mark_interrupted_refusal: string | null;
+  dry_run_report: string | null;
+  apply_report: string | null;
+  revert_report: string | null;
+}
+
+export interface RestaurantLoadBatchList {
+  restaurant_load_batches: RestaurantLoadBatch[];
+  page: number;
+  per_page: number;
+  total_count: number;
+  total_pages: number;
+}
+
+const RESTAURANT_LOAD_BATCHES_PATH = '/api/v1/admin/restaurant_load_batches';
+
+/**
+ * POST /api/v1/admin/restaurant_load_batches, multipart `file`. 202 with the
+ * stored batch; the server queues the dry run. No Content-Type header here:
+ * the browser sets the multipart boundary itself. `status` is returned on
+ * failure so the page can tell a 413 (request too large) from other errors.
+ */
+export async function uploadRestaurantLoadBatch(
+  file: File,
+): Promise<ApiResponse<{ restaurant_load_batch: RestaurantLoadBatch }>> {
+  const token = getAuthToken();
+  const headers: Record<string, string> = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const formData = new FormData();
+  formData.append('file', file);
+
+  try {
+    const response = await fetchWithPolicy(`${API_BASE_URL}${RESTAURANT_LOAD_BATCHES_PATH}`, {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+    if (!response.ok) {
+      const errBody = await response.json().catch(() => ({}));
+      return {
+        error: errBody.error || `Upload failed (${response.status})`,
+        error_code: errBody.error_code,
+        status: response.status,
+      };
+    }
+    return { data: await response.json() };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : 'Network error' };
+  }
+}
+
+/** GET /api/v1/admin/restaurant_load_batches, newest first, no reports. */
+export async function getRestaurantLoadBatches(params?: {
+  page?: number;
+  per_page?: number;
+}): Promise<ApiResponse<RestaurantLoadBatchList>> {
+  const qs = new URLSearchParams();
+  if (params?.page) qs.set('page', String(params.page));
+  if (params?.per_page) qs.set('per_page', String(params.per_page));
+  const query = qs.toString();
+  return fetchWithAuth(`${RESTAURANT_LOAD_BATCHES_PATH}${query ? `?${query}` : ''}`);
+}
+
+/** GET /api/v1/admin/restaurant_load_batches/:id, with refusals and reports. */
+export async function getRestaurantLoadBatch(
+  id: string,
+): Promise<ApiResponse<{ restaurant_load_batch: RestaurantLoadBatchDetail }>> {
+  return fetchWithAuth(`${RESTAURANT_LOAD_BATCHES_PATH}/${encodeURIComponent(id)}`);
+}
+
+/**
+ * POST /api/v1/admin/restaurant_load_batches/:id/apply. This writes to
+ * production. pair_after_apply is sent only when the operator ticked the box;
+ * an unticked box sends an empty body and the server defaults it to false.
+ * A 409 REFUSED comes back as { error, error_code: 'REFUSED', status: 409 }.
+ */
+export async function applyRestaurantLoadBatch(
+  id: string,
+  options: { pairAfterApply?: boolean } = {},
+): Promise<ApiResponse<{ restaurant_load_batch: RestaurantLoadBatch }>> {
+  return fetchWithAuth(`${RESTAURANT_LOAD_BATCHES_PATH}/${encodeURIComponent(id)}/apply`, {
+    method: 'POST',
+    body: JSON.stringify(options.pairAfterApply ? { pair_after_apply: true } : {}),
+  });
+}
+
+/**
+ * POST /api/v1/admin/restaurant_load_batches/:id/mark_interrupted. Releases a
+ * batch a killed process left applying or reverting (applying becomes
+ * apply_failed, reverting becomes revert_failed). Writes nothing to
+ * restaurants or menus. 409 REFUSED as above while a job for the batch may
+ * still be running.
+ */
+export async function markRestaurantLoadBatchInterrupted(
+  id: string,
+): Promise<ApiResponse<{ restaurant_load_batch: RestaurantLoadBatchDetail }>> {
+  return fetchWithAuth(`${RESTAURANT_LOAD_BATCHES_PATH}/${encodeURIComponent(id)}/mark_interrupted`, {
+    method: 'POST',
+    body: JSON.stringify({}),
+  });
+}
+
+/** POST /api/v1/admin/restaurant_load_batches/:id/revert. 409 REFUSED as above. */
+export async function revertRestaurantLoadBatch(
+  id: string,
+): Promise<ApiResponse<{ restaurant_load_batch: RestaurantLoadBatch }>> {
+  return fetchWithAuth(`${RESTAURANT_LOAD_BATCHES_PATH}/${encodeURIComponent(id)}/revert`, {
+    method: 'POST',
+    body: JSON.stringify({}),
+  });
+}
