@@ -3036,3 +3036,266 @@ export async function revertRestaurantLoadBatch(
     body: JSON.stringify({}),
   });
 }
+
+// ============= BEVERAGE CORPUS (QM admin only) =============
+//
+// Reader of QuoteMe Api::V1::Admin::BeveragesController and
+// Api::V1::Admin::WineMatchSubmissionsController (QuoteMe PR #613). The server
+// refuses every role but quoteme_admin. A sort here orders an admin table;
+// nothing is ranked for a diner or a rep.
+
+export const BEVERAGE_KINDS = ['wine', 'beer', 'sake', 'spirit', 'cider', 'other'] as const;
+export const BEVERAGE_COLORS = ['red', 'white', 'rose', 'sparkling', 'orange', 'dessert', 'fortified'] as const;
+export type BeverageKind = (typeof BEVERAGE_KINDS)[number];
+export type BeverageColor = (typeof BEVERAGE_COLORS)[number];
+
+export type AdminBeverageSort =
+  | 'name'
+  | 'brand'
+  | 'kind'
+  | 'color'
+  | 'country'
+  | 'region'
+  | 'restaurant_count'
+  | 'distributor_count'
+  | 'created_at'
+  | 'updated_at';
+
+export interface AdminBeverageRow {
+  id: string;
+  name: string;
+  brand: { id: string; name: string | null } | null;
+  kind: BeverageKind | string;
+  color: BeverageColor | string | null;
+  style: string | null;
+  grapes: string[];
+  country: string | null;
+  region: string | null;
+  appellation: string | null;
+  needs_review: boolean;
+  restaurant_count: number;
+  distributor_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AdminBeveragesPage {
+  rows: AdminBeverageRow[];
+  page: number;
+  per_page: number;
+  total_count: number;
+  total_pages: number;
+}
+
+export interface AdminBeveragesQuery {
+  page: number;
+  per_page: number;
+  /** Matched server-side against beverage name, producer name, region and appellation. */
+  q?: string;
+  kind?: string;
+  color?: string;
+  /** One grape; the server normalizes it before matching. */
+  grape?: string;
+  /** Case-insensitive equality. */
+  country?: string;
+  /** Case-insensitive equality. */
+  region?: string;
+  /** The producer brand id. */
+  brand_id?: string;
+  /** Producer name search: partial, case-insensitive (brands.name ILIKE). */
+  brand_q?: string;
+  distributor_id?: string;
+  restaurant_id?: string;
+  min_restaurants?: number;
+  max_restaurants?: number;
+  needs_review?: boolean;
+  sort?: AdminBeverageSort;
+  dir?: 'asc' | 'desc';
+}
+
+/** GET /api/v1/admin/beverages: paged, searched, filtered and sorted server-side. */
+export async function getAdminBeverages(query: AdminBeveragesQuery): Promise<ApiResponse<AdminBeveragesPage>> {
+  const params = new URLSearchParams({
+    page: String(query.page),
+    per_page: String(query.per_page),
+  });
+  const text: Array<keyof AdminBeveragesQuery> = [
+    'q', 'kind', 'color', 'grape', 'country', 'region', 'brand_id', 'brand_q', 'distributor_id', 'restaurant_id', 'sort', 'dir',
+  ];
+  for (const key of text) {
+    const value = query[key];
+    if (typeof value === 'string' && value.trim() !== '') params.set(key, value.trim());
+  }
+  if (query.min_restaurants != null) params.set('min_restaurants', String(query.min_restaurants));
+  if (query.max_restaurants != null) params.set('max_restaurants', String(query.max_restaurants));
+  if (query.needs_review != null) params.set('needs_review', String(query.needs_review));
+
+  return fetchWithAuth(`/api/v1/admin/beverages?${params.toString()}`);
+}
+
+export interface AdminBeverageDetail {
+  id: string;
+  name: string;
+  kind: string;
+  color: string | null;
+  style: string | null;
+  grapes: string[];
+  country: string | null;
+  region: string | null;
+  appellation: string | null;
+  aliases: string[];
+  identity_key: string;
+  pronunciation: string | null;
+  tasting_note: {
+    text: string;
+    source: string | null;
+    author_user_id: string | null;
+    written_at: string | null;
+  } | null;
+  details: Record<string, unknown>;
+  source_refs: Array<Record<string, unknown>>;
+  needs_review: boolean;
+  created_via: string | null;
+  created_at: string;
+  updated_at: string;
+  brand: {
+    id: string;
+    name: string;
+    kind: string | null;
+    country: string | null;
+    region: string | null;
+    source: string | null;
+    source_refs: Array<Record<string, unknown>> | null;
+  } | null;
+}
+
+export interface AdminBeverageRestaurant {
+  restaurant_id: string | null;
+  name: string | null;
+  city: string | null;
+  state: string | null;
+  venue_id: string;
+  rows: Array<{
+    capture_row_id: string;
+    producer: string | null;
+    wine_name: string | null;
+    vintage: string | null;
+    list_source: string | null;
+    list_section: string | null;
+    glass_cents: number | null;
+    bottle_cents: number | null;
+  }>;
+}
+
+export interface AdminBeverageDistributor {
+  distributor_id: string;
+  name: string;
+  products: Array<{
+    product_id: string;
+    item_number: string | null;
+    product_name: string | null;
+    unit_size: string | null;
+    upc: string | null;
+    status: string | null;
+  }>;
+}
+
+export interface AdminBeverageShow {
+  beverage: AdminBeverageDetail;
+  restaurants: AdminBeverageRestaurant[];
+  diner_photo_row_count: number;
+  distributors: AdminBeverageDistributor[];
+  pending_wine_matches: Array<{
+    id: string;
+    source_table: string | null;
+    source_id: string | null;
+    reasons: string[] | null;
+  }>;
+}
+
+/** GET /api/v1/admin/beverages/:id */
+export async function getAdminBeverage(id: string): Promise<ApiResponse<AdminBeverageShow>> {
+  return fetchWithAuth(`/api/v1/admin/beverages/${encodeURIComponent(id)}`);
+}
+
+export type WineMatchStatus = 'pending' | 'approved' | 'archived';
+
+export interface WineMatchSubmission {
+  id: string;
+  status: WineMatchStatus | string;
+  submitted_at: string;
+  reviewed_at: string | null;
+  reviewed_by_user_id: string | null;
+  review_notes: string | null;
+  /** Written by Beverages::Resolver#open_submission! */
+  source_data: {
+    source_table?: string;
+    source_id?: string;
+    beverage_id?: string;
+    outcome?: string;
+    reasons?: string[];
+    candidate_beverage_ids?: string[];
+    identity_key?: string;
+    source_ref?: Record<string, unknown>;
+    raw?: Record<string, unknown>;
+    relinked_from?: string;
+  };
+  resolved_data: Record<string, unknown> | null;
+  beverage: {
+    id: string;
+    name: string;
+    kind: string;
+    color: string | null;
+    brand: { id: string; name: string } | null;
+  } | null;
+}
+
+export interface WineMatchSubmissionsPage {
+  rows: WineMatchSubmission[];
+  page: number;
+  per_page: number;
+  total_count: number;
+  total_pages: number;
+}
+
+/** GET /api/v1/admin/wine_match_submissions */
+export async function getWineMatchSubmissions(query: {
+  status?: WineMatchStatus;
+  page: number;
+  per_page: number;
+}): Promise<ApiResponse<WineMatchSubmissionsPage>> {
+  const params = new URLSearchParams({
+    status: query.status || 'pending',
+    page: String(query.page),
+    per_page: String(query.per_page),
+  });
+  return fetchWithAuth(`/api/v1/admin/wine_match_submissions?${params.toString()}`);
+}
+
+/** POST /api/v1/admin/wine_match_submissions/:id/approve. The link stands. */
+export async function approveWineMatch(id: string, reviewNotes?: string): Promise<ApiResponse<WineMatchSubmission>> {
+  return fetchWithAuth(`/api/v1/admin/wine_match_submissions/${encodeURIComponent(id)}/approve`, {
+    method: 'POST',
+    body: JSON.stringify(reviewNotes ? { review_notes: reviewNotes } : {}),
+  });
+}
+
+/** POST /api/v1/admin/wine_match_submissions/:id/relink. The source row moves to beverageId. */
+export async function relinkWineMatch(
+  id: string,
+  beverageId: string,
+  reviewNotes?: string,
+): Promise<ApiResponse<WineMatchSubmission>> {
+  return fetchWithAuth(`/api/v1/admin/wine_match_submissions/${encodeURIComponent(id)}/relink`, {
+    method: 'POST',
+    body: JSON.stringify({ beverage_id: beverageId, ...(reviewNotes ? { review_notes: reviewNotes } : {}) }),
+  });
+}
+
+/** POST /api/v1/admin/wine_match_submissions/:id/reject. The source row is unlinked. */
+export async function rejectWineMatch(id: string, reviewNotes?: string): Promise<ApiResponse<WineMatchSubmission>> {
+  return fetchWithAuth(`/api/v1/admin/wine_match_submissions/${encodeURIComponent(id)}/reject`, {
+    method: 'POST',
+    body: JSON.stringify(reviewNotes ? { review_notes: reviewNotes } : {}),
+  });
+}

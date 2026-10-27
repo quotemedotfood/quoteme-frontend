@@ -43,6 +43,9 @@ import { QMAdminGapFillerNeedsPick } from "./pages/admin/QMAdminGapFillerNeedsPi
 import { QMAdminOperationalMemoryLearnings } from "./pages/admin/QMAdminOperationalMemoryLearnings";
 import { QMAdminChefs } from "./pages/admin/QMAdminChefs";
 import { QMAdminProductPipeline } from "./pages/admin/QMAdminProductPipeline";
+import { QMAdminBeverages } from "./pages/admin/QMAdminBeverages";
+import { QMAdminBeverageDetail } from "./pages/admin/QMAdminBeverageDetail";
+import { QMAdminWineMatches } from "./pages/admin/QMAdminWineMatches";
 import { QMAdminNotFound } from "./pages/admin/QMAdminNotFound";
 import { SentryTestPage } from "./pages/admin/SentryTestPage";
 import { QuotePreviewPage } from "./pages/QuotePreviewPage";
@@ -357,6 +360,12 @@ export const router = createBrowserRouter([
           { path: "memory-learnings", Component: QMAdminOperationalMemoryLearnings },
           { path: "chefs", Component: QMAdminChefs },
           { path: "product-pipeline", Component: QMAdminProductPipeline },
+          // Beverages section (Moose, 2026-10-27): the beverage corpus and its
+          // wine match review queue. QM admins only, like every route here.
+          { path: "beverages", element: <Navigate to="/qm-admin/beverages/wines" replace /> },
+          { path: "beverages/wines", Component: QMAdminBeverages },
+          { path: "beverages/wines/:id", Component: QMAdminBeverageDetail },
+          { path: "beverages/review-matches", Component: QMAdminWineMatches },
           { path: "conference-command", Component: QMAdminConferenceCommand },
           { path: "health", Component: QMAdminHealth },
           // Hidden verification route: navigate here post-deploy to confirm
