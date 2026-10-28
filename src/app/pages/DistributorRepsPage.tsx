@@ -15,6 +15,7 @@ import {
 import { Loader2, Check, Send, UserPlus, Users, X, LogIn, RefreshCw, UserX } from 'lucide-react';
 import { inviteRep, getDistributorAdminReps, impersonateRep, cancelRepInvite, resendRepInvite, disableRep } from '../services/api';
 import type { DistributorRep } from '../services/api';
+import { isRepMoveRefusal, REP_MOVE_REFUSED_MESSAGE } from '../utils/repMoveRefusal';
 
 // One name for a rep, used by every row action's accessible name and by both
 // confirms. Falls back through last name to email so the label is never empty:
@@ -118,6 +119,23 @@ export function DistributorRepsPage() {
       confirm,
     });
 
+    if (isRepMoveRefusal(res)) {
+      // H3 (BE #602): this person is active at another distributor (or is
+      // another distributor's admin). Only QuoteMe can move them, so there is
+      // nothing to confirm: close any open confirm and say so inline.
+      setSending(false);
+      setConfirmMatch(null);
+      setPendingBeConfirmMessage(null);
+      setError(REP_MOVE_REFUSED_MESSAGE);
+      return;
+    }
+
+    // The 409 confirm stays for the cases the BE still allows after confirm:
+    // an admin of THIS distributor taking a rep role, or a person whose rep
+    // profile at another distributor is inactive. The 409 body does not say
+    // which case it is, so a refused move can still reach this dialog; the
+    // confirmed retry then gets the 403 above and the dialog gives way to
+    // the inline line.
     if (res.status === 409 && res.error_code === 'role_conflict_requires_confirm' && !confirm) {
       // Cross-distributor case: the client-side pre-check above only knows
       // about people already loaded for THIS distributor, so it cannot catch
@@ -315,7 +333,7 @@ export function DistributorRepsPage() {
             </div>
           </div>
 
-          {error && <p className="text-red-500 text-sm mt-3">{error}</p>}
+          {error && <p role="alert" className="text-red-500 text-sm mt-3">{error}</p>}
           {successMessage && (
             <p className="text-green-600 text-sm mt-3 flex items-center gap-1.5">
               <Check className="w-4 h-4" /> {successMessage}

@@ -4,6 +4,7 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Loader2, Check, Send, UserPlus } from 'lucide-react';
 import { inviteRep } from '../services/api';
+import { isRepMoveRefusal, REP_MOVE_REFUSED_MESSAGE } from '../utils/repMoveRefusal';
 
 interface InvitedRep {
   name: string;
@@ -35,7 +36,10 @@ export function RepInvitePage() {
       territory: territory.trim() || undefined,
     });
 
-    if (res.error) {
+    if (isRepMoveRefusal(res)) {
+      // H3 (BE #602): active at another distributor; only QuoteMe can move them.
+      setError(REP_MOVE_REFUSED_MESSAGE);
+    } else if (res.error) {
       setError(res.error);
     } else {
       setSuccessMessage(res.data?.message || `Invite sent to ${email.trim()}`);
@@ -115,7 +119,7 @@ export function RepInvitePage() {
         </div>
 
         {error && (
-          <p className="text-red-500 text-sm mt-4">{error}</p>
+          <p role="alert" className="text-red-500 text-sm mt-4">{error}</p>
         )}
 
         {successMessage && (
