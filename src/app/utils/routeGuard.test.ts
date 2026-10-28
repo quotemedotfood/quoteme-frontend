@@ -73,3 +73,31 @@ describe('guestTokenBypassesAuthGuard', () => {
     expect(guestTokenBypassesAuthGuard('/chef/quotes/abc')).toBe(false);
   });
 });
+
+// ---------------------------------------------------------------------------
+// receipt_token (BE review M7): the "ready" email link opens on a device with
+// no guest session. The BE checks the signed token; this only lets the page
+// mount on the receipt path.
+// ---------------------------------------------------------------------------
+
+describe('guestTokenBypassesAuthGuard with a receipt_token', () => {
+  it('allows the receipt page with a receipt_token and no guest token', () => {
+    stubLocalStorage(null);
+    expect(guestTokenBypassesAuthGuard('/chef/quotes/abc', '?receipt_token=signed123')).toBe(true);
+  });
+
+  it('allows it even when localStorage is unavailable', () => {
+    expect(guestTokenBypassesAuthGuard('/chef/quotes/abc', '?receipt_token=signed123')).toBe(true);
+  });
+
+  it('does not open any other path with a receipt_token', () => {
+    stubLocalStorage(null);
+    expect(guestTokenBypassesAuthGuard('/chef/order-guide/123', '?receipt_token=signed123')).toBe(false);
+    expect(guestTokenBypassesAuthGuard('/dashboard', '?receipt_token=signed123')).toBe(false);
+  });
+
+  it('ignores an empty receipt_token', () => {
+    stubLocalStorage(null);
+    expect(guestTokenBypassesAuthGuard('/chef/quotes/abc', '?receipt_token=')).toBe(false);
+  });
+});

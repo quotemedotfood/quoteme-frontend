@@ -955,8 +955,15 @@ export async function createGuestQuote(
   });
 }
 
-export async function getGuestQuote(id: string): Promise<ApiResponse<QuoteResponse>> {
-  return fetchWithGuest(`/api/v1/guest/quotes/${id}`);
+// receiptToken: the signed, expiring receipt_token from the "your quote is
+// ready" email (BE review M7). It opens that one quote read-only, even on a
+// device whose guest session did not make the quote.
+export async function getGuestQuote(
+  id: string,
+  receiptToken?: string | null
+): Promise<ApiResponse<QuoteResponse>> {
+  const query = receiptToken ? `?receipt_token=${encodeURIComponent(receiptToken)}` : '';
+  return fetchWithGuest(`/api/v1/guest/quotes/${id}${query}`);
 }
 
 // Records the chef's "email me when the quote is ready" request against the

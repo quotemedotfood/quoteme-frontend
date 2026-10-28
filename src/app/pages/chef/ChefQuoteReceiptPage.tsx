@@ -69,6 +69,12 @@ export function ChefQuoteReceiptPage() {
   // machinery (ref + measured panelHeight + ResizeObserver + reserved bottom
   // padding) is gone.
 
+  const [searchParams] = useSearchParams();
+  // The "ready" email link carries a signed receipt_token for this quote
+  // (BE review M7). The guest endpoint accepts it in place of the guest
+  // session, read-only, so the link opens on any device.
+  const receiptToken = searchParams.get('receipt_token');
+
   useEffect(() => {
     if (!id) return;
     setLoading(true);
@@ -78,8 +84,8 @@ export function ChefQuoteReceiptPage() {
     // Fall back to the guest endpoint when only an X-Guest-Token is
     // present (true guest preview-link arrival, no account yet).
     const bearerToken = localStorage.getItem('quoteme_token');
-    const fetchFn = bearerToken ? getChefQuote : getGuestQuote;
-    fetchFn(id).then((res) => {
+    const request = bearerToken ? getChefQuote(id) : getGuestQuote(id, receiptToken);
+    request.then((res) => {
       if (res.error) {
         setError(res.error);
         setErrorStatus(res.status ?? null);
@@ -88,9 +94,8 @@ export function ChefQuoteReceiptPage() {
       }
       setLoading(false);
     });
-  }, [id]);
+  }, [id, receiptToken]);
 
-  const [searchParams] = useSearchParams();
   const autoAcceptedRef = useRef(false);
 
   // BUG #28: the auto-accept effect below used to call a bare async

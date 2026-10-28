@@ -24,9 +24,14 @@ export const CHEF_RECEIPT_PATH = /^\/chef\/quotes\/[^/]+/;
  *
  * @param pathname - window.location.pathname (or React Router's location.pathname)
  */
-export function guestTokenBypassesAuthGuard(pathname: string): boolean {
+export function guestTokenBypassesAuthGuard(pathname: string, search = ''): boolean {
+  if (!CHEF_RECEIPT_PATH.test(pathname)) return false;
+  // The "ready" email link carries a signed receipt_token for that one quote
+  // (BE review M7). It opens the receipt on a device with no guest session;
+  // the BE checks the token, so this only lets the page mount.
+  if (new URLSearchParams(search).get('receipt_token')) return true;
   const storage = globalThis.localStorage;
   if (!storage) return false;
   const guestToken = storage.getItem('quoteme_guest_token');
-  return Boolean(guestToken) && CHEF_RECEIPT_PATH.test(pathname);
+  return Boolean(guestToken);
 }
