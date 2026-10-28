@@ -21,7 +21,7 @@ export function RootLayout() {
   // /auth. The BE endpoint authenticates the token via Chef::BaseController's
   // X-Guest-Token header; see src/app/utils/routeGuard.ts for path scoping.
   const isGuestChefReceipt =
-    !isAuthenticated && guestTokenBypassesAuthGuard(location.pathname);
+    !isAuthenticated && guestTokenBypassesAuthGuard(location.pathname, location.search);
 
   if (!demo && !isAuthenticated && !isLoading && !isGuestChefReceipt) {
     return <Navigate to="/auth" replace />;

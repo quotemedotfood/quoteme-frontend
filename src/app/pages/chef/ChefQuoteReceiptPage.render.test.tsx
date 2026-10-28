@@ -380,3 +380,39 @@ describe('ChefQuoteReceiptPage - decision panel in normal flow (Moose ruling 202
     expect(container.querySelector('[class*="fixed"]')).toBeNull();
   });
 });
+
+describe('ChefQuoteReceiptPage - receipt_token from the ready email (BE review M7)', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    getChefQuote.mockClear();
+    getGuestQuote.mockClear();
+  });
+
+  afterEach(() => {
+    cleanup();
+  });
+
+  it('guest arriving from the email passes the receipt_token to the guest quote call', async () => {
+    render(
+      <MemoryRouter initialEntries={['/chef/quotes/quote-1?receipt_token=signed%2Babc--123']}>
+        <Routes>
+          <Route path="/chef/quotes/:id" element={<ChefQuoteReceiptPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    await screen.findByRole('button', { name: 'Looks good' });
+    expect(getGuestQuote).toHaveBeenCalledWith('quote-1', 'signed+abc--123');
+  });
+
+  it('guest without a receipt_token calls the guest endpoint with no token', async () => {
+    render(
+      <MemoryRouter initialEntries={['/chef/quotes/quote-1']}>
+        <Routes>
+          <Route path="/chef/quotes/:id" element={<ChefQuoteReceiptPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    await screen.findByRole('button', { name: 'Looks good' });
+    expect(getGuestQuote).toHaveBeenCalledWith('quote-1', null);
+  });
+});
