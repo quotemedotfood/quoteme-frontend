@@ -4,7 +4,7 @@
 //
 // @vitest-environment jsdom
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { getAdminBeverages, getWineMatchSubmissions, relinkWineMatch, rejectWineMatch } from './adminApi';
+import { getAdminBeverages, getAdminBeverageSummary, getWineMatchSubmissions, relinkWineMatch, rejectWineMatch } from './adminApi';
 
 const sent: Array<{ url: string; init?: RequestInit }> = [];
 afterEach(() => { vi.unstubAllGlobals(); sent.length = 0; });
@@ -63,5 +63,26 @@ describe('wine match submissions', () => {
     await rejectWineMatch('s1');
     expect(new URL(sent[0].url, 'http://x').pathname).toBe('/api/v1/admin/wine_match_submissions/s1/reject');
     expect(sent[0].init?.method).toBe('POST');
+  });
+});
+
+describe('getAdminBeverageSummary', () => {
+  it('GETs the summary with no query when no distributor id is given', async () => {
+    stubFetch({});
+    await getAdminBeverageSummary();
+    await getAdminBeverageSummary('  ');
+    for (const { url, init } of sent) {
+      const u = new URL(url, 'http://x');
+      expect(u.pathname).toBe('/api/v1/admin/beverages/summary');
+      expect([...u.searchParams.keys()]).toEqual([]);
+      expect(init?.method ?? 'GET').toBe('GET');
+    }
+  });
+
+  it('sends distributor_id when given', async () => {
+    stubFetch({});
+    await getAdminBeverageSummary('f9c77f97-2c41-4cf9-be8b-8f97832e718c');
+    const u = new URL(sent[0].url, 'http://x');
+    expect(Object.fromEntries(u.searchParams)).toEqual({ distributor_id: 'f9c77f97-2c41-4cf9-be8b-8f97832e718c' });
   });
 });
