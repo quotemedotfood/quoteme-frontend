@@ -43,6 +43,7 @@ import { userLabel } from '../../utils/userLabel';
 import { regionsForCountry } from '../../constants/regions';
 import { ADMIN_PAGE_FRAME, ADMIN_PAGE_FRAME_STYLE } from '../../components/admin/adminPageFrame';
 import { DistributorCustomersSection } from '../../components/admin/DistributorCustomersSection';
+import { RepTabletLinkControl } from '../../components/admin/RepTabletLinkControl';
 
 // ─── StatesServedEditor ───────────────────────────────────────────────────────
 // Chip-based multi-select for the region codes served (US states/DC or CA
@@ -895,7 +896,16 @@ export function QMAdminDistributorDetailPage() {
               <TableBody>
                 {(dist.reps || []).map((r) => (
                   <TableRow key={r.id} className="hover:bg-gray-50">
-                    <TableCell className="font-medium">{r.name}</TableCell>
+                    <TableCell className="font-medium">
+                      <div>{r.name}</div>
+                      <RepTabletLinkControl
+                        rep={r}
+                        onSent={async () => {
+                          const refreshed = await getAdminDistributor(dist.id);
+                          if (refreshed.data) setDist(refreshed.data);
+                        }}
+                      />
+                    </TableCell>
                     <TableCell className="text-sm text-gray-500">{r.email}</TableCell>
                     <TableCell className="text-sm text-gray-500">{r.phone || '-'}</TableCell>
                     <TableCell className="text-sm text-gray-500">{r.territory || '-'}</TableCell>
