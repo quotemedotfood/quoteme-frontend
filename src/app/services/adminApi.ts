@@ -3218,6 +3218,41 @@ export async function getAdminBeverage(id: string): Promise<ApiResponse<AdminBev
   return fetchWithAuth(`/api/v1/admin/beverages/${encodeURIComponent(id)}`);
 }
 
+/**
+ * GET /api/v1/admin/beverages/summary: counts for the Beverages summary
+ * strip (writer: QuoteMe Api::V1::Admin::BeveragesController#summary; reader:
+ * BeveragesSummaryStrip). Every number is a count over ids.
+ */
+export interface AdminBeverageSummary {
+  by_kind: Record<string, number>;
+  total: number;
+  producers: number;
+  distributors_with_catalog: number;
+  restaurants_carrying: number;
+  wines_from_restaurant_lists: number;
+  wines_from_distributor_catalogs: number;
+  /** Echo of the distributor_id sent; null when none was sent. */
+  estate_distributor_id: string | null;
+  /** Wines that distributor sells; null when no distributor_id was sent. */
+  estate_wines: number | null;
+  waiting_for_review: number;
+  distributor_restaurant_links: { confirmed: number; inferred: number };
+  added_this_week: number;
+  added_since: string;
+  missing: {
+    grape: number;
+    tasting_note: number;
+    /** Linked restaurant list rows of a wine that print no vintage (a beverage has none). */
+    vintage_list_rows: number;
+  };
+}
+
+export async function getAdminBeverageSummary(distributorId?: string): Promise<ApiResponse<AdminBeverageSummary>> {
+  const id = distributorId?.trim();
+  const query = id ? `?${new URLSearchParams({ distributor_id: id }).toString()}` : '';
+  return fetchWithAuth(`/api/v1/admin/beverages/summary${query}`);
+}
+
 export type WineMatchStatus = 'pending' | 'approved' | 'archived';
 
 export interface WineMatchSubmission {

@@ -23,6 +23,7 @@ import {
 import { AdminEmptyState } from './_adminEmptyState';
 import { ADMIN_PAGE_FRAME, ADMIN_PAGE_FRAME_STYLE } from '../../components/admin/adminPageFrame';
 import { NeedsReviewBadge, colorLabel, kindLabel } from './_beverageLabels';
+import { BeveragesSummaryStrip, type SummaryFilter } from './_beveragesSummaryStrip';
 
 // BEVERAGES > WINES (Moose, 2026-10-27). The beverage corpus as a QM admin
 // list: searched, filtered and sorted server-side (QuoteMe
@@ -164,6 +165,13 @@ export function QMAdminBeverages() {
     setPage(1);
   };
 
+  // A summary tile shows the list its count describes: that filter only.
+  const applySummaryFilter = (patch: SummaryFilter) => {
+    setSearch('');
+    setFilters({ ...EMPTY_FILTERS, ...patch });
+    setPage(1);
+  };
+
   const toggleSort = (field: AdminBeverageSort) => {
     setPage(1);
     if (sortField === field) setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
@@ -196,6 +204,8 @@ export function QMAdminBeverages() {
       <h1 className="text-2xl font-bold text-[#2A2A2A] mb-6" style={{ fontFamily: "'Playfair Display', serif" }}>
         Wines
       </h1>
+
+      <BeveragesSummaryStrip onFilter={applySummaryFilter} />
 
       <div className="flex flex-wrap items-center gap-3 mb-5">
         <div data-testid="beverages-search" className="relative basis-full sm:basis-auto sm:flex-1 sm:max-w-sm">
