@@ -160,6 +160,12 @@ export interface AdminDistributorDetail extends AdminDistributor {
     phone: string | null;
     territory: string | null;
     is_active: boolean;
+    // Tablet sign-in status (BE RepTabletLinkStatus via Admin::DistributorsController
+    // #serialize_reps). Dates only; the sign-in link itself never reaches an admin.
+    // Optional so older payloads still typecheck.
+    tablet_link_last_sent_at?: string | null;
+    tablet_link_expires_at?: string | null;
+    signed_in_until?: string | null;
   }>;
   catalog: {
     id: string;
@@ -545,6 +551,33 @@ export async function addRepToDistributor(
   return fetchWithAuth(`/api/v1/admin/distributors/${distributorId}/add_rep`, {
     method: 'POST',
     body: JSON.stringify(data),
+  });
+}
+
+// ============= REP TABLET SIGN-IN LINK =============
+
+export type TabletLinkVia = 'email' | 'sms';
+
+/** POST /api/v1/rep/tablet_links 201 body. The link itself is never returned. */
+export interface TabletLinkSent {
+  link_id: string;
+  via: TabletLinkVia;
+  expires_at: string;
+}
+
+/**
+ * Sends a rep their tablet sign-in link by email or text (BE
+ * Rep::TabletLinksController#create). repUserId is the rep's user id.
+ * Errors come back with the server's message and error_code, e.g.
+ * SMS_NOT_CONFIGURED or NO_PHONE. Reader: RepTabletLinkControl.
+ */
+export async function sendRepTabletLink(
+  repUserId: string,
+  via: TabletLinkVia,
+): Promise<ApiResponse<TabletLinkSent>> {
+  return fetchWithAuth(`/api/v1/rep/tablet_links`, {
+    method: 'POST',
+    body: JSON.stringify({ rep_id: repUserId, via }),
   });
 }
 
