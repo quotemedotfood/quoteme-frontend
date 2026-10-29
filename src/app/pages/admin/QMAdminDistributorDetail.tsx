@@ -42,6 +42,7 @@ import { handleImpersonate } from '../../utils/impersonate';
 import { userLabel } from '../../utils/userLabel';
 import { regionsForCountry } from '../../constants/regions';
 import { ADMIN_PAGE_FRAME, ADMIN_PAGE_FRAME_STYLE } from '../../components/admin/adminPageFrame';
+import { DistributorCustomersSection } from '../../components/admin/DistributorCustomersSection';
 
 // ─── StatesServedEditor ───────────────────────────────────────────────────────
 // Chip-based multi-select for the region codes served (US states/DC or CA
@@ -925,34 +926,9 @@ export function QMAdminDistributorDetailPage() {
         )}
       </section>
 
-      {/* Customers */}
-      <section>
-        <h2 className="text-lg font-semibold text-[#2A2A2A] mb-3" style={{ fontFamily: "'Playfair Display', serif" }}>Customers</h2>
-        {!dist.restaurants?.length ? (
-          <p className="text-sm text-gray-400 py-4">No customers yet</p>
-        ) : (
-          <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-gray-50">
-                  <TableHead>Name</TableHead>
-                  <TableHead>City</TableHead>
-                  <TableHead>State</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {(dist.restaurants || []).map((r) => (
-                  <TableRow key={r.id} className="hover:bg-gray-50">
-                    <TableCell className="font-medium">{r.name}</TableCell>
-                    <TableCell className="text-sm text-gray-500">{r.city || '-'}</TableCell>
-                    <TableCell className="text-sm text-gray-500">{r.state || '-'}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        )}
-      </section>
+      {/* Customers: collapsed by default, one page at a time, names link to
+          the restaurant page (DistributorCustomersSection). */}
+      <DistributorCustomersSection customers={dist.restaurants ?? []} />
 
       {/* Catalog History (Justin) — read-only upload log */}
       <section className="mt-8">
