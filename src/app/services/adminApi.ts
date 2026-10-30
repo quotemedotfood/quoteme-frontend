@@ -385,6 +385,8 @@ export interface SendPairmeInfoResult {
   recipient_name: string | null;
   recipient_email: string;
   pairings_link_included: boolean;
+  deck_link_included?: boolean;
+  faq_link_included?: boolean;
   sent_at: string;
 }
 
@@ -396,6 +398,28 @@ export async function sendPairmeInfo(
     method: 'POST',
     body: JSON.stringify(input),
   });
+}
+
+// THE PAIRME INFO SEND LOG (QuoteMe pairme_info_sends, Moose 2026-10-30).
+// WRITER: the backend's Pairme::InfoSend#record_sent, one row per send that
+// went out (a refused send writes none). READER: this call, shown by
+// PairmeInfoSent under the Send PairMe info control. Newest first.
+export interface PairmeInfoSendRow {
+  id: string;
+  sent_at: string;
+  sent_by_name: string | null;
+  recipient_name: string | null;
+  recipient_email: string;
+  restaurant_contact_id: string | null;
+  pairings_link_included: boolean;
+  deck_link_included: boolean;
+  faq_link_included: boolean;
+}
+
+export async function getPairmeInfoSends(
+  restaurantId: string
+): Promise<ApiResponse<{ pairme_info_sends: PairmeInfoSendRow[] }>> {
+  return fetchWithAuth(`/api/v1/admin/restaurants/${restaurantId}/pairme_info_sends`);
 }
 
 export async function assignDistributor(

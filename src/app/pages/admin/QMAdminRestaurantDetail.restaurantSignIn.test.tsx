@@ -22,6 +22,7 @@ vi.mock('../../services/adminApi', () => ({
 vi.mock('../../services/api', () => ({ impersonateChef: vi.fn() }));
 vi.mock('./_pairmeSection', () => ({ PairmeSection: () => null }));
 vi.mock('./_manageAdminDrawer', () => ({ ManageAdminDrawer: () => null }));
+vi.mock('./_pairmeInfoSent', () => ({ PairmeInfoSent: () => null }));
 
 import { QMAdminRestaurantDetailPage as Page } from './QMAdminRestaurantDetail';
 
