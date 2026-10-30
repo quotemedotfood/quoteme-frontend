@@ -3367,3 +3367,91 @@ export async function rejectWineMatch(id: string, reviewNotes?: string): Promise
     body: JSON.stringify(reviewNotes ? { review_notes: reviewNotes } : {}),
   });
 }
+
+// ============= MENU AND WINE LIST UPLOADS (QM admin restaurant page) =============
+//
+// The QM admin's "Upload menu" / "Upload wine list". Server: QuoteMe
+// Api::V1::Admin::RestaurantMenuUploadsController, which hands each file to
+// MenuPhotoIntake, the same intake as the rep tablet photos. WRITER of the
+// menus row: the server. READER of both calls: MenuUploadSection.
+
+export type MenuUploadKind = 'menu' | 'wine_list';
+
+export interface MenuUploadAccepted {
+  filename: string;
+  menu_id?: string;
+  status?: 'extracting';
+  error?: string;
+  error_code?: string;
+}
+
+export type MenuUploadPairingState =
+  | 'pending'
+  | 'started'
+  | 'waiting_for_menu'
+  | 'waiting_for_list'
+  | 'hand_venue'
+  | 'test_seeded'
+  | 'off'
+  | 'done'
+  | 'failed';
+
+export interface MenuUploadStatus {
+  menu_id: string;
+  kind: MenuUploadKind;
+  status: 'extracting' | 'read' | 'failed';
+  error: string | null;
+  error_code: string | null;
+  pairing: null | {
+    state: MenuUploadPairingState;
+    dishes?: number | null;
+    wines?: number | null;
+    error?: string | null;
+  };
+}
+
+/**
+ * POST /api/v1/admin/restaurants/:id/menu_uploads, multipart { kind, files[] }.
+ * 202 { uploads: [...] }; 422 when no file was taken. No Content-Type header:
+ * the browser sets the multipart boundary itself.
+ */
+export async function uploadRestaurantMenuFiles(
+  restaurantId: string,
+  kind: MenuUploadKind,
+  files: File[],
+): Promise<ApiResponse<{ uploads: MenuUploadAccepted[] }>> {
+  const token = getAuthToken();
+  const headers: Record<string, string> = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const formData = new FormData();
+  formData.append('kind', kind);
+  files.forEach((f) => formData.append('files[]', f));
+
+  try {
+    const response = await fetchWithPolicy(`${API_BASE_URL}/api/v1/admin/restaurants/${restaurantId}/menu_uploads`, {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      return {
+        error: body.uploads?.[0]?.error || body.error || `Upload failed (${response.status})`,
+        error_code: body.uploads?.[0]?.error_code || body.error_code,
+        status: response.status,
+      };
+    }
+    return { data: body };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : 'Network error' };
+  }
+}
+
+/** GET /api/v1/admin/restaurants/:id/menu_uploads/:menu_id, polled by the page. */
+export async function getRestaurantMenuUpload(
+  restaurantId: string,
+  menuId: string,
+): Promise<ApiResponse<MenuUploadStatus>> {
+  return fetchWithAuth<MenuUploadStatus>(`/api/v1/admin/restaurants/${restaurantId}/menu_uploads/${menuId}`);
+}
