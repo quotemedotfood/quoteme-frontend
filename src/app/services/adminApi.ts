@@ -3312,6 +3312,86 @@ export async function getAdminBeverageSummary(distributorId?: string): Promise<A
   return fetchWithAuth(`/api/v1/admin/beverages/summary${query}`);
 }
 
+// DATA SUMMARY (Moose, 2026-10-30). Reader of QuoteMe
+// GET /api/v1/admin/data_summary (Api::V1::Admin::DataSummaryController,
+// DataSummary::Report). Market = the city + state in the restaurant's address.
+// Counts only: every list carries the denominator it was counted against.
+// No price amounts: glass vs bottle counts rows that print a price.
+
+export interface DataSummaryDenominator {
+  restaurants: number;
+  list_rows: number;
+}
+
+export interface DataSummaryList<T> {
+  items: (T & { restaurants: number; list_rows: number; share_of_restaurants: number | null })[];
+  /** Distinct items before the limit. */
+  distinct_total: number;
+  denominator: DataSummaryDenominator;
+  /** What the denominator counts, in words. */
+  basis: string;
+  /** Rows in the base with no value for this list (e.g. no country). */
+  rows_without_value?: number;
+}
+
+export interface AdminDataSummary {
+  market: { state: string | null; city: string | null; limit: number };
+  markets: {
+    states: { state: string; restaurants: number }[];
+    cities: { city: string; restaurants: number }[];
+  };
+  coverage: {
+    restaurants: number;
+    with_food_menu: number;
+    with_wine_list: number;
+    with_linked_wine_rows: number;
+    list_rows: number;
+    linked_rows: number;
+    unlinked_rows: number;
+    linked_share: number | null;
+  };
+  wines: {
+    carried: DataSummaryList<{
+      beverage_id: string;
+      name: string;
+      color: string | null;
+      producer_id: string | null;
+      producer: string | null;
+    }>;
+    grapes: DataSummaryList<{ grape: string }>;
+    colors: DataSummaryList<{ color: string }>;
+    countries: DataSummaryList<{ country: string }>;
+    regions: DataSummaryList<{ region: string }>;
+    producers: DataSummaryList<{ producer_id: string; producer: string }>;
+    glass_bottle: {
+      glass_only: number;
+      bottle_only: number;
+      both: number;
+      neither: number;
+      restaurants_by_the_glass: number;
+      restaurants_by_the_bottle: number;
+      glass_share: number | null;
+      bottle_share: number | null;
+      denominator: DataSummaryDenominator;
+      basis: string;
+    };
+  };
+  generated_at: string;
+}
+
+export async function getAdminDataSummary(params: {
+  state?: string;
+  city?: string;
+  limit?: number;
+}): Promise<ApiResponse<AdminDataSummary>> {
+  const q = new URLSearchParams();
+  if (params.state) q.set('state', params.state);
+  if (params.city) q.set('city', params.city);
+  if (params.limit) q.set('limit', String(params.limit));
+  const query = q.toString();
+  return fetchWithAuth(`/api/v1/admin/data_summary${query ? `?${query}` : ''}`);
+}
+
 export type WineMatchStatus = 'pending' | 'approved' | 'archived';
 
 export interface WineMatchSubmission {

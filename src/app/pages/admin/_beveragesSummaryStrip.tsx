@@ -74,6 +74,50 @@ function tilesFor(s: AdminBeverageSummary, estateId: string): Tile[] {
   return tiles;
 }
 
+/**
+ * One count tile. Shared by this strip and the Data summary coverage strip
+ * (QMAdminDataSummary), so the two read alike. `value` null shows a dash;
+ * `detail` is a short second line under the label (e.g. "75% of rows").
+ */
+export function SummaryTile({
+  testId,
+  label,
+  value,
+  title,
+  detail,
+  onClick,
+}: {
+  testId: string;
+  label: string;
+  value: number | null;
+  title?: string;
+  detail?: string;
+  onClick?: () => void;
+}) {
+  const tileBase = 'bg-white border border-gray-200 rounded-lg px-3 py-2 text-left';
+  const body = (
+    <>
+      <p className="text-lg font-bold text-[#2A2A2A] leading-tight">{value == null ? '-' : value.toLocaleString()}</p>
+      <p className="text-xs text-[#4F4F4F]">{label}</p>
+      {detail && <p className="text-[11px] text-gray-400">{detail}</p>}
+    </>
+  );
+  if (!onClick) {
+    return <div data-testid={testId} className={tileBase} title={title}>{body}</div>;
+  }
+  return (
+    <button
+      type="button"
+      data-testid={testId}
+      title={title}
+      className={`${tileBase} cursor-pointer hover:border-[#7FAEC2] hover:bg-gray-50`}
+      onClick={onClick}
+    >
+      {body}
+    </button>
+  );
+}
+
 export function BeveragesSummaryStrip({
   onFilter,
   estateDistributorId = ESTATE_DISTRIBUTOR_ID,
@@ -98,33 +142,18 @@ export function BeveragesSummaryStrip({
   if (error) return <p className="text-xs text-red-500 mb-4" data-testid="beverages-summary-error">{error}</p>;
   if (!summary) return null;
 
-  const tileBase = 'bg-white border border-gray-200 rounded-lg px-3 py-2 text-left';
   return (
     <div data-testid="beverages-summary" className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2 mb-6">
-      {tilesFor(summary, estateDistributorId).map((t) => {
-        const body = (
-          <>
-            <p className="text-lg font-bold text-[#2A2A2A] leading-tight">{t.value.toLocaleString()}</p>
-            <p className="text-xs text-[#4F4F4F]">{t.label}</p>
-          </>
-        );
-        const clickable = t.filter || t.to;
-        if (!clickable) {
-          return <div key={t.id} data-testid={`summary-tile-${t.id}`} className={tileBase} title={t.title}>{body}</div>;
-        }
-        return (
-          <button
-            key={t.id}
-            type="button"
-            data-testid={`summary-tile-${t.id}`}
-            title={t.title}
-            className={`${tileBase} cursor-pointer hover:border-[#7FAEC2] hover:bg-gray-50`}
-            onClick={() => (t.to ? navigate(t.to) : onFilter(t.filter!))}
-          >
-            {body}
-          </button>
-        );
-      })}
+      {tilesFor(summary, estateDistributorId).map((t) => (
+        <SummaryTile
+          key={t.id}
+          testId={`summary-tile-${t.id}`}
+          label={t.label}
+          value={t.value}
+          title={t.title}
+          onClick={t.filter || t.to ? () => (t.to ? navigate(t.to) : onFilter(t.filter!)) : undefined}
+        />
+      ))}
     </div>
   );
 }
