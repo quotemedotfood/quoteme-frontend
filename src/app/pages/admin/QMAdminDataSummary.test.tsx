@@ -155,7 +155,8 @@ describe('QMAdminDataSummary', () => {
     getAdminDataSummary.mockResolvedValue({ data: payload(), error: undefined });
     renderPage();
     await screen.findByTestId('ds-carried');
-    expect(document.body.textContent || '').not.toMatch(/\bbest\b|top[- ]rated|recommend/i);
+    // No word boundaries: textContent runs adjacent elements together ("glassBest").
+    expect(document.body.textContent || '').not.toMatch(/best|top[- ]?rated|recommend/i);
   });
 
   it('says an empty market is empty, not a blank page', async () => {
@@ -178,8 +179,9 @@ describe('QMAdminDataSummary', () => {
     fireEvent.change(screen.getByTestId('ds-state'), { target: { value: 'CO' } });
     await screen.findByRole('option', { name: 'Nowhere (0)' });
     fireEvent.change(screen.getByTestId('ds-city'), { target: { value: 'Nowhere' } });
-    const msg = await screen.findByTestId('ds-empty-market');
-    await waitFor(() => expect(msg.textContent).toContain('No restaurants on file for Nowhere, CO'));
+    await waitFor(() => expect(getAdminDataSummary).toHaveBeenLastCalledWith({ state: 'CO', city: 'Nowhere', limit: 25 }));
+    await waitFor(() => expect(document.body.textContent).toContain('No restaurants on file for Nowhere, CO'));
+    expect(screen.queryByTestId('ds-empty-market')).not.toBeNull();
     expect(screen.queryByTestId('ds-carried')).toBeNull();
   });
 
