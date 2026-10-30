@@ -22,6 +22,7 @@ import {
   FileUp,
   Wine,
   ListChecks,
+  BarChart3,
 } from 'lucide-react';
 import logoSquare from '/src/assets/e549e7d27b183e98e791f43494c715b8cc6ce7e9.png';
 import { useAuth } from '../contexts/AuthContext';
@@ -58,6 +59,8 @@ export const navSections = [
     items: [
       { icon: Wine, label: 'Wines', path: '/qm-admin/beverages/wines' },
       { icon: ListChecks, label: 'Review matches', path: '/qm-admin/beverages/review-matches' },
+      // Data summary (Moose, 2026-10-30): counts per market, read against coverage.
+      { icon: BarChart3, label: 'Data summary', path: '/qm-admin/data-summary' },
     ],
   },
 ];
