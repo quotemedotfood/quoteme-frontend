@@ -26,6 +26,7 @@ import { ManageAdminDrawer } from './_manageAdminDrawer';
 import { ADMIN_PAGE_FRAME, ADMIN_PAGE_FRAME_STYLE } from '../../components/admin/adminPageFrame';
 import { PairmeSection } from './_pairmeSection';
 import { LaunchChecklistSection } from './_launchChecklistSection';
+import { SendPairmeInfo } from './_sendPairmeInfo';
 import { PairmeFlowCard } from '../../components/PairmeFlowCard';
 import { handleImpersonate, handleImpersonateChef } from '../../utils/impersonate';
 
@@ -484,6 +485,9 @@ export function QMAdminRestaurantDetailPage() {
             {addContactOpen ? 'Cancel' : 'Add contact'}
           </button>
         </div>
+
+        {/* SEND PAIRME INFO to one person the QM admin picks or types. */}
+        <SendPairmeInfo restaurantId={restaurant.id} contacts={restaurant.contacts} />
 
         {/* 2b: Add Chef to Contacts — NAME / PHONE / EMAIL / ROLE (default chef) + Primary */}
         {addContactOpen && (

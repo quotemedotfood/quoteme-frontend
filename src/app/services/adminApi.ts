@@ -372,6 +372,32 @@ export async function resendWelcome(userId: string, restaurantId?: string): Prom
   });
 }
 
+// SEND PAIRME INFO (QuoteMe Pairme::InfoSend). QM admin only. The recipient
+// is always explicit: one of this restaurant's contacts by id, or a typed
+// name and email. Never both, never neither (the server refuses with 422).
+export type SendPairmeInfoInput =
+  | { restaurant_contact_id: string }
+  | { recipient_name?: string; recipient_email: string };
+
+export interface SendPairmeInfoResult {
+  restaurant_id: string;
+  restaurant_contact_id: string | null;
+  recipient_name: string | null;
+  recipient_email: string;
+  pairings_link_included: boolean;
+  sent_at: string;
+}
+
+export async function sendPairmeInfo(
+  restaurantId: string,
+  input: SendPairmeInfoInput
+): Promise<ApiResponse<SendPairmeInfoResult>> {
+  return fetchWithAuth(`/api/v1/admin/restaurants/${restaurantId}/send_pairme_info`, {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
 export async function assignDistributor(
   userId: string,
   distributorId: string,
