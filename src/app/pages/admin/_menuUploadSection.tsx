@@ -160,7 +160,6 @@ export function MenuUploadSection({ restaurantId, pollMs = DEFAULT_POLL_MS }: { 
               <input
                 ref={kind === 'menu' ? menuInput : listInput}
                 type="file"
-                multiple
                 accept={ACCEPT}
                 className="hidden"
                 data-testid={`upload-input-${kind}`}
@@ -192,7 +191,7 @@ export function MenuUploadSection({ restaurantId, pollMs = DEFAULT_POLL_MS }: { 
                 {it.phase === 'failed' && (
                   <button
                     type="button"
-                    onClick={() => { void send(it.key, it.file, it.kind); }}
+                    onClick={() => { items.forEach((x) => { void send(x.key, x.file, x.kind); }); }}
                     className="ml-auto text-sm font-medium text-[#7a1f2b] underline"
                     aria-label={`Retry ${it.file.name}`}
                   >
