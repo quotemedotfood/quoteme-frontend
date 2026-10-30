@@ -129,7 +129,7 @@ export function QMAdminDataSummary() {
     let live = true;
     setLoading(true);
     setError(null);
-    getAdminDataSummary({ state: state || undefined, city: city || undefined, limit }).then((res) => {
+    getAdminDataSummary({ state: state || undefined, city: undefined /* RED-CHECK: city filter removed */, limit }).then((res) => {
       if (!live) return;
       setLoading(false);
       if (res.data) {
@@ -246,11 +246,8 @@ function SummaryBody({ data, market, loading }: { data: AdminDataSummary; market
           title="Counted here only. An unlinked row is never matched to a wine by its name." />
       </div>
 
-      {c.restaurants === 0 ? (
-        <p className="text-sm text-gray-500 py-6" data-testid="ds-empty-market">
-          No restaurants on file for {market}. Pick another state or city, or load restaurants for this market first.
-        </p>
-      ) : c.list_rows === 0 ? (
+      {/* RED-CHECK: empty market message removed */}
+      {c.list_rows === 0 ? (
         <p className="text-sm text-gray-500 py-6" data-testid="ds-no-lists">
           {`${plural(c.restaurants, 'restaurant')} in ${market}, but no wine lists on file yet, so there are no wines to count.`}
         </p>
@@ -274,18 +271,20 @@ function SummaryBody({ data, market, loading }: { data: AdminDataSummary; market
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
             <CountTable
               testId="ds-carried"
-              title="Wines by number of restaurants carrying them"
+              title="Best wines (by restaurants carrying them)" /* RED-CHECK */
               itemHeader="Wine"
               noun="wine"
               list={w.carried}
               rowKey={(i) => i.beverage_id}
               renderItem={(i) => (
                 <div>
-                  <Link to={`/qm-admin/beverages/wines/${i.beverage_id}`} className="text-[#2F6F8A] hover:underline">
+                  <Link to={`/qm-admin/beverages/wines/${encodeURIComponent(i.name)}`} /* RED-CHECK: by name */ className="text-[#2F6F8A] hover:underline">
                     {i.name}
                   </Link>
                   <p className="text-xs text-gray-500">
                     {[i.producer, i.color ? colorLabel(i.color) : null].filter(Boolean).join(' · ') || 'No producer on file'}
+                    {/* RED-CHECK: price amount shown */}
+                    {(i as Record<string, unknown>).glass_cents != null && ` $${(Number((i as Record<string, unknown>).glass_cents) / 100).toFixed(2)}`}
                   </p>
                 </div>
               )}
