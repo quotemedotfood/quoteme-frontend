@@ -6,7 +6,8 @@
 // stays off until a recipient is chosen. Writes
 // POST /api/v1/admin/restaurants/:id/send_pairme_info (QuoteMe
 // Pairme::InfoSend), which never picks a recipient by itself. Shows the
-// server's message on failure and who it went to on success.
+// server's message on failure and who it went to on success, then calls
+// onSent so the page can refresh the "PairMe info sent" list.
 import { useState } from 'react';
 import { sendPairmeInfo, type SendPairmeInfoInput } from '../../services/adminApi';
 
@@ -19,7 +20,15 @@ export interface SendPairmeInfoContact {
 
 type Mode = 'contact' | 'typed';
 
-export function SendPairmeInfo({ restaurantId, contacts }: { restaurantId: string; contacts: SendPairmeInfoContact[] }) {
+export function SendPairmeInfo({
+  restaurantId,
+  contacts,
+  onSent,
+}: {
+  restaurantId: string;
+  contacts: SendPairmeInfoContact[];
+  onSent?: () => void;
+}) {
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<Mode | null>(null);
   const [contactId, setContactId] = useState('');
@@ -57,6 +66,7 @@ export function SendPairmeInfo({ restaurantId, contacts }: { restaurantId: strin
     }
     setStatus('sent');
     setMessage(`Sent to ${res.data.recipient_email}.`);
+    onSent?.();
   }
 
   return (
