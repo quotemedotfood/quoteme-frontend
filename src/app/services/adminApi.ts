@@ -375,9 +375,15 @@ export async function resendWelcome(userId: string, restaurantId?: string): Prom
 // SEND PAIRME INFO (QuoteMe Pairme::InfoSend). QM admin only. The recipient
 // is always explicit: one of this restaurant's contacts by id, or a typed
 // name and email. Never both, never neither (the server refuses with 422).
+//
+// Optional on either (Moose, 2026-11-03), sent only when the QM admin fills
+// them: chef_name (the chef's first name goes in the guest line; left out,
+// the email says "Your chef") and go_live_on (YYYY-MM-DD; left out, the
+// server uses 14 days from the send date). Reader: PairmeInfoMailer#info.
+export type SendPairmeInfoExtras = { chef_name?: string; go_live_on?: string };
 export type SendPairmeInfoInput =
-  | { restaurant_contact_id: string }
-  | { recipient_name?: string; recipient_email: string };
+  | ({ restaurant_contact_id: string } & SendPairmeInfoExtras)
+  | ({ recipient_name?: string; recipient_email: string } & SendPairmeInfoExtras);
 
 export interface SendPairmeInfoResult {
   restaurant_id: string;
