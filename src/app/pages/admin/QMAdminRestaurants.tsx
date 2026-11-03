@@ -28,7 +28,7 @@ import {
   TableHead,
   TableCell,
 } from '../../components/ui/table';
-import { getAdminRestaurants, AdminRestaurant, setAdminPairmeReview, type PairmeReviewFilter, type AdminPairmeReview } from '../../services/adminApi';
+import { getAdminRestaurants, AdminRestaurant, setAdminPairmeReview, type PairmeReviewFilter, type AdminPairmeReview, type AdminPairmeShared, type PairmeSharedFilter } from '../../services/adminApi';
 import { handleImpersonate } from '../../utils/impersonate';
 import { AdminEmptyState } from './_adminEmptyState';
 import { AddRestaurantModal } from './_addRestaurantModal';
@@ -110,6 +110,8 @@ export function QMAdminRestaurants() {
   // crawler load (for example every crawled CO row) across all pages.
   const [stateFilter, setStateFilter] = useState('');
   const [crawledOnly, setCrawledOnly] = useState(false);
+  // PAIRME SENT FILTER (Moose, 2026-11-03): server-side, like the others.
+  const [sharedFilter, setSharedFilter] = useState<PairmeSharedFilter | ''>('');
   const [sortField, setSortField] = useState<SortField>('name');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
   const [impersonating, setImpersonating] = useState<string | null>(null);
@@ -145,6 +147,7 @@ export function QMAdminRestaurants() {
       pairme_review: pairmeFilter || undefined,
       state: stateFilter || undefined,
       crawled: crawledOnly || undefined,
+      pairme_shared: sharedFilter || undefined,
     });
     if (res.data) {
       setRestaurants(res.data.restaurants);
@@ -154,7 +157,7 @@ export function QMAdminRestaurants() {
       setError(res.error || 'Failed to load');
     }
     setLoading(false);
-  }, [page, debouncedSearch, sortField, sortDir, pairmeFilter, stateFilter, crawledOnly]);
+  }, [page, debouncedSearch, sortField, sortDir, pairmeFilter, stateFilter, crawledOnly, sharedFilter]);
 
   // The flag is clickable: needs review -> reviewed, and back. Only the
   // clicked row changes; the list is not reloaded.
@@ -241,6 +244,17 @@ export function QMAdminRestaurants() {
           />
           Crawled only
         </label>
+        <select
+          aria-label="PairMe sent"
+          data-testid="pairme-shared-filter"
+          value={sharedFilter}
+          onChange={(e) => { setSharedFilter(e.target.value as PairmeSharedFilter | ''); setPage(1); }}
+          className="border border-gray-200 rounded-md px-2 py-1.5 text-sm"
+        >
+          <option value="">PairMe sent or not</option>
+          <option value="yes">PairMe sent</option>
+          <option value="no">PairMe not sent</option>
+        </select>
         <span className="text-xs text-gray-400">
           {meta.total_count} restaurants
           {meta.total_pages > 1 && ` (page ${meta.page} of ${meta.total_pages})`}
@@ -288,6 +302,7 @@ export function QMAdminRestaurants() {
                   <TableHead>Data Flags</TableHead>
                   <TableHead title="Auto-paired restaurants go live flagged. Click the flag once you have looked at the pairings.">PairMe</TableHead>
                   <TableHead title="Percent of the eight launch checklist steps done. $ means the restaurant is paying.">Launch</TableHead>
+                  <TableHead title="PairMe info emailed (by a QM admin or a rep) or a rep referral logged.">PairMe sent</TableHead>
                   <TableHead className="cursor-pointer text-right" onClick={() => toggleSort('contact_count')}>
                     <div className="flex items-center justify-end gap-1">Contacts <SortIcon field="contact_count" /></div>
                   </TableHead>
@@ -421,6 +436,9 @@ export function QMAdminRestaurants() {
                           $
                         </span>
                       )}
+                    </TableCell>
+                    <TableCell className="text-sm whitespace-nowrap" data-testid={`restaurants-shared-${r.id}`}>
+                      <PairmeSharedChip shared={r.pairme_shared} />
                     </TableCell>
                     <TableCell className="text-sm text-right">{r.contact_count}</TableCell>
                     <TableCell>
@@ -568,5 +586,28 @@ export function PairmeReviewFlag({ review, onToggle }: { review?: AdminPairmeRev
     >
       {reviewed ? 'Reviewed' : 'Needs review'}
     </button>
+  );
+}
+
+/** "Sent" with what and when on hover; a dash when nothing was sent. */
+export function pairmeSharedTitle(s: AdminPairmeShared): string {
+  const parts: string[] = [];
+  if (s.info_emails > 0) parts.push(`${s.info_emails} info email${s.info_emails === 1 ? '' : 's'}`);
+  if (s.referrals > 0) parts.push(`${s.referrals} rep referral${s.referrals === 1 ? '' : 's'}`);
+  const when = s.last_at ? new Date(s.last_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : null;
+  return `PairMe sent: ${parts.join(', ')}${when ? `, last ${when}` : ''}`;
+}
+
+export function PairmeSharedChip({ shared }: { shared?: AdminPairmeShared | null }) {
+  if (!shared) return <span className="text-gray-300">-</span>;
+  const title = pairmeSharedTitle(shared);
+  return (
+    <span
+      className="inline-block px-2 py-0.5 rounded text-xs font-medium bg-[#E8F2F6] text-[#2F6F86]"
+      title={title}
+      aria-label={title}
+    >
+      Sent
+    </span>
   );
 }
