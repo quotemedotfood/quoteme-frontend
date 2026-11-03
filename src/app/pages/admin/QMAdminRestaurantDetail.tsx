@@ -27,6 +27,8 @@ import { ADMIN_PAGE_FRAME, ADMIN_PAGE_FRAME_STYLE } from '../../components/admin
 import { PairmeSection } from './_pairmeSection';
 import { LaunchChecklistSection } from './_launchChecklistSection';
 import { MenuUploadSection } from './_menuUploadSection';
+import { SendPairmeInfo } from './_sendPairmeInfo';
+import { PairmeInfoSent } from './_pairmeInfoSent';
 import { PairmeFlowCard } from '../../components/PairmeFlowCard';
 import { handleImpersonate, handleImpersonateChef } from '../../utils/impersonate';
 
@@ -69,6 +71,8 @@ export function QMAdminRestaurantDetailPage() {
 
   // --- 2b: add contact ---
   const [addContactOpen, setAddContactOpen] = useState(false);
+  // Bumped after each successful Send PairMe info so PairmeInfoSent re-reads.
+  const [pairmeInfoSendsKey, setPairmeInfoSendsKey] = useState(0);
   const [contactFirstName, setContactFirstName] = useState('');
   const [contactLastName, setContactLastName] = useState('');
   const [contactPhone, setContactPhone] = useState('');
@@ -487,6 +491,15 @@ export function QMAdminRestaurantDetailPage() {
             {addContactOpen ? 'Cancel' : 'Add contact'}
           </button>
         </div>
+
+        {/* SEND PAIRME INFO to one person the QM admin picks or types. */}
+        <SendPairmeInfo
+          restaurantId={restaurant.id}
+          contacts={restaurant.contacts}
+          onSent={() => setPairmeInfoSendsKey((k) => k + 1)}
+        />
+        {/* Who was sent PairMe info for this restaurant (pairme_info_sends). */}
+        <PairmeInfoSent restaurantId={restaurant.id} refreshKey={pairmeInfoSendsKey} />
 
         {/* 2b: Add Chef to Contacts — NAME / PHONE / EMAIL / ROLE (default chef) + Primary */}
         {addContactOpen && (

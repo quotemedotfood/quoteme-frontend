@@ -38,6 +38,7 @@ describe('QMAdminLayout: Beverages section', () => {
     expect(section.textContent).toContain('Beverages');
     expect(within(section).getByRole('link', { name: /Wines/ }).getAttribute('href')).toBe('/qm-admin/beverages/wines');
     expect(within(section).getByRole('link', { name: /Review matches/ }).getAttribute('href')).toBe('/qm-admin/beverages/review-matches');
+    expect(within(section).getByRole('link', { name: /Data summary/ }).getAttribute('href')).toBe('/qm-admin/data-summary');
   });
 
   it('marks only the open page as active', () => {

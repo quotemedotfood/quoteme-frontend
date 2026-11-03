@@ -45,6 +45,7 @@ import { QMAdminChefs } from "./pages/admin/QMAdminChefs";
 import { QMAdminProductPipeline } from "./pages/admin/QMAdminProductPipeline";
 import { QMAdminBeverages } from "./pages/admin/QMAdminBeverages";
 import { QMAdminBeverageDetail } from "./pages/admin/QMAdminBeverageDetail";
+import { QMAdminDataSummary } from "./pages/admin/QMAdminDataSummary";
 import { QMAdminWineMatches } from "./pages/admin/QMAdminWineMatches";
 import { QMAdminNotFound } from "./pages/admin/QMAdminNotFound";
 import { SentryTestPage } from "./pages/admin/SentryTestPage";
@@ -366,6 +367,8 @@ export const router = createBrowserRouter([
           { path: "beverages/wines", Component: QMAdminBeverages },
           { path: "beverages/wines/:id", Component: QMAdminBeverageDetail },
           { path: "beverages/review-matches", Component: QMAdminWineMatches },
+          // Data summary (Moose, 2026-10-30): market counts, wines + coverage.
+          { path: "data-summary", Component: QMAdminDataSummary },
           { path: "conference-command", Component: QMAdminConferenceCommand },
           { path: "health", Component: QMAdminHealth },
           // Hidden verification route: navigate here post-deploy to confirm
