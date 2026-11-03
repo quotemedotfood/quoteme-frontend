@@ -74,7 +74,7 @@ export function SendPairmeInfo({
     if (!ready) return;
     const extras: { chef_name?: string; go_live_on?: string } = {};
     if (chefName.trim() !== '') extras.chef_name = chefName.trim();
-    if (goLive !== '' && goLive !== defaultGoLive()) extras.go_live_on = goLive;
+    extras.go_live_on = goLive; // RED-CHECK: always sent
     const input: SendPairmeInfoInput =
       mode === 'contact'
         ? { restaurant_contact_id: contactId, ...extras }
