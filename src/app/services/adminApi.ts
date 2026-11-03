@@ -200,7 +200,23 @@ export interface AdminPairmeReview {
 
 export type PairmeReviewFilter = 'needs_review' | 'reviewed' | 'any_pairme';
 
+/**
+ * PAIRME SENT (Moose, 2026-11-03). WRITERS: QuoteMe Pairme::InfoSend#record_sent
+ * (pairme_info_sends: the QM admin's Send PairMe info and the rep tablet's
+ * referral email) and Rep::ReferralsController (pairme_referral leads).
+ * READER: the restaurants list "PairMe sent" column and filter. null when
+ * nothing was sent, and always null for anyone but a QM admin.
+ */
+export interface AdminPairmeShared {
+  last_at: string | null;
+  info_emails: number;
+  referrals: number;
+}
+
+export type PairmeSharedFilter = 'yes' | 'no';
+
 export interface AdminRestaurant {
+  pairme_shared?: AdminPairmeShared | null;
   /** null when the restaurant has no PairMe venue. */
   pairme_review?: AdminPairmeReview | null;
   id: string;
@@ -657,6 +673,8 @@ export interface AdminRestaurantsQuery {
   state?: string;
   /** true keeps only rows the crawler load wrote (restaurants.crawl_source_state present). */
   crawled?: boolean;
+  /** yes: PairMe info emailed or a rep referral logged; no: neither. QM admin only. */
+  pairme_shared?: PairmeSharedFilter;
 }
 
 /**
@@ -684,6 +702,7 @@ export async function getAdminRestaurants(
   if (query.pairme_review) params.set('pairme_review', query.pairme_review);
   if (query.state) params.set('state', query.state);
   if (query.crawled) params.set('crawled', 'true');
+  if (query.pairme_shared) params.set('pairme_shared', query.pairme_shared);
 
   return fetchWithAuth(`/api/v1/admin/restaurants?${params.toString()}`);
 }
