@@ -8,6 +8,12 @@
 // Pairme::InfoSend), which never picks a recipient by itself. Shows the
 // server's message on failure and who it went to on success, then calls
 // onSent so the page can refresh the "PairMe info sent" list.
+//
+// Moose's copy (2026-11-03) adds two optional fields: the chef's name (for
+// "{Chef} has put together some pairings for you") and the target go-live
+// date, shown filled with 14 days from today. Each is sent only when the QM
+// admin fills or changes it; otherwise the server uses the same defaults
+// ("Your chef", 14 days from the send date).
 import { useState } from 'react';
 import { sendPairmeInfo, type SendPairmeInfoInput } from '../../services/adminApi';
 
@@ -19,6 +25,16 @@ export interface SendPairmeInfoContact {
 }
 
 type Mode = 'contact' | 'typed';
+
+/** Matches the server's PairmeInfoMailer::GO_LIVE_DEFAULT_DAYS. */
+export const GO_LIVE_DEFAULT_DAYS = 14;
+
+/** YYYY-MM-DD, GO_LIVE_DEFAULT_DAYS from `today`, in local time. */
+export function defaultGoLive(today: Date = new Date()): string {
+  const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() + GO_LIVE_DEFAULT_DAYS);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
 
 export function SendPairmeInfo({
   restaurantId,
@@ -34,6 +50,8 @@ export function SendPairmeInfo({
   const [contactId, setContactId] = useState('');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [chefName, setChefName] = useState('');
+  const [goLive, setGoLive] = useState(() => defaultGoLive());
   const [status, setStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
   const [message, setMessage] = useState<string | null>(null);
 
@@ -45,6 +63,8 @@ export function SendPairmeInfo({
     setContactId('');
     setName('');
     setEmail('');
+    setChefName('');
+    setGoLive(defaultGoLive());
     setStatus('idle');
     setMessage(null);
   }
@@ -52,10 +72,13 @@ export function SendPairmeInfo({
   async function handleSend(e: React.FormEvent) {
     e.preventDefault();
     if (!ready) return;
+    const extras: { chef_name?: string; go_live_on?: string } = {};
+    if (chefName.trim() !== '') extras.chef_name = chefName.trim();
+    if (goLive !== '' && goLive !== defaultGoLive()) extras.go_live_on = goLive;
     const input: SendPairmeInfoInput =
       mode === 'contact'
-        ? { restaurant_contact_id: contactId }
-        : { recipient_name: name.trim(), recipient_email: email.trim() };
+        ? { restaurant_contact_id: contactId, ...extras }
+        : { recipient_name: name.trim(), recipient_email: email.trim(), ...extras };
     setStatus('sending');
     setMessage(null);
     const res = await sendPairmeInfo(restaurantId, input);
@@ -147,6 +170,29 @@ export function SendPairmeInfo({
               />
             </div>
           )}
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <label className="flex flex-col gap-1 text-sm">
+              <span className="text-gray-600">Chef&apos;s name (optional)</span>
+              <input
+                aria-label="Chef's name"
+                placeholder="Your chef"
+                value={chefName}
+                onChange={(e) => setChefName(e.target.value)}
+                className="border border-gray-300 rounded px-2 py-1.5 text-sm"
+              />
+            </label>
+            <label className="flex flex-col gap-1 text-sm">
+              <span className="text-gray-600">Target go-live</span>
+              <input
+                aria-label="Target go-live"
+                type="date"
+                value={goLive}
+                onChange={(e) => setGoLive(e.target.value)}
+                className="border border-gray-300 rounded px-2 py-1.5 text-sm"
+              />
+            </label>
+          </div>
 
           {status === 'error' && message && (
             <p role="alert" className="text-sm text-red-600">{message}</p>
