@@ -3536,6 +3536,8 @@ export interface MenuUploadAccepted {
   filename: string;
   menu_id?: string;
   status?: 'extracting';
+  /** Present when the files went up as pages of one list (pages: true). */
+  pages?: number;
   error?: string;
   error_code?: string;
 }
@@ -3555,8 +3557,12 @@ export interface MenuUploadStatus {
   menu_id: string;
   kind: MenuUploadKind;
   status: 'extracting' | 'read' | 'failed';
+  /** How many pages the upload holds (1 for a single photo or file). */
+  pages?: number;
   error: string | null;
   error_code: string | null;
+  /** For a list of several pages whose read failed: the page that failed. */
+  error_page?: number | null;
   pairing: null | {
     state: MenuUploadPairingState;
     dishes?: number | null;
@@ -3569,11 +3575,17 @@ export interface MenuUploadStatus {
  * POST /api/v1/admin/restaurants/:id/menu_uploads, multipart { kind, files[] }.
  * 202 { uploads: [...] }; 422 when no file was taken. No Content-Type header:
  * the browser sets the multipart boundary itself.
+ *
+ * opts.pages: the files are the pages of ONE menu or ONE wine list, in page
+ * order. Sends pages=1, and the server writes one row read as one list
+ * (QuoteMe MenuPhotoIntake files:). WRITER of pages=1: this function, for
+ * MenuUploadSection's page queue. READER: RestaurantMenuUploadsController.
  */
 export async function uploadRestaurantMenuFiles(
   restaurantId: string,
   kind: MenuUploadKind,
   files: File[],
+  opts: { pages?: boolean } = {},
 ): Promise<ApiResponse<{ uploads: MenuUploadAccepted[] }>> {
   const token = getAuthToken();
   const headers: Record<string, string> = {};
@@ -3581,6 +3593,7 @@ export async function uploadRestaurantMenuFiles(
 
   const formData = new FormData();
   formData.append('kind', kind);
+  if (opts.pages) formData.append('pages', '1');
   files.forEach((f) => formData.append('files[]', f));
 
   try {
