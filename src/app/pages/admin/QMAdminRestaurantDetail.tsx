@@ -243,6 +243,14 @@ export function QMAdminRestaurantDetailPage() {
         <h1 className="text-2xl font-bold text-[#2A2A2A]" style={{ fontFamily: "'Playfair Display', serif" }}>
           {restaurant.name}
         </h1>
+        {/* Straight to the upload area: on a phone it sits below the fold. */}
+        <a
+          href="#menu-upload"
+          data-testid="jump-to-upload"
+          className="inline-flex items-center gap-1 mt-2 text-sm font-medium text-[#7a1f2b] underline"
+        >
+          Upload menu or wine list
+        </a>
         <div className="flex flex-wrap items-center gap-3 text-sm text-[#4F4F4F] mt-1">
           {addressParts.length > 0 && <span>{addressParts.join(' ')}</span>}
           {restaurant.restaurant_group && (
@@ -475,7 +483,7 @@ export function QMAdminRestaurantDetailPage() {
         </div>
       </section>
 
-      <MenuUploadSection restaurantId={restaurant.id} />
+      <MenuUploadSection restaurantId={restaurant.id} restaurantName={restaurant.name} />
 
       <PairmeSection restaurantId={restaurant.id} />
 
