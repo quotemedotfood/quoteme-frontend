@@ -23,6 +23,7 @@ import {
   Wine,
   ListChecks,
   BarChart3,
+  Hotel,
 } from 'lucide-react';
 import logoSquare from '/src/assets/e549e7d27b183e98e791f43494c715b8cc6ce7e9.png';
 import { useAuth } from '../contexts/AuthContext';
@@ -36,6 +37,7 @@ const navItems = [
   { icon: UserX, label: 'Unassociated', path: '/qm-admin/unassociated-reps' },
   { icon: UtensilsCrossed, label: 'Restaurants', path: '/qm-admin/restaurants' },
   { icon: Landmark, label: 'Restaurant Groups', path: '/qm-admin/restaurant-groups' },
+  { icon: Hotel, label: 'Hotels', path: '/qm-admin/hotels' },
   { icon: FileUp, label: 'Restaurant loads', path: '/qm-admin/restaurant-loads' },
   { icon: ChefHat, label: 'Chefs', path: '/qm-admin/chefs' },
   { icon: Cpu, label: 'Matching', path: '/qm-admin/matching-engine' },

@@ -2220,6 +2220,81 @@ export async function removeRestaurantFromGroup(
   });
 }
 
+// ============= HOTELS =============
+// A hotel is a small restaurant group: its outlets (restaurant, bar,
+// catering, events, room service) are restaurants with hotel_id set. Keyed on
+// its Google Place ID, never on its name. QM admin only
+// (Api::V1::Admin::HotelsController).
+
+export interface AdminHotel {
+  id: string;
+  name: string;
+  google_place_id: string;
+  address_line_1: string | null;
+  city: string | null;
+  state: string | null;
+  website: string | null;
+  /** true, false, or null when we do not know yet. */
+  has_room_service: boolean | null;
+  status: string;
+  created_by_user_id: string | null;
+  created_at: string;
+  outlet_count: number;
+}
+
+export interface AdminHotelDetail extends AdminHotel {
+  outlets: Array<{
+    id: string;
+    name: string;
+    city: string | null;
+    state: string | null;
+    status: string;
+  }>;
+}
+
+export type AdminHotelInput = Partial<Pick<AdminHotel,
+  'name' | 'google_place_id' | 'address_line_1' | 'city' | 'state' | 'website' | 'has_room_service' | 'status'>>;
+
+/** Every hotel by name; q narrows on name or city. */
+export async function getAdminHotels(q?: string): Promise<ApiResponse<AdminHotel[]>> {
+  const qs = q && q.trim() ? `?q=${encodeURIComponent(q.trim())}` : '';
+  return fetchWithAuth(`/api/v1/admin/hotels${qs}`);
+}
+
+export async function getAdminHotel(id: string): Promise<ApiResponse<AdminHotelDetail>> {
+  return fetchWithAuth(`/api/v1/admin/hotels/${id}`);
+}
+
+/** name and google_place_id are required; a Place ID already on a hotel is refused. */
+export async function createAdminHotel(data: AdminHotelInput): Promise<ApiResponse<AdminHotelDetail>> {
+  return fetchWithAuth('/api/v1/admin/hotels', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateAdminHotel(id: string, data: AdminHotelInput): Promise<ApiResponse<AdminHotelDetail>> {
+  return fetchWithAuth(`/api/v1/admin/hotels/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+/** Makes a restaurant an outlet, by its id. The backend answers with the hotel. */
+export async function attachHotelOutlet(hotelId: string, restaurantId: string): Promise<ApiResponse<AdminHotelDetail>> {
+  return fetchWithAuth(`/api/v1/admin/hotels/${hotelId}/attach_outlet`, {
+    method: 'POST',
+    body: JSON.stringify({ restaurant_id: restaurantId }),
+  });
+}
+
+export async function detachHotelOutlet(hotelId: string, restaurantId: string): Promise<ApiResponse<AdminHotelDetail>> {
+  return fetchWithAuth(`/api/v1/admin/hotels/${hotelId}/detach_outlet`, {
+    method: 'POST',
+    body: JSON.stringify({ restaurant_id: restaurantId }),
+  });
+}
+
 /** One Stripe price on the PairMe group product, named by its lookup_key. */
 export interface GroupPaymentOffer {
   lookup_key: string;
