@@ -1,4 +1,4 @@
-// One hotel on the QM admin (Mercs + Hotels, step 1): its details and its
+// One hotel on the QM admin (MEPs + Hotels, step 1): its details and its
 // outlets (restaurant, bar, catering, events, room service), which are
 // restaurants with hotel_id set. Reads GET /api/v1/admin/hotels/:id; writes
 // PATCH /api/v1/admin/hotels/:id, attach_outlet and detach_outlet.

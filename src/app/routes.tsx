@@ -28,6 +28,9 @@ import { QMAdminRestaurantDetailPage } from "./pages/admin/QMAdminRestaurantDeta
 import { QMAdminRestaurantCrawlTruth } from "./pages/admin/QMAdminRestaurantCrawlTruth";
 import { QMAdminRestaurantGroups } from "./pages/admin/QMAdminRestaurantGroups";
 import { QMAdminHotels } from "./pages/admin/QMAdminHotels";
+import { QMAdminMeps } from "./pages/admin/QMAdminMeps";
+import { MepSignInPage } from "./pages/mep/MepSignInPage";
+import { MepHomePage } from "./pages/mep/MepHomePage";
 import { QMAdminHotelDetailPage } from "./pages/admin/QMAdminHotelDetail";
 import { QMAdminRestaurantLoads } from "./pages/admin/QMAdminRestaurantLoads";
 import { QMAdminRestaurantLoadDetail } from "./pages/admin/QMAdminRestaurantLoadDetail";
@@ -247,6 +250,19 @@ export const router = createBrowserRouter([
         Component: ChefWelcomePage,
       },
       {
+        // MEP sign-in (MEPs + Hotels step 2): the emailed one-time link
+        // lands here. Outside RootLayout, no sign-in needed; the MEP JWT is
+        // kept under its own key (services/mepApi), never quoteme_token.
+        path: "mep/sign-in",
+        Component: MepSignInPage,
+      },
+      {
+        // MEP home: a placeholder showing who is signed in (step 3 adds the
+        // account list). Guards itself with the MEP JWT.
+        path: "mep",
+        Component: MepHomePage,
+      },
+      {
         // Rep magic-link landing — MUST live outside RootLayout so reps
         // arriving via email with no JWT aren't bounced to /auth.
         // Exactly mirrors how chef/welcome is placed.
@@ -351,6 +367,7 @@ export const router = createBrowserRouter([
           { path: "restaurants/:id/crawl-truth", Component: QMAdminRestaurantCrawlTruth },
           { path: "restaurant-groups", Component: QMAdminRestaurantGroups },
           { path: "hotels", Component: QMAdminHotels },
+          { path: "meps", Component: QMAdminMeps },
           { path: "hotels/:id", Component: QMAdminHotelDetailPage },
           { path: "restaurant-loads", Component: QMAdminRestaurantLoads },
           { path: "restaurant-loads/:id", Component: QMAdminRestaurantLoadDetail },

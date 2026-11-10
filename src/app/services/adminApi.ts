@@ -3698,3 +3698,34 @@ export async function getRestaurantMenuUpload(
 ): Promise<ApiResponse<MenuUploadStatus>> {
   return fetchWithAuth<MenuUploadStatus>(`/api/v1/admin/restaurants/${restaurantId}/menu_uploads/${menuId}`);
 }
+
+// ============= ADMIN MEPS =============
+// MEPs + Hotels epic, step 2. An MEP is a market expansion partner (a user
+// with role MEP, added by the backend's meps:add task, found by email).
+// Reader: the QM admin MEPs page.
+
+export interface AdminMep {
+  id: string;
+  name: string;
+  email: string;
+  status: string;
+  /** Last time this MEP signed in (users.last_login_at), or null if never. */
+  last_login_at: string | null;
+}
+
+export interface MepSignInLinkSent {
+  sent: boolean;
+  email: string;
+  expires_at: string;
+}
+
+export async function getAdminMeps(): Promise<ApiResponse<AdminMep[]>> {
+  return fetchWithAuth('/api/v1/admin/meps');
+}
+
+/** Emails this MEP a one-time sign-in link (7 days). The only way one is sent. */
+export async function sendMepSignInLink(mepId: string): Promise<ApiResponse<MepSignInLinkSent>> {
+  return fetchWithAuth(`/api/v1/admin/meps/${encodeURIComponent(mepId)}/send_sign_in_link`, {
+    method: 'POST',
+  });
+}
