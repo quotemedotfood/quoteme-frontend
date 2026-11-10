@@ -1,4 +1,4 @@
-// QM admin Hotels list (Mercs + Hotels, step 1). A hotel is a small
+// QM admin Hotels list (MEPs + Hotels, step 1). A hotel is a small
 // restaurant group: its outlets (restaurant, bar, catering, events, room
 // service) are restaurants with hotel_id set. Reads GET /api/v1/admin/hotels
 // (search on name or city) and writes POST /api/v1/admin/hotels. A hotel is

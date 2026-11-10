@@ -39,7 +39,7 @@ const navItems = [
   { icon: UtensilsCrossed, label: 'Restaurants', path: '/qm-admin/restaurants' },
   { icon: Landmark, label: 'Restaurant Groups', path: '/qm-admin/restaurant-groups' },
   { icon: Hotel, label: 'Hotels', path: '/qm-admin/hotels' },
-  { icon: Handshake, label: 'Mercs', path: '/qm-admin/mercs' },
+  { icon: Handshake, label: 'MEPs', path: '/qm-admin/meps' },
   { icon: FileUp, label: 'Restaurant loads', path: '/qm-admin/restaurant-loads' },
   { icon: ChefHat, label: 'Chefs', path: '/qm-admin/chefs' },
   { icon: Cpu, label: 'Matching', path: '/qm-admin/matching-engine' },

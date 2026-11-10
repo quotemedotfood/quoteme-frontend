@@ -1,17 +1,17 @@
-// MERC HOME (Mercs + Hotels epic, step 2): a placeholder. Shows who is
-// signed in, from GET /api/v1/merc/me. The account list comes in step 3.
+// MEP HOME (MEPs + Hotels epic, step 2): a placeholder. Shows who is
+// signed in, from GET /api/v1/mep/me. The account list comes in step 3.
 import { useEffect, useState } from 'react';
-import { loadMercMe, clearMercSession, MercMe } from '../../services/mercApi';
-import { MercFrame } from './MercFrame';
+import { loadMepMe, clearMepSession, MepMe } from '../../services/mepApi';
+import { MepFrame } from './MepFrame';
 
-export function MercHomePage() {
-  const [me, setMe] = useState<MercMe | null>(null);
+export function MepHomePage() {
+  const [me, setMe] = useState<MepMe | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [signedOut, setSignedOut] = useState(false);
 
   useEffect(() => {
     let live = true;
-    loadMercMe().then((res) => {
+    loadMepMe().then((res) => {
       if (!live) return;
       if (res.data) setMe(res.data);
       else setError(res.status === 401 ? 'You are not signed in. Use the link in your sign-in email, or ask for a new one.' : res.error || 'Something went wrong. Try again.');
@@ -22,13 +22,13 @@ export function MercHomePage() {
   }, []);
 
   function signOut() {
-    clearMercSession();
+    clearMepSession();
     setMe(null);
     setSignedOut(true);
   }
 
   return (
-    <MercFrame>
+    <MepFrame>
       {signedOut && <p className="text-sm text-gray-600">You are signed out.</p>}
       {!signedOut && error && <p role="alert" className="text-sm text-red-600">{error}</p>}
       {!signedOut && !error && !me && <p className="text-sm text-gray-500">Loading…</p>}
@@ -41,6 +41,6 @@ export function MercHomePage() {
           </button>
         </>
       )}
-    </MercFrame>
+    </MepFrame>
   );
 }

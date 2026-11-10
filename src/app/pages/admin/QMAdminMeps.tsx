@@ -1,8 +1,8 @@
-// QM admin Mercs list (Mercs + Hotels, step 2). A merc is a market expansion
-// partner. Reads GET /api/v1/admin/mercs (name, email, last sign-in). The
-// Send sign-in link button is the ONLY way a merc gets an email:
-// POST /api/v1/admin/mercs/:id/send_sign_in_link, one press, one email.
-// Mercs are added by the backend's mercs:add task, not from this page.
+// QM admin MEPs list (MEPs + Hotels, step 2). An MEP is a market expansion
+// partner. Reads GET /api/v1/admin/meps (name, email, last sign-in). The
+// Send sign-in link button is the ONLY way an MEP gets an email:
+// POST /api/v1/admin/meps/:id/send_sign_in_link, one press, one email.
+// MEPs are added by the backend's meps:add task, not from this page.
 import { useEffect, useState } from 'react';
 import { Mail } from 'lucide-react';
 import { Button } from '../../components/ui/button';
@@ -14,7 +14,7 @@ import {
   TableHead,
   TableCell,
 } from '../../components/ui/table';
-import { getAdminMercs, sendMercSignInLink, AdminMerc } from '../../services/adminApi';
+import { getAdminMeps, sendMepSignInLink, AdminMep } from '../../services/adminApi';
 import { ADMIN_PAGE_FRAME, ADMIN_PAGE_FRAME_STYLE } from '../../components/admin/adminPageFrame';
 
 /** Last sign-in as a short date and time, or "Never". */
@@ -25,8 +25,8 @@ export function lastSignInLabel(iso: string | null | undefined): string {
   return d.toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
 }
 
-export function QMAdminMercs() {
-  const [mercs, setMercs] = useState<AdminMerc[]>([]);
+export function QMAdminMeps() {
+  const [meps, setMeps] = useState<AdminMep[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [sending, setSending] = useState<string | null>(null);
@@ -34,9 +34,9 @@ export function QMAdminMercs() {
 
   useEffect(() => {
     let live = true;
-    getAdminMercs().then((res) => {
+    getAdminMeps().then((res) => {
       if (!live) return;
-      if (res.data) setMercs(res.data);
+      if (res.data) setMeps(res.data);
       else setError(res.error || 'Failed to load');
       setLoading(false);
     });
@@ -45,11 +45,11 @@ export function QMAdminMercs() {
     };
   }, []);
 
-  async function handleSend(m: AdminMerc) {
+  async function handleSend(m: AdminMep) {
     if (sending) return;
     if (!window.confirm(`Email ${m.name} a sign-in link at ${m.email}?`)) return;
     setSending(m.id);
-    const res = await sendMercSignInLink(m.id);
+    const res = await sendMepSignInLink(m.id);
     setSending(null);
     setNotice((n) => ({
       ...n,
@@ -65,19 +65,19 @@ export function QMAdminMercs() {
         className="text-2xl font-bold text-[#2A2A2A] mb-6"
         style={{ fontFamily: "'Playfair Display', serif" }}
       >
-        Mercs
+        MEPs
       </h1>
 
       {loading && <p className="text-sm text-gray-400 py-8">Loading…</p>}
       {error && <p className="text-sm text-red-500 py-8">{error}</p>}
 
-      {!loading && !error && mercs.length === 0 && (
+      {!loading && !error && meps.length === 0 && (
         <div className="text-center py-16 text-gray-400">
-          <p className="text-lg font-medium">No mercs yet.</p>
+          <p className="text-lg font-medium">No MEPs yet.</p>
         </div>
       )}
 
-      {mercs.length > 0 && (
+      {meps.length > 0 && (
         <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
           <Table>
             <TableHeader>
@@ -89,7 +89,7 @@ export function QMAdminMercs() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {mercs.map((m) => (
+              {meps.map((m) => (
                 <TableRow key={m.id}>
                   <TableCell className="font-medium">{m.name}</TableCell>
                   <TableCell className="text-sm text-gray-600">{m.email}</TableCell>
