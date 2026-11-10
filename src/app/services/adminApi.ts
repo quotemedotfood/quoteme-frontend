@@ -3698,3 +3698,34 @@ export async function getRestaurantMenuUpload(
 ): Promise<ApiResponse<MenuUploadStatus>> {
   return fetchWithAuth<MenuUploadStatus>(`/api/v1/admin/restaurants/${restaurantId}/menu_uploads/${menuId}`);
 }
+
+// ============= ADMIN MERCS =============
+// Mercs + Hotels epic, step 2. A merc is a market expansion partner (a user
+// with role merc, added by the backend's mercs:add task, found by email).
+// Reader: the QM admin Mercs page.
+
+export interface AdminMerc {
+  id: string;
+  name: string;
+  email: string;
+  status: string;
+  /** Last time this merc signed in (users.last_login_at), or null if never. */
+  last_login_at: string | null;
+}
+
+export interface MercSignInLinkSent {
+  sent: boolean;
+  email: string;
+  expires_at: string;
+}
+
+export async function getAdminMercs(): Promise<ApiResponse<AdminMerc[]>> {
+  return fetchWithAuth('/api/v1/admin/mercs');
+}
+
+/** Emails this merc a one-time sign-in link (7 days). The only way one is sent. */
+export async function sendMercSignInLink(mercId: string): Promise<ApiResponse<MercSignInLinkSent>> {
+  return fetchWithAuth(`/api/v1/admin/mercs/${encodeURIComponent(mercId)}/send_sign_in_link`, {
+    method: 'POST',
+  });
+}
