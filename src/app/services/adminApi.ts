@@ -3643,6 +3643,12 @@ export interface MenuUploadStatus {
     dishes?: number | null;
     wines?: number | null;
     error?: string | null;
+    /**
+     * Present while state is "started" (QuoteMe, 11-11): "queued" while the
+     * pairing job waits its turn, "running" once it has begun. Optional: an
+     * older server leaves it out, and the page then shows the running line.
+     */
+    queue?: 'queued' | 'running' | null;
   };
 }
 

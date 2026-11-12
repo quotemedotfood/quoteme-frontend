@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import { Loader2, CheckCircle2, AlertCircle, Upload, Camera, X, ChevronLeft, ChevronRight, FileText } from 'lucide-react';
+import { Loader2, CheckCircle2, AlertCircle, Upload, Camera, X, ChevronLeft, ChevronRight, FileText, Clock } from 'lucide-react';
 import {
   uploadRestaurantMenuFiles,
   getRestaurantMenuUpload,
   MenuUploadKind,
   MenuUploadStatus,
 } from '../../services/adminApi';
+import { TIMEOUT_MUTATION_MESSAGE } from '../../services/requestPolicy';
 
 // UPLOAD MENU / UPLOAD WINE LIST on the QM admin restaurant page (Moose,
 // 2026-10-30). Each chosen file goes up in its own request, so each has its
@@ -26,7 +27,15 @@ import {
 // WRITER of the page queue and of pages=1: this section. READER of pages=1:
 // QuoteMe RestaurantMenuUploadsController#create.
 
-type Phase = 'uploading' | 'reading' | 'pairing' | 'done' | 'failed';
+// SAY WHAT WENT WRONG (Moose, 2026-11-11: "We should communicate issues with
+// uploads: too big, doesn't look right, low bandwidth, whatever"). Spinners
+// circled for 15+ minutes on prod with no word. Every row now says what is
+// happening: queued vs running pairing, a refusal in plain words, a dropped
+// or slow connection, and a line after a long wait that it is safe to leave.
+//
+// 'queued': pairing.queue === "queued" (QuoteMe, 11-11). Calm clock, no spinner.
+// 'stalled': polling stopped after MAX_POLLS. Calm clock and a Check again.
+type Phase = 'uploading' | 'reading' | 'queued' | 'pairing' | 'stalled' | 'done' | 'failed';
 
 interface Item {
   key: string;
@@ -40,6 +49,8 @@ interface Item {
   phase: Phase;
   message: string;
   menuId?: string;
+  /** False when sending the same file again cannot help (wrong type, too large here). */
+  retry?: boolean;
 }
 
 interface Page {
@@ -52,6 +63,45 @@ interface Page {
 const LABEL: Record<MenuUploadKind, string> = { menu: 'Menu', wine_list: 'Wine list' };
 const ACCEPT = 'image/*,application/pdf';
 const MAX_PAGES = 20;
+/** QuoteMe MenuPhotoIntake::MAX_BYTES = 25.megabytes. Checked here before sending. */
+export const MAX_FILE_MB = 25;
+export const MAX_FILE_BYTES = MAX_FILE_MB * 1024 * 1024;
+
+/** Every line this section adds for a problem or a long wait. */
+export const UPLOAD_COPY = {
+  tooLarge: `That file is too large. The limit is ${MAX_FILE_MB} MB per file.`,
+  notPhotoOrPdf: 'That is not a photo or a PDF. Upload a photo or a PDF.',
+  tooManyFiles: 'Too many files. Send 20 or fewer at a time.',
+  tooManyPages: `Too many pages. One list holds ${MAX_PAGES} pages at most.`,
+  unreadable: "We couldn't read that file. Try a clearer, straight-on photo.",
+  connection: 'The connection dropped. Check your signal and retry.',
+  timedOut: 'The connection is slow and we did not hear back, so this may have gone through. Retry if it does not show up.',
+  slowUpload: 'Still uploading. The connection looks slow.',
+  pollDropped: 'The connection dropped. Still checking.',
+  gone: 'That upload is no longer on file. Upload it again.',
+  stale: 'Still working. This can take a while, and it is safe to leave this page.',
+  stalled: 'Still working. Check back later. It is safe to leave this page.',
+} as const;
+
+/**
+ * The line for an upload the server (or the connection) refused. retry: false
+ * when sending the same file again cannot help.
+ * READER of error_code: this function. WRITER: QuoteMe
+ * RestaurantMenuUploadsController / MenuPhotoIntake::Refused.
+ */
+export function describeRefusal(r: { error?: string | null; error_code?: string | null; status?: number }): { message: string; retry: boolean } {
+  switch (r.error_code) {
+    case 'FILE_TOO_LARGE': return { message: UPLOAD_COPY.tooLarge, retry: true };
+    case 'NOT_PHOTO_OR_PDF': return { message: UPLOAD_COPY.notPhotoOrPdf, retry: false };
+    case 'TOO_MANY_FILES': return { message: UPLOAD_COPY.tooManyFiles, retry: false };
+    case 'TOO_MANY_PAGES': return { message: UPLOAD_COPY.tooManyPages, retry: false };
+  }
+  if (r.status === 413) return { message: UPLOAD_COPY.tooLarge, retry: false };
+  if (r.error === TIMEOUT_MUTATION_MESSAGE) return { message: UPLOAD_COPY.timedOut, retry: true };
+  // No HTTP status at all: the request never got an answer (offline, dropped).
+  if (r.status == null) return { message: UPLOAD_COPY.connection, retry: true };
+  return { message: r.error || 'Upload failed.', retry: true };
+}
 
 function photoOrPdf(f: File): boolean {
   return f.type.startsWith('image/') || f.type === 'application/pdf';
@@ -65,17 +115,25 @@ function pagesLabel(kind: MenuUploadKind, n: number): string {
 // last line on screen. A pairing run can take several minutes.
 const DEFAULT_POLL_MS = 3000;
 const MAX_POLLS = 400;
+// A read or a pairing run sitting in one state longer than this gets the
+// "still working, safe to leave" line. An upload still going after
+// DEFAULT_SLOW_UPLOAD_MS says the connection looks slow.
+const DEFAULT_STALE_MS = 5 * 60 * 1000;
+const DEFAULT_SLOW_UPLOAD_MS = 30_000;
 
 /** The line shown for a server read. terminal: stop polling. */
 export function describeUpload(s: MenuUploadStatus): { phase: Phase; message: string; terminal: boolean } {
   const label = LABEL[s.kind] ?? 'File';
   if (s.status === 'extracting') return { phase: 'reading', message: 'Reading...', terminal: false };
   if (s.status === 'failed') {
-    const why = s.error || 'We could not read that file.';
+    const why = s.error || UPLOAD_COPY.unreadable;
     const message = s.error_page ? `Page ${s.error_page} could not be read. ${why}` : why;
     return { phase: 'failed', message, terminal: true };
   }
   const p = s.pairing;
+  if (p?.state === 'started' && p.queue === 'queued') {
+    return { phase: 'queued', message: `${label} received. Pairing queued.`, terminal: false };
+  }
   if (!p || p.state === 'pending' || p.state === 'started') {
     return { phase: 'pairing', message: `${label} received. Pairing started.`, terminal: false };
   }
@@ -111,7 +169,17 @@ export function MenuUploadSection({
   restaurantId,
   restaurantName,
   pollMs = DEFAULT_POLL_MS,
-}: { restaurantId: string; restaurantName?: string; pollMs?: number }) {
+  staleMs = DEFAULT_STALE_MS,
+  slowUploadMs = DEFAULT_SLOW_UPLOAD_MS,
+  maxPolls = MAX_POLLS,
+}: {
+  restaurantId: string;
+  restaurantName?: string;
+  pollMs?: number;
+  staleMs?: number;
+  slowUploadMs?: number;
+  maxPolls?: number;
+}) {
   const [items, setItems] = useState<Item[]>([]);
   const [pages, setPages] = useState<Page[]>([]);
   const [dragging, setDragging] = useState(false);
@@ -124,6 +192,11 @@ export function MenuUploadSection({
   const timers = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
   const alive = useRef(true);
   const seq = useRef(0);
+  // Per row: which send is current (a Retry starts a new one), and since when
+  // the row has sat in its current waiting phase.
+  const attempt = useRef<Map<string, number>>(new Map());
+  const uploading = useRef<Set<string>>(new Set());
+  const since = useRef<Map<string, { phase: Phase; at: number }>>(new Map());
 
   useEffect(() => {
     alive.current = true;
@@ -143,36 +216,76 @@ export function MenuUploadSection({
     setItems((prev) => prev.map((it) => (it.key === key ? { ...it, ...change } : it)));
   }
 
-  function later(fn: () => void) {
+  function after(ms: number, fn: () => void) {
     const t = setTimeout(() => {
       timers.current.delete(t);
       fn();
-    }, pollMs);
+    }, ms);
     timers.current.add(t);
   }
 
+  /** The line plus, after a long wait in the same phase, the safe-to-leave note. */
+  function withWait(key: string, phase: Phase, message: string): string {
+    const now = Date.now();
+    const seen = since.current.get(key);
+    const at = seen && seen.phase === phase ? seen.at : now;
+    since.current.set(key, { phase, at });
+    return now - at >= staleMs ? `${message} ${UPLOAD_COPY.stale}` : message;
+  }
+
   function poll(key: string, menuId: string, n = 0) {
-    later(async () => {
-      if (!alive.current) return;
+    const run = attempt.current.get(key);
+    after(pollMs, async () => {
+      if (!alive.current || attempt.current.get(key) !== run) return;
       const res = await getRestaurantMenuUpload(restaurantId, menuId);
+      if (!alive.current || attempt.current.get(key) !== run) return;
+      const more = n + 1 < maxPolls;
       if (!res.data) {
-        if (n + 1 < MAX_POLLS) poll(key, menuId, n + 1);
+        if (res.status === 404) {
+          patch(key, { phase: 'failed', message: UPLOAD_COPY.gone, retry: true });
+          return;
+        }
+        if (res.status == null) patch(key, { message: UPLOAD_COPY.pollDropped });
+        if (more) poll(key, menuId, n + 1);
+        else patch(key, { phase: 'stalled', message: UPLOAD_COPY.stalled });
         return;
       }
       const d = describeUpload(res.data);
-      patch(key, { phase: d.phase, message: d.message });
-      if (!d.terminal && n + 1 < MAX_POLLS) poll(key, menuId, n + 1);
+      const message = d.terminal ? d.message : withWait(key, d.phase, d.message);
+      patch(key, { phase: d.phase, message });
+      if (d.terminal) return;
+      if (more) poll(key, menuId, n + 1);
+      else patch(key, { phase: 'stalled', message: UPLOAD_COPY.stalled });
     });
   }
 
+  function checkAgain(key: string, menuId: string) {
+    patch(key, { phase: 'reading', message: 'Checking...' });
+    poll(key, menuId);
+  }
+
   async function send(key: string, files: File[], kind: MenuUploadKind, asPages: boolean) {
-    patch(key, { phase: 'uploading', message: 'Uploading...', menuId: undefined });
+    const run = (attempt.current.get(key) ?? 0) + 1;
+    attempt.current.set(key, run);
+    since.current.delete(key);
+    uploading.current.add(key);
+    patch(key, { phase: 'uploading', message: 'Uploading...', menuId: undefined, retry: undefined });
+    after(slowUploadMs, () => {
+      if (attempt.current.get(key) === run && uploading.current.has(key)) {
+        patch(key, { message: UPLOAD_COPY.slowUpload });
+      }
+    });
     const res = asPages
       ? await uploadRestaurantMenuFiles(restaurantId, kind, files, { pages: true })
       : await uploadRestaurantMenuFiles(restaurantId, kind, files);
+    if (attempt.current.get(key) !== run) return;
+    uploading.current.delete(key);
     const taken = res.data?.uploads?.[0];
     if (!taken || !taken.menu_id) {
-      patch(key, { phase: 'failed', message: taken?.error || res.error || 'Upload failed.' });
+      // A per-file refusal inside a 202 carries its own code; otherwise the
+      // response's own error, code and status say what happened.
+      const why = describeRefusal(taken ? { ...taken, status: 202 } : res);
+      patch(key, { phase: 'failed', message: why.message, retry: why.retry });
       return;
     }
     patch(key, { phase: 'reading', message: 'Reading...', menuId: taken.menu_id });
@@ -187,11 +300,17 @@ export function MenuUploadSection({
   function choose(kind: MenuUploadKind, list: FileList | null) {
     const files = Array.from(list ?? []);
     if (files.length === 0) return;
-    const added: Item[] = files.map((file) => ({
-      key: nextKey(), files: [file], asPages: false, label: file.name, kind, phase: 'uploading', message: 'Uploading...',
-    }));
+    // Too large for the server: say so on the row and never send it.
+    const added: Item[] = files.map((file) => (file.size > MAX_FILE_BYTES
+      ? {
+        key: nextKey(), files: [file], asPages: false, label: file.name, kind,
+        phase: 'failed', message: UPLOAD_COPY.tooLarge, retry: false,
+      }
+      : {
+        key: nextKey(), files: [file], asPages: false, label: file.name, kind, phase: 'uploading', message: 'Uploading...',
+      }));
     setItems((prev) => [...added, ...prev]);
-    added.forEach((it) => { void send(it.key, it.files, it.kind, it.asPages); });
+    added.forEach((it) => { if (it.phase === 'uploading') void send(it.key, it.files, it.kind, it.asPages); });
   }
 
   // The page queue.
@@ -202,12 +321,14 @@ export function MenuUploadSection({
   function addPages(list: FileList | File[] | null) {
     const files = Array.from(list ?? []);
     if (files.length === 0) return;
-    const ok = files.filter(photoOrPdf);
+    const ok = files.filter((f) => photoOrPdf(f) && f.size <= MAX_FILE_BYTES);
     const refused = files.filter((f) => !photoOrPdf(f));
+    const big = files.filter((f) => photoOrPdf(f) && f.size > MAX_FILE_BYTES);
     const room = MAX_PAGES - pages.length;
     const taken = ok.slice(0, Math.max(room, 0));
     const notes: string[] = [];
     if (refused.length > 0) notes.push(`${refused.map((f) => f.name).join(', ')} is not a photo or a PDF, so it was left out.`);
+    if (big.length > 0) notes.push(`${big.map((f) => f.name).join(', ')} is over the ${MAX_FILE_MB} MB limit, so it was left out.`);
     if (ok.length > taken.length) notes.push(`One list holds ${MAX_PAGES} pages at most.`);
     setPageNote(notes.join(' '));
     if (taken.length === 0) return;
@@ -447,9 +568,22 @@ export function MenuUploadSection({
                 {(it.phase === 'uploading' || it.phase === 'reading' || it.phase === 'pairing') && (
                   <Loader2 className="w-4 h-4 animate-spin text-gray-400" aria-hidden="true" />
                 )}
+                {(it.phase === 'queued' || it.phase === 'stalled') && (
+                  <Clock className="w-4 h-4 text-gray-400" aria-hidden="true" />
+                )}
                 <span className="font-medium text-[#2A2A2A] break-all">{it.label}</span>
                 <span className={it.phase === 'failed' ? 'text-red-600' : 'text-gray-600'}>{it.message}</span>
-                {it.phase === 'failed' && (
+                {it.phase === 'stalled' && it.menuId && (
+                  <button
+                    type="button"
+                    onClick={() => checkAgain(it.key, it.menuId!)}
+                    className="ml-auto text-sm font-medium text-[#7a1f2b] underline"
+                    aria-label={`Check again ${it.label}`}
+                  >
+                    Check again
+                  </button>
+                )}
+                {it.phase === 'failed' && it.retry !== false && (
                   <button
                     type="button"
                     onClick={() => { void send(it.key, it.files, it.kind, it.asPages); }}
