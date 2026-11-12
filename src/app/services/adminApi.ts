@@ -3622,7 +3622,11 @@ export async function rejectWineMatch(id: string, reviewNotes?: string): Promise
 // MenuPhotoIntake, the same intake as the rep tablet photos. WRITER of the
 // menus row: the server. READER of both calls: MenuUploadSection.
 
-export type MenuUploadKind = 'menu' | 'wine_list';
+/**
+ * cocktail_list (Moose, 2026-11-12, the "+ Menu" drawer): a cocktail list is
+ * stored for the restaurant; its read ends with pairing.state "stored".
+ */
+export type MenuUploadKind = 'menu' | 'wine_list' | 'cocktail_list';
 
 export interface MenuUploadAccepted {
   filename: string;
@@ -3643,7 +3647,9 @@ export type MenuUploadPairingState =
   | 'test_seeded'
   | 'off'
   | 'done'
-  | 'failed';
+  | 'failed'
+  /** Cocktail list: kept on file, nothing to pair. Terminal. */
+  | 'stored';
 
 export interface MenuUploadStatus {
   menu_id: string;
@@ -3719,6 +3725,27 @@ export async function uploadRestaurantMenuFiles(
   } catch (err) {
     return { error: err instanceof Error ? err.message : 'Network error' };
   }
+}
+
+/**
+ * The "+ Menu" drawer's Text and URL tabs (Moose, 2026-11-12). The same
+ * POST /api/v1/admin/restaurants/:id/menu_uploads, as JSON with exactly one of
+ * text or url instead of files[]. replace=1 is New menu (menu only).
+ * 202 { uploads: [{ menu_id, status }] }; 422 { error, error_code }. The
+ * returned menu_id is polled like any upload.
+ * WRITER of text / url: this function, for the MenuDrawer. READER: QuoteMe
+ * RestaurantMenuUploadsController#create.
+ */
+export async function submitRestaurantMenuSource(
+  restaurantId: string,
+  kind: MenuUploadKind,
+  source: { text: string } | { url: string },
+  opts: { replace?: boolean } = {},
+): Promise<ApiResponse<{ uploads: MenuUploadAccepted[] }>> {
+  return fetchWithAuth<{ uploads: MenuUploadAccepted[] }>(`/api/v1/admin/restaurants/${restaurantId}/menu_uploads`, {
+    method: 'POST',
+    body: JSON.stringify({ kind, ...source, ...(opts.replace ? { replace: 1 } : {}) }),
+  });
 }
 
 /** GET /api/v1/admin/restaurants/:id/menu_uploads/:menu_id, polled by the page. */

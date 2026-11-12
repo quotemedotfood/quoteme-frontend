@@ -20,8 +20,16 @@ afterEach(() => { cleanup(); vi.clearAllMocks(); });
 
 const file = (name: string, type = 'image/jpeg') => new File(['x'], name, { type });
 
+// Moose 11-12: retire the old buttons. A file now comes in through the
+// "+ Menu" drawer's Picture / PDF tab; one file there goes up alone, as the
+// old Upload menu / Upload wine list did. The drawer closes after Send.
 function pick(kind: 'menu' | 'wine_list', files: File[]) {
-  fireEvent.change(screen.getByTestId(`upload-input-${kind}`), { target: { files } });
+  fireEvent.click(screen.getByTestId('add-menu-button'));
+  fireEvent.click(screen.getByTestId(`drawer-kind-${kind}`));
+  fireEvent.click(screen.getByTestId('drawer-tab-files'));
+  fireEvent.change(screen.getByTestId('drawer-files-input'), { target: { files } });
+  fireEvent.click(screen.getByTestId('drawer-send'));
+  fireEvent.keyDown(document.activeElement ?? document.body, { key: 'Escape' });
 }
 
 function row(name: string) {
@@ -29,15 +37,16 @@ function row(name: string) {
 }
 
 describe('Menu upload section', () => {
-  it('shows the two buttons and file inputs for photos and PDFs, several at once', () => {
+  // Moose 11-12: retire the old buttons. Was: the two Upload buttons and
+  // their inputs. Now: one "+ Menu" button, and the drawer's file input.
+  it('shows the + Menu button, and the drawer takes photos and PDFs, several at once', () => {
     render(<MenuUploadSection restaurantId="r1" pollMs={1} />);
-    expect(screen.getByRole('button', { name: 'Upload menu' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Upload wine list' })).toBeInTheDocument();
-    for (const kind of ['menu', 'wine_list']) {
-      const input = screen.getByTestId(`upload-input-${kind}`);
-      expect(input).toHaveAttribute('accept', 'image/*,application/pdf');
-      expect(input).toHaveAttribute('multiple');
-    }
+    expect(screen.queryByRole('button', { name: 'Upload menu' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Upload wine list' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: '+ Menu' }));
+    const input = screen.getByTestId('drawer-files-input');
+    expect(input).toHaveAttribute('accept', 'image/*,application/pdf');
+    expect(input).toHaveAttribute('multiple');
   });
 
   it('success: uploads, polls the read, and shows the dishes read when pairing is done', async () => {
@@ -69,7 +78,9 @@ describe('Menu upload section', () => {
     }));
 
     render(<MenuUploadSection restaurantId="r1" pollMs={1} />);
-    pick('wine_list', [file('list-1.pdf', 'application/pdf'), file('list-2.pdf', 'application/pdf')]);
+    // Moose 11-12: retire the old buttons. One drawer send per file.
+    pick('wine_list', [file('list-1.pdf', 'application/pdf')]);
+    pick('wine_list', [file('list-2.pdf', 'application/pdf')]);
 
     await waitFor(() => expect(row('list-1.pdf')).toHaveTextContent('Wine list received. Pairing waits for a menu.'));
     await waitFor(() => expect(row('list-2.pdf')).toHaveTextContent('This PDF is too large to read automatically.'));
@@ -93,7 +104,9 @@ describe('Menu upload section', () => {
     }));
 
     render(<MenuUploadSection restaurantId="r1" pollMs={1} />);
-    pick('menu', [file('good.jpg'), file('bad.jpg')]);
+    // Moose 11-12: retire the old buttons. One drawer send per file.
+    pick('menu', [file('good.jpg')]);
+    pick('menu', [file('bad.jpg')]);
 
     await waitFor(() => expect(row('bad.jpg')).toHaveTextContent('That file is too large.'));
     await waitFor(() => expect(row('good.jpg')).toHaveTextContent('Menu received. 7 dishes read. Pairing done.'));
