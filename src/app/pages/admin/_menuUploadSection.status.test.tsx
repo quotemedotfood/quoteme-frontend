@@ -25,8 +25,16 @@ const file = (name: string, type = 'image/jpeg', size?: number) => {
   return f;
 };
 
+// Moose 11-12: retire the old buttons. A file now comes in through the
+// "+ Menu" drawer's Picture / PDF tab; one file there goes up alone, as the
+// old Upload menu did. The drawer closes after Send.
 function pick(kind: 'menu' | 'wine_list', files: File[]) {
-  fireEvent.change(screen.getByTestId(`upload-input-${kind}`), { target: { files } });
+  fireEvent.click(screen.getByTestId('add-menu-button'));
+  fireEvent.click(screen.getByTestId(`drawer-kind-${kind}`));
+  fireEvent.click(screen.getByTestId('drawer-tab-files'));
+  fireEvent.change(screen.getByTestId('drawer-files-input'), { target: { files } });
+  fireEvent.click(screen.getByTestId('drawer-send'));
+  fireEvent.keyDown(document.activeElement ?? document.body, { key: 'Escape' });
 }
 
 function row(name: string) {
@@ -98,12 +106,16 @@ describe('describeRefusal copy', () => {
 });
 
 describe('upload problems on the row', () => {
-  it('a file over 25 MB is refused before sending, with the limit and no Retry', () => {
+  // Moose 11-12: retire the old buttons. Was: the Upload menu input made a
+  // failed row for a file over 25 MB. Now the drawer's page queue leaves it
+  // out with a note, and nothing is sent.
+  it('a file over 25 MB is refused before sending, with the limit', () => {
     render(<MenuUploadSection restaurantId="r1" pollMs={1} />);
-    pick('menu', [file('huge.jpg', 'image/jpeg', MAX_FILE_BYTES + 1)]);
-    expect(row('huge.jpg')).toHaveTextContent('That file is too large. The limit is 25 MB per file.');
-    expect(row('huge.jpg')).toHaveAttribute('data-phase', 'failed');
-    expect(within(row('huge.jpg')).queryByRole('button', { name: /Retry/ })).toBeNull();
+    fireEvent.click(screen.getByTestId('add-menu-button'));
+    fireEvent.click(screen.getByTestId('drawer-tab-files'));
+    fireEvent.change(screen.getByTestId('drawer-files-input'), { target: { files: [file('huge.jpg', 'image/jpeg', MAX_FILE_BYTES + 1)] } });
+    expect(within(screen.getByTestId('menu-drawer')).getByText('huge.jpg is over the 25 MB limit, so it was left out.')).toBeInTheDocument();
+    expect(screen.queryAllByTestId('upload-item')).toHaveLength(0);
     expect(m.uploadRestaurantMenuFiles).not.toHaveBeenCalled();
   });
 

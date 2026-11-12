@@ -46,6 +46,10 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '
 // (pairme apps/pairme/src/screens/staff/MenuChanging.jsx): pear, navy ink,
 // pill, refresh icon. Menu only: the server already uses the newest wine list.
 // WRITER of replace=1: this section. READER: RestaurantMenuUploadsController.
+//
+// OLD BUTTONS RETIRED (Moose, 2026-11-12): "Upload menu", "Upload wine list"
+// and "New menu" are gone; the "+ Menu" drawer below is the one way in. The
+// drop area's page queue stays, with its own "as a new menu" confirm.
 const PEAR = '#EFB96B';
 const NAVY = '#1F2A44';
 export const NEW_MENU_QUESTION = 'Replace the menu on file? Pairing will read only what you upload now.';
@@ -344,12 +348,13 @@ function itemFor(key: string, spec: MenuSendSpec): Item {
   if (spec.text != null) return { ...base, files: [], asPages: false, text: spec.text, label: `${head}, pasted text` };
   if (spec.url != null) return { ...base, files: [], asPages: false, url: spec.url, label: `${head}, ${spec.url}` };
   const files = spec.files ?? [];
-  // New menu: one file goes alone, several go as the pages of one menu, since
-  // separate uploads would each replace the last.
-  const asPages = spec.replace ? files.length > 1 : true;
+  // One file goes alone, under its own name. Several go as the pages of one
+  // list (pages=1), read in order; for New menu that also keeps separate
+  // uploads from each replacing the last.
+  const asPages = files.length > 1;
   const label = spec.replace
     ? (asPages ? `New menu, ${files.length} pages` : `New menu, ${files[0]?.name ?? ''}`)
-    : pagesLabel(spec.kind, files.length);
+    : (asPages ? pagesLabel(spec.kind, files.length) : files[0]?.name ?? '');
   const big = files.find((f) => f.size > MAX_FILE_BYTES);
   if (big) return { ...base, files, asPages, label, phase: 'failed', message: `${big.name}: ${UPLOAD_COPY.tooLarge}`, retry: false };
   return { ...base, files, asPages, label };
@@ -579,43 +584,15 @@ export function MenuUploadSection({
   const [drawerOpen, setDrawerOpen] = useState(false);
   const cameraInput = useRef<HTMLInputElement>(null);
   const pagesInput = useRef<HTMLInputElement>(null);
-  const menuInput = useRef<HTMLInputElement>(null);
-  const listInput = useRef<HTMLInputElement>(null);
-  const newMenuInput = useRef<HTMLInputElement>(null);
   const [confirmNew, setConfirmNew] = useState(false);
 
-  function choose(kind: MenuUploadKind, list: FileList | null) {
-    const files = Array.from(list ?? []);
-    if (files.length === 0) return;
-    // Too large for the server: say so on the row and never send it.
-    engine.start(files.map((file): Item => (file.size > MAX_FILE_BYTES
-      ? {
-        key: engine.nextKey(), files: [file], asPages: false, label: file.name, kind,
-        phase: 'failed', message: UPLOAD_COPY.tooLarge, retry: false,
-      }
-      : {
-        key: engine.nextKey(), files: [file], asPages: false, label: file.name, kind, phase: 'uploading', message: 'Uploading...',
-      })));
-  }
-
-  // NEW MENU: one upload that replaces the menu on file. Several files go as
-  // the pages of one menu, since separate uploads would each replace the last.
-  function sendNewMenu(files: File[]) {
-    if (files.length === 0) return;
-    engine.start([itemFor(engine.nextKey(), { kind: 'menu', replace: true, files })]);
-  }
-
-  // Continue in the confirm: send the queued pages as the new menu, or, with
-  // nothing queued, open the file picker.
+  // Continue in the confirm: send the queued pages as the new menu.
   function continueNewMenu() {
     setConfirmNew(false);
-    if (pages.length > 0) {
-      const files = pages.map((p) => p.file);
-      queue.clear();
-      sendNewMenu(files);
-      return;
-    }
-    newMenuInput.current?.click();
+    if (pages.length === 0) return;
+    const files = pages.map((p) => p.file);
+    queue.clear();
+    engine.start([itemFor(engine.nextKey(), { kind: 'menu', replace: true, files })]);
   }
 
   function sendPages(kind: MenuUploadKind) {
@@ -739,64 +716,8 @@ export function MenuUploadSection({
         </div>
 
         <p className="text-sm text-gray-600">
-          Separate files, several at once: each file is read on its own. Pairing starts once a menu and a wine list are both on file.
+          Pairing starts once a menu and a wine list are both on file.
         </p>
-        <div className="flex flex-wrap items-start gap-3">
-          {(['menu', 'wine_list'] as MenuUploadKind[]).map((kind) => (
-            <div key={kind}>
-              <button
-                type="button"
-                onClick={() => (kind === 'menu' ? menuInput : listInput).current?.click()}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#7a1f2b] text-white text-sm font-medium hover:opacity-90"
-              >
-                <Upload className="w-4 h-4" aria-hidden="true" />
-                {kind === 'menu' ? 'Upload menu' : 'Upload wine list'}
-              </button>
-              {kind === 'menu' && (
-                <p className="mt-1 text-xs text-gray-500" data-testid="upload-menu-adds">Adds to the menu on file</p>
-              )}
-              <input
-                ref={kind === 'menu' ? menuInput : listInput}
-                type="file"
-                multiple
-                accept={ACCEPT}
-                className="hidden"
-                data-testid={`upload-input-${kind}`}
-                aria-label={kind === 'menu' ? 'Menu files' : 'Wine list files'}
-                onChange={(e) => {
-                  choose(kind, e.target.files);
-                  e.target.value = '';
-                }}
-              />
-            </div>
-          ))}
-          <div>
-            <button
-              type="button"
-              data-testid="new-menu-button"
-              onClick={() => setConfirmNew(true)}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold hover:opacity-90"
-              style={{ background: PEAR, color: NAVY }}
-            >
-              <RefreshCw className="w-4 h-4" aria-hidden="true" />
-              New menu
-            </button>
-            <p className="mt-1 text-xs text-gray-500">Replaces the menu on file</p>
-            <input
-              ref={newMenuInput}
-              type="file"
-              multiple
-              accept={ACCEPT}
-              className="hidden"
-              data-testid="upload-input-new-menu"
-              aria-label="New menu files"
-              onChange={(e) => {
-                sendNewMenu(Array.from(e.target.files ?? []));
-                e.target.value = '';
-              }}
-            />
-          </div>
-        </div>
         {confirmNew && <NewMenuConfirm onContinue={continueNewMenu} onCancel={() => setConfirmNew(false)} />}
         <UploadRows engine={engine} />
       </div>
