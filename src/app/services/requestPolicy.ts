@@ -56,6 +56,12 @@ export const SLOW_ENDPOINTS: readonly string[] = [
   // The same workbook from the QM admin's launch checklist, downloaded or
   // emailed (BE Admin::RestaurantOnboardingController): the same drafting.
   '/onboarding/wine_workbook/',
+  // QM admin menu and wine list upload (POST .../menu_uploads): up to 20
+  // photos of 25 MB each, often from a phone on a weak signal. 30s aborted
+  // uploads that were still going. Also matches the status poll
+  // (GET .../menu_uploads/:menu_id), which is cheap, so the longer ceiling
+  // costs nothing there.
+  '/menu_uploads',
 ];
 
 export function timeoutForEndpoint(url: string): number {

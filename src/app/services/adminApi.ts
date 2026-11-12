@@ -3643,6 +3643,12 @@ export interface MenuUploadStatus {
     dishes?: number | null;
     wines?: number | null;
     error?: string | null;
+    /**
+     * Present while state is "started" (QuoteMe, 11-11): "queued" while the
+     * pairing job waits its turn, "running" once it has begun. Optional: an
+     * older server leaves it out, and the page then shows the running line.
+     */
+    queue?: 'queued' | 'running' | null;
   };
 }
 
@@ -3655,12 +3661,18 @@ export interface MenuUploadStatus {
  * order. Sends pages=1, and the server writes one row read as one list
  * (QuoteMe MenuPhotoIntake files:). WRITER of pages=1: this function, for
  * MenuUploadSection's page queue. READER: RestaurantMenuUploadsController.
+ *
+ * opts.replace: NEW MENU (Moose, 2026-11-12). A plain menu upload ADDS to the
+ * menu on file (the server combines every uploaded menu); replace=1 tells the
+ * server this upload is the whole menu now. Sent alongside pages=1 when the
+ * new menu is several pages. WRITER of replace=1: this function, for
+ * MenuUploadSection's New menu button. READER: RestaurantMenuUploadsController.
  */
 export async function uploadRestaurantMenuFiles(
   restaurantId: string,
   kind: MenuUploadKind,
   files: File[],
-  opts: { pages?: boolean } = {},
+  opts: { pages?: boolean; replace?: boolean } = {},
 ): Promise<ApiResponse<{ uploads: MenuUploadAccepted[] }>> {
   const token = getAuthToken();
   const headers: Record<string, string> = {};
@@ -3669,6 +3681,7 @@ export async function uploadRestaurantMenuFiles(
   const formData = new FormData();
   formData.append('kind', kind);
   if (opts.pages) formData.append('pages', '1');
+  if (opts.replace) formData.append('replace', '1');
   files.forEach((f) => formData.append('files[]', f));
 
   try {
