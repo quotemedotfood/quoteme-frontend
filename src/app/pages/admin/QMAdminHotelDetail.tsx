@@ -6,6 +6,11 @@
 // Outlets are attached by restaurant id, picked by a person from a search;
 // nothing is linked from a name. A restaurant that is already an outlet of
 // another hotel is refused by the backend; detach it there first.
+//
+// "+ MENU" PER OUTLET (Moose, 2026-11-12, for hotels like Madeline Telluride):
+// each outlet row opens the same "+ Menu" drawer as the restaurant page, for
+// that outlet's restaurant id. The drawer's rows show inside it and keep
+// polling after it closes, until another outlet's drawer is opened.
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router';
 import { ArrowLeft, Plus, Pencil } from 'lucide-react';
@@ -22,6 +27,7 @@ import {
 } from '../../services/adminApi';
 import { ADMIN_PAGE_FRAME, ADMIN_PAGE_FRAME_STYLE } from '../../components/admin/adminPageFrame';
 import { roomServiceLabel } from './QMAdminHotels';
+import { AddMenuButton, MenuDrawerHost } from './_menuUploadSection';
 
 type RoomService = 'yes' | 'no' | 'unknown';
 
@@ -45,6 +51,9 @@ export function HotelDetail({ hotelId }: { hotelId: string }) {
   const [error, setError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  // The outlet whose "+ Menu" drawer was opened last, and whether it is open.
+  const [menuFor, setMenuFor] = useState<{ id: string; name: string } | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({
@@ -270,7 +279,14 @@ export function HotelDetail({ hotelId }: { hotelId: string }) {
                     <td className="px-4 py-2 text-gray-500">{o.city || '-'}</td>
                     <td className="px-4 py-2 text-gray-500">{o.state || '-'}</td>
                     <td className="px-4 py-2 text-gray-500">{o.status}</td>
-                    <td className="px-4 py-2 text-right">
+                    <td className="px-4 py-2 text-right whitespace-nowrap">
+                      <span className="inline-block mr-2">
+                        <AddMenuButton
+                          testId="outlet-add-menu"
+                          label={`Add a menu to ${o.name}`}
+                          onClick={() => { setMenuFor({ id: o.id, name: o.name }); setMenuOpen(true); }}
+                        />
+                      </span>
                       <Button
                         variant="ghost"
                         size="sm"
@@ -331,6 +347,15 @@ export function HotelDetail({ hotelId }: { hotelId: string }) {
         )}
         {actionError && <p className="text-xs text-red-500" role="alert">{actionError}</p>}
       </div>
+      {menuFor && (
+        <MenuDrawerHost
+          key={menuFor.id}
+          restaurantId={menuFor.id}
+          restaurantName={menuFor.name}
+          open={menuOpen}
+          onOpenChange={setMenuOpen}
+        />
+      )}
     </div>
   );
 }

@@ -89,3 +89,22 @@ describe('HotelDetail', () => {
     expect(m.updateAdminHotel.mock.calls[0][1]).toMatchObject({ has_room_service: false, google_place_id: 'ChIJ-1' });
   });
 });
+
+// "+ MENU" PER OUTLET (Moose, 2026-11-12): each outlet row opens the "+ Menu"
+// drawer for that outlet's restaurant id.
+describe('HotelDetail outlet + Menu', () => {
+  it('opens the drawer for the outlet and sends to its restaurant id', async () => {
+    m.getAdminHotel.mockResolvedValue({ data: hotel([dining, bar]) });
+    const api = m as unknown as Record<string, ReturnType<typeof vi.fn>>;
+    api.submitRestaurantMenuSource = vi.fn().mockResolvedValue({ data: { uploads: [{ menu_id: 'm1', status: 'extracting' }] } });
+    api.getRestaurantMenuUpload = vi.fn().mockResolvedValue({ data: { menu_id: 'm1', kind: 'menu', status: 'extracting', error: null, error_code: null, pairing: null } });
+    show();
+    fireEvent.click(await screen.findByLabelText('Add a menu to Terminal Bar'));
+    const drawer = await screen.findByTestId('menu-drawer');
+    expect(drawer).toHaveTextContent('Adding to Terminal Bar');
+    fireEvent.click(screen.getByTestId('drawer-tab-text'));
+    fireEvent.change(screen.getByTestId('drawer-text'), { target: { value: 'Old Fashioned 15' } });
+    fireEvent.click(screen.getByTestId('drawer-send'));
+    await waitFor(() => expect(api.submitRestaurantMenuSource).toHaveBeenCalledWith('r2', 'menu', { text: 'Old Fashioned 15' }));
+  });
+});
