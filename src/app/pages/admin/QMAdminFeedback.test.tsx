@@ -53,7 +53,9 @@ describe('QMAdminFeedback', () => {
     expect(rows[0].textContent).toContain('Words a');
     expect(rows[0].textContent).toContain("Jack's on Pearl");
     expect(rows[0].textContent).toContain('Share: Restaurant');
-    expect(rows[0].querySelector('audio')?.getAttribute('src')).toContain('/a.webm');
+    const player = rows[0].querySelector('audio');
+    expect(player).not.toBeNull();
+    expect(player!.getAttribute('src')).toContain('/a.webm');
     expect(within(rows[0]).getByText('Mark reviewed')).toBeTruthy();
     expect(within(rows[0]).getByText('Delete audio')).toBeTruthy();
 
