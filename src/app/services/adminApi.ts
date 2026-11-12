@@ -720,6 +720,23 @@ export async function getAdminRestaurant(id: string): Promise<ApiResponse<AdminR
 }
 
 /**
+ * RENAME, the caller. PATCH /api/v1/admin/restaurants/:id/name (QM admin only).
+ * The server strips whitespace and refuses a blank or over-long name with 422
+ * { error, error_code } (NAME_BLANK, NAME_TOO_LONG, NAME_TAKEN). It answers
+ * with the stored { id, name }, which the detail page renders as its title.
+ * Moose 11-12.
+ */
+export async function renameAdminRestaurant(
+  id: string,
+  name: string,
+): Promise<ApiResponse<{ id: string; name: string }>> {
+  return fetchWithAuth(`/api/v1/admin/restaurants/${id}/name`, {
+    method: 'PATCH',
+    body: JSON.stringify({ name }),
+  });
+}
+
+/**
  * The account to sign in as for a restaurant: its admin, or a blank one made
  * on the spot (QuoteMe placeholder_admin). Sends no email.
  */

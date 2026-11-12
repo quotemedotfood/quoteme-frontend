@@ -12,7 +12,10 @@ import {
   AdminRestaurantGroup,
   createAdminRestaurantContact,
   ensureRestaurantSignInAdmin,
+  renameAdminRestaurant,
 } from '../../services/adminApi';
+import { Input } from '../../components/ui/input';
+import { Button } from '../../components/ui/button';
 import {
   Table,
   TableHeader,
@@ -81,6 +84,13 @@ export function QMAdminRestaurantDetailPage() {
   const [contactIsPrimary, setContactIsPrimary] = useState(false);
   const [contactStatus, setContactStatus] = useState<'idle' | 'loading' | 'error'>('idle');
   const [contactError, setContactError] = useState<string | null>(null);
+  // RENAME (Moose 11-12): inline Edit name on the title, same shape as the
+  // editName control on the Restaurant Groups page. WRITER is the dedicated
+  // PATCH /api/v1/admin/restaurants/:id/name; READER is this page's title.
+  const [editingName, setEditingName] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [nameSaving, setNameSaving] = useState(false);
+  const [nameError, setNameError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -232,6 +242,39 @@ export function QMAdminRestaurantDetailPage() {
     setAddContactOpen(false);
   }
 
+  function startEditName() {
+    if (!restaurant) return;
+    setEditName(restaurant.name);
+    setNameError(null);
+    setEditingName(true);
+  }
+
+  function cancelEditName() {
+    setEditingName(false);
+    setEditName('');
+    setNameError(null);
+  }
+
+  async function saveEditName() {
+    if (!restaurant || nameSaving) return;
+    const trimmed = editName.trim();
+    if (!trimmed) {
+      setNameError('Name cannot be empty.');
+      return;
+    }
+    setNameSaving(true);
+    setNameError(null);
+    const res = await renameAdminRestaurant(restaurant.id, trimmed);
+    setNameSaving(false);
+    if (res.error || !res.data) {
+      setNameError(res.error || 'Could not save the name.');
+      return;
+    }
+    const saved = res.data.name;
+    setRestaurant((prev) => (prev ? { ...prev, name: saved } : prev));
+    setEditingName(false);
+  }
+
   return (
     <div className={ADMIN_PAGE_FRAME} style={ADMIN_PAGE_FRAME_STYLE}>
       <Link to="/qm-admin/restaurants" className="text-sm text-[#7FAEC2] hover:underline flex items-center gap-1 mb-4">
@@ -240,9 +283,45 @@ export function QMAdminRestaurantDetailPage() {
 
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-[#2A2A2A]" style={{ fontFamily: "'Playfair Display', serif" }}>
-          {restaurant.name}
-        </h1>
+        {editingName ? (
+          <div className="flex flex-wrap items-center gap-2">
+            <Input
+              aria-label="Restaurant name"
+              value={editName}
+              onChange={(e) => setEditName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') saveEditName();
+                if (e.key === 'Escape') cancelEditName();
+              }}
+              className="h-9 text-base max-w-md"
+              autoFocus
+            />
+            <Button type="button" size="sm" onClick={saveEditName} disabled={nameSaving}>
+              {nameSaving ? 'Saving...' : 'Save'}
+            </Button>
+            <Button type="button" size="sm" variant="outline" onClick={cancelEditName} disabled={nameSaving}>
+              Cancel
+            </Button>
+          </div>
+        ) : (
+          <div className="flex flex-wrap items-baseline gap-3">
+            <h1 className="text-2xl font-bold text-[#2A2A2A]" style={{ fontFamily: "'Playfair Display', serif" }}>
+              {restaurant.name}
+            </h1>
+            <button
+              type="button"
+              onClick={startEditName}
+              className="text-sm text-[#7FAEC2] hover:underline"
+            >
+              Edit name
+            </button>
+          </div>
+        )}
+        {nameError && (
+          <p role="alert" className="text-sm text-red-600 mt-1">
+            {nameError}
+          </p>
+        )}
         {/* Straight to the upload area: on a phone it sits below the fold. */}
         <a
           href="#menu-upload"
