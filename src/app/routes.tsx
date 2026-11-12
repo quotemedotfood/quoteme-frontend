@@ -30,6 +30,7 @@ import { QMAdminRestaurantGroups } from "./pages/admin/QMAdminRestaurantGroups";
 import { QMAdminHotels } from "./pages/admin/QMAdminHotels";
 import { QMAdminFeedback } from "./pages/admin/QMAdminFeedback";
 import { QMAdminMeps } from "./pages/admin/QMAdminMeps";
+import { QMAdminBottleListPhotos } from "./pages/admin/QMAdminBottleListPhotos";
 import { MepSignInPage } from "./pages/mep/MepSignInPage";
 import { MepHomePage } from "./pages/mep/MepHomePage";
 import { QMAdminHotelDetailPage } from "./pages/admin/QMAdminHotelDetail";
@@ -372,6 +373,8 @@ export const router = createBrowserRouter([
           { path: "meps", Component: QMAdminMeps },
           { path: "hotels/:id", Component: QMAdminHotelDetailPage },
           { path: "restaurant-loads", Component: QMAdminRestaurantLoads },
+          // A diner's photos of a bottle list, waiting for the team (Moose 11-12).
+          { path: "bottle-list-photos", Component: QMAdminBottleListPhotos },
           { path: "restaurant-loads/:id", Component: QMAdminRestaurantLoadDetail },
           { path: "matching-engine", Component: QMAdminMatchingEngine },
           { path: "brands", Component: QMAdminBrands },

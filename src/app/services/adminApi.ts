@@ -3756,6 +3756,58 @@ export async function getRestaurantMenuUpload(
   return fetchWithAuth<MenuUploadStatus>(`/api/v1/admin/restaurants/${restaurantId}/menu_uploads/${menuId}`);
 }
 
+// ============= DINER PHOTOS OF THE BOTTLE LIST =============
+// A diner's photos of a restaurant's bottle list, sent from the PairMe app
+// (QuoteMe Pairme::BottleListPhotos; Cork's request and the Assemblage brief,
+// Moose 11-12). They wait for the team: nothing reads or pairs them until a
+// QM admin presses Use as wine list. READERS: DinerBottlePhotosSection on the
+// restaurant page and the Bottle list photos page.
+
+export interface DinerBottlePhotoRow {
+  menu_id: string;
+  restaurant_id: string;
+  restaurant_name: string | null;
+  kind: string;
+  pages: number;
+  received_at: string | null;
+  sent_at: string | null;
+  screen: string | null;
+  signed_in: boolean;
+  page_urls: string[];
+}
+
+/** GET /api/v1/admin/bottle_list_photos: every restaurant's waiting photos, newest first. */
+export async function getBottleListPhotoQueue(): Promise<ApiResponse<{ photos: DinerBottlePhotoRow[] }>> {
+  return fetchWithAuth<{ photos: DinerBottlePhotoRow[] }>('/api/v1/admin/bottle_list_photos');
+}
+
+/** GET /api/v1/admin/restaurants/:id/diner_bottle_photos: this restaurant's waiting photos. */
+export async function getRestaurantBottleListPhotos(
+  restaurantId: string,
+): Promise<ApiResponse<{ photos: DinerBottlePhotoRow[] }>> {
+  return fetchWithAuth<{ photos: DinerBottlePhotoRow[] }>(`/api/v1/admin/restaurants/${restaurantId}/diner_bottle_photos`);
+}
+
+/**
+ * POST .../diner_bottle_photos/:menu_id/use ("Use as wine list"). 202 { menu_id
+ * (the new upload row, polled at GET .../menu_uploads/:menu_id), status, pages }.
+ * 409 ALREADY_REVIEWED; 422 HEIC_NOT_READABLE.
+ */
+export async function takeBottleListPhotosAsWineList(
+  restaurantId: string,
+  menuId: string,
+): Promise<ApiResponse<{ menu_id: string; status: string; pages: number }>> {
+  return fetchWithAuth(`/api/v1/admin/restaurants/${restaurantId}/diner_bottle_photos/${menuId}/use`, { method: 'POST' });
+}
+
+/** POST .../diner_bottle_photos/:menu_id/discard ("Discard"): the photos are deleted. */
+export async function discardBottleListPhotos(
+  restaurantId: string,
+  menuId: string,
+): Promise<ApiResponse<{ menu_id: string; discarded: boolean }>> {
+  return fetchWithAuth(`/api/v1/admin/restaurants/${restaurantId}/diner_bottle_photos/${menuId}/discard`, { method: 'POST' });
+}
+
 // ============= ADMIN MEPS =============
 // MEPs + Hotels epic, step 2. An MEP is a market expansion partner (a user
 // with role MEP, added by the backend's meps:add task, found by email).

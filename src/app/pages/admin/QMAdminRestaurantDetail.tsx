@@ -30,6 +30,7 @@ import { ADMIN_PAGE_FRAME, ADMIN_PAGE_FRAME_STYLE } from '../../components/admin
 import { PairmeSection } from './_pairmeSection';
 import { LaunchChecklistSection } from './_launchChecklistSection';
 import { MenuUploadSection } from './_menuUploadSection';
+import { DinerBottlePhotosSection } from './_dinerBottlePhotos';
 import { SendPairmeInfo } from './_sendPairmeInfo';
 import { PairmeInfoSent } from './_pairmeInfoSent';
 import { PairmeFlowCard } from '../../components/PairmeFlowCard';
@@ -563,6 +564,9 @@ export function QMAdminRestaurantDetailPage() {
       </section>
 
       <MenuUploadSection restaurantId={restaurant.id} restaurantName={restaurant.name} />
+
+      {/* A diner's photos of the bottle list (Moose 11-12): only when there are any. */}
+      <DinerBottlePhotosSection restaurantId={restaurant.id} />
 
       <PairmeSection restaurantId={restaurant.id} />
 
