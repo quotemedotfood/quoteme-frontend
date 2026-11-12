@@ -56,14 +56,13 @@ describe('queued vs running pairing', () => {
 
   it('a queued row shows no spinner, then moves to running and done', async () => {
     m.uploadRestaurantMenuFiles.mockResolvedValue(accepted());
-    m.getRestaurantMenuUpload
-      .mockResolvedValueOnce({ data: { ...base, menu_id: 'm1', kind: 'menu', status: 'read', pairing: { state: 'started', queue: 'queued' } } })
-      .mockResolvedValue({ data: { ...base, menu_id: 'm1', kind: 'menu', status: 'read', pairing: { state: 'done', dishes: 4 } } });
-    render(<MenuUploadSection restaurantId="r1" pollMs={50} />);
+    m.getRestaurantMenuUpload.mockResolvedValue({ data: { ...base, menu_id: 'm1', kind: 'menu', status: 'read', pairing: { state: 'started', queue: 'queued' } } });
+    render(<MenuUploadSection restaurantId="r1" pollMs={1} />);
     pick('menu', [file('d.jpg')]);
     await waitFor(() => expect(row('d.jpg')).toHaveTextContent('Menu received. Pairing queued.'));
     expect(row('d.jpg')).toHaveAttribute('data-phase', 'queued');
     expect(row('d.jpg').querySelector('.animate-spin')).toBeNull();
+    m.getRestaurantMenuUpload.mockResolvedValue({ data: { ...base, menu_id: 'm1', kind: 'menu', status: 'read', pairing: { state: 'done', dishes: 4 } } });
     await waitFor(() => expect(row('d.jpg')).toHaveTextContent('Menu received. 4 dishes read. Pairing done.'));
   });
 });

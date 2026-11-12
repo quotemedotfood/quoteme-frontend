@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Loader2, CheckCircle2, AlertCircle, Upload, Camera, X, ChevronLeft, ChevronRight, FileText, Clock } from 'lucide-react';
+import { Loader2, CheckCircle2, AlertCircle, Upload, Camera, X, ChevronLeft, ChevronRight, FileText, Clock, RefreshCw } from 'lucide-react';
 import {
   uploadRestaurantMenuFiles,
   getRestaurantMenuUpload,
@@ -35,6 +35,19 @@ import { TIMEOUT_MUTATION_MESSAGE } from '../../services/requestPolicy';
 //
 // 'queued': pairing.queue === "queued" (QuoteMe, 11-11). Calm clock, no spinner.
 // 'stalled': polling stopped after MAX_POLLS. Calm clock and a Check again.
+// NEW MENU (Moose, 2026-11-12: "Have a different colored button for NEW
+// menu, this should follow the button we made on the manager tablet for new
+// menu."). "Upload menu" now ADDS to the menu on file (the server combines
+// every uploaded menu). "New menu" REPLACES it: a confirm first, then the
+// files go up with replace=1, as one list (pages=1) when there are several.
+// Styled after the PairMe staff tablet's "Menu changing?" button
+// (pairme apps/pairme/src/screens/staff/MenuChanging.jsx): pear, navy ink,
+// pill, refresh icon. Menu only: the server already uses the newest wine list.
+// WRITER of replace=1: this section. READER: RestaurantMenuUploadsController.
+const PEAR = '#EFB96B';
+const NAVY = '#1F2A44';
+export const NEW_MENU_QUESTION = 'Replace the menu on file? Pairing will read only what you upload now.';
+
 type Phase = 'uploading' | 'reading' | 'queued' | 'pairing' | 'stalled' | 'done' | 'failed';
 
 interface Item {
@@ -43,6 +56,8 @@ interface Item {
   files: File[];
   /** True when files went up as the pages of one list (pages=1). */
   asPages: boolean;
+  /** True for New menu: the upload replaces the menu on file (replace=1). */
+  replace?: boolean;
   /** What the line calls the upload: the file name, or "Wine list, 3 pages". */
   label: string;
   kind: MenuUploadKind;
@@ -189,6 +204,8 @@ export function MenuUploadSection({
   const pageUrls = useRef<Set<string>>(new Set());
   const menuInput = useRef<HTMLInputElement>(null);
   const listInput = useRef<HTMLInputElement>(null);
+  const newMenuInput = useRef<HTMLInputElement>(null);
+  const [confirmNew, setConfirmNew] = useState(false);
   const timers = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
   const alive = useRef(true);
   const seq = useRef(0);
@@ -264,7 +281,7 @@ export function MenuUploadSection({
     poll(key, menuId);
   }
 
-  async function send(key: string, files: File[], kind: MenuUploadKind, asPages: boolean) {
+  async function send(key: string, files: File[], kind: MenuUploadKind, asPages: boolean, replace = false) {
     const run = (attempt.current.get(key) ?? 0) + 1;
     attempt.current.set(key, run);
     since.current.delete(key);
@@ -275,8 +292,9 @@ export function MenuUploadSection({
         patch(key, { message: UPLOAD_COPY.slowUpload });
       }
     });
-    const res = asPages
-      ? await uploadRestaurantMenuFiles(restaurantId, kind, files, { pages: true })
+    const opts = { ...(asPages ? { pages: true } : {}), ...(replace ? { replace: true } : {}) };
+    const res = Object.keys(opts).length > 0
+      ? await uploadRestaurantMenuFiles(restaurantId, kind, files, opts)
       : await uploadRestaurantMenuFiles(restaurantId, kind, files);
     if (attempt.current.get(key) !== run) return;
     uploading.current.delete(key);
@@ -311,6 +329,48 @@ export function MenuUploadSection({
       }));
     setItems((prev) => [...added, ...prev]);
     added.forEach((it) => { if (it.phase === 'uploading') void send(it.key, it.files, it.kind, it.asPages); });
+  }
+
+  // NEW MENU: one upload that replaces the menu on file. Several files go as
+  // the pages of one menu, since separate uploads would each replace the last.
+  function sendNewMenu(files: File[]) {
+    if (files.length === 0) return;
+    const asPages = files.length > 1;
+    const big = files.find((f) => f.size > MAX_FILE_BYTES);
+    const item: Item = {
+      key: nextKey(), files, asPages, replace: true,
+      label: asPages ? `New menu, ${files.length} pages` : `New menu, ${files[0].name}`,
+      kind: 'menu',
+      phase: big ? 'failed' : 'uploading',
+      message: big ? `${big.name}: ${UPLOAD_COPY.tooLarge}` : 'Uploading...',
+      retry: big ? false : undefined,
+    };
+    setItems((prev) => [item, ...prev]);
+    if (!big) void send(item.key, item.files, item.kind, item.asPages, true);
+  }
+
+  // Continue in the confirm: send the queued pages as the new menu, or, with
+  // nothing queued, open the file picker.
+  function continueNewMenu() {
+    setConfirmNew(false);
+    if (pages.length > 0) {
+      const files = pages.map((p) => p.file);
+      clearQueue();
+      sendNewMenu(files);
+      return;
+    }
+    newMenuInput.current?.click();
+  }
+
+  function clearQueue() {
+    pages.forEach((p) => {
+      if (p.url) {
+        revoke(p.url);
+        pageUrls.current.delete(p.url);
+      }
+    });
+    setPages([]);
+    setPageNote('');
   }
 
   // The page queue.
@@ -371,14 +431,7 @@ export function MenuUploadSection({
       key: nextKey(), files, asPages: true, label: pagesLabel(kind, files.length), kind,
       phase: 'uploading', message: 'Uploading...',
     };
-    pages.forEach((p) => {
-      if (p.url) {
-        revoke(p.url);
-        pageUrls.current.delete(p.url);
-      }
-    });
-    setPages([]);
-    setPageNote('');
+    clearQueue();
     setItems((prev) => [item, ...prev]);
     void send(item.key, item.files, item.kind, item.asPages);
   }
@@ -519,6 +572,16 @@ export function MenuUploadSection({
                     {`Send ${pages.length} ${pages.length === 1 ? 'page' : 'pages'} as the ${kind === 'menu' ? 'menu' : 'wine list'}`}
                   </button>
                 ))}
+                <button
+                  type="button"
+                  data-testid="queue-new-menu"
+                  onClick={() => setConfirmNew(true)}
+                  className="inline-flex items-center justify-center gap-2 px-4 py-3 rounded-full text-sm font-bold hover:opacity-90 w-full sm:w-auto"
+                  style={{ background: PEAR, color: NAVY }}
+                >
+                  <RefreshCw className="w-4 h-4" aria-hidden="true" />
+                  {`Send ${pages.length} ${pages.length === 1 ? 'page' : 'pages'} as a new menu`}
+                </button>
               </div>
             </>
           )}
@@ -527,7 +590,7 @@ export function MenuUploadSection({
         <p className="text-sm text-gray-600">
           Separate files, several at once: each file is read on its own. Pairing starts once a menu and a wine list are both on file.
         </p>
-        <div className="flex flex-wrap gap-3">
+        <div className="flex flex-wrap items-start gap-3">
           {(['menu', 'wine_list'] as MenuUploadKind[]).map((kind) => (
             <div key={kind}>
               <button
@@ -538,6 +601,9 @@ export function MenuUploadSection({
                 <Upload className="w-4 h-4" aria-hidden="true" />
                 {kind === 'menu' ? 'Upload menu' : 'Upload wine list'}
               </button>
+              {kind === 'menu' && (
+                <p className="mt-1 text-xs text-gray-500" data-testid="upload-menu-adds">Adds to the menu on file</p>
+              )}
               <input
                 ref={kind === 'menu' ? menuInput : listInput}
                 type="file"
@@ -553,7 +619,34 @@ export function MenuUploadSection({
               />
             </div>
           ))}
+          <div>
+            <button
+              type="button"
+              data-testid="new-menu-button"
+              onClick={() => setConfirmNew(true)}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold hover:opacity-90"
+              style={{ background: PEAR, color: NAVY }}
+            >
+              <RefreshCw className="w-4 h-4" aria-hidden="true" />
+              New menu
+            </button>
+            <p className="mt-1 text-xs text-gray-500">Replaces the menu on file</p>
+            <input
+              ref={newMenuInput}
+              type="file"
+              multiple
+              accept={ACCEPT}
+              className="hidden"
+              data-testid="upload-input-new-menu"
+              aria-label="New menu files"
+              onChange={(e) => {
+                sendNewMenu(Array.from(e.target.files ?? []));
+                e.target.value = '';
+              }}
+            />
+          </div>
         </div>
+        {confirmNew && <NewMenuConfirm onContinue={continueNewMenu} onCancel={() => setConfirmNew(false)} />}
         {items.length > 0 && (
           <ul className="flex flex-col gap-2" aria-live="polite">
             {items.map((it) => (
@@ -586,7 +679,7 @@ export function MenuUploadSection({
                 {it.phase === 'failed' && it.retry !== false && (
                   <button
                     type="button"
-                    onClick={() => { void send(it.key, it.files, it.kind, it.asPages); }}
+                    onClick={() => { void send(it.key, it.files, it.kind, it.asPages, it.replace === true); }}
                     className="ml-auto text-sm font-medium text-[#7a1f2b] underline"
                     aria-label={`Retry ${it.label}`}
                   >
@@ -599,5 +692,48 @@ export function MenuUploadSection({
         )}
       </div>
     </section>
+  );
+}
+
+/** The New menu confirm. Cancel, the scrim, or Escape closes it and nothing is sent. */
+function NewMenuConfirm({ onContinue, onCancel }: { onContinue: () => void; onCancel: () => void }) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onCancel(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onCancel]);
+  return (
+    <>
+      <div data-testid="new-menu-scrim" onClick={onCancel} className="fixed inset-0 z-40 bg-black/40" />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={NEW_MENU_QUESTION}
+        data-testid="new-menu-confirm"
+        className="fixed z-50 left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[min(480px,calc(100%-32px))] bg-white rounded-2xl p-6 flex flex-col gap-5 shadow-xl"
+      >
+        <h3 className="m-0 text-xl font-semibold text-[#2A2A2A]" style={{ fontFamily: "'Playfair Display', serif" }}>
+          {NEW_MENU_QUESTION}
+        </h3>
+        <div className="flex flex-wrap gap-3">
+          <button
+            type="button"
+            onClick={onContinue}
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-full text-base font-bold hover:opacity-90"
+            style={{ background: PEAR, color: NAVY }}
+          >
+            <RefreshCw className="w-4 h-4" aria-hidden="true" />
+            Continue
+          </button>
+          <button
+            type="button"
+            onClick={onCancel}
+            className="px-5 py-3 rounded-full border border-gray-300 bg-white text-base font-semibold text-[#2A2A2A]"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </>
   );
 }
