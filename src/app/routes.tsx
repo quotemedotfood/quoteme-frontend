@@ -28,6 +28,7 @@ import { QMAdminRestaurantDetailPage } from "./pages/admin/QMAdminRestaurantDeta
 import { QMAdminRestaurantCrawlTruth } from "./pages/admin/QMAdminRestaurantCrawlTruth";
 import { QMAdminRestaurantGroups } from "./pages/admin/QMAdminRestaurantGroups";
 import { QMAdminHotels } from "./pages/admin/QMAdminHotels";
+import { QMAdminFeedback } from "./pages/admin/QMAdminFeedback";
 import { QMAdminMeps } from "./pages/admin/QMAdminMeps";
 import { MepSignInPage } from "./pages/mep/MepSignInPage";
 import { MepHomePage } from "./pages/mep/MepHomePage";
@@ -367,6 +368,7 @@ export const router = createBrowserRouter([
           { path: "restaurants/:id/crawl-truth", Component: QMAdminRestaurantCrawlTruth },
           { path: "restaurant-groups", Component: QMAdminRestaurantGroups },
           { path: "hotels", Component: QMAdminHotels },
+          { path: "feedback", Component: QMAdminFeedback },
           { path: "meps", Component: QMAdminMeps },
           { path: "hotels/:id", Component: QMAdminHotelDetailPage },
           { path: "restaurant-loads", Component: QMAdminRestaurantLoads },
