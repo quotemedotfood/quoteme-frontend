@@ -1,7 +1,7 @@
 // Railway API Service
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://web-production-9f6e9.up.railway.app';
 
-import type { RestaurantAdminHome, RestaurantAdminPairme, RestaurantAdminPresentations, StaffTablet } from './adminApi';
+import type { AdminPairmeCourse, RestaurantAdminHome, RestaurantAdminPairme, RestaurantAdminPresentations, StaffTablet } from './adminApi';
 
 interface ApiResponse<T> {
   data?: T;
@@ -4527,6 +4527,20 @@ export async function setRestaurantAdminStaffPin(id: string, pin: string): Promi
 
 export async function getRestaurantAdminPairme(id: string): Promise<ApiResponse<RestaurantAdminPairme>> {
   return fetchWithAuth(`/api/v1/restaurant_admin/restaurants/${id}/pairme`);
+}
+
+// PATCH /api/v1/restaurant_admin/restaurants/:id/pairme_courses: pair this
+// course, on or off, on the restaurant admin's own restaurant only (BE
+// RestaurantAdminHomeController#pairme_courses). Reader: PairmeSection.
+export async function setRestaurantAdminPairmeCourse(
+  id: string,
+  course: string,
+  paired: boolean,
+): Promise<ApiResponse<{ courses: AdminPairmeCourse[] }>> {
+  return fetchWithAuth(`/api/v1/restaurant_admin/restaurants/${id}/pairme_courses`, {
+    method: 'PATCH',
+    body: JSON.stringify({ course, paired }),
+  });
 }
 
 export async function getRestaurantAdminPresentations(id: string): Promise<ApiResponse<RestaurantAdminPresentations>> {
