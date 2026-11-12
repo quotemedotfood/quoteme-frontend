@@ -25,13 +25,19 @@ import {
   BarChart3,
   Hotel,
   Handshake,
+  MessageSquare,
 } from 'lucide-react';
 import logoSquare from '/src/assets/e549e7d27b183e98e791f43494c715b8cc6ce7e9.png';
 import { useAuth } from '../contexts/AuthContext';
 import { isImpersonating } from '../utils/impersonate';
+import { FeedbackNavBadge } from './admin/FeedbackNavBadge';
+import type { ComponentType } from 'react';
 
-const navItems = [
+// badge: an optional count shown on the item (Feedback's red number of notes
+// needing attention, Moose 2026-11-12).
+const navItems: Array<{ icon: typeof LayoutDashboard; label: string; path: string; badge?: ComponentType }> = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/qm-admin' },
+  { icon: MessageSquare, label: 'Feedback', path: '/qm-admin/feedback', badge: FeedbackNavBadge },
   { icon: UserPlus, label: 'Signups', path: '/qm-admin/signups' },
   { icon: Users, label: 'Users', path: '/qm-admin/users' },
   { icon: Building2, label: 'Distributors', path: '/qm-admin/distributors' },
@@ -140,6 +146,7 @@ export function QMAdminLayout() {
               >
                 <Icon size={18} />
                 <span>{item.label}</span>
+                {item.badge && <item.badge />}
               </Link>
             );
           })}
@@ -193,6 +200,7 @@ export function QMAdminLayout() {
           <img src={logoSquare} alt="QM" className="w-7 h-7 flex-shrink-0" />
           {[...navItems, ...navSections.flatMap((section) => section.items)].map((item) => {
             const active = isActive(item.path);
+            const Badge = (item as { badge?: ComponentType }).badge;
             return (
               <Link
                 key={item.path}
@@ -201,7 +209,10 @@ export function QMAdminLayout() {
                   active ? 'bg-[#7FAEC2] text-white' : 'text-[#4F4F4F] bg-gray-100'
                 }`}
               >
-                {item.label}
+                <span className="inline-flex items-center gap-1">
+                  {item.label}
+                  {Badge && <Badge />}
+                </span>
               </Link>
             );
           })}

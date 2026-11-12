@@ -3786,3 +3786,54 @@ export async function sendMepSignInLink(mepId: string): Promise<ApiResponse<MepS
     method: 'POST',
   });
 }
+
+// ============= FEEDBACK (the diners' voice notes, Moose 2026-11-12) =============
+// READER of GET /api/v1/admin/feedback_memos and .../attention_count; WRITER
+// of PATCH .../:id/review and DELETE .../:id/audio. QM admin only.
+// Needing attention = not yet reviewed.
+
+export interface AdminFeedbackMemo {
+  id: string;
+  text: string | null;
+  transcript_source: 'app' | 'server' | null;
+  screen: string;
+  restaurant: { id: string; name: string } | null;
+  share: 'none' | 'restaurant' | 'public';
+  duration_ms: number | null;
+  created_at: string;
+  recorded_at: string | null;
+  transcription_state: 'pending' | 'done' | 'failed';
+  transcription_error: string | null;
+  reviewed_at: string | null;
+  audio_deleted_at: string | null;
+  audio_url: string | null;
+}
+
+export interface AdminFeedbackMemoPage {
+  memos: AdminFeedbackMemo[];
+  page: number;
+  per_page: number;
+  total: number;
+  attention_count: number;
+}
+
+export interface AdminFeedbackMemoChange {
+  memo: AdminFeedbackMemo;
+  attention_count: number;
+}
+
+export async function getAdminFeedbackMemos(page = 1): Promise<ApiResponse<AdminFeedbackMemoPage>> {
+  return fetchWithAuth(`/api/v1/admin/feedback_memos${page > 1 ? `?page=${page}` : ''}`);
+}
+
+export async function getAdminFeedbackAttentionCount(): Promise<ApiResponse<{ attention_count: number }>> {
+  return fetchWithAuth('/api/v1/admin/feedback_memos/attention_count');
+}
+
+export async function reviewAdminFeedbackMemo(id: string): Promise<ApiResponse<AdminFeedbackMemoChange>> {
+  return fetchWithAuth(`/api/v1/admin/feedback_memos/${id}/review`, { method: 'PATCH' });
+}
+
+export async function deleteAdminFeedbackAudio(id: string): Promise<ApiResponse<AdminFeedbackMemoChange>> {
+  return fetchWithAuth(`/api/v1/admin/feedback_memos/${id}/audio`, { method: 'DELETE' });
+}
