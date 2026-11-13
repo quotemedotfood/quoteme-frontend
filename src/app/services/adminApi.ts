@@ -3931,8 +3931,14 @@ export async function unlinkAdminMepPerson(id: string): Promise<ApiResponse<MepP
 }
 
 /** The person's company is not in our data: add it as a restaurant group and link them. */
-export async function addGroupFromMepPerson(id: string): Promise<ApiResponse<MepPerson>> {
-  return fetchWithAuth(`/api/v1/admin/mep_connections/${encodeURIComponent(id)}/add_group`, { method: 'POST' });
+export async function addGroupFromMepPerson(
+  id: string,
+  admin: { admin_name: string; admin_email: string },
+): Promise<ApiResponse<MepPerson>> {
+  return fetchWithAuth(`/api/v1/admin/mep_connections/${encodeURIComponent(id)}/add_group`, {
+    method: 'POST',
+    body: JSON.stringify(admin),
+  });
 }
 
 /** Every MEP's starred people, newest first: who can make which intro. */

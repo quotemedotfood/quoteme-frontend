@@ -8,7 +8,8 @@
 //      skipped lines
 //   N4 the star changes only where the MEP's api allows it; QM admin sees
 //      it but cannot change it, and only QM admin gets "Add as a group",
-//      after a confirm
+//      which asks for the group admin's name (prefilled) and email and sends
+//      nothing if either is left empty
 //
 // @vitest-environment jsdom
 import { it, expect, vi, afterEach, describe } from 'vitest';
@@ -78,7 +79,7 @@ describe('PeopleList', () => {
     await waitFor(() => expect(api.list).toHaveBeenCalledTimes(2));
   });
 
-  it('N4 the MEP stars; QM admin sees the star but cannot change it, and alone can add a group after a confirm', async () => {
+  it("N4 the MEP stars; QM admin sees the star but cannot change it, and alone can add a group with its admin's name and email", async () => {
     const star = vi.fn().mockResolvedValue({ data: { starred: true } });
     render(<PeopleList api={makeApi({ star })} />);
     const [f] = await rows();
@@ -88,7 +89,10 @@ describe('PeopleList', () => {
     cleanup();
 
     const addGroup = vi.fn().mockResolvedValue({ data: { ...lou, linked_account: { account_type: 'restaurant_group', id: 'g2', name: 'Bonanno' } } });
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValueOnce(false).mockReturnValueOnce(true);
+    const prompt = vi.spyOn(window, 'prompt')
+      .mockReturnValueOnce(null)
+      .mockReturnValueOnce('Lou Loose').mockReturnValueOnce('')
+      .mockReturnValueOnce('Lou Loose').mockReturnValueOnce('lou@bonanno.com');
     render(<PeopleList api={makeApi({ addGroup })} />);
     const [f2, l2, a2] = await rows();
     expect((within(f2).getByRole('button', { name: 'Star Frank Bonanno' }) as HTMLButtonElement).disabled).toBe(true);
@@ -96,9 +100,11 @@ describe('PeopleList', () => {
     expect(within(f2).queryByRole('button', { name: /as a restaurant group/ })).toBeNull();
     const add = within(l2).getByRole('button', { name: 'Add Bonanno as a restaurant group' });
     fireEvent.click(add);
+    fireEvent.click(add);
     expect(addGroup).not.toHaveBeenCalled();
     fireEvent.click(add);
-    await waitFor(() => expect(addGroup).toHaveBeenCalledWith('p2'));
-    expect(confirm).toHaveBeenCalledTimes(2);
+    await waitFor(() => expect(addGroup).toHaveBeenCalledWith('p2', { admin_name: 'Lou Loose', admin_email: 'lou@bonanno.com' }));
+    expect(prompt).toHaveBeenCalledWith(expect.stringContaining("Group admin's name"), 'Lou Loose');
+    expect(addGroup).toHaveBeenCalledTimes(1);
   });
 });

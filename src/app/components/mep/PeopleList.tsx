@@ -24,8 +24,11 @@ export interface PeopleApi {
   unlink(id: string): Promise<Result<MepPerson>>;
   /** The MEP's own star. Absent: the star is shown, not changed. */
   star?(id: string, starred: boolean): Promise<Result<{ starred: boolean }>>;
-  /** QM admin only: add the company as a restaurant group and link it. */
-  addGroup?(id: string): Promise<Result<MepPerson>>;
+  /**
+   * QM admin only: add the company as a restaurant group and link it. Every
+   * new group needs its admin's name and email (Moose 2026-10-20).
+   */
+  addGroup?(id: string, admin: { admin_name: string; admin_email: string }): Promise<Result<MepPerson>>;
 }
 
 const TYPE_LABEL: Record<MepAccountType, string> = {
@@ -254,9 +257,11 @@ export function PeopleList({ api, intro }: { api: PeopleApi; intro?: string }) {
                         <button
                           type="button"
                           onClick={() => {
-                            if (window.confirm(`Add "${p.company}" as a restaurant group and link ${personName(p)} to it?`)) {
-                              act(`group:${p.id}`, () => api.addGroup!(p.id));
-                            }
+                            const adminName = window.prompt(`Add "${p.company}" as a restaurant group. Group admin's name:`, personName(p));
+                            if (!adminName?.trim()) return;
+                            const adminEmail = window.prompt(`Group admin's email for "${p.company}":`, '');
+                            if (!adminEmail?.trim()) return;
+                            act(`group:${p.id}`, () => api.addGroup!(p.id, { admin_name: adminName.trim(), admin_email: adminEmail.trim() }));
                           }}
                           className="text-xs text-[#7FAEC2] hover:underline"
                         >
