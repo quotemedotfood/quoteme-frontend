@@ -43,7 +43,12 @@ export function MepHomePage() {
               Sign out
             </button>
           </div>
-          <MepAccountList />
+          {me.viewing_as_admin && (
+            <p role="status" className="text-sm bg-[#FFF6E5] border border-[#E8B04B] rounded-md px-3 py-2 mb-4">
+              Viewing as {me.name}. View only: nothing can be changed. This view ends after one hour.
+            </p>
+          )}
+          <MepAccountList viewOnly={!!me.viewing_as_admin} />
         </>
       )}
     </MepFrame>

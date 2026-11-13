@@ -9,6 +9,7 @@ const m = vi.hoisted(() => ({
   getAdminMeps: vi.fn(),
   sendMepSignInLink: vi.fn(),
   getAdminMepStars: vi.fn(),
+  viewAsMep: vi.fn(),
 }));
 vi.mock('../../services/adminApi', () => m);
 
@@ -73,5 +74,21 @@ describe('QMAdminMeps', () => {
     render(<QMAdminMeps />);
     fireEvent.click(await screen.findByRole('button', { name: /show stars/i }));
     expect(await screen.findByText('No stars yet.')).toBeTruthy();
+  });
+
+  it("V1 View as keeps the one-hour token under the MEP key only and opens /mep", async () => {
+    m.getAdminMeps.mockResolvedValue({ data: [kirk] });
+    m.viewAsMep.mockResolvedValue({ data: { token: 'view-token', expires_at: 'x', mep: { id: 'm1', name: 'Kirk Jorgensen' } } });
+    const open = vi.spyOn(window, 'open').mockReturnValue(null);
+    localStorage.setItem('quoteme_token', 'admin-token');
+    localStorage.setItem('quoteme_mep_session', 'old-session');
+    render(<QMAdminMeps />);
+    fireEvent.click(await screen.findByRole('button', { name: 'View as Kirk Jorgensen' }));
+    await waitFor(() => expect(open).toHaveBeenCalledWith('/mep', '_blank', 'noopener'));
+    expect(m.viewAsMep).toHaveBeenCalledWith('m1');
+    expect(localStorage.getItem('quoteme_mep_token')).toBe('view-token');
+    expect(localStorage.getItem('quoteme_mep_session')).toBeNull();
+    expect(localStorage.getItem('quoteme_token')).toBe('admin-token');
+    localStorage.clear();
   });
 });

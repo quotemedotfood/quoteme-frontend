@@ -9,7 +9,7 @@
 import { it, expect, vi, afterEach, describe } from 'vitest';
 import { render, screen, cleanup, fireEvent, waitFor, within } from '@testing-library/react';
 
-const m = vi.hoisted(() => ({ getMepAccounts: vi.fn(), setMepStar: vi.fn() }));
+const m = vi.hoisted(() => ({ getMepAccounts: vi.fn(), setMepStar: vi.fn(), downloadMepAccountsCsv: vi.fn() }));
 vi.mock('../../services/mepApi', () => m);
 
 import { MepAccountList, accountDetail } from './MepAccountList';
@@ -72,5 +72,26 @@ describe('MepAccountList', () => {
     fireEvent.click(within(rows[0]).getByRole('button'));
     expect(await screen.findByRole('alert')).toHaveTextContent('That account was not found.');
     expect(within(screen.getAllByTestId('mep-account-row')[0]).getByRole('button').getAttribute('aria-pressed')).toBe('false');
+  });
+
+  it('C1 Download CSV sends the same filters as the list', async () => {
+    m.getMepAccounts.mockResolvedValue(page([crawford]));
+    m.downloadMepAccountsCsv.mockResolvedValue({ data: true });
+    render(<MepAccountList />);
+    await screen.findAllByTestId('mep-account-row');
+    fireEvent.change(screen.getByLabelText('Type'), { target: { value: 'hotel' } });
+    fireEvent.change(screen.getByLabelText('City'), { target: { value: 'Denver' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Download CSV' }));
+    await waitFor(() => expect(m.downloadMepAccountsCsv).toHaveBeenCalledWith({ q: '', type: 'hotel', city: 'Denver', starred: false }));
+  });
+
+  it('C2 view only: the stars cannot be pressed', async () => {
+    m.getMepAccounts.mockResolvedValue(page([crawford]));
+    render(<MepAccountList viewOnly />);
+    const rows = await screen.findAllByTestId('mep-account-row');
+    const star = within(rows[0]).getByRole('button', { name: 'Star The Crawford' }) as HTMLButtonElement;
+    expect(star.disabled).toBe(true);
+    fireEvent.click(star);
+    expect(m.setMepStar).not.toHaveBeenCalled();
   });
 });

@@ -16,7 +16,8 @@ import {
   TableHead,
   TableCell,
 } from '../../components/ui/table';
-import { getAdminMeps, sendMepSignInLink, getAdminMepStars, AdminMep, AdminMepStar } from '../../services/adminApi';
+import { getAdminMeps, sendMepSignInLink, getAdminMepStars, viewAsMep, AdminMep, AdminMepStar } from '../../services/adminApi';
+import { startMepViewAs } from '../../services/mepApi';
 import { ADMIN_PAGE_FRAME, ADMIN_PAGE_FRAME_STYLE } from '../../components/admin/adminPageFrame';
 
 /** Last sign-in as a short date and time, or "Never". */
@@ -41,6 +42,16 @@ export function QMAdminMeps() {
   const [notice, setNotice] = useState<Record<string, { ok: boolean; text: string }>>({});
   const [openStars, setOpenStars] = useState<string | null>(null);
   const [stars, setStars] = useState<Record<string, AdminMepStar[] | { error: string }>>({});
+
+  async function handleViewAs(m: AdminMep) {
+    const res = await viewAsMep(m.id);
+    if (!res.data) {
+      setNotice((n) => ({ ...n, [m.id]: { ok: false, text: res.error || 'Could not open the view' } }));
+      return;
+    }
+    startMepViewAs(res.data.token);
+    window.open('/mep', '_blank', 'noopener');
+  }
 
   async function toggleStars(m: AdminMep) {
     if (openStars === m.id) {
@@ -129,6 +140,14 @@ export function QMAdminMeps() {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex flex-col items-end gap-1">
+                      <button
+                        type="button"
+                        onClick={() => handleViewAs(m)}
+                        disabled={m.status !== 'active'}
+                        className="text-sm text-[#7FAEC2] hover:underline disabled:text-gray-300"
+                      >
+                        View as {m.name}
+                      </button>
                       <Button
                         onClick={() => handleSend(m)}
                         disabled={sending !== null || m.status !== 'active'}

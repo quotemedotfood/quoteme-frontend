@@ -3880,6 +3880,11 @@ export interface AdminMepStar {
   starred_at: string;
 }
 
+/** POST /api/v1/admin/meps/:id/view_as: a one-hour, view-only token for the MEP pages (part C). */
+export async function viewAsMep(mepId: string): Promise<ApiResponse<{ token: string; expires_at: string; mep: { id: string; name: string } }>> {
+  return fetchWithAuth(`/api/v1/admin/meps/${encodeURIComponent(mepId)}/view_as`, { method: 'POST' });
+}
+
 /** GET /api/v1/admin/meps/:id/stars: the accounts this MEP starred, newest first. */
 export async function getAdminMepStars(mepId: string): Promise<ApiResponse<AdminMepStar[]>> {
   return fetchWithAuth(`/api/v1/admin/meps/${encodeURIComponent(mepId)}/stars`);

@@ -22,6 +22,8 @@ export interface MepConsumeResponse {
 export interface MepMe {
   name: string;
   email: string;
+  /** True only when a QM admin opened the MEP pages with View as (view only). */
+  viewing_as_admin?: boolean;
 }
 
 export interface MepResult<T> {
@@ -176,4 +178,46 @@ export function setMepStar(type: MepAccountType, id: string, starred: boolean): 
     `/api/v1/mep/accounts/${encodeURIComponent(type)}/${encodeURIComponent(id)}/star`,
     { method: starred ? 'POST' : 'DELETE' },
   );
+}
+
+// ============= VIEW AS and CSV (MEP platform, part C, Moose 2026-11-13) =============
+
+/**
+ * A QM admin's View as token (POST /api/v1/admin/meps/:id/view_as): kept under
+ * the MEP key so /mep opens as that MEP. No keep-signed-in token: it lasts one
+ * hour and is view only (the server refuses every write made with it).
+ */
+export function startMepViewAs(token: string) {
+  writeKey(MEP_TOKEN_KEY, token);
+  writeKey(MEP_SESSION_KEY, null);
+}
+
+/** GET /api/v1/mep/accounts/export with the list's filters, saved as a file. */
+export async function downloadMepAccountsCsv(query: MepAccountQuery = {}): Promise<MepResult<true>> {
+  const jwt = readKey(MEP_TOKEN_KEY);
+  if (!jwt) return { error: 'Not signed in', status: 401 };
+  const params = new URLSearchParams();
+  if (query.q) params.set('q', query.q);
+  if (query.type) params.set('type', query.type);
+  if (query.city) params.set('city', query.city);
+  if (query.starred) params.set('starred', '1');
+  const qs = params.toString();
+  try {
+    const res = await fetchWithPolicy(`${API_BASE_URL}/api/v1/mep/accounts/export${qs ? `?${qs}` : ''}`, {
+      headers: { Authorization: `Bearer ${jwt}` },
+    });
+    if (!res.ok) return { error: `Download failed (${res.status})`, status: res.status };
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `pairme-accounts-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    return { data: true };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : 'Network error' };
+  }
 }
