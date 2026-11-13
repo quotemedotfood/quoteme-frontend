@@ -26,6 +26,7 @@ import {
   Hotel,
   Handshake,
   MessageSquare,
+  Camera,
 } from 'lucide-react';
 import logoSquare from '/src/assets/e549e7d27b183e98e791f43494c715b8cc6ce7e9.png';
 import { useAuth } from '../contexts/AuthContext';
@@ -47,6 +48,8 @@ const navItems: Array<{ icon: typeof LayoutDashboard; label: string; path: strin
   { icon: Hotel, label: 'Hotels', path: '/qm-admin/hotels' },
   { icon: Handshake, label: 'MEPs', path: '/qm-admin/meps' },
   { icon: FileUp, label: 'Restaurant loads', path: '/qm-admin/restaurant-loads' },
+  // A diner's photos of a bottle list, waiting for the team (Moose 11-12).
+  { icon: Camera, label: 'Bottle list photos', path: '/qm-admin/bottle-list-photos' },
   { icon: ChefHat, label: 'Chefs', path: '/qm-admin/chefs' },
   { icon: Cpu, label: 'Matching', path: '/qm-admin/matching-engine' },
   { icon: Tag, label: 'Brands', path: '/qm-admin/brands' },
