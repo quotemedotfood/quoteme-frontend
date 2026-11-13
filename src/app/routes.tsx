@@ -30,6 +30,8 @@ import { QMAdminRestaurantGroups } from "./pages/admin/QMAdminRestaurantGroups";
 import { QMAdminHotels } from "./pages/admin/QMAdminHotels";
 import { QMAdminFeedback } from "./pages/admin/QMAdminFeedback";
 import { QMAdminMeps } from "./pages/admin/QMAdminMeps";
+import { QMAdminMepPeople } from "./pages/admin/QMAdminMepPeople";
+import { QMAdminMepIntroQueue } from "./pages/admin/QMAdminMepIntroQueue";
 import { QMAdminBottleListPhotos } from "./pages/admin/QMAdminBottleListPhotos";
 import { MepSignInPage } from "./pages/mep/MepSignInPage";
 import { MepHomePage } from "./pages/mep/MepHomePage";
@@ -371,6 +373,9 @@ export const router = createBrowserRouter([
           { path: "hotels", Component: QMAdminHotels },
           { path: "feedback", Component: QMAdminFeedback },
           { path: "meps", Component: QMAdminMeps },
+          // An MEP's LinkedIn people, and every MEP's starred intros (part B).
+          { path: "meps/:id/people", Component: QMAdminMepPeople },
+          { path: "mep-intros", Component: QMAdminMepIntroQueue },
           { path: "hotels/:id", Component: QMAdminHotelDetailPage },
           { path: "restaurant-loads", Component: QMAdminRestaurantLoads },
           // A diner's photos of a bottle list, waiting for the team (Moose 11-12).
