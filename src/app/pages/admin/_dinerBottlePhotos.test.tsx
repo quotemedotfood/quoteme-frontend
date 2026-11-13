@@ -8,6 +8,8 @@
 //      says the list is being read; a refusal shows the server's words
 //   F4 Discard asks first, and posts nothing when the admin says no
 //   F5 the queue page lists every restaurant's sets, linked by restaurant id
+//   F6 each set names what the diner photographed (kind, QuoteMe #827):
+//      bottle_list, glass_list, wine_list; missing or unknown reads Bottle list
 //
 // @vitest-environment jsdom
 import { it, expect, vi, afterEach, describe } from 'vitest';
@@ -62,6 +64,19 @@ describe('restaurant page block', () => {
     expect(set).toHaveTextContent('2 pages');
     expect(set).toHaveTextContent('Nov 12, 2026');
     expect(within(set).getAllByRole('button').map((b) => b.textContent)).toEqual(['Use as wine list', 'Discard']);
+  });
+
+  it('F6 names what the diner photographed, from the kind', async () => {
+    m.getRestaurantBottleListPhotos.mockResolvedValue({ data: { photos: [
+      row({ menu_id: 'm-1', kind: 'bottle_list' }),
+      row({ menu_id: 'm-2', kind: 'glass_list' }),
+      row({ menu_id: 'm-3', kind: 'wine_list' }),
+      row({ menu_id: 'm-4', kind: 'something_new' }),
+    ] } });
+    renderSection();
+    await screen.findByRole('region', { name: 'Diner photos of the bottle list' });
+    expect(screen.getAllByTestId('bottle-list-photo-kind').map((k) => k.textContent))
+      .toEqual(['Bottle list:', 'By the glass list:', 'Wine list:', 'Bottle list:']);
   });
 
   it('F3 Use as wine list posts for this restaurant and row, then says it is being read', async () => {
