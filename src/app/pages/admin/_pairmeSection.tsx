@@ -19,14 +19,28 @@
 //  - NEVER A BARE PRICE. Every priced line names the wine, the producer, the
 //    printed list, the unit and the price.
 //  - A drafted pronunciation says it is drafted.
+//
+// PAIR THIS COURSE (Moose, 2026-11-12, Chef Zorba's: wine only on the lunch
+// and dinner sections). When the read carries `courses`, each course chip
+// has a "Pair this course" switch. Off courses are dimmed with a small "Not
+// paired" label; their dishes (still sent to the QM admin, never to the
+// restaurant admin) are dimmed and left out of every count. The switch
+// writes through `setCourse` (QM admin: PATCH /api/v1/admin/restaurants/:id/
+// pairme_courses; restaurant admin: their own scoped PATCH), then reloads.
+// A dish belongs to the course whose server-sent `labels` hold its course;
+// nothing here normalises a name.
 import { useEffect, useMemo, useState } from 'react';
 import {
   getAdminRestaurantPairme,
+  setAdminPairmeCourse,
   AdminRestaurantPairme,
   AdminPairmeWine,
   AdminPairmeDish,
+  type AdminPairmeCourse,
   type ApiResponse,
 } from '../../services/adminApi';
+
+type SetCourse = (id: string, course: string, paired: boolean) => Promise<ApiResponse<{ courses: AdminPairmeCourse[] }>>;
 
 type PairmeData = AdminRestaurantPairme & { pairings_updated_at?: string | null };
 
@@ -68,18 +82,24 @@ const tabBtn = (on: boolean) =>
 export function PairmeSection({
   restaurantId,
   load = getAdminRestaurantPairme,
+  setCourse,
   title = 'PairMe',
 }: {
   restaurantId: string;
   load?: (id: string) => Promise<ApiResponse<PairmeData>>;
+  /** Defaults to the QM admin's PATCH; read only when a switch is clicked. */
+  setCourse?: SetCourse;
   title?: string;
 }) {
   const [data, setData] = useState<PairmeData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>('dish');
-  const [course, setCourse] = useState<string>('all');
+  const [course, setCourseTab] = useState<string>('all');
   const [wineFilter, setWineFilter] = useState<WineFilter>('all');
   const [q, setQ] = useState('');
+  const [switching, setSwitching] = useState<string | null>(null);
+  const [switchError, setSwitchError] = useState<string | null>(null);
+  const [reload, setReload] = useState(0);
 
   useEffect(() => {
     let live = true;
@@ -91,25 +111,48 @@ export function PairmeSection({
     return () => {
       live = false;
     };
-  }, [restaurantId, load]);
+  }, [restaurantId, load, reload]);
 
   const wines = data?.wines ?? [];
   const dishes = data?.pairings ?? [];
+  const serverCourses = data?.courses;
   const byId = useMemo(() => new Map(wines.map((w) => [w.wine_id, w])), [wines]);
-  const courses = useMemo(() => {
+  // Chips: the server's course list when sent (one per course, with its
+  // switch), else each printed course as before.
+  const courses = useMemo<AdminPairmeCourse[]>(() => {
+    if (serverCourses) return serverCourses;
     const seen: string[] = [];
     for (const d of dishes) if (d.course && !seen.includes(d.course)) seen.push(d.course);
-    return seen;
-  }, [dishes]);
+    return seen.map((c) => ({ course: c, key: c, labels: [c], paired: true, dishes: 0 }));
+  }, [dishes, serverCourses]);
+  const courseOf = (d: AdminPairmeDish) => (d.course ? courses.find((c) => c.labels.includes(d.course!)) : undefined);
+  const isOff = (d: AdminPairmeDish) => courseOf(d)?.paired === false;
+  // Dishes in courses that are on: every count reads these.
+  const onDishes = dishes.filter((d) => !isOff(d));
   // Every dish each wine is paired with, BY wine_id, never by its label.
   const dishesByWine = useMemo(() => {
     const m = new Map<string, AdminPairmeDish[]>();
-    for (const d of dishes) for (const leg of d.pairings) {
+    for (const d of onDishes) for (const leg of d.pairings) {
       if (!m.has(leg.wine_id)) m.set(leg.wine_id, []);
       if (!m.get(leg.wine_id)!.includes(d)) m.get(leg.wine_id)!.push(d);
     }
     return m;
-  }, [dishes]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dishes, courses]);
+
+  const flip = async (c: AdminPairmeCourse) => {
+    setSwitching(c.key);
+    setSwitchError(null);
+    const write = setCourse ?? ((id: string, course: string, paired: boolean) => setAdminPairmeCourse(id, course, paired));
+    const res = await write(restaurantId, c.course, !c.paired);
+    setSwitching(null);
+    if (res.data) {
+      setData((prev) => (prev ? { ...prev, courses: res.data!.courses } : prev));
+      setReload((n) => n + 1);
+    } else {
+      setSwitchError(res.error || 'Could not change this course');
+    }
+  };
 
   const heading = (
     <h2 className="text-lg font-semibold text-[#2A2A2A] mb-3" style={{ fontFamily: "'Playfair Display', serif" }}>
@@ -146,10 +189,11 @@ export function PairmeSection({
   const wineMatches = (w: AdminPairmeWine | undefined) =>
     !!w && (norm(w.producer).includes(query) || norm(w.wine_name).includes(query));
   const shownDishes = dishes.filter((d) =>
-    (course === 'all' || d.course === course) &&
+    (course === 'all' || courseOf(d)?.key === course) &&
     (!query || norm(d.name).includes(query) || d.pairings.some((l) => wineMatches(byId.get(l.wine_id)))));
-  const fewer = dishes.filter((d) => d.pairings.length > 0 && d.pairings.length < 3).length;
-  const none = dishes.filter((d) => d.pairings.length === 0).length;
+  const fewer = onDishes.filter((d) => d.pairings.length > 0 && d.pairings.length < 3).length;
+  const none = onDishes.filter((d) => d.pairings.length === 0).length;
+  const coursesOff = courses.filter((c) => !c.paired).length;
   const neverPaired = wines.filter((w) => !dishesByWine.has(w.wine_id)).length;
   const shownWines = wines.filter((w) => {
     const paired = dishesByWine.has(w.wine_id);
@@ -167,10 +211,11 @@ export function PairmeSection({
         </p>
       ) : null}
       <p className="text-sm text-gray-500 mb-4" data-testid="pairme-summary">
-        {wines.length} wines · {dishes.length} dishes paired
+        {wines.length} wines · {onDishes.length} dishes paired
         {fewer ? ` · ${fewer} with fewer than three wines` : ''}
         {none ? ` · ${none} with none` : ''}
         {` · ${neverPaired} ${neverPaired === 1 ? 'wine' : 'wines'} never paired`}
+        {coursesOff ? ` · ${coursesOff} ${coursesOff === 1 ? 'course' : 'courses'} not paired` : ''}
       </p>
 
       <div className="flex flex-wrap items-center gap-2 mb-4">
@@ -190,15 +235,47 @@ export function PairmeSection({
 
       {tab === 'dish' ? (
         <>
-          {courses.length > 1 ? (
+          {serverCourses && courses.length > 0 ? (
             <div className="flex flex-wrap gap-2 mb-3" aria-label="Courses">
-              {['all', ...courses].map((c) => (
-                <button key={c} type="button" className={tabBtn(course === c)} onClick={() => setCourse(c)}>
+              <button type="button" className={tabBtn(course === 'all')} onClick={() => setCourseTab('all')}>
+                All courses
+              </button>
+              {courses.map((c) => (
+                <span
+                  key={c.key}
+                  data-testid="pairme-course-chip"
+                  data-paired={c.paired ? 'yes' : 'no'}
+                  className={`inline-flex items-center gap-1.5 ${c.paired ? '' : 'opacity-50'}`}
+                >
+                  <button type="button" className={tabBtn(course === c.key)} onClick={() => setCourseTab(c.key)}>
+                    {c.course}
+                  </button>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={c.paired}
+                    aria-label={`Pair this course: ${c.course}`}
+                    title="Pair this course"
+                    disabled={switching !== null}
+                    onClick={() => flip(c)}
+                    className={`relative inline-flex h-5 w-9 shrink-0 rounded-full border transition-colors disabled:cursor-wait ${c.paired ? 'bg-[#2A2A2A] border-[#2A2A2A]' : 'bg-gray-200 border-gray-300'}`}
+                  >
+                    <span className={`absolute top-0.5 h-3.5 w-3.5 rounded-full bg-white transition-all ${c.paired ? 'left-[1.1rem]' : 'left-0.5'}`} />
+                  </button>
+                  {c.paired ? null : <span className="text-xs text-gray-500" data-testid="pairme-course-not-paired">Not paired</span>}
+                </span>
+              ))}
+            </div>
+          ) : courses.length > 1 ? (
+            <div className="flex flex-wrap gap-2 mb-3" aria-label="Courses">
+              {['all', ...courses.map((c) => c.key)].map((c) => (
+                <button key={c} type="button" className={tabBtn(course === c)} onClick={() => setCourseTab(c)}>
                   {c === 'all' ? 'All courses' : c}
                 </button>
               ))}
             </div>
           ) : null}
+          {switchError ? <p className="text-sm text-red-500 mb-2">{switchError}</p> : null}
           <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
             <table className="w-full text-sm" data-testid="pairme-dish-table">
               <thead>
@@ -209,11 +286,17 @@ export function PairmeSection({
               </thead>
               <tbody>
                 {shownDishes.map((d) => (
-                  <tr key={d.dish_id} className="align-top border-b border-gray-100 last:border-0" data-testid="pairme-dish">
+                  <tr
+                    key={d.dish_id}
+                    className={`align-top border-b border-gray-100 last:border-0 ${isOff(d) ? 'opacity-50' : ''}`}
+                    data-testid="pairme-dish"
+                    data-paired={isOff(d) ? 'no' : 'yes'}
+                  >
                     <td className="px-4 py-3">
                       <p className="font-medium text-[#2A2A2A]">{d.name}</p>
                       {d.course ? <p className="text-xs text-gray-400">{d.course}</p> : null}
-                      {d.pairings.length < 3 ? (
+                      {isOff(d) ? <p className="text-xs text-gray-500 mt-1">Not paired: this course is switched off</p> : null}
+                      {!isOff(d) && d.pairings.length < 3 ? (
                         <p className="text-xs text-amber-700 mt-1">
                           {d.pairings.length === 0 ? 'No wine paired' : `${d.pairings.length === 1 ? 'One wine' : 'Two wines'}, not three`}
                         </p>

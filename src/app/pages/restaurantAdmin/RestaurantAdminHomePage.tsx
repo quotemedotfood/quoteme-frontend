@@ -16,7 +16,7 @@ import { useEffect, useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router';
 import { useAuth } from '../../contexts/AuthContext';
 import { PairmeFlowCard } from '../../components/PairmeFlowCard';
-import { getRestaurantAdminHome, getRestaurantAdminPairme } from '../../services/api';
+import { getRestaurantAdminHome, getRestaurantAdminPairme, setRestaurantAdminPairmeCourse } from '../../services/api';
 import type { RestaurantAdminHome } from '../../services/adminApi';
 import { PairmeSection } from '../admin/_pairmeSection';
 import { GuestPresentations } from './GuestPresentations';
@@ -94,7 +94,7 @@ export function RestaurantAdminHomePage() {
                 <ServerCheatSheetButton restaurantId={r.id} flowUrl={r.pairme_flow.url} />
                 <LearningSheetButton restaurantId={r.id} flowUrl={r.pairme_flow.url} />
                 {r.staff_tablet ? <StaffTabletCard restaurantId={r.id} tablet={r.staff_tablet} /> : null}
-                <PairmeSection restaurantId={r.id} load={getRestaurantAdminPairme} title="Pairings your guests are offered" />
+                <PairmeSection restaurantId={r.id} load={getRestaurantAdminPairme} setCourse={setRestaurantAdminPairmeCourse} title="Pairings your guests are offered" />
                 <GuestPresentations restaurantId={r.id} />
               </>
             ) : (

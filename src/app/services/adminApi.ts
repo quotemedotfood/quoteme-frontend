@@ -892,14 +892,45 @@ export interface AdminPairmeDish {
   pairings: AdminPairmeLeg[];
 }
 
+/**
+ * PAIR THIS COURSE (Moose, 2026-11-12). One course on the venue's menu.
+ * WRITER: BE Pairme::Courses (pairme_venues.courses_off), through the PATCH
+ * below. `labels` are the printed forms a dish's `course` may carry; a dish
+ * belongs to the course whose labels hold its `course`. `paired` false means
+ * switched off: hidden from guests, the staff tablet and the restaurant
+ * admin, dimmed on the QM admin page.
+ */
+export interface AdminPairmeCourse {
+  course: string;
+  key: string;
+  labels: string[];
+  paired: boolean;
+  dishes: number;
+}
+
 export interface AdminRestaurantPairme {
   venue: { id: string; name: string } | null;
   wines?: AdminPairmeWine[];
   pairings?: AdminPairmeDish[];
+  /** Absent from servers before the course switch. */
+  courses?: AdminPairmeCourse[];
 }
 
 export async function getAdminRestaurantPairme(id: string): Promise<ApiResponse<AdminRestaurantPairme>> {
   return fetchWithAuth(`/api/v1/admin/restaurants/${id}/pairme`);
+}
+
+// PATCH /api/v1/admin/restaurants/:id/pairme_courses (QM admin only). Reader:
+// the course chips on PairmeSection.
+export async function setAdminPairmeCourse(
+  id: string,
+  course: string,
+  paired: boolean,
+): Promise<ApiResponse<{ courses: AdminPairmeCourse[] }>> {
+  return fetchWithAuth(`/api/v1/admin/restaurants/${id}/pairme_courses`, {
+    method: 'PATCH',
+    body: JSON.stringify({ course, paired }),
+  });
 }
 
 // ============= IMPERSONATE =============
