@@ -8,6 +8,7 @@ import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/re
 const m = vi.hoisted(() => ({
   getAdminMeps: vi.fn(),
   sendMepSignInLink: vi.fn(),
+  getAdminMepStars: vi.fn(),
 }));
 vi.mock('../../services/adminApi', () => m);
 
@@ -46,5 +47,31 @@ describe('QMAdminMeps', () => {
   it('labels a missing or bad date as Never', () => {
     expect(lastSignInLabel(null)).toBe('Never');
     expect(lastSignInLabel('not a date')).toBe('Never');
+  });
+
+  it("S1 shows an MEP's starred accounts when the admin opens them, and hides them again", async () => {
+    m.getAdminMeps.mockResolvedValue({ data: [kirk] });
+    m.getAdminMepStars.mockResolvedValue({ data: [
+      { account_type: 'hotel', id: 'h1', name: 'The Crawford', city: 'Denver', state: 'CO', starred_at: '2026-11-13T18:00:00Z' },
+      { account_type: 'restaurant_group', id: 'g1', name: 'Bonanno Concepts', city: null, state: null, starred_at: '2026-11-13T17:00:00Z' },
+    ] });
+    render(<QMAdminMeps />);
+    fireEvent.click(await screen.findByRole('button', { name: /show stars/i }));
+    await waitFor(() => expect(m.getAdminMepStars).toHaveBeenCalledWith('m1'));
+    const box = await screen.findByTestId('mep-stars');
+    await waitFor(() => expect(box.textContent).toContain('The Crawford'));
+    expect(box.textContent).toContain('Hotel · Denver, CO');
+    expect(box.textContent).toContain('Bonanno Concepts · Restaurant group');
+
+    fireEvent.click(screen.getByRole('button', { name: /hide stars/i }));
+    expect(screen.queryByTestId('mep-stars')).toBeNull();
+  });
+
+  it('S1 says so when the MEP has no stars', async () => {
+    m.getAdminMeps.mockResolvedValue({ data: [kirk] });
+    m.getAdminMepStars.mockResolvedValue({ data: [] });
+    render(<QMAdminMeps />);
+    fireEvent.click(await screen.findByRole('button', { name: /show stars/i }));
+    expect(await screen.findByText('No stars yet.')).toBeTruthy();
   });
 });

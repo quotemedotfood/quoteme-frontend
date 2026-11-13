@@ -104,3 +104,76 @@ export async function loadMepMe(): Promise<MepResult<MepMe>> {
   }
   return getMepMe();
 }
+
+// ============= THE ACCOUNT LIST AND STARS (MEP platform, part A, Moose 2026-11-13) =============
+// READER of GET /api/v1/mep/accounts; WRITER of POST/DELETE
+// /api/v1/mep/accounts/:account_type/:id/star (the MEP's own star only).
+
+export type MepAccountType = 'hotel' | 'restaurant_group' | 'restaurant';
+
+export interface MepAccount {
+  account_type: MepAccountType;
+  id: string;
+  name: string;
+  city: string | null;
+  state: string | null;
+  group: { id: string; name: string } | null;
+  hotel: { id: string; name: string } | null;
+  restaurant_count: number | null;
+  starred: boolean;
+}
+
+export interface MepAccountPage {
+  accounts: MepAccount[];
+  total: number;
+  page: number;
+  per_page: number;
+  cities?: { city: string; count: number }[];
+}
+
+export interface MepAccountQuery {
+  q?: string;
+  type?: MepAccountType | '';
+  city?: string;
+  starred?: boolean;
+  page?: number;
+}
+
+/** A request with the stored MEP JWT, trading the keep-signed-in token once on a 401. */
+async function mepFetch<T>(path: string, init: RequestInit = {}, retried = false): Promise<MepResult<T>> {
+  const jwt = readKey(MEP_TOKEN_KEY);
+  if (!jwt) return { error: 'Not signed in', status: 401 };
+  try {
+    const res = await fetchWithPolicy(`${API_BASE_URL}${path}`, {
+      ...init,
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwt}` },
+    });
+    const body = await res.json().catch(() => ({}));
+    if (res.status === 401 && !retried) {
+      const session = readKey(MEP_SESSION_KEY);
+      if (session && (await consumeMepLink(session)).data) return mepFetch<T>(path, init, true);
+    }
+    if (!res.ok) return { error: body.message || body.error || `Request failed (${res.status})`, status: res.status };
+    return { data: body as T };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : 'Network error' };
+  }
+}
+
+export function getMepAccounts(query: MepAccountQuery = {}): Promise<MepResult<MepAccountPage>> {
+  const params = new URLSearchParams();
+  if (query.q) params.set('q', query.q);
+  if (query.type) params.set('type', query.type);
+  if (query.city) params.set('city', query.city);
+  if (query.starred) params.set('starred', '1');
+  if (query.page && query.page > 1) params.set('page', String(query.page));
+  const qs = params.toString();
+  return mepFetch<MepAccountPage>(`/api/v1/mep/accounts${qs ? `?${qs}` : ''}`);
+}
+
+export function setMepStar(type: MepAccountType, id: string, starred: boolean): Promise<MepResult<{ starred: boolean }>> {
+  return mepFetch<{ starred: boolean }>(
+    `/api/v1/mep/accounts/${encodeURIComponent(type)}/${encodeURIComponent(id)}/star`,
+    { method: starred ? 'POST' : 'DELETE' },
+  );
+}
