@@ -29,6 +29,14 @@ export function receivedLabel(iso: string | null | undefined): string {
   return d.toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
 }
 
+// What the diner photographed (Pairme::BottleListPhotos::KINDS, QuoteMe #827).
+// Missing or unknown kinds read as the bottle list, the server's default.
+export function kindLabel(kind: string | null | undefined): string {
+  if (kind === 'glass_list') return 'By the glass list';
+  if (kind === 'wine_list') return 'Wine list';
+  return 'Bottle list';
+}
+
 export function pagesLabel(n: number): string {
   return n === 1 ? '1 page' : `${n} pages`;
 }
@@ -81,6 +89,7 @@ export function BottleListPhotoCard({
               {row.restaurant_name || 'Restaurant'}
             </Link>
           )}
+          <span className="font-medium mr-1" data-testid="bottle-list-photo-kind">{`${kindLabel(row.kind)}:`}</span>
           <span>{pagesLabel(row.pages)}</span>
           <span className="text-gray-500">{`, received ${receivedLabel(row.received_at)}`}</span>
           {row.signed_in && <span className="text-gray-500">, from a signed in diner</span>}
