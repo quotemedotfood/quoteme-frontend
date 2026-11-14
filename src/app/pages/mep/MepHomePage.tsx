@@ -4,11 +4,25 @@ import { useEffect, useState } from 'react';
 import { loadMepMe, clearMepSession, MepMe } from '../../services/mepApi';
 import { MepFrame } from './MepFrame';
 import { MepAccountList } from './MepAccountList';
+import { PeopleList, PeopleApi } from '../../components/mep/PeopleList';
+import { getMepPeople, importMepPeople, linkMepPerson, unlinkMepPerson, setMepPersonStar } from '../../services/mepApi';
+
+// The MEP's own people (part B). Module level so the list does not reload on every render.
+const MEP_PEOPLE_API: PeopleApi = {
+  list: getMepPeople,
+  importText: importMepPeople,
+  link: linkMepPerson,
+  unlink: unlinkMepPerson,
+  star: setMepPersonStar,
+};
+
+type Tab = 'accounts' | 'people';
 
 export function MepHomePage() {
   const [me, setMe] = useState<MepMe | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [signedOut, setSignedOut] = useState(false);
+  const [tab, setTab] = useState<Tab>('accounts');
 
   useEffect(() => {
     let live = true;
@@ -43,7 +57,28 @@ export function MepHomePage() {
               Sign out
             </button>
           </div>
-          <MepAccountList />
+          <div role="tablist" className="flex gap-4 border-b border-gray-200 mb-4">
+            {(['accounts', 'people'] as Tab[]).map((t) => (
+              <button
+                key={t}
+                type="button"
+                role="tab"
+                aria-selected={tab === t}
+                onClick={() => setTab(t)}
+                className={`pb-2 text-sm font-medium ${tab === t ? 'border-b-2 border-[#7FAEC2] text-[#2A2A2A]' : 'text-gray-500'}`}
+              >
+                {t === 'accounts' ? 'Accounts' : 'People'}
+              </button>
+            ))}
+          </div>
+          {tab === 'accounts' ? (
+            <MepAccountList />
+          ) : (
+            <PeopleList
+              api={MEP_PEOPLE_API}
+              intro="Your LinkedIn connections. Link each one to the account they work at, and star the people you can introduce us to."
+            />
+          )}
         </>
       )}
     </MepFrame>

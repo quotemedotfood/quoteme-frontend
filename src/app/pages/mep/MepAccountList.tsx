@@ -179,6 +179,11 @@ export function MepAccountList() {
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-[#2A2A2A] truncate">{a.name}</p>
                   <p className="text-xs text-gray-500 truncate">{accountDetail(a)}</p>
+                  {a.people && a.people.length > 0 && (
+                    <p className="text-xs text-[#2A2A2A] truncate" data-testid="mep-account-people">
+                      You can introduce: {a.people.map((p) => (p.position ? `${p.name} (${p.position})` : p.name)).join(', ')}
+                    </p>
+                  )}
                 </div>
               </li>
             );
