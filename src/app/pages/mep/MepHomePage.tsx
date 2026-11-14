@@ -1,8 +1,9 @@
-// MEP HOME (MEPs + Hotels epic, step 2): a placeholder. Shows who is
-// signed in, from GET /api/v1/mep/me. The account list comes in step 3.
+// MEP HOME: who is signed in (GET /api/v1/mep/me) and the account list with
+// stars (MEP platform, part A, Moose 2026-11-13; see MepAccountList).
 import { useEffect, useState } from 'react';
 import { loadMepMe, clearMepSession, MepMe } from '../../services/mepApi';
 import { MepFrame } from './MepFrame';
+import { MepAccountList } from './MepAccountList';
 
 export function MepHomePage() {
   const [me, setMe] = useState<MepMe | null>(null);
@@ -28,17 +29,21 @@ export function MepHomePage() {
   }
 
   return (
-    <MepFrame>
+    <MepFrame wide={!!me}>
       {signedOut && <p className="text-sm text-gray-600">You are signed out.</p>}
       {!signedOut && error && <p role="alert" className="text-sm text-red-600">{error}</p>}
       {!signedOut && !error && !me && <p className="text-sm text-gray-500">Loading…</p>}
       {me && (
         <>
-          <p className="text-base text-[#2A2A2A]">Signed in as {me.name}</p>
-          <p className="text-sm text-gray-500 mb-6">{me.email}</p>
-          <button type="button" onClick={signOut} className="text-sm text-[#7FAEC2] hover:underline">
-            Sign out
-          </button>
+          <div className="flex flex-wrap items-baseline justify-between gap-2 mb-6">
+            <p className="text-sm text-gray-600">
+              Signed in as <span className="text-[#2A2A2A] font-medium">{me.name}</span> ({me.email})
+            </p>
+            <button type="button" onClick={signOut} className="text-sm text-[#7FAEC2] hover:underline">
+              Sign out
+            </button>
+          </div>
+          <MepAccountList />
         </>
       )}
     </MepFrame>

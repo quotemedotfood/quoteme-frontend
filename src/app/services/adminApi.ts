@@ -3870,6 +3870,21 @@ export async function sendMepSignInLink(mepId: string): Promise<ApiResponse<MepS
   });
 }
 
+/** One account an MEP starred ("I have a connection here"), MEP platform part A. */
+export interface AdminMepStar {
+  account_type: 'hotel' | 'restaurant_group' | 'restaurant';
+  id: string;
+  name: string | null;
+  city: string | null;
+  state: string | null;
+  starred_at: string;
+}
+
+/** GET /api/v1/admin/meps/:id/stars: the accounts this MEP starred, newest first. */
+export async function getAdminMepStars(mepId: string): Promise<ApiResponse<AdminMepStar[]>> {
+  return fetchWithAuth(`/api/v1/admin/meps/${encodeURIComponent(mepId)}/stars`);
+}
+
 // ============= FEEDBACK (the diners' voice notes, Moose 2026-11-12) =============
 // READER of GET /api/v1/admin/feedback_memos and .../attention_count; WRITER
 // of PATCH .../:id/review and DELETE .../:id/audio. QM admin only.
