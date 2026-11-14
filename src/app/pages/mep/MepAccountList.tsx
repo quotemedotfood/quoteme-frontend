@@ -6,6 +6,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Star } from 'lucide-react';
 import {
+  downloadMepAccountsCsv,
   getMepAccounts,
   setMepStar,
   MepAccount,
@@ -30,7 +31,7 @@ export function accountDetail(a: MepAccount): string {
   return parts.join(' · ');
 }
 
-export function MepAccountList() {
+export function MepAccountList({ viewOnly = false }: { viewOnly?: boolean }) {
   const [q, setQ] = useState('');
   const [query, setQuery] = useState('');
   const [type, setType] = useState<MepAccountType | ''>('');
@@ -75,7 +76,18 @@ export function MepAccountList() {
     };
   }, [query, type, city, starredOnly, page]);
 
+  const [downloading, setDownloading] = useState(false);
+
+  async function download() {
+    if (downloading) return;
+    setDownloading(true);
+    const res = await downloadMepAccountsCsv({ q: query, type, city, starred: starredOnly });
+    setDownloading(false);
+    if (!res.data) setError(res.error || 'The download did not go through.');
+  }
+
   async function toggle(a: MepAccount) {
+    if (viewOnly) return;
     const key = `${a.account_type}:${a.id}`;
     if (busy) return;
     setBusy(key);
@@ -99,7 +111,12 @@ export function MepAccountList() {
 
   return (
     <section aria-label="Accounts">
-      <h2 className="text-lg font-semibold text-[#2A2A2A] mb-1">Accounts</h2>
+      <div className="flex items-baseline justify-between gap-2 mb-1">
+        <h2 className="text-lg font-semibold text-[#2A2A2A]">Accounts</h2>
+        <button type="button" onClick={download} disabled={downloading} className="text-sm text-[#7FAEC2] hover:underline disabled:text-gray-300">
+          {downloading ? 'Preparing…' : 'Download CSV'}
+        </button>
+      </div>
       <p className="text-sm text-gray-500 mb-4">Star the places where you have a connection.</p>
 
       <div className="flex flex-col sm:flex-row flex-wrap gap-2 mb-4">
@@ -169,7 +186,7 @@ export function MepAccountList() {
                 <button
                   type="button"
                   onClick={() => toggle(a)}
-                  disabled={busy === key}
+                  disabled={viewOnly || busy === key}
                   aria-pressed={a.starred}
                   aria-label={a.starred ? `Remove star from ${a.name}` : `Star ${a.name}`}
                   className="shrink-0 p-1 rounded hover:bg-gray-100"
@@ -179,6 +196,11 @@ export function MepAccountList() {
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-[#2A2A2A] truncate">{a.name}</p>
                   <p className="text-xs text-gray-500 truncate">{accountDetail(a)}</p>
+                  {a.people && a.people.length > 0 && (
+                    <p className="text-xs text-[#2A2A2A] truncate" data-testid="mep-account-people">
+                      You can introduce: {a.people.map((p) => (p.position ? `${p.name} (${p.position})` : p.name)).join(', ')}
+                    </p>
+                  )}
                 </div>
               </li>
             );

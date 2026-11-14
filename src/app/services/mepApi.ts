@@ -22,6 +22,8 @@ export interface MepConsumeResponse {
 export interface MepMe {
   name: string;
   email: string;
+  /** True only when a QM admin opened the MEP pages with View as (view only). */
+  viewing_as_admin?: boolean;
 }
 
 export interface MepResult<T> {
@@ -121,6 +123,8 @@ export interface MepAccount {
   hotel: { id: string; name: string } | null;
   restaurant_count: number | null;
   starred: boolean;
+  /** This MEP's starred people linked to this account (part B). */
+  people?: { id: string; name: string; position: string | null }[];
 }
 
 export interface MepAccountPage {
@@ -176,4 +180,126 @@ export function setMepStar(type: MepAccountType, id: string, starred: boolean): 
     `/api/v1/mep/accounts/${encodeURIComponent(type)}/${encodeURIComponent(id)}/star`,
     { method: starred ? 'POST' : 'DELETE' },
   );
+}
+
+// ============= VIEW AS and CSV (MEP platform, part C, Moose 2026-11-13) ======
+
+/**
+ * A QM admin's View as token (POST /api/v1/admin/meps/:id/view_as): kept under
+ * the MEP key so /mep opens as that MEP. No keep-signed-in token: it lasts one
+ * hour and is view only (the server refuses every write made with it).
+ */
+export function startMepViewAs(token: string) {
+  writeKey(MEP_TOKEN_KEY, token);
+  writeKey(MEP_SESSION_KEY, null);
+}
+
+/** GET /api/v1/mep/accounts/export with the list's filters, saved as a file. */
+export async function downloadMepAccountsCsv(query: MepAccountQuery = {}): Promise<MepResult<true>> {
+  const jwt = readKey(MEP_TOKEN_KEY);
+  if (!jwt) return { error: 'Not signed in', status: 401 };
+  const params = new URLSearchParams();
+  if (query.q) params.set('q', query.q);
+  if (query.type) params.set('type', query.type);
+  if (query.city) params.set('city', query.city);
+  if (query.starred) params.set('starred', '1');
+  const qs = params.toString();
+  try {
+    const res = await fetchWithPolicy(`${API_BASE_URL}/api/v1/mep/accounts/export${qs ? `?${qs}` : ''}`, {
+      headers: { Authorization: `Bearer ${jwt}` },
+    });
+    if (!res.ok) return { error: `Download failed (${res.status})`, status: res.status };
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `pairme-accounts-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    return { data: true };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : 'Network error' };
+  }
+}
+
+// ============= PEOPLE: LinkedIn connections (MEP platform, part B, Moose 2026-11-13) =============
+// READER of GET /api/v1/mep/connections; WRITER of import, link, star (own rows only).
+// The file is read here and sent as text; LinkedIn is never fetched.
+
+export interface MepAccountRef {
+  account_type: MepAccountType;
+  id: string;
+  name: string | null;
+  city?: string | null;
+  state?: string | null;
+}
+
+export interface MepPerson {
+  id: string;
+  first_name: string | null;
+  last_name: string | null;
+  linkedin_url: string;
+  company: string | null;
+  position: string | null;
+  connected_on: string | null;
+  starred: boolean;
+  linked_account: MepAccountRef | false | null;
+  suggestions: MepAccountRef[];
+}
+
+export interface MepPeoplePage {
+  people: MepPerson[];
+  total: number;
+  page: number;
+  per_page: number;
+}
+
+export interface MepPeopleQuery {
+  q?: string;
+  starred?: boolean;
+  unlinked?: boolean;
+  page?: number;
+}
+
+export interface MepImportResult {
+  created: number;
+  updated: number;
+  refused: { line: number; reason: string }[];
+}
+
+export function peopleQueryString(query: MepPeopleQuery): string {
+  const params = new URLSearchParams();
+  if (query.q) params.set('q', query.q);
+  if (query.starred) params.set('starred', '1');
+  if (query.unlinked) params.set('unlinked', '1');
+  if (query.page && query.page > 1) params.set('page', String(query.page));
+  const qs = params.toString();
+  return qs ? `?${qs}` : '';
+}
+
+export function getMepPeople(query: MepPeopleQuery = {}): Promise<MepResult<MepPeoplePage>> {
+  return mepFetch<MepPeoplePage>(`/api/v1/mep/connections${peopleQueryString(query)}`);
+}
+
+export function importMepPeople(text: string): Promise<MepResult<MepImportResult>> {
+  return mepFetch<MepImportResult>('/api/v1/mep/connections/import', { method: 'POST', body: JSON.stringify({ text }) });
+}
+
+export function linkMepPerson(id: string, accountType: MepAccountType, accountId: string): Promise<MepResult<MepPerson>> {
+  return mepFetch<MepPerson>(`/api/v1/mep/connections/${encodeURIComponent(id)}/link`, {
+    method: 'PATCH',
+    body: JSON.stringify({ account_type: accountType, account_id: accountId }),
+  });
+}
+
+export function unlinkMepPerson(id: string): Promise<MepResult<MepPerson>> {
+  return mepFetch<MepPerson>(`/api/v1/mep/connections/${encodeURIComponent(id)}/link`, { method: 'DELETE' });
+}
+
+export function setMepPersonStar(id: string, starred: boolean): Promise<MepResult<{ starred: boolean }>> {
+  return mepFetch<{ starred: boolean }>(`/api/v1/mep/connections/${encodeURIComponent(id)}/star`, {
+    method: starred ? 'POST' : 'DELETE',
+  });
 }
