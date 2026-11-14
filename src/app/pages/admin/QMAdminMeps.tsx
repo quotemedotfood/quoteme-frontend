@@ -98,6 +98,9 @@ export function QMAdminMeps() {
       >
         MEPs
       </h1>
+      <p className="-mt-4 mb-6 text-sm">
+        <a href="/qm-admin/mep-intros" className="text-[#7FAEC2] hover:underline">Intro queue</a>
+      </p>
 
       {loading && <p className="text-sm text-gray-400 py-8">Loading…</p>}
       {error && <p className="text-sm text-red-500 py-8">{error}</p>}
@@ -137,6 +140,9 @@ export function QMAdminMeps() {
                       <Star size={14} />
                       {openStars === m.id ? 'Hide stars' : 'Show stars'}
                     </button>
+                    <a href={`/qm-admin/meps/${m.id}/people`} className="text-sm text-[#7FAEC2] hover:underline">
+                      People
+                    </a>
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex flex-col items-end gap-1">

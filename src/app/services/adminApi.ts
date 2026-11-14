@@ -1,5 +1,7 @@
 import { fetchWithPolicy } from './requestPolicy';
 import type { PairmePresentedWine } from './api';
+import type { MepPerson, MepPeoplePage, MepPeopleQuery, MepImportResult, MepAccountType } from './mepApi';
+import { peopleQueryString } from './mepApi';
 
 // Every request in this file goes through fetchWithPolicy, which supplies the
 // timeout this client never had (a request that never settles left a permanent
@@ -3888,6 +3890,65 @@ export async function viewAsMep(mepId: string): Promise<ApiResponse<{ token: str
 /** GET /api/v1/admin/meps/:id/stars: the accounts this MEP starred, newest first. */
 export async function getAdminMepStars(mepId: string): Promise<ApiResponse<AdminMepStar[]>> {
   return fetchWithAuth(`/api/v1/admin/meps/${encodeURIComponent(mepId)}/stars`);
+}
+
+// MEP PEOPLE (MEP platform part B, Moose 2026-11-13): an MEP's LinkedIn
+// connections, read and written for them by QM admin, and the intro queue.
+// Same row shape as GET /api/v1/mep/connections (services/mepApi MepPerson).
+
+export type AdminMepPerson = MepPerson;
+
+export interface MepIntroQueueRow extends Omit<MepPerson, 'suggestions'> {
+  starred_at: string;
+  mep: { id: string; name: string };
+}
+
+export async function getAdminMepPeople(mepId: string, query: MepPeopleQuery = {}): Promise<ApiResponse<MepPeoplePage>> {
+  return fetchWithAuth(`/api/v1/admin/meps/${encodeURIComponent(mepId)}/connections${peopleQueryString(query)}`);
+}
+
+export async function importAdminMepPeople(mepId: string, text: string): Promise<ApiResponse<MepImportResult>> {
+  return fetchWithAuth(`/api/v1/admin/meps/${encodeURIComponent(mepId)}/connections/import`, {
+    method: 'POST',
+    body: JSON.stringify({ text }),
+  });
+}
+
+export async function addAdminMepPerson(
+  mepId: string,
+  person: { linkedin_url: string; first_name: string; last_name: string; company: string; position: string },
+): Promise<ApiResponse<MepPerson>> {
+  return fetchWithAuth(`/api/v1/admin/meps/${encodeURIComponent(mepId)}/connections`, {
+    method: 'POST',
+    body: JSON.stringify(person),
+  });
+}
+
+export async function linkAdminMepPerson(id: string, accountType: MepAccountType, accountId: string): Promise<ApiResponse<MepPerson>> {
+  return fetchWithAuth(`/api/v1/admin/mep_connections/${encodeURIComponent(id)}/link`, {
+    method: 'PATCH',
+    body: JSON.stringify({ account_type: accountType, account_id: accountId }),
+  });
+}
+
+export async function unlinkAdminMepPerson(id: string): Promise<ApiResponse<MepPerson>> {
+  return fetchWithAuth(`/api/v1/admin/mep_connections/${encodeURIComponent(id)}/link`, { method: 'DELETE' });
+}
+
+/** The person's company is not in our data: add it as a restaurant group and link them. */
+export async function addGroupFromMepPerson(
+  id: string,
+  admin: { admin_name: string; admin_email: string },
+): Promise<ApiResponse<MepPerson>> {
+  return fetchWithAuth(`/api/v1/admin/mep_connections/${encodeURIComponent(id)}/add_group`, {
+    method: 'POST',
+    body: JSON.stringify(admin),
+  });
+}
+
+/** Every MEP's starred people, newest first: who can make which intro. */
+export async function getMepIntroQueue(): Promise<ApiResponse<MepIntroQueueRow[]>> {
+  return fetchWithAuth('/api/v1/admin/mep_connections/starred');
 }
 
 // ============= FEEDBACK (the diners' voice notes, Moose 2026-11-12) =============

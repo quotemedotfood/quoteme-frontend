@@ -94,4 +94,12 @@ describe('MepAccountList', () => {
     fireEvent.click(star);
     expect(m.setMepStar).not.toHaveBeenCalled();
   });
+
+  it('L4 shows the people this MEP can introduce on the account they are linked to', async () => {
+    m.getMepAccounts.mockResolvedValue(page([{ ...crawford, people: [{ id: 'p3', name: 'Ana Ruiz', position: 'GM' }] }, mizuna]));
+    render(<MepAccountList />);
+    const rows = await screen.findAllByTestId('mep-account-row');
+    expect(within(rows[0]).getByTestId('mep-account-people').textContent).toBe('You can introduce: Ana Ruiz (GM)');
+    expect(within(rows[1]).queryByTestId('mep-account-people')).toBeNull();
+  });
 });
