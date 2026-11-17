@@ -28,6 +28,8 @@ import { QMAdminRestaurantDetailPage } from "./pages/admin/QMAdminRestaurantDeta
 import { QMAdminRestaurantCrawlTruth } from "./pages/admin/QMAdminRestaurantCrawlTruth";
 import { QMAdminRestaurantGroups } from "./pages/admin/QMAdminRestaurantGroups";
 import { QMAdminHotels } from "./pages/admin/QMAdminHotels";
+import { QMAdminRetailLocations } from "./pages/admin/QMAdminRetailLocations";
+import { QMAdminRetailLocationDetailPage } from "./pages/admin/QMAdminRetailLocationDetail";
 import { QMAdminFeedback } from "./pages/admin/QMAdminFeedback";
 import { QMAdminMeps } from "./pages/admin/QMAdminMeps";
 import { QMAdminMepPeople } from "./pages/admin/QMAdminMepPeople";
@@ -377,6 +379,9 @@ export const router = createBrowserRouter([
           { path: "meps/:id/people", Component: QMAdminMepPeople },
           { path: "mep-intros", Component: QMAdminMepIntroQueue },
           { path: "hotels/:id", Component: QMAdminHotelDetailPage },
+          // Retail locations: a store is a restaurant row marked retail (QuoteMe #902).
+          { path: "retail-locations", Component: QMAdminRetailLocations },
+          { path: "retail-locations/:id", Component: QMAdminRetailLocationDetailPage },
           { path: "restaurant-loads", Component: QMAdminRestaurantLoads },
           // A diner's photos of a bottle list, waiting for the team (Moose 11-12).
           { path: "bottle-list-photos", Component: QMAdminBottleListPhotos },

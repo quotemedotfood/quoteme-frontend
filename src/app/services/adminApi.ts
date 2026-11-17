@@ -2345,6 +2345,128 @@ export async function detachHotelOutlet(hotelId: string, restaurantId: string): 
   });
 }
 
+// ============= RETAIL LOCATIONS =============
+// A retail location is a store: a restaurant row marked retail, with no menu,
+// tables, servers or food. Its wines are a catalog it points at by id. QM
+// admin only (Api::V1::Admin::RetailLocationsController, QuoteMe #902).
+// A group and a catalog are set by id, never by name.
+
+export type RetailStatus = 'active' | 'prospect';
+export type RetailPriceRule = 'shelf' | 'list_x_1_5';
+
+export interface AdminRetailLocation {
+  id: string;
+  name: string;
+  slug: string | null;
+  address_line_1: string | null;
+  address_line_2: string | null;
+  city: string | null;
+  state: string | null;
+  zip: string | null;
+  phone: string | null;
+  website: string | null;
+  /** "active" is live; "prospect" is a store still being set up. */
+  status: string;
+  live: boolean;
+  co_branded: boolean;
+  catalog_id: string | null;
+  restaurant_group: { id: string; name: string } | null;
+  created_at: string;
+}
+
+/** The catalog card. wines_shown is what a shopper can be shown; wines_hidden is every other row. */
+export interface AdminRetailCatalog {
+  id: string;
+  rows: number;
+  wines_shown: number;
+  wines_hidden: number;
+  last_loaded_at: string | null;
+  /** What a shopper is shown: the shelf price as given, or the list price x 1.5. */
+  price_rule: RetailPriceRule;
+  /** False when nobody has set a rule; the catalog then reads as list_x_1_5. */
+  price_rule_set: boolean;
+}
+
+export interface AdminRetailLocationDetail extends AdminRetailLocation {
+  logo_url: string | null;
+  catalog: AdminRetailCatalog | null;
+  contacts: Array<Omit<AdminRestaurantContact, 'restaurant_id'>>;
+}
+
+/** Only the keys sent change. price_rule is written on the catalog the location points at. */
+export type AdminRetailLocationInput = Partial<{
+  name: string;
+  address_line_1: string | null;
+  address_line_2: string | null;
+  city: string | null;
+  state: string | null;
+  zip: string | null;
+  phone: string | null;
+  website: string | null;
+  status: RetailStatus;
+  co_branded: boolean;
+  restaurant_group_id: string | null;
+  catalog_id: string | null;
+  price_rule: RetailPriceRule;
+}>;
+
+/** Every store by name; q narrows on name or city, status on live or prospect. */
+export async function getAdminRetailLocations(q?: string, status?: RetailStatus): Promise<ApiResponse<AdminRetailLocation[]>> {
+  const params = new URLSearchParams();
+  if (q && q.trim()) params.set('q', q.trim());
+  if (status) params.set('status', status);
+  const qs = params.toString();
+  return fetchWithAuth(`/api/v1/admin/retail_locations${qs ? `?${qs}` : ''}`);
+}
+
+export async function getAdminRetailLocation(id: string): Promise<ApiResponse<AdminRetailLocationDetail>> {
+  return fetchWithAuth(`/api/v1/admin/retail_locations/${id}`);
+}
+
+/** name, city and state are required. A new store is a prospect unless status "active" is sent. */
+export async function createAdminRetailLocation(data: AdminRetailLocationInput): Promise<ApiResponse<AdminRetailLocationDetail>> {
+  return fetchWithAuth('/api/v1/admin/retail_locations', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateAdminRetailLocation(id: string, data: AdminRetailLocationInput): Promise<ApiResponse<AdminRetailLocationDetail>> {
+  return fetchWithAuth(`/api/v1/admin/retail_locations/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+/** POST .../retail_locations/:id/logo (multipart). JPEG, PNG or WebP, 5 MB at most. */
+export async function uploadAdminRetailLocationLogo(id: string, file: File): Promise<ApiResponse<AdminRetailLocationDetail>> {
+  const token = getAuthToken();
+  const headers: Record<string, string> = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const formData = new FormData();
+  formData.append('logo', file);
+
+  try {
+    const response = await fetchWithPolicy(`${API_BASE_URL}/api/v1/admin/retail_locations/${id}/logo`, {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+    if (!response.ok) {
+      const errBody = await response.json().catch(() => ({}));
+      return { error: errBody.error || `HTTP ${response.status}`, error_code: errBody.error_code, status: response.status };
+    }
+    return { data: await response.json() };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : 'Network error' };
+  }
+}
+
+export async function deleteAdminRetailLocationLogo(id: string): Promise<ApiResponse<AdminRetailLocationDetail>> {
+  return fetchWithAuth(`/api/v1/admin/retail_locations/${id}/logo`, { method: 'DELETE' });
+}
+
 /** One Stripe price on the PairMe group product, named by its lookup_key. */
 export interface GroupPaymentOffer {
   lookup_key: string;
