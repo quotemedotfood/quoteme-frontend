@@ -2155,6 +2155,86 @@ export async function listClusterLabels(
   return fetchWithAuth(`/api/v1/admin/cluster_labels${qs ? `?${qs}` : ''}`);
 }
 
+// ============= TASTING PROFILES =============
+// Moose 2026-11-17: every food corpus head carries one to three tasting
+// profiles. Everything here is by id; no name is matched.
+
+export const TASTING_AXES = ['weight', 'fat', 'acid', 'sweetness', 'heat', 'salt', 'umami', 'bitter'] as const;
+export type TastingAxis = (typeof TASTING_AXES)[number];
+export type TastingScores = Record<TastingAxis, number | null>;
+
+export interface TastingProfile {
+  id: string;
+  key: string;
+  kind: string;
+  scores: TastingScores;
+  rule: string;
+  notes: string;
+  source: string;
+  heads_count: number;
+  updated_at: string;
+}
+
+export interface TastingProfileListResponse {
+  profiles: TastingProfile[];
+  total_count: number;
+  kinds: string[];
+  rules: string[];
+  max_per_head: number;
+}
+
+export interface TastingProfileInput extends Partial<Record<TastingAxis, number>> {
+  key?: string;
+  kind?: string;
+  rule?: string;
+  notes?: string;
+}
+
+export interface HeadTastingProfiles {
+  cluster_label_id: string;
+  profile_ids: string[];
+  keys: string[];
+  scores: TastingScores | null;
+  rules: string[];
+}
+
+export interface AssignTastingProfilesResult {
+  updated: string[];
+  refused: Array<{ cluster_label_id: string; reason: string }>;
+  heads: HeadTastingProfiles[];
+}
+
+export async function listTastingProfiles(): Promise<ApiResponse<TastingProfileListResponse>> {
+  return fetchWithAuth('/api/v1/admin/tasting_profiles');
+}
+
+export async function createTastingProfile(input: TastingProfileInput): Promise<ApiResponse<{ profile: TastingProfile }>> {
+  return fetchWithAuth('/api/v1/admin/tasting_profiles', { method: 'POST', body: JSON.stringify(input) });
+}
+
+export async function updateTastingProfile(id: string, input: TastingProfileInput): Promise<ApiResponse<{ profile: TastingProfile }>> {
+  return fetchWithAuth(`/api/v1/admin/tasting_profiles/${id}`, { method: 'PATCH', body: JSON.stringify(input) });
+}
+
+export async function deleteTastingProfile(id: string): Promise<ApiResponse<{ deleted: string }>> {
+  return fetchWithAuth(`/api/v1/admin/tasting_profiles/${id}`, { method: 'DELETE' });
+}
+
+export async function getTastingProfilesForHeads(clusterLabelIds: string[]): Promise<ApiResponse<{ heads: HeadTastingProfiles[] }>> {
+  if (clusterLabelIds.length === 0) return { data: { heads: [] } };
+  const params = new URLSearchParams();
+  clusterLabelIds.forEach((id) => params.append('cluster_label_ids[]', id));
+  return fetchWithAuth(`/api/v1/admin/tasting_profiles/for_heads?${params.toString()}`);
+}
+
+export async function assignTastingProfiles(payload: {
+  cluster_label_ids: string[];
+  add: string[];
+  remove: string[];
+}): Promise<ApiResponse<AssignTastingProfilesResult>> {
+  return fetchWithAuth('/api/v1/admin/tasting_profiles/assign', { method: 'POST', body: JSON.stringify(payload) });
+}
+
 // ============= RESTAURANT GROUPS =============
 
 export interface AdminRestaurantGroup {

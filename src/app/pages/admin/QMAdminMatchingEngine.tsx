@@ -11,6 +11,7 @@ import { Input } from '../../components/ui/input';
 import { ExclusionRulesPanel } from '../../components/ExclusionRulesPanel';
 import { formatStructuredEntry } from '../../utils/format';
 import { ClusterListTab } from './_clusterListTab';
+import { TastingProfilesTab } from './_tastingProfilesTab';
 import {
   getMatchingEngineRules,
   getMatchingEngineLogs,
@@ -58,7 +59,7 @@ import {
 } from '../../services/adminApi';
 import { ADMIN_PAGE_FRAME, ADMIN_PAGE_FRAME_STYLE } from '../../components/admin/adminPageFrame';
 
-type Tab = 'rules' | 'synonyms' | 'training' | 'concepts' | 'changelog' | 'diagnose' | 'catalogs' | 'exclusions' | 'cluster_list';
+type Tab = 'rules' | 'synonyms' | 'training' | 'concepts' | 'changelog' | 'diagnose' | 'catalogs' | 'exclusions' | 'cluster_list' | 'tasting_profiles';
 
 function toTitleCase(str: string) {
   const normalized = str.replace(/_/g, ' ');
@@ -2219,6 +2220,7 @@ export function QMAdminMatchingEngine() {
     ...(diagnosticsAvailable ? [{ key: 'diagnose' as Tab, label: 'Diagnose' }] : []),
     { key: 'exclusions' as Tab, label: 'Corpus Intelligence' },
     { key: 'cluster_list' as Tab, label: 'Cluster List' },
+    { key: 'tasting_profiles' as Tab, label: 'Tasting Profiles' },
     { key: 'catalogs' as Tab, label: 'Catalogs' },
   ];
 
@@ -2254,6 +2256,7 @@ export function QMAdminMatchingEngine() {
       {tab === 'catalogs' && <CatalogsTab />}
       {tab === 'exclusions' && <ExclusionRulesPanel />}
       {tab === 'cluster_list' && <ClusterListTab />}
+      {tab === 'tasting_profiles' && <TastingProfilesTab />}
     </div>
   );
 }
