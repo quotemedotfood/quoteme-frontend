@@ -4285,3 +4285,108 @@ export async function reviewAdminFeedbackMemo(id: string): Promise<ApiResponse<A
 export async function deleteAdminFeedbackAudio(id: string): Promise<ApiResponse<AdminFeedbackMemoChange>> {
   return fetchWithAuth(`/api/v1/admin/feedback_memos/${id}/audio`, { method: 'DELETE' });
 }
+
+// ── Corpus lookup (Moose 2026-11-18): a food's cluster labels, their tasting
+// profile links, not_for_pairing, and a store's PairIt kinds and bottles.
+// Read-only. Writer: none. Server: Api::V1::Admin::CorpusLookupController
+// (Pairme::CorpusLookup). Reader: pages/admin/_corpusLookupTab.tsx.
+
+export interface CorpusMatch {
+  corpus_match: 'matched' | 'suggest' | 'none';
+  corpus_id: string | null;
+  corpus_name: string | null;
+  suggestion: string | null;
+  suggestion_id: string | null;
+  suggestion_confidence: number | null;
+}
+
+export interface CorpusLookupProfile {
+  id: string;
+  key: string;
+  kind: string;
+  scores: Partial<Record<TastingAxis, number | null>>;
+  rule: string;
+  link_source: string;
+}
+
+export interface CorpusLookupLabel {
+  id: string;
+  canonical_product: string;
+  category: string | null;
+  status: string;
+  created_via: string;
+  merged_into_id: string | null;
+  not_for_pairing: boolean;
+  corpus: 'matched' | 'suggested' | null;
+  tasting_profiles: CorpusLookupProfile[];
+  combined: { scores: Partial<Record<TastingAxis, number | null>>; rules: string[] } | null;
+}
+
+export interface CorpusLookupStore {
+  slug: string;
+  name: string;
+  live: boolean;
+  catalog_id?: string | null;
+  price_rule_stored?: string | null;
+  price_rule?: string;
+  bottles?: number;
+  has_catalog?: boolean;
+}
+
+export interface PairItKind {
+  id: string;
+  name: string;
+  descriptor: string;
+  pronunciation: string | null;
+  flag: 'traditional' | 'adventurous' | null;
+  profile: { colour: string; grape_head: string; region_head: string };
+  bottle_count: number;
+  push?: 'big_push' | 'push' | null;
+}
+
+export interface CorpusLookupResponse {
+  q: string;
+  corpus_match: CorpusMatch | null;
+  labels: CorpusLookupLabel[];
+  name_matches: number;
+  stores: CorpusLookupStore[];
+  store: CorpusLookupStore | null;
+  kinds_source: 'kind_terms' | 'kinds_file';
+  kinds: PairItKind[];
+}
+
+export interface PairItBottle {
+  id: string;
+  producer: string;
+  wine: string;
+  region: string | null;
+  vintage: number | null;
+  shown_price_cents: number;
+  band: string;
+  push?: 'big_push' | 'push' | null;
+}
+
+export interface PairItBands {
+  kind_id: string;
+  bands: Array<{ band: string; label: string; bottles: PairItBottle[] }>;
+}
+
+export interface StoredRulesBundle {
+  version: number;
+  checksum: string;
+  tables: Record<string, unknown[]>;
+}
+
+export async function getCorpusLookup(q: string, store: string): Promise<ApiResponse<CorpusLookupResponse>> {
+  const params = new URLSearchParams({ q, store });
+  return fetchWithAuth(`/api/v1/admin/corpus_lookup?${params.toString()}`);
+}
+
+export async function getCorpusLookupBottles(store: string, kindId: string): Promise<ApiResponse<PairItBands>> {
+  const params = new URLSearchParams({ store, kind_id: kindId });
+  return fetchWithAuth(`/api/v1/admin/corpus_lookup/bottles?${params.toString()}`);
+}
+
+export async function getStoredRulesBundle(): Promise<ApiResponse<StoredRulesBundle>> {
+  return fetchWithAuth('/api/v1/admin/corpus_lookup/rules_bundle');
+}

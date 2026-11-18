@@ -1,0 +1,120 @@
+component,weight,fat,acid,sweetness,heat,salt,umami,bitter,notes
+salmon,3,4,1,1,1,1,2,1,takes red as well as white
+tuna,3,3,1,1,1,1,3,1,
+sole,2,2,1,1,1,1,1,1,
+white fish,2,2,1,1,1,1,1,1,
+sardine,3,5,1,1,1,4,3,1,oily and salty
+mussel,2,1,1,1,1,3,3,1,brine
+snail,2,4,1,1,1,2,2,1,vehicle for garlic butter
+shellfish,2,1,1,1,1,3,3,1,
+chicken,3,2,1,1,1,1,2,1,
+chicken liver,3,5,1,1,1,2,4,2,
+duck liver,3,5,1,1,1,2,4,2,
+duck,4,4,1,1,1,1,3,1,
+rabbit,2,2,1,1,1,1,2,1,lean braise
+veal,3,2,1,1,1,1,2,1,
+pork shoulder,4,4,1,1,1,2,3,1,
+beef,4,4,1,1,1,1,3,1,
+ribeye,5,5,1,1,1,1,3,1,the tannin dish
+ny strip,5,4,1,1,1,1,3,1,
+hanger steak,4,3,1,1,1,1,4,1,lean and iron-y
+artichoke,2,1,2,1,1,1,2,3,CYNARIN. see rule hf_artichoke
+asparagus,2,1,1,1,1,1,2,2,sulfurous. see rule hf_asparagus
+ramp,2,1,1,1,2,1,2,2,aggressive allium
+green garlic,1,1,1,1,1,1,2,1,
+garlic,1,1,1,1,1,1,2,1,
+shallot,1,1,1,2,1,1,2,1,
+onion,2,1,1,3,1,1,3,1,sweet when cooked down
+mushroom,3,1,1,1,1,1,5,2,the earth axis
+morel,3,1,1,1,1,1,5,2,jura and burgundy affinity
+maitake,3,1,1,1,1,1,4,2,
+truffle,2,2,1,1,1,1,5,1,jura and pinot affinity
+snap pea,1,1,1,2,1,1,1,1,
+pea,1,1,1,2,1,1,1,1,
+green bean,1,1,1,1,1,1,1,2,
+carrot,1,1,1,3,1,1,1,1,
+potato,3,2,1,1,1,2,1,1,neutral. follows the rest of the plate
+radish,1,1,1,1,2,1,1,3,
+radicchio,1,1,1,1,1,1,1,5,bitter
+endive,1,1,1,1,1,1,1,4,bitter
+lettuce,1,1,1,1,1,1,1,2,
+watercress,1,1,1,1,2,1,1,3,
+celeriac,2,1,1,2,1,1,1,2,
+lentil,3,1,1,1,1,1,3,2,earthy
+bean,3,1,1,1,1,1,2,1,
+rice,3,1,1,1,1,1,1,1,
+pasta,3,1,1,1,1,1,1,1,
+bread,2,1,1,1,1,2,2,1,
+rye,2,1,1,1,1,2,2,2,
+pastry,2,3,1,3,1,1,1,1,
+tomato,1,1,4,2,1,1,3,1,acid
+confit tomato,2,2,3,3,1,1,4,1,
+preserved lemon,1,1,5,1,1,3,1,2,brutal on wine
+lemon,1,1,5,1,1,1,1,1,
+grapefruit,1,1,4,2,1,1,1,3,
+yuzu,1,1,5,1,1,1,1,1,
+blood orange,1,1,4,3,1,1,1,2,
+apple,1,1,3,3,1,1,1,1,
+rhubarb,1,1,5,2,1,1,1,2,
+quince vinegar,1,1,5,2,1,1,1,1,
+vinaigrette,1,2,5,1,1,1,1,1,see rule req_acid_vinaigrette
+dijon,1,1,3,1,2,2,2,2,
+mustard,1,1,3,1,3,2,2,2,
+caper,1,1,4,1,1,5,2,2,
+cornichon,1,1,5,1,1,4,1,1,
+olive,1,3,2,1,1,5,3,2,
+picholine olive,1,3,2,1,1,5,3,2,
+peppadew,1,1,2,3,2,2,1,1,
+pickled pepper,1,1,4,2,2,2,1,1,
+chili,1,1,1,1,5,1,1,1,see rule hf_heat
+peppercorn,1,1,1,1,3,1,1,1,SYRAH affinity. rotundone
+horseradish,1,1,1,1,4,1,1,1,
+ginger,1,1,2,1,3,1,1,1,
+soy,1,1,1,2,1,5,5,1,
+ponzu,1,1,4,1,1,4,4,1,
+madeira,2,1,2,4,1,1,4,1,sweet reduction
+sherry,2,1,2,2,1,2,5,1,see rule bridge_ingredient_wine
+bone broth,3,2,1,1,1,3,5,1,
+jus,2,2,1,1,1,3,5,1,
+butter,2,5,1,1,1,2,1,1,
+beurre blanc,2,5,2,1,1,2,1,1,
+creme fraiche,2,4,3,1,1,1,1,1,
+buttermilk,1,2,4,1,1,1,1,1,
+yogurt,1,2,4,1,1,1,1,1,
+aioli,1,5,2,1,1,2,1,1,
+mayonnaise,1,5,1,1,1,1,1,1,
+goat cheese,2,3,4,1,1,2,2,1,SANCERRE affinity
+burrata,2,4,2,2,1,1,1,1,
+parmesan,2,3,1,1,1,4,5,1,
+gruyere,3,4,1,1,1,4,4,1,
+raclette,3,5,1,1,1,4,4,1,
+roquefort,3,5,1,1,1,5,4,3,see rule req_sweet_blue
+blue cheese,3,5,1,1,1,5,4,3,see rule req_sweet_blue
+triple cream,3,5,1,1,1,2,2,1,
+ricotta salata,2,2,1,1,1,4,2,1,
+feta,2,3,2,1,1,5,2,1,
+egg,2,3,1,1,1,1,3,1,
+jammy egg,2,4,1,1,1,1,3,1,
+hazelnut,1,4,1,1,1,1,2,2,
+walnut,1,4,1,1,1,1,2,3,jura and oxidative affinity
+pistachio,1,4,1,1,1,2,1,1,
+pecan,1,4,1,4,1,1,1,1,
+benne seed,1,3,1,1,1,1,2,2,
+tahini,2,4,1,1,1,1,2,2,
+dill,1,1,1,1,1,1,1,1,herbal. riesling and sauvignon affinity
+mint,1,1,1,1,2,1,1,1,
+basil,1,1,1,1,1,1,1,1,
+thyme,1,1,1,1,1,1,1,1,
+parsley,1,1,1,1,1,1,1,1,
+cilantro,1,1,1,1,1,1,1,1,
+tarragon,1,1,1,1,1,1,1,1,SAUVIGNON affinity
+anise,1,1,1,2,1,1,1,1,chenin affinity
+fennel,1,1,1,2,1,1,1,1,
+confiture,1,1,2,5,1,1,1,1,see rule req_sweet_sweet
+dried grape,1,1,1,5,1,1,1,1,
+cherry,1,1,3,4,1,1,1,1,
+chocolate,3,4,1,4,1,1,2,3,
+caramel,1,2,1,5,1,1,1,1,
+bottarga,1,2,1,1,1,5,5,1,
+smoked beet,2,1,2,3,1,1,3,2,PINOT affinity
+beet,2,1,2,3,1,1,2,2,
