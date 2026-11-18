@@ -1150,6 +1150,8 @@ export function ClusterListTab() {
                           </span>
                         ))}
                       </span>
+                    ) : headProfiles[row.id]?.not_for_pairing ? (
+                      <span className="text-xs px-1.5 py-0.5 rounded-full bg-gray-100 border border-gray-300 text-[#4F4F4F] whitespace-nowrap">not for pairing</span>
                     ) : (
                       <span className="text-gray-300">-</span>
                     )}

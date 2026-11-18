@@ -13,6 +13,7 @@ import {
   createTastingProfile,
   deleteTastingProfile,
   listTastingProfiles,
+  setNotForPairing,
   updateTastingProfile,
   type TastingAxis,
   type TastingProfile,
@@ -310,6 +311,19 @@ export function AssignTastingProfilesModal({
     setRemove(nextRemove);
   }
 
+  async function mark(value: boolean) {
+    setBusy(true);
+    setError(null);
+    const res = await setNotForPairing(headIds, value);
+    setBusy(false);
+    if (res.data) {
+      setResult({ updated: res.data.updated.length, refused: res.data.refused });
+      onDone();
+    } else {
+      setError(res.error || 'Could not save.');
+    }
+  }
+
   async function apply() {
     setBusy(true);
     setError(null);
@@ -369,6 +383,17 @@ export function AssignTastingProfilesModal({
                 );
               })}
               {shown.length === 0 && <p className="text-sm italic text-[#4F4F4F]">No tasting profiles match.</p>}
+            </div>
+            <div className="mt-4 pt-3 border-t border-gray-200">
+              <p className="text-xs text-[#4F4F4F] mb-2">
+                No taste to pair at all (a thickener, a brand name)? Mark the head instead of giving it a profile.
+              </p>
+              <button type="button" onClick={() => mark(true)} disabled={busy} className="text-xs px-2 py-1 border border-gray-300 rounded mr-2 hover:bg-gray-50 disabled:opacity-40">
+                Mark not for pairing
+              </button>
+              <button type="button" onClick={() => mark(false)} disabled={busy} className="text-xs text-[#7FAEC2] underline underline-offset-2 disabled:opacity-40">
+                Take the mark off
+              </button>
             </div>
             {error && <p className="text-sm text-red-600 mt-3">{error}</p>}
           </div>
