@@ -61,7 +61,7 @@ const navItems: Array<{ icon: typeof LayoutDashboard; label: string; path: strin
   { icon: BrainCircuit, label: 'Gap Filler', path: '/qm-admin/knowledge-gap-filler' },
   { icon: Target, label: 'Needs Your Call', path: '/qm-admin/needs-your-pick' },
   { icon: BookmarkCheck, label: 'Memory Learnings', path: '/qm-admin/memory-learnings' },
-  { icon: Kanban, label: 'Product Pipeline', path: '/qm-admin/product-pipeline' },
+  { icon: Kanban, label: 'Status Board', path: '/qm-admin/product-pipeline' },
   { icon: Radio, label: 'Command', path: '/qm-admin/conference-command' },
   { icon: Activity, label: 'Health', path: '/qm-admin/health' },
 ];
