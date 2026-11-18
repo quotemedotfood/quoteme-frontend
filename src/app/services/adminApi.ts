@@ -2202,6 +2202,8 @@ export interface HeadTastingProfiles {
   keys: string[];
   scores: TastingScores | null;
   rules: string[];
+  /** A person marked this head as having no taste to pair (pectin, a brand name). */
+  not_for_pairing?: boolean;
 }
 
 export interface AssignTastingProfilesResult {
@@ -2239,6 +2241,14 @@ export async function assignTastingProfiles(payload: {
   remove: string[];
 }): Promise<ApiResponse<AssignTastingProfilesResult>> {
   return fetchWithAuth('/api/v1/admin/tasting_profiles/assign', { method: 'POST', body: JSON.stringify(payload) });
+}
+
+/** Marks corpus heads "not for pairing", or takes the mark off. */
+export async function setNotForPairing(clusterLabelIds: string[], value: boolean): Promise<ApiResponse<AssignTastingProfilesResult>> {
+  return fetchWithAuth('/api/v1/admin/tasting_profiles/not_for_pairing', {
+    method: 'POST',
+    body: JSON.stringify({ cluster_label_ids: clusterLabelIds, value }),
+  });
 }
 
 // ============= RESTAURANT GROUPS =============
