@@ -16,7 +16,9 @@ import {
   type BulkUpdateResult,
   type BulkUpdateWarning,
   getTastingProfilesForHeads,
+  listTastingProfiles,
   type HeadTastingProfiles,
+  type TastingProfile,
 } from '../../services/adminApi';
 import { AssignTastingProfilesModal } from './_tastingProfilesTab';
 
@@ -656,6 +658,12 @@ export function ClusterListTab() {
   const [formType, setFormType] = useState('');
   const [compoundType, setCompoundType] = useState('');
   const [createdVia, setCreatedVia] = useState('');
+  // '' any, 'none' no tasting profile yet, otherwise a tasting profile's id
+  const [tasting, setTasting] = useState('');
+  const [allProfiles, setAllProfiles] = useState<TastingProfile[]>([]);
+  useEffect(() => {
+    listTastingProfiles().then((res) => { if (res.data) setAllProfiles(res.data.profiles); });
+  }, []);
   const [hasBeenEdited, setHasBeenEdited] = useState(false);
   const [recentlyEdited, setRecentlyEdited] = useState(false);
   const [page, setPage] = useState(1);
@@ -708,6 +716,8 @@ export function ClusterListTab() {
       form_type: formType || undefined,
       compound_type: (compoundType || undefined) as ClusterLabelListFilters['compound_type'],
       created_via: createdVia || undefined,
+      tasting: tasting === 'none' ? 'none' : undefined,
+      tasting_profile_id: tasting && tasting !== 'none' ? tasting : undefined,
       has_been_edited: hasBeenEdited || undefined,
       recently_edited: recentlyEdited || undefined,
       page,
@@ -732,13 +742,13 @@ export function ClusterListTab() {
     } else {
       setError(res.error || 'Failed to load cluster labels.');
     }
-  }, [q, category, formType, compoundType, createdVia, hasBeenEdited, recentlyEdited, page, sortCol, sortDir]);
+  }, [q, category, formType, compoundType, createdVia, tasting, hasBeenEdited, recentlyEdited, page, sortCol, sortDir]);
 
   // Fetch on mount and whenever non-text filters, page, or sort changes
   useEffect(() => {
     fetchData();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [category, formType, compoundType, createdVia, hasBeenEdited, recentlyEdited, page, sortCol, sortDir]);
+  }, [category, formType, compoundType, createdVia, tasting, hasBeenEdited, recentlyEdited, page, sortCol, sortDir]);
 
   // ── Text input with debounce ──────────────────────────────────────────────
 
@@ -796,6 +806,7 @@ export function ClusterListTab() {
     setFormType('');
     setCompoundType('');
     setCreatedVia('');
+    setTasting('');
     setHasBeenEdited(false);
     setRecentlyEdited(false);
     setActiveCard(null);
@@ -999,6 +1010,19 @@ export function ClusterListTab() {
               {CREATED_VIA_OPTIONS.map((v) => <option key={v} value={v}>{v}</option>)}
             </select>
           </div>
+
+          <div className="min-w-[200px]">
+            <label className="block text-xs font-medium text-[#4F4F4F] mb-1">Tasting profile</label>
+            <select
+              value={tasting}
+              onChange={(e) => { setTasting(e.target.value); setPage(1); setActiveCard(null); }}
+              className="w-full border border-gray-200 rounded-md px-3 py-2 text-sm text-[#2A2A2A] bg-white focus:outline-none focus:ring-2 focus:ring-[#7FAEC2]"
+            >
+              <option value="">(any)</option>
+              <option value="none">None yet</option>
+              {allProfiles.map((p) => <option key={p.id} value={p.id}>#{p.key}</option>)}
+            </select>
+          </div>
         </div>
 
         {/* Second row: checkboxes + reset */}
@@ -1189,7 +1213,7 @@ export function ClusterListTab() {
         <AssignTastingProfilesModal
           headIds={[...selectedIds]}
           onClose={() => setShowProfilesModal(false)}
-          onDone={() => loadHeadProfiles(rows.map((r) => r.id))}
+          onDone={() => (tasting ? fetchData() : loadHeadProfiles(rows.map((r) => r.id)))}
         />
       )}
 
