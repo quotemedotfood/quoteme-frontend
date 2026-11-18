@@ -2088,6 +2088,10 @@ export interface ClusterLabelListFilters {
   form_type?: string;
   compound_type?: 'identity' | 'modified' | 'true' | 'null';
   created_via?: string;
+  /** 'none': heads that carry no tasting profile yet. */
+  tasting?: 'none';
+  /** Heads that carry this tasting profile, by id. */
+  tasting_profile_id?: string;
   has_been_edited?: boolean;
   recently_edited?: boolean;
   page?: number;
@@ -2146,6 +2150,8 @@ export async function listClusterLabels(
   if (filters.form_type) params.set('form_type', filters.form_type);
   if (filters.compound_type) params.set('compound_type', filters.compound_type);
   if (filters.created_via) params.set('created_via', filters.created_via);
+  if (filters.tasting) params.set('tasting', filters.tasting);
+  if (filters.tasting_profile_id) params.set('tasting_profile_id', filters.tasting_profile_id);
   if (filters.has_been_edited) params.set('has_been_edited', 'true');
   if (filters.recently_edited) params.set('recently_edited', 'true');
   if (filters.page) params.set('page', String(filters.page));
