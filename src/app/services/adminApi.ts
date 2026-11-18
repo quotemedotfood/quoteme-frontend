@@ -541,6 +541,8 @@ export async function downloadDistributorExport(distributorId: string, type: 'ca
 export interface PairmeFlow {
   url: string;
   qr_png: string;
+  /** An SVG data URI of the same code, when the server sends one (a store's code does). */
+  qr_svg?: string;
 }
 
 export interface AdminRestaurantDetail {
@@ -2535,6 +2537,10 @@ export interface AdminRetailCatalog {
 
 export interface AdminRetailLocationDetail extends AdminRetailLocation {
   logo_url: string | null;
+  /** The store's PairIt link with no spot: app.pairme.wine/q/<slug>. */
+  pairit_url?: string | null;
+  /** The store's QR code for that link, PNG and SVG at print size; null unless the store is live. */
+  pairit_qr?: PairmeFlow | null;
   catalog: AdminRetailCatalog | null;
   contacts: Array<Omit<AdminRestaurantContact, 'restaurant_id'>>;
 }

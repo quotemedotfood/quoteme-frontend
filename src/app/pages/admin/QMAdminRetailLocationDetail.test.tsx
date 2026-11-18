@@ -137,6 +137,34 @@ describe('RetailLocationDetail', () => {
   });
 });
 
+describe('RetailLocationDetail QR code', () => {
+  const qr = {
+    url: 'https://app.pairme.wine/q/total-bev-westminster',
+    qr_png: 'data:image/png;base64,iVBORw0KGgo=',
+    qr_svg: 'data:image/svg+xml;base64,PHN2Zy8+',
+  };
+
+  it('shows a live store its link, Copy, and PNG and SVG downloads named for the store', async () => {
+    show(store({ status: 'active', live: true, pairit_url: qr.url, pairit_qr: qr }));
+    const card = within(await screen.findByTestId('pairme-flow-card'));
+    expect(card.getByText('PairIt link and QR code')).toBeTruthy();
+    expect(card.getByTestId('pairme-flow-url').textContent).toContain(qr.url);
+    expect((card.getByTestId('pairme-flow-qr') as HTMLImageElement).src).toBe(qr.qr_png);
+    expect(card.getByTestId('pairme-flow-copy')).toBeTruthy();
+    const png = card.getByTestId('pairme-flow-download') as HTMLAnchorElement;
+    const svg = card.getByTestId('pairme-flow-download-svg') as HTMLAnchorElement;
+    expect([png.textContent, png.getAttribute('href'), png.getAttribute('download')]).toEqual([' Download PNG', qr.qr_png, 'total-bev-westminster-qr.png']);
+    expect([svg.getAttribute('href'), svg.getAttribute('download')]).toEqual([qr.qr_svg, 'total-bev-westminster-qr.svg']);
+    expect(screen.queryByTestId('store-qr-pending')).toBeNull();
+  });
+
+  it('tells a prospect store to mark live to get the QR, and shows no code', async () => {
+    show(store({ pairit_url: qr.url, pairit_qr: null }));
+    expect((await screen.findByTestId('store-qr-pending')).textContent).toContain('Mark live to get the QR');
+    expect(screen.queryByTestId('pairme-flow-card')).toBeNull();
+  });
+});
+
 describe('QMAdminRetailLocations', () => {
   it('lists stores with live or prospect, and needs a name, city and state to add one', async () => {
     m.getAdminRetailLocations.mockResolvedValue({
