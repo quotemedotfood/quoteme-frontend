@@ -15,6 +15,7 @@ const m = vi.hoisted(() => ({
   deleteAdminRetailLocationLogo: vi.fn(),
   getAdminRestaurantGroups: vi.fn(),
   createAdminRestaurantContact: vi.fn(),
+  attachAdminPairitCode: vi.fn(),
   getAdminRetailLocations: vi.fn(),
   createAdminRetailLocation: vi.fn(),
 }));
@@ -134,6 +135,26 @@ describe('RetailLocationDetail', () => {
 
     await waitFor(() => expect(m.createAdminRestaurantContact).toHaveBeenCalledWith('s1', { first_name: 'Chuck', last_name: 'Owner' }));
     expect(within(await screen.findByTestId('store-contacts')).getByText('Chuck Owner')).toBeTruthy();
+  });
+});
+
+describe('RetailLocationDetail stickers', () => {
+  it('attaches a blank sticker by its code and a spot name, and shows a refused one', async () => {
+    show();
+    const attach = (await screen.findByRole('button', { name: 'Attach sticker' })) as HTMLButtonElement;
+    expect(attach.disabled).toBe(true);
+    fireEvent.change(screen.getByLabelText('Sticker code'), { target: { value: ' k7m2qx ' } });
+    fireEvent.change(screen.getByLabelText('Sticker spot name'), { target: { value: ' Aisle 7, left ' } });
+    m.attachAdminPairitCode.mockResolvedValueOnce({ error: 'That sticker is already on another store. Take it off there first.' });
+    fireEvent.click(attach);
+
+    await waitFor(() => expect(m.attachAdminPairitCode).toHaveBeenCalledWith('s1', 'k7m2qx', 'Aisle 7, left'));
+    expect((await screen.findByTestId('sticker-note')).textContent).toContain('already on another store');
+
+    m.attachAdminPairitCode.mockResolvedValueOnce({ data: { code: 'K7M2QX', name: 'Aisle 7, left', url: '', batch: null, attached_at: '', restaurant_id: 's1' } });
+    fireEvent.click(attach);
+    await waitFor(() => expect(screen.getByTestId('sticker-note').textContent).toContain('Sticker K7M2QX is now "Aisle 7, left"'));
+    expect((screen.getByLabelText('Sticker code') as HTMLInputElement).value).toBe('');
   });
 });
 

@@ -25,6 +25,7 @@ import {
   BarChart3,
   Hotel,
   Store,
+  QrCode,
   Handshake,
   MessageSquare,
   Camera,
@@ -49,6 +50,8 @@ const navItems: Array<{ icon: typeof LayoutDashboard; label: string; path: strin
   { icon: Hotel, label: 'Hotels', path: '/qm-admin/hotels' },
   // Stores: restaurants marked retail, each with its own wine catalog.
   { icon: Store, label: 'Retail', path: '/qm-admin/retail-locations' },
+  // Blank stickers for stores, made in batches for the printer.
+  { icon: QrCode, label: 'Sticker codes', path: '/qm-admin/sticker-codes' },
   { icon: Handshake, label: 'MEPs', path: '/qm-admin/meps' },
   { icon: FileUp, label: 'Restaurant loads', path: '/qm-admin/restaurant-loads' },
   // A diner's photos of a bottle list, waiting for the team (Moose 11-12).
