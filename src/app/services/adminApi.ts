@@ -2155,6 +2155,56 @@ export async function listClusterLabels(
   return fetchWithAuth(`/api/v1/admin/cluster_labels${qs ? `?${qs}` : ''}`);
 }
 
+// ============= STATUS BOARD =============
+// Moose 2026-11-17: the Product Pipeline page is his live board.
+
+export type BoardLight = 'green' | 'yellow' | 'red';
+
+export interface BoardSeat {
+  seat: string;
+  light: BoardLight;
+  working_on: string;
+  last_pr: { label: string; url: string } | null;
+  documents: Array<{ label: string; url: string }>;
+  questions: Array<{ n: number; text: string; blocks: boolean }>;
+  reported_at: string | null;
+  stale: boolean;
+  never_reported: boolean;
+}
+
+export interface BoardPull {
+  number: number;
+  title: string;
+  url: string;
+  draft: boolean;
+  state: string;
+}
+
+export interface BoardRepo {
+  repo: string;
+  url: string;
+  light: BoardLight;
+  ready: BoardPull[];
+  ruling: BoardPull[];
+  checking: BoardPull[];
+  failing: BoardPull[];
+  open_count: number;
+  refreshed_at: string | null;
+  error: string | null;
+}
+
+export interface StatusBoardResponse {
+  seats: BoardSeat[];
+  repos: BoardRepo[];
+  stale_after_hours: number;
+  repos_set_up: boolean;
+  now: string;
+}
+
+export async function getStatusBoard(): Promise<ApiResponse<StatusBoardResponse>> {
+  return fetchWithAuth('/api/v1/admin/status_board');
+}
+
 // ============= RESTAURANT GROUPS =============
 
 export interface AdminRestaurantGroup {
