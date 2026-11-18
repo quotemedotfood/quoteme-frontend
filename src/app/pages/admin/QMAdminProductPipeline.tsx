@@ -1,12 +1,13 @@
 /**
  * Moose's status board (Moose 2026-11-17). Table one: a row per agent seat,
  * written by the seat. Table two: a row per repo, read from GitHub by a
- * background job. The page reloads its data every minute.
+ * background job. The page reloads its data every 30 minutes.
  */
 import { useCallback, useEffect, useState } from 'react';
 import { getStatusBoard, type BoardLight, type BoardPull, type BoardRepo, type BoardSeat, type StatusBoardResponse } from '../../services/adminApi';
 
-const REFRESH_MS = 60_000;
+// Moose 2026-11-17: "The page can refresh every 30 minutes".
+const REFRESH_MS = 30 * 60_000;
 
 const LIGHT_COLOR: Record<BoardLight, string> = { green: '#2E9E5B', yellow: '#E0A800', red: '#D64545' };
 const SEAT_LIGHT_WORD: Record<BoardLight, string> = { green: 'Ready for the next task', yellow: 'Working', red: 'Stuck, needs Moose' };
@@ -145,7 +146,7 @@ export function QMAdminProductPipeline() {
     <div className="px-6 py-6 max-w-[1500px] mx-auto">
       <div className="flex flex-wrap items-baseline gap-3 mb-1">
         <h1 className="text-2xl font-bold text-[#2A2A2A]" style={{ fontFamily: "'Playfair Display', serif" }}>Status Board</h1>
-        <span className="text-xs text-[#4F4F4F]">Reloads every minute. Last loaded {new Date(loadedAt).toLocaleTimeString()}.</span>
+        <span className="text-xs text-[#4F4F4F]">Reloads every 30 minutes. Last loaded {new Date(loadedAt).toLocaleTimeString()}.</span>
         <button type="button" onClick={load} className="text-xs text-[#3D7D99] underline underline-offset-2">Reload now</button>
       </div>
       <p className="text-sm text-[#4F4F4F] mb-5">Who is doing what, and where you are the one being waited on.</p>
