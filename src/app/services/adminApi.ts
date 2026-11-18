@@ -2176,6 +2176,12 @@ export interface BoardSeat {
   reported_at: string | null;
   stale: boolean;
   never_reported: boolean;
+  /** v2: the seat's one message for Moose, and whether he has seen it. */
+  to_moose?: string;
+  to_moose_at?: string | null;
+  to_moose_new?: boolean;
+  /** v2: Moose's last replies to this seat. */
+  to_seat?: Array<{ text: string; at: string; read_at: string | null }>;
 }
 
 export interface BoardPull {
@@ -2209,6 +2215,16 @@ export interface StatusBoardResponse {
 
 export async function getStatusBoard(): Promise<ApiResponse<StatusBoardResponse>> {
   return fetchWithAuth('/api/v1/admin/status_board');
+}
+
+/** v2: Moose's reply to one seat; the seat reads it on its next update. */
+export async function replyToSeat(seat: string, text: string): Promise<ApiResponse<unknown>> {
+  return fetchWithAuth(`/api/v1/admin/status_board/seats/${encodeURIComponent(seat)}/reply`, { method: 'POST', body: JSON.stringify({ text }) });
+}
+
+/** v2: mark a seat's message seen. */
+export async function markSeatSeen(seat: string): Promise<ApiResponse<unknown>> {
+  return fetchWithAuth(`/api/v1/admin/status_board/seats/${encodeURIComponent(seat)}/seen`, { method: 'POST' });
 }
 
 // ============= TASTING PROFILES =============
