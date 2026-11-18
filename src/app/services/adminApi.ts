@@ -2161,7 +2161,6 @@ export async function listClusterLabels(
   return fetchWithAuth(`/api/v1/admin/cluster_labels${qs ? `?${qs}` : ''}`);
 }
 
-<<<<<<< HEAD
 // ============= STATUS BOARD =============
 // Moose 2026-11-17: the Product Pipeline page is his live board.
 
@@ -2210,7 +2209,8 @@ export interface StatusBoardResponse {
 
 export async function getStatusBoard(): Promise<ApiResponse<StatusBoardResponse>> {
   return fetchWithAuth('/api/v1/admin/status_board');
-=======
+}
+
 // ============= TASTING PROFILES =============
 // Moose 2026-11-17: every food corpus head carries one to three tasting
 // profiles. Everything here is by id; no name is matched.
@@ -2289,7 +2289,6 @@ export async function assignTastingProfiles(payload: {
   remove: string[];
 }): Promise<ApiResponse<AssignTastingProfilesResult>> {
   return fetchWithAuth('/api/v1/admin/tasting_profiles/assign', { method: 'POST', body: JSON.stringify(payload) });
->>>>>>> origin/main
 }
 
 // ============= RESTAURANT GROUPS =============
