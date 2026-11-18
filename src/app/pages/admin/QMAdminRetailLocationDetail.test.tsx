@@ -28,7 +28,7 @@ afterEach(() => { cleanup(); vi.resetAllMocks(); });
 const CATALOG_ID = '80fddae4-488e-4ad8-92d9-ec2bc8d26d20';
 const catalog = (extra: Record<string, unknown> = {}) => ({
   id: CATALOG_ID, rows: 4269, wines_shown: 3120, wines_hidden: 1149, last_loaded_at: '2026-11-17T16:30:00.000Z',
-  price_rule: 'list_x_1_5', price_rule_set: false, ...extra,
+  ...extra,
 });
 const store = (extra: Record<string, unknown> = {}) => ({
   id: 's1', name: 'Total Beverage', slug: 'total-beverage-westminster', address_line_1: '9359 Sheridan Blvd', address_line_2: null,
@@ -53,18 +53,13 @@ describe('RetailLocationDetail', () => {
     expect(facts.getByText(CATALOG_ID)).toBeTruthy();
   });
 
-  it('warns that prices show x 1.5 until a price rule is chosen, and writes the shelf rule', async () => {
+  it('says shoppers see the shelf price, with no choice and no x 1.5 warning', async () => {
     show(store({ catalog_id: CATALOG_ID, catalog: catalog() }));
-    expect((await screen.findByRole('status')).textContent).toContain('x 1.5');
-    m.updateAdminRetailLocation.mockResolvedValue({
-      data: store({ catalog_id: CATALOG_ID, catalog: catalog({ price_rule: 'shelf', price_rule_set: true }) }),
-    });
-
-    fireEvent.change(screen.getByLabelText('Price shoppers see'), { target: { value: 'shelf' } });
-
-    await waitFor(() => expect(m.updateAdminRetailLocation).toHaveBeenCalledWith('s1', { price_rule: 'shelf' }));
-    await waitFor(() => expect(screen.queryByRole('status')).toBeNull());
-    expect((screen.getByLabelText('Price shoppers see') as HTMLSelectElement).value).toBe('shelf');
+    const facts = within(await screen.findByTestId('catalog-facts'));
+    expect(facts.getByText('Shelf price, as given')).toBeTruthy();
+    expect(screen.queryByLabelText('Price shoppers see')).toBeNull();
+    expect(screen.queryByRole('status')).toBeNull();
+    expect(document.body.textContent).not.toContain('x 1.5');
   });
 
   it('marks a prospect live, and a live store back to prospect', async () => {
