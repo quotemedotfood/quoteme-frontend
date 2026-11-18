@@ -15,6 +15,8 @@ const m = vi.hoisted(() => ({
   deleteAdminRetailLocationLogo: vi.fn(),
   getAdminRestaurantGroups: vi.fn(),
   createAdminRestaurantContact: vi.fn(),
+  linkAdminRetailLocationStripe: vi.fn(),
+  unlinkAdminRetailLocationStripe: vi.fn(),
   getAdminRetailLocations: vi.fn(),
   createAdminRetailLocation: vi.fn(),
 }));

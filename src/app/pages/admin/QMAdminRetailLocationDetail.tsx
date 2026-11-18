@@ -32,6 +32,7 @@ import {
 } from '../../services/adminApi';
 import { ADMIN_PAGE_FRAME, ADMIN_PAGE_FRAME_STYLE } from '../../components/admin/adminPageFrame';
 import { RetailStatusPill, retailStatusLabel } from './QMAdminRetailLocations';
+import { StoreBillingCard } from './_storeBillingCard';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const LOGO_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
@@ -321,6 +322,8 @@ export function RetailLocationDetail({ locationId }: { locationId: string }) {
           </div>
         )}
       </div>
+
+      <StoreBillingCard store={store} onChange={setStore} card={card} heading={heading} />
 
       <div className={card}>
         <p className={heading}>Logo and co-brand</p>
