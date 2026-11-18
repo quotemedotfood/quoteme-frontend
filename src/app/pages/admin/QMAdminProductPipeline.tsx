@@ -1,13 +1,98 @@
 /**
  * Moose's status board (Moose 2026-11-17). Table one: a row per agent seat,
  * written by the seat. Table two: a row per repo, read from GitHub by a
- * background job. The page reloads its data every 30 minutes.
+ * background job. The page reloads its data every 30 seconds while open
+ * (v2), raises a desktop alert when a seat turns red, a seat writes to
+ * Moose, or a repo turns red, and lets Moose reply to a seat.
  */
-import { useCallback, useEffect, useState } from 'react';
-import { getStatusBoard, type BoardLight, type BoardPull, type BoardRepo, type BoardSeat, type StatusBoardResponse } from '../../services/adminApi';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { getStatusBoard, markSeatSeen, replyToSeat, type BoardLight, type BoardPull, type BoardRepo, type BoardSeat, type StatusBoardResponse } from '../../services/adminApi';
 
-// Moose 2026-11-17: "The page can refresh every 30 minutes".
-const REFRESH_MS = 30 * 60_000;
+// v2 (Assemblage 11-18, Moose's ask): poll every 30 seconds while the page
+// is open, so desktop alerts arrive in time. (Was 30 minutes, 11-17.)
+const REFRESH_MS = 30_000;
+const MAX_REPLY = 300;
+
+type Alert = { title: string; body: string };
+
+// What changed between two loads that Moose should hear about: a seat turned
+// red, a seat sent a new message, a repo turned red (a PR waits on his merge).
+function alertsBetween(before: StatusBoardResponse, after: StatusBoardResponse): Alert[] {
+  const out: Alert[] = [];
+  const seatBefore = new Map(before.seats.map((s) => [s.seat, s]));
+  after.seats.forEach((s) => {
+    const was = seatBefore.get(s.seat);
+    if (s.light === 'red' && was?.light !== 'red') out.push({ title: `${s.seat} is stuck`, body: s.working_on || 'Needs you.' });
+    if (s.to_moose_new && s.to_moose && s.to_moose_at !== was?.to_moose_at) out.push({ title: `${s.seat} wrote to you`, body: s.to_moose });
+  });
+  const repoBefore = new Map(before.repos.map((r) => [r.repo, r]));
+  after.repos.forEach((r) => {
+    if (r.light === 'red' && repoBefore.get(r.repo)?.light !== 'red') {
+      out.push({ title: `${r.repo}: ready for your merge`, body: r.ready.map((p) => `#${p.number} ${p.title}`).join(', ').slice(0, 200) });
+    }
+  });
+  return out;
+}
+
+function notify(alerts: Alert[]) {
+  if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+  alerts.forEach((a) => {
+    const n = new Notification(a.title, { body: a.body, tag: a.title });
+    n.onclick = () => { window.focus(); n.close(); };
+  });
+}
+
+function MessageCell({ s, onChanged }: { s: BoardSeat; onChanged: () => void }) {
+  const [text, setText] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function send() {
+    setBusy(true);
+    setError(null);
+    const res = await replyToSeat(s.seat, text.trim());
+    setBusy(false);
+    if (res.error) setError(res.error);
+    else { setText(''); onChanged(); }
+  }
+
+  async function seen() {
+    await markSeatSeen(s.seat);
+    onChanged();
+  }
+
+  const last = (s.to_seat || []).slice(-1)[0];
+  return (
+    <div className="min-w-[220px]">
+      {s.to_moose ? (
+        <p className={`text-[#2A2A2A] ${s.to_moose_new ? 'font-semibold' : ''}`}>
+          {s.to_moose_new && <span className="text-xs mr-1 px-1.5 py-0.5 rounded-full bg-red-100 text-red-700">new</span>}
+          {s.to_moose}
+          {s.to_moose_new && (
+            <button type="button" onClick={seen} className="ml-2 text-xs text-[#3D7D99] underline underline-offset-2 font-normal">Seen</button>
+          )}
+        </p>
+      ) : <span className="text-gray-300">-</span>}
+      {last && (
+        <p className="text-xs text-[#4F4F4F] mt-1">You: {last.text} <span className="italic">{last.read_at ? '(read)' : '(not read yet)'}</span></p>
+      )}
+      <div className="flex gap-1 mt-1.5">
+        <input
+          value={text}
+          maxLength={MAX_REPLY}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter' && text.trim()) send(); }}
+          placeholder={`Reply to ${s.seat}`}
+          className="border border-gray-300 rounded px-2 py-1 text-xs flex-1 min-w-0"
+        />
+        <button type="button" onClick={send} disabled={busy || !text.trim()} className="text-xs px-2 py-1 bg-[#2A2A2A] text-white rounded disabled:opacity-40">
+          Send
+        </button>
+      </div>
+      {error && <p className="text-xs text-red-600 mt-1">{error}</p>}
+    </div>
+  );
+}
 
 const LIGHT_COLOR: Record<BoardLight, string> = { green: '#2E9E5B', yellow: '#E0A800', red: '#D64545' };
 const SEAT_LIGHT_WORD: Record<BoardLight, string> = { green: 'Ready for the next task', yellow: 'Working', red: 'Stuck, needs Moose' };
@@ -35,9 +120,9 @@ function Light({ light, word, dim }: { light: BoardLight; word: string; dim?: bo
   );
 }
 
-function SeatRow({ s, now }: { s: BoardSeat; now: number }) {
+function SeatRow({ s, now, onChanged }: { s: BoardSeat; now: number; onChanged: () => void }) {
   return (
-    <tr className={`border-b border-gray-100 align-top ${s.stale ? 'opacity-45' : ''}`}>
+    <tr className={`border-b border-gray-100 align-top ${s.stale ? 'opacity-45' : ''} ${s.to_moose_new ? 'bg-red-50' : ''}`}>
       <td className="px-3 py-3 text-center"><Light light={s.light} word={SEAT_LIGHT_WORD[s.light]} dim={s.stale} /></td>
       <td className="px-3 py-3 font-semibold text-[#2A2A2A] whitespace-nowrap">{s.seat}</td>
       <td className="px-3 py-3 text-[#2A2A2A]">
@@ -74,6 +159,7 @@ function SeatRow({ s, now }: { s: BoardSeat; now: number }) {
           </ol>
         ) : <span className="text-gray-300">-</span>}
       </td>
+      <td className="px-3 py-3"><MessageCell s={s} onChanged={onChanged} /></td>
       <td className="px-3 py-3 text-xs text-[#4F4F4F] whitespace-nowrap">{ago(s.reported_at, now)}</td>
     </tr>
   );
@@ -123,9 +209,14 @@ export function QMAdminProductPipeline() {
   const [error, setError] = useState<string | null>(null);
   const [loadedAt, setLoadedAt] = useState<number>(Date.now());
 
+  const previous = useRef<StatusBoardResponse | null>(null);
+  const [permission, setPermission] = useState<string>(typeof Notification === 'undefined' ? 'unsupported' : Notification.permission);
+
   const load = useCallback(async () => {
     const res = await getStatusBoard();
     if (res.data) {
+      if (previous.current) notify(alertsBetween(previous.current, res.data));
+      previous.current = res.data;
       setBoard(res.data);
       setError(null);
     } else {
@@ -146,8 +237,19 @@ export function QMAdminProductPipeline() {
     <div className="px-6 py-6 max-w-[1500px] mx-auto">
       <div className="flex flex-wrap items-baseline gap-3 mb-1">
         <h1 className="text-2xl font-bold text-[#2A2A2A]" style={{ fontFamily: "'Playfair Display', serif" }}>Status Board</h1>
-        <span className="text-xs text-[#4F4F4F]">Reloads every 30 minutes. Last loaded {new Date(loadedAt).toLocaleTimeString()}.</span>
+        <span className="text-xs text-[#4F4F4F]">Reloads every 30 seconds. Last loaded {new Date(loadedAt).toLocaleTimeString()}.</span>
         <button type="button" onClick={load} className="text-xs text-[#3D7D99] underline underline-offset-2">Reload now</button>
+        {permission === 'default' && (
+          <button
+            type="button"
+            onClick={async () => setPermission(await Notification.requestPermission())}
+            className="hidden md:inline-block text-xs px-2 py-1 border border-[#2A2A2A] rounded"
+          >
+            Turn on desktop alerts
+          </button>
+        )}
+        {permission === 'granted' && <span className="hidden md:inline text-xs text-[#4F4F4F]">Desktop alerts on</span>}
+        {permission === 'denied' && <span className="hidden md:inline text-xs text-[#4F4F4F]">Desktop alerts are blocked in this browser's settings</span>}
       </div>
       <p className="text-sm text-[#4F4F4F] mb-5">Who is doing what, and where you are the one being waited on.</p>
       {error && <p className="text-sm text-red-600 mb-4">{error}</p>}
@@ -167,11 +269,12 @@ export function QMAdminProductPipeline() {
                     <th className={th}>Last PR</th>
                     <th className={th}>For you to read</th>
                     <th className={th}>Questions for you</th>
+                    <th className={th}>Message</th>
                     <th className={th}>Updated</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {board.seats.map((s) => <SeatRow key={s.seat} s={s} now={loadedAt} />)}
+                  {board.seats.map((s) => <SeatRow key={s.seat} s={s} now={loadedAt} onChanged={load} />)}
                 </tbody>
               </table>
             </div>
