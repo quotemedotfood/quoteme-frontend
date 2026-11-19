@@ -23,6 +23,7 @@ import {
   deleteAdminRetailLocationLogo,
   getAdminRestaurantGroups,
   createAdminRestaurantContact,
+  attachAdminPairitCode,
   AdminRetailLocationDetail,
   AdminRetailLocationInput,
   AdminRestaurantGroup,
@@ -63,6 +64,11 @@ export function RetailLocationDetail({ locationId }: { locationId: string }) {
   const [actionError, setActionError] = useState<string | null>(null);
   const [catalogId, setCatalogId] = useState('');
   const fileInput = useRef<HTMLInputElement>(null);
+
+  // A blank sticker put on this store by its code (the tablet can also scan it).
+  const [sticker, setSticker] = useState({ code: '', name: '' });
+  const [stickerNote, setStickerNote] = useState<{ ok: boolean; text: string } | null>(null);
+  const [attaching, setAttaching] = useState(false);
 
   const [contact, setContact] = useState({ first_name: '', last_name: '', role: '', email: '', phone: '' });
   const [addingContact, setAddingContact] = useState(false);
@@ -173,6 +179,22 @@ export function RetailLocationDetail({ locationId }: { locationId: string }) {
     setBusy(null);
     if (res.data) setStore(res.data);
     else setActionError(res.error || 'Failed to remove the logo');
+  }
+
+  const canAttach = !!(sticker.code.trim() && sticker.name.trim());
+
+  async function attachSticker() {
+    if (!canAttach || attaching) return;
+    setAttaching(true);
+    setStickerNote(null);
+    const res = await attachAdminPairitCode(locationId, sticker.code.trim(), sticker.name.trim());
+    setAttaching(false);
+    if (res.data) {
+      setStickerNote({ ok: true, text: `Sticker ${res.data.code} is now "${res.data.name}" at this store.` });
+      setSticker({ code: '', name: '' });
+    } else {
+      setStickerNote({ ok: false, text: res.error || 'Failed to attach the sticker' });
+    }
   }
 
   const canAddContact = !!(contact.first_name.trim() && contact.last_name.trim());
@@ -426,6 +448,45 @@ export function RetailLocationDetail({ locationId }: { locationId: string }) {
             </div>
             <p className="text-xs text-gray-500">The id is printed when the store&apos;s wine file is loaded.</p>
           </>
+        )}
+      </div>
+
+      <div className={card}>
+        <p className={heading}>Stickers</p>
+        <p className="text-xs text-gray-500">
+          Put a blank sticker on this store by the code printed on it, and name the spot. Staff can also do this on the store tablet by scanning it.
+        </p>
+        <div className="flex flex-wrap items-center gap-2">
+          <Input
+            value={sticker.code}
+            onChange={(e) => setSticker((s) => ({ ...s, code: e.target.value }))}
+            onKeyDown={(e) => e.key === 'Enter' && attachSticker()}
+            placeholder="Code, for example K7M2QX"
+            aria-label="Sticker code"
+            className="max-w-[14rem] h-8 text-sm font-mono"
+          />
+          <Input
+            value={sticker.name}
+            onChange={(e) => setSticker((s) => ({ ...s, name: e.target.value }))}
+            onKeyDown={(e) => e.key === 'Enter' && attachSticker()}
+            placeholder="Spot, for example Aisle 7, left"
+            aria-label="Sticker spot name"
+            maxLength={40}
+            className="max-w-xs h-8 text-sm"
+          />
+          <Button
+            size="sm"
+            className="bg-[#A5CFDD] hover:bg-[#7FAEC2] text-white text-xs h-8"
+            disabled={attaching || !canAttach}
+            onClick={attachSticker}
+          >
+            {attaching ? 'Attaching…' : 'Attach sticker'}
+          </Button>
+        </div>
+        {stickerNote && (
+          <p className={`text-xs ${stickerNote.ok ? 'text-green-700' : 'text-red-500'}`} role={stickerNote.ok ? 'status' : 'alert'} data-testid="sticker-note">
+            {stickerNote.text}
+          </p>
         )}
       </div>
 
