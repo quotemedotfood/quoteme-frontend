@@ -541,6 +541,8 @@ export async function downloadDistributorExport(distributorId: string, type: 'ca
 export interface PairmeFlow {
   url: string;
   qr_png: string;
+  /** An SVG data URI of the same code, when the server sends one (a store's code does). */
+  qr_svg?: string;
 }
 
 export interface AdminRestaurantDetail {
@@ -2088,6 +2090,10 @@ export interface ClusterLabelListFilters {
   form_type?: string;
   compound_type?: 'identity' | 'modified' | 'true' | 'null';
   created_via?: string;
+  /** 'none': heads that carry no tasting profile yet. */
+  tasting?: 'none';
+  /** Heads that carry this tasting profile, by id. */
+  tasting_profile_id?: string;
   has_been_edited?: boolean;
   recently_edited?: boolean;
   page?: number;
@@ -2146,6 +2152,8 @@ export async function listClusterLabels(
   if (filters.form_type) params.set('form_type', filters.form_type);
   if (filters.compound_type) params.set('compound_type', filters.compound_type);
   if (filters.created_via) params.set('created_via', filters.created_via);
+  if (filters.tasting) params.set('tasting', filters.tasting);
+  if (filters.tasting_profile_id) params.set('tasting_profile_id', filters.tasting_profile_id);
   if (filters.has_been_edited) params.set('has_been_edited', 'true');
   if (filters.recently_edited) params.set('recently_edited', 'true');
   if (filters.page) params.set('page', String(filters.page));
@@ -2153,6 +2161,162 @@ export async function listClusterLabels(
   if (filters.sort) params.set('sort', filters.sort);
   const qs = params.toString();
   return fetchWithAuth(`/api/v1/admin/cluster_labels${qs ? `?${qs}` : ''}`);
+}
+
+// ============= STATUS BOARD =============
+// Moose 2026-11-17: the Product Pipeline page is his live board.
+
+export type BoardLight = 'green' | 'yellow' | 'red';
+
+export interface BoardSeat {
+  seat: string;
+  light: BoardLight;
+  working_on: string;
+  last_pr: { label: string; url: string } | null;
+  documents: Array<{ label: string; url: string }>;
+  questions: Array<{ n: number; text: string; blocks: boolean }>;
+  reported_at: string | null;
+  stale: boolean;
+  never_reported: boolean;
+  /** v2: the seat's one message for Moose, and whether he has seen it. */
+  to_moose?: string;
+  to_moose_at?: string | null;
+  to_moose_new?: boolean;
+  /** v2: Moose's last replies to this seat. */
+  to_seat?: Array<{ text: string; at: string; read_at: string | null }>;
+}
+
+export interface BoardPull {
+  number: number;
+  title: string;
+  url: string;
+  draft: boolean;
+  state: string;
+}
+
+export interface BoardRepo {
+  repo: string;
+  url: string;
+  light: BoardLight;
+  ready: BoardPull[];
+  ruling: BoardPull[];
+  checking: BoardPull[];
+  failing: BoardPull[];
+  open_count: number;
+  refreshed_at: string | null;
+  error: string | null;
+}
+
+export interface StatusBoardResponse {
+  seats: BoardSeat[];
+  repos: BoardRepo[];
+  stale_after_hours: number;
+  repos_set_up: boolean;
+  now: string;
+}
+
+export async function getStatusBoard(): Promise<ApiResponse<StatusBoardResponse>> {
+  return fetchWithAuth('/api/v1/admin/status_board');
+}
+
+/** v2: Moose's reply to one seat; the seat reads it on its next update. */
+export async function replyToSeat(seat: string, text: string): Promise<ApiResponse<unknown>> {
+  return fetchWithAuth(`/api/v1/admin/status_board/seats/${encodeURIComponent(seat)}/reply`, { method: 'POST', body: JSON.stringify({ text }) });
+}
+
+/** v2: mark a seat's message seen. */
+export async function markSeatSeen(seat: string): Promise<ApiResponse<unknown>> {
+  return fetchWithAuth(`/api/v1/admin/status_board/seats/${encodeURIComponent(seat)}/seen`, { method: 'POST' });
+}
+
+// ============= TASTING PROFILES =============
+// Moose 2026-11-17: every food corpus head carries one to three tasting
+// profiles. Everything here is by id; no name is matched.
+
+export const TASTING_AXES = ['weight', 'fat', 'acid', 'sweetness', 'heat', 'salt', 'umami', 'bitter'] as const;
+export type TastingAxis = (typeof TASTING_AXES)[number];
+export type TastingScores = Record<TastingAxis, number | null>;
+
+export interface TastingProfile {
+  id: string;
+  key: string;
+  kind: string;
+  scores: TastingScores;
+  rule: string;
+  notes: string;
+  source: string;
+  heads_count: number;
+  updated_at: string;
+}
+
+export interface TastingProfileListResponse {
+  profiles: TastingProfile[];
+  total_count: number;
+  kinds: string[];
+  rules: string[];
+  max_per_head: number;
+}
+
+export interface TastingProfileInput extends Partial<Record<TastingAxis, number>> {
+  key?: string;
+  kind?: string;
+  rule?: string;
+  notes?: string;
+}
+
+export interface HeadTastingProfiles {
+  cluster_label_id: string;
+  profile_ids: string[];
+  keys: string[];
+  scores: TastingScores | null;
+  rules: string[];
+  /** A person marked this head as having no taste to pair (pectin, a brand name). */
+  not_for_pairing?: boolean;
+}
+
+export interface AssignTastingProfilesResult {
+  updated: string[];
+  refused: Array<{ cluster_label_id: string; reason: string }>;
+  heads: HeadTastingProfiles[];
+}
+
+export async function listTastingProfiles(): Promise<ApiResponse<TastingProfileListResponse>> {
+  return fetchWithAuth('/api/v1/admin/tasting_profiles');
+}
+
+export async function createTastingProfile(input: TastingProfileInput): Promise<ApiResponse<{ profile: TastingProfile }>> {
+  return fetchWithAuth('/api/v1/admin/tasting_profiles', { method: 'POST', body: JSON.stringify(input) });
+}
+
+export async function updateTastingProfile(id: string, input: TastingProfileInput): Promise<ApiResponse<{ profile: TastingProfile }>> {
+  return fetchWithAuth(`/api/v1/admin/tasting_profiles/${id}`, { method: 'PATCH', body: JSON.stringify(input) });
+}
+
+export async function deleteTastingProfile(id: string): Promise<ApiResponse<{ deleted: string }>> {
+  return fetchWithAuth(`/api/v1/admin/tasting_profiles/${id}`, { method: 'DELETE' });
+}
+
+export async function getTastingProfilesForHeads(clusterLabelIds: string[]): Promise<ApiResponse<{ heads: HeadTastingProfiles[] }>> {
+  if (clusterLabelIds.length === 0) return { data: { heads: [] } };
+  const params = new URLSearchParams();
+  clusterLabelIds.forEach((id) => params.append('cluster_label_ids[]', id));
+  return fetchWithAuth(`/api/v1/admin/tasting_profiles/for_heads?${params.toString()}`);
+}
+
+export async function assignTastingProfiles(payload: {
+  cluster_label_ids: string[];
+  add: string[];
+  remove: string[];
+}): Promise<ApiResponse<AssignTastingProfilesResult>> {
+  return fetchWithAuth('/api/v1/admin/tasting_profiles/assign', { method: 'POST', body: JSON.stringify(payload) });
+}
+
+/** Marks corpus heads "not for pairing", or takes the mark off. */
+export async function setNotForPairing(clusterLabelIds: string[], value: boolean): Promise<ApiResponse<AssignTastingProfilesResult>> {
+  return fetchWithAuth('/api/v1/admin/tasting_profiles/not_for_pairing', {
+    method: 'POST',
+    body: JSON.stringify({ cluster_label_ids: clusterLabelIds, value }),
+  });
 }
 
 // ============= RESTAURANT GROUPS =============
@@ -2352,7 +2516,6 @@ export async function detachHotelOutlet(hotelId: string, restaurantId: string): 
 // A group and a catalog are set by id, never by name.
 
 export type RetailStatus = 'active' | 'prospect';
-export type RetailPriceRule = 'shelf' | 'list_x_1_5';
 
 export interface AdminRetailLocation {
   id: string;
@@ -2381,19 +2544,19 @@ export interface AdminRetailCatalog {
   wines_shown: number;
   wines_hidden: number;
   last_loaded_at: string | null;
-  /** What a shopper is shown: the shelf price as given, or the list price x 1.5. */
-  price_rule: RetailPriceRule;
-  /** False when nobody has set a rule; the catalog then reads as list_x_1_5. */
-  price_rule_set: boolean;
 }
 
 export interface AdminRetailLocationDetail extends AdminRetailLocation {
   logo_url: string | null;
+  /** The store's PairIt link with no spot: app.pairme.wine/q/<slug>. */
+  pairit_url?: string | null;
+  /** The store's QR code for that link, PNG and SVG at print size; null unless the store is live. */
+  pairit_qr?: PairmeFlow | null;
   catalog: AdminRetailCatalog | null;
   contacts: Array<Omit<AdminRestaurantContact, 'restaurant_id'>>;
 }
 
-/** Only the keys sent change. price_rule is written on the catalog the location points at. */
+/** Only the keys sent change. There is no price rule: a store's price is always its shelf price as given. */
 export type AdminRetailLocationInput = Partial<{
   name: string;
   address_line_1: string | null;
@@ -2407,7 +2570,6 @@ export type AdminRetailLocationInput = Partial<{
   co_branded: boolean;
   restaurant_group_id: string | null;
   catalog_id: string | null;
-  price_rule: RetailPriceRule;
 }>;
 
 /** Every store by name; q narrows on name or city, status on live or prospect. */
@@ -4173,4 +4335,109 @@ export async function reviewAdminFeedbackMemo(id: string): Promise<ApiResponse<A
 
 export async function deleteAdminFeedbackAudio(id: string): Promise<ApiResponse<AdminFeedbackMemoChange>> {
   return fetchWithAuth(`/api/v1/admin/feedback_memos/${id}/audio`, { method: 'DELETE' });
+}
+
+// ── Corpus lookup (Moose 2026-11-18): a food's cluster labels, their tasting
+// profile links, not_for_pairing, and a store's PairIt kinds and bottles.
+// Read-only. Writer: none. Server: Api::V1::Admin::CorpusLookupController
+// (Pairme::CorpusLookup). Reader: pages/admin/_corpusLookupTab.tsx.
+
+export interface CorpusMatch {
+  corpus_match: 'matched' | 'suggest' | 'none';
+  corpus_id: string | null;
+  corpus_name: string | null;
+  suggestion: string | null;
+  suggestion_id: string | null;
+  suggestion_confidence: number | null;
+}
+
+export interface CorpusLookupProfile {
+  id: string;
+  key: string;
+  kind: string;
+  scores: Partial<Record<TastingAxis, number | null>>;
+  rule: string;
+  link_source: string;
+}
+
+export interface CorpusLookupLabel {
+  id: string;
+  canonical_product: string;
+  category: string | null;
+  status: string;
+  created_via: string;
+  merged_into_id: string | null;
+  not_for_pairing: boolean;
+  corpus: 'matched' | 'suggested' | null;
+  tasting_profiles: CorpusLookupProfile[];
+  combined: { scores: Partial<Record<TastingAxis, number | null>>; rules: string[] } | null;
+}
+
+export interface CorpusLookupStore {
+  slug: string;
+  name: string;
+  live: boolean;
+  catalog_id?: string | null;
+  price_rule_stored?: string | null;
+  price_rule?: string;
+  bottles?: number;
+  has_catalog?: boolean;
+}
+
+export interface PairItKind {
+  id: string;
+  name: string;
+  descriptor: string;
+  pronunciation: string | null;
+  flag: 'traditional' | 'adventurous' | null;
+  profile: { colour: string; grape_head: string; region_head: string };
+  bottle_count: number;
+  push?: 'big_push' | 'push' | null;
+}
+
+export interface CorpusLookupResponse {
+  q: string;
+  corpus_match: CorpusMatch | null;
+  labels: CorpusLookupLabel[];
+  name_matches: number;
+  stores: CorpusLookupStore[];
+  store: CorpusLookupStore | null;
+  kinds_source: 'kind_terms' | 'kinds_file';
+  kinds: PairItKind[];
+}
+
+export interface PairItBottle {
+  id: string;
+  producer: string;
+  wine: string;
+  region: string | null;
+  vintage: number | null;
+  shown_price_cents: number;
+  band: string;
+  push?: 'big_push' | 'push' | null;
+}
+
+export interface PairItBands {
+  kind_id: string;
+  bands: Array<{ band: string; label: string; bottles: PairItBottle[] }>;
+}
+
+export interface StoredRulesBundle {
+  version: number;
+  checksum: string;
+  tables: Record<string, unknown[]>;
+}
+
+export async function getCorpusLookup(q: string, store: string): Promise<ApiResponse<CorpusLookupResponse>> {
+  const params = new URLSearchParams({ q, store });
+  return fetchWithAuth(`/api/v1/admin/corpus_lookup?${params.toString()}`);
+}
+
+export async function getCorpusLookupBottles(store: string, kindId: string): Promise<ApiResponse<PairItBands>> {
+  const params = new URLSearchParams({ store, kind_id: kindId });
+  return fetchWithAuth(`/api/v1/admin/corpus_lookup/bottles?${params.toString()}`);
+}
+
+export async function getStoredRulesBundle(): Promise<ApiResponse<StoredRulesBundle>> {
+  return fetchWithAuth('/api/v1/admin/corpus_lookup/rules_bundle');
 }

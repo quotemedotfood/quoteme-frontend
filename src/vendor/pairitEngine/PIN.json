@@ -1,0 +1,21 @@
+{
+  "repo": "quotemedotfood/pairme",
+  "commit": "8c7822cb521eb75c1c6d5a966517fb810c8e58aa",
+  "copied_at": "2026-11-18",
+  "files": {
+    "csv.js": "f03a949c500a78e28ae79c21041832a16569f3cb0e6cfb14919a55249bfc49a3",
+    "tables.js": "243ee01201203a7b760e5ed0c8ca2997fc102fd73f8925c31b7522611076e678",
+    "corpus.js": "5de1e1810c7049146eb05f55c5e251f0a659c8fe0c0e61a5d6bdfa1fe569e430",
+    "scoring.js": "1a01b05fa7190298acad8b27759af664fccbe66ed5469eaa9d122ad6206cee6e",
+    "pairIt.js": "07e7764d15667592cf49baf894a049da4ebe8576af4366ac934c3dea49a7ca83",
+    "pairItKinds.js": "cdaa502a6a0f2d60175d4e5b98347a49ab0f11928fa51f035a15c67697c0a8fa",
+    "resolveComponents.js": "9e2ab737e0880d9a04137ff467a8bfea8660fa9aa9e5165a0690514de2dfe561",
+    "dietary.js": "bc7b291f7845fb3f01b6db36552908b2310ea60a00713796bc2caefe35a839f2",
+    "data/wine_axes.csv": "86fedbbcf029fd24d3c3337d4edc37fdc3d62e61b8def681a97280ec413c53af",
+    "data/dish_axes.csv": "cf9579707a4cc75fa35f4e5dd7b95bace0cdd3ad3e8605eb0463def3846d5d1d",
+    "data/pairing_rules.csv": "5038ff928b4eb80a948699b98d9ea3aeb04c3c5fd048bc96eece78da7f141ddc",
+    "data/corpus_categories.csv": "6f8b2f353a863964b1fd67aee3d306fc6a4cd26810104612f58c7507150b20ac",
+    "data/corpus_alias_verdicts.csv": "4d5fa0c4a376c0c0d789e7a88b2993c8ebab3dc7de567bedcab479195dd407d1",
+    "pairItSlips.js": "9ceb69c8e1969ed64d3234a814f332f058a9e4e32154928e8216f710bb51640a"
+  }
+}

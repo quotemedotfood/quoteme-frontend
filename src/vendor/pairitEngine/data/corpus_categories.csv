@@ -1,0 +1,200 @@
+head,kind,parent,tails,weight,fat,acid,sweetness,heat,salt,umami,bitter,hard_fail,notes
+food,category,,,3,2,1,1,1,1,2,1,,root
+protein,category,food,,4,3,1,1,1,1,3,1,,
+beef,category,protein,,4,4,1,1,1,1,3,1,,
+steak,category,beef,,5,4,1,1,1,1,3,1,,
+ribeye,component,steak,rib eye|rib-eye|delmonico|cowboy steak,5,5,1,1,1,1,3,1,,the tannin dish
+ny strip,component,steak,new york strip|strip steak|striploin|kansas city strip,5,4,1,1,1,1,3,1,,
+filet,component,steak,filet mignon|tenderloin|chateaubriand|beef tenderloin,4,2,1,1,1,1,3,1,,lean. tannin needs care
+hanger steak,component,steak,onglet|butcher steak,4,3,1,1,1,1,4,1,,iron-y and lean
+skirt steak,component,steak,bavette,4,3,1,1,1,1,4,1,,
+flank steak,component,steak,,4,2,1,1,1,1,4,1,,
+flat iron,component,steak,,4,3,1,1,1,1,3,1,,
+porterhouse,component,steak,t-bone|bistecca|bistecca fiorentina,5,5,1,1,1,1,3,1,,
+tri tip,component,steak,,4,3,1,1,1,1,3,1,,
+picanha,component,steak,coulotte|top sirloin cap,5,5,1,1,1,1,3,1,,
+sirloin,component,steak,top sirloin|coulotte,4,3,1,1,1,1,3,1,,
+beef braise,category,beef,,5,5,1,1,1,2,4,1,,
+short rib,component,beef braise,braised short rib|boneless short rib,5,5,1,1,1,2,4,1,,
+brisket,component,beef braise,,5,5,1,1,1,2,4,1,,
+oxtail,component,beef braise,,5,5,1,1,1,2,5,1,,
+beef cheek,component,beef braise,guancia|beef cheeks,5,5,1,1,1,2,4,1,,
+ground beef,component,beef,burger|hamburger|beef patty|minced beef,4,4,1,1,1,1,3,1,,
+pork,category,protein,,4,4,1,1,1,1,3,1,,
+pork chop,component,pork,,4,4,1,1,1,1,3,1,,
+pork shoulder,component,pork,pork butt|boston butt|carnitas|pulled pork,4,4,1,1,1,2,3,1,,
+pork belly,component,pork,,4,5,1,1,1,2,4,1,,
+bacon,component,pork,pancetta|guanciale|lardo|speck,3,5,1,1,1,4,4,1,,
+prosciutto,component,pork,jamon|serrano|iberico|country ham|culatello,2,4,1,1,1,5,4,1,,
+sausage,component,pork,salsiccia|chorizo|bratwurst|andouille|italian sausage,4,4,1,1,2,3,4,1,,
+salumi,component,pork,salami|soppressata|mortadella|coppa|finocchiona,2,4,1,1,1,5,4,1,,
+lamb,category,protein,,4,4,1,1,1,1,3,1,,
+lamb chop,component,lamb,lamb rack|rack of lamb|lamb loin,4,4,1,1,1,1,3,1,,
+lamb shank,component,lamb,braised lamb|lamb shoulder|merguez,5,4,1,1,1,2,4,1,,
+poultry,category,protein,,3,2,1,1,1,1,2,1,,
+chicken,component,poultry,roast chicken|chicken roti|half chicken|poulet|pollo,3,2,1,1,1,1,2,1,,
+fried chicken,component,poultry,chicken schnitzel|katsu|karaage,4,4,1,1,1,3,2,1,,
+duck,component,poultry,duck breast|magret|duck confit|canard,4,4,1,1,1,1,3,1,,
+turkey,component,poultry,,3,2,1,1,1,1,2,1,,
+squab,component,poultry,pigeon|quail|poussin,3,3,1,1,1,1,3,1,,
+game,category,protein,,4,2,1,1,1,1,4,1,,
+venison,component,game,elk|deer|cervena,4,2,1,1,1,1,4,1,,
+bison,component,game,buffalo,4,3,1,1,1,1,4,1,,
+rabbit,component,game,lapin|hare|lievre,2,2,1,1,1,1,2,1,,lean braise
+boar,component,game,wild boar|cinghiale,4,3,1,1,1,1,4,1,,
+veal,component,protein,vitello|veal chop|osso buco|veal milanese,3,2,1,1,1,1,2,1,,
+offal,category,protein,,3,5,1,1,1,2,4,2,,
+liver,component,offal,chicken liver|duck liver|foie gras|pate|fegato|liver pate,3,5,1,1,1,2,4,2,,fat wants sweetness
+sweetbread,component,offal,ris de veau|animelle,3,5,1,1,1,2,4,1,,
+tongue,component,offal,lengua|beef tongue,4,4,1,1,1,2,4,1,,
+bone marrow,component,offal,marrow|midollo,3,5,1,1,1,2,5,1,,
+tripe,component,offal,trippa|menudo,3,3,1,1,1,2,4,2,,
+seafood,category,food,,2,2,1,1,1,2,2,1,,
+oily fish,category,seafood,,3,4,1,1,1,2,3,1,,
+salmon,component,oily fish,faroe salmon|king salmon|coho|ora king,3,4,1,1,1,1,2,1,,takes red
+tuna,component,oily fish,yellowfin|bluefin|ahi|toro|bonito,3,3,1,1,1,1,3,1,,tannin is bad with raw
+mackerel,component,oily fish,saba|sardine|anchovy|sgombro,3,5,1,1,1,4,3,1,,
+sardine,component,oily fish,sardina|tinned sardine|boquerones,3,5,1,1,1,4,3,1,,
+white fish,category,seafood,,2,2,1,1,1,1,1,1,,
+sole,component,white fish,dover sole|petrale|flounder|turbot|plaice,2,2,1,1,1,1,1,1,,
+halibut,component,white fish,cod|black cod|sea bass|branzino|snapper|corvina|hake|dorade,2,2,1,1,1,1,1,1,,
+trout,component,white fish,arctic char|steelhead,2,3,1,1,1,1,2,1,,
+mollusc,category,seafood,,2,1,1,1,1,3,3,1,,
+mussel,component,mollusc,moules|cozze,2,1,1,1,1,3,3,1,,brine
+scallop,component,mollusc,capesante|coquille|diver scallop,2,2,1,2,1,2,3,1,,sweet
+crustacean,category,seafood,,2,2,1,1,1,2,3,1,,
+shrimp,component,crustacean,prawn|gamba|langoustine|scampi|rock shrimp,2,2,1,1,1,2,3,1,,
+lobster,component,crustacean,homard|astice|langosta,3,3,1,2,1,2,3,1,,
+crab,component,crustacean,dungeness|king crab|blue crab|granchio,2,2,1,2,1,2,3,1,,
+cephalopod,category,seafood,,3,2,1,1,1,2,3,1,,
+octopus,component,cephalopod,polpo|pulpo,3,2,1,1,1,2,3,1,,
+squid,component,cephalopod,calamari|calamares|totani,2,2,1,1,1,2,3,1,,
+cured fish,category,seafood,bonito flakes|katsuobushi|salt cod|baccala|boquerones|conserva,2,4,1,1,1,4,4,1,,
+smoked salmon,component,cured fish,lox|gravlax|smoked trout|rillette|salmon rillette,2,4,1,1,1,4,4,1,,
+bottarga,component,cured fish,cured roe|mullet roe,1,2,1,1,1,5,5,1,,
+caviar,component,cured fish,roe|ikura|osetra|trout roe,1,3,1,1,1,5,5,1,,
+dairy,category,food,,2,4,2,1,1,2,2,1,,
+fresh cheese,category,dairy,burrata di bufala|queso fresco|halloumi|labneh cheese|quark,2,4,2,1,1,2,2,1,,
+burrata,component,fresh cheese,mozzarella|fior di latte|stracciatella|bufala,2,4,2,2,1,1,1,1,,
+goat cheese,component,fresh cheese,chevre|boucheron|crottin|banon,2,3,4,1,1,2,2,1,,SANCERRE affinity
+ricotta,component,fresh cheese,ricotta salata|farmers cheese,2,3,2,2,1,2,1,1,,
+feta,component,fresh cheese,,2,3,2,1,1,5,2,1,,
+aged cheese,category,dairy,asiago|grana|sbrinz|mahon|idiazabal|ricotta salata aged|piave|fontina|gruyere alpage,2,3,1,1,1,4,5,1,,
+parmesan,component,aged cheese,parmigiano|parmigiano reggiano|grana padano|pecorino|manchego,2,3,1,1,1,4,5,1,,
+gruyere,component,aged cheese,comte|emmental|raclette|beaufort|appenzeller,3,4,1,1,1,4,4,1,,
+cheddar,component,aged cheese,aged cheddar|gouda|mimolette,2,4,1,1,1,4,4,1,,
+blue cheese,category,dairy,roquefort|gorgonzola|stilton|cabrales|bleu|point reyes,3,5,1,1,1,5,4,3,require_sweet,sweet wine is a rule not a preference
+triple cream,component,dairy,brie|camembert|st andre|delice|robiola|taleggio|epoisses,3,5,1,1,1,2,2,1,,
+butter,component,dairy,beurre|beurre blanc|brown butter|beurre noisette|cultured butter,2,5,1,1,1,2,1,1,,
+cream,component,dairy,creme fraiche|heavy cream|panna|mascarpone|clotted cream,2,4,3,1,1,1,1,1,,
+yogurt,component,dairy,labneh|buttermilk|skyr|kefir,1,2,4,1,1,1,1,1,,
+vegetable,category,food,,1,1,1,1,1,1,1,2,,
+allium,category,vegetable,,1,1,1,2,1,1,2,1,,
+onion,component,allium,red onion|cipollini|shallot|scallion|spring onion,2,1,1,3,1,1,3,1,,sweet when cooked
+garlic,component,allium,green garlic|black garlic|garlic confit|aglio,1,1,1,1,1,1,2,1,,
+ramp,component,allium,wild leek|leek|poireau|nira,2,1,1,1,2,1,2,2,,aggressive allium
+brassica,category,vegetable,,2,1,1,1,1,1,2,3,,
+broccoli,component,brassica,broccolini|rapini|broccoli rabe|cime di rapa|romanesco,2,1,1,1,1,1,2,4,,bitter
+cauliflower,component,brassica,romanesco cauliflower,2,1,1,2,1,1,2,2,,
+cabbage,component,brassica,brussels sprout|savoy|napa cabbage|kraut|brussels sprouts|brussel sprout|brussel sprouts,2,1,2,1,1,1,2,3,,
+nightshade,category,vegetable,,1,1,3,2,1,1,2,1,,
+tomato,component,nightshade,confit tomato|sungold|heirloom tomato|pomodoro|cherry tomato,1,1,4,2,1,1,3,1,,acid
+eggplant,component,nightshade,aubergine|melanzane,2,2,1,1,1,1,3,2,,
+sweet pepper,component,nightshade,peppadew|piquillo|bell pepper|padron|shishito,1,1,2,3,2,2,1,1,,
+cherry pepper,component,nightshade,hot cherry pepper|pickled cherry pepper,1,1,4,3,2,2,1,1,,usually served pickled: sweet-sour and vinegary with mild heat. not the fruit
+root vegetable,category,vegetable,celeriac remoulade|black radish|watermelon radish,1,1,1,3,1,1,1,1,,
+carrot,component,root vegetable,carotte|petit carrot|baby carrot,1,1,1,3,1,1,1,1,,
+beet,component,root vegetable,beetroot|smoked beet|golden beet|barbabietola,2,1,2,3,1,1,2,2,,PINOT affinity
+turnip,component,root vegetable,rutabaga|parsnip|celeriac|salsify|sunchoke,2,1,1,2,1,1,1,2,,
+radish,component,root vegetable,daikon|watermelon radish|breakfast radish,1,1,1,1,2,1,1,3,,
+tuber,category,vegetable,,3,2,1,1,1,2,1,1,,
+potato,component,tuber,pommes|pomme puree|frites|fries|gratin|robuchon|rissolees|pommes puree|pee wee potato|pee wee potatoes|pommes frites|duck fat potato|hasselback|french fries|french fry|steak fries|shoestring fries|waffle fries|curly fries|home fries,3,2,1,1,1,2,1,1,,neutral. follows the plate
+sweet potato,component,tuber,yam|batata,3,2,1,4,1,1,1,1,,
+legume,category,vegetable,edamame|black lentil|split pea|cowpea,3,1,1,1,1,1,2,1,,
+pea,component,legume,snap pea|sugar snap|pea shoot|petit pois|english pea,1,1,1,2,1,1,1,1,,
+green bean,component,legume,haricot vert|romano bean|wax bean,1,1,1,1,1,1,1,2,,
+bean,component,legume,white bean|cannellini|borlotti|mayocoba|chickpea|ceci|fava|tarbais bean|tarbais|gigante bean|flageolet|butter bean|lima bean|black eyed pea,3,1,1,1,1,1,2,1,,
+lentil,component,legume,beluga lentil|puy lentil|lenticchie,3,1,1,1,1,1,3,2,,earthy
+leaf,category,vegetable,,1,1,1,1,1,1,1,2,,
+lettuce,component,leaf,butter lettuce|little gem|romaine|bibb|baby gem,1,1,1,1,1,1,1,2,,
+bitter green,component,leaf,radicchio|endive|escarole|frisee|treviso|puntarelle|chicory|castelfranco|tardivo|dandelion green|sugarloaf chicory|belgian endive,1,1,1,1,1,1,1,5,,bitter. tannin compounds it
+peppery green,component,leaf,arugula|rocket|watercress|mizuna|mustard green,1,1,1,1,2,1,1,3,,
+spinach,component,leaf,chard|kale|cavolo nero|braising greens|bitter greens,2,1,1,1,1,1,2,2,,
+mushroom,category,vegetable,lion's mane|black trumpet|matsutake|beech mushroom|king oyster|duxelles|mushroom conserva|truffle butter,3,1,1,1,1,1,5,2,,THE EARTH AXIS
+morel,component,mushroom,morille,3,1,1,1,1,1,5,2,,jura and burgundy affinity
+porcini,component,mushroom,cep|funghi porcini,3,1,1,1,1,1,5,2,,
+maitake,component,mushroom,hen of the woods|chanterelle|hedgehog|trumpet|oyster mushroom|shiitake|cremini,3,1,1,1,1,1,4,2,,
+truffle,component,mushroom,black truffle|white truffle|tartufo|perigord truffle,2,2,1,1,1,1,5,1,,jura pinot nebbiolo affinity
+artichoke,component,vegetable,carciofo|barigoule|sunchoke artichoke,2,1,2,1,1,1,2,3,hard_fail_oak_tannin,CYNARIN. wine killer
+asparagus,component,vegetable,asparago|sprue,2,1,1,1,1,1,2,2,penalty_oak,sulfurous
+corn,component,vegetable,sweet corn|mais|polenta corn,2,1,1,4,1,1,2,1,,
+squash,component,vegetable,zucchini|courgette|butternut|delica|kabocha|pumpkin|patty pan|romanesco squash|spaghetti squash|calabaza,2,1,1,3,1,1,1,1,,
+cucumber,component,vegetable,cetriolo|persian cucumber,1,1,1,1,1,1,1,1,,
+avocado,component,vegetable,,2,4,1,1,1,1,1,1,,
+fennel,component,vegetable,finocchio|bulb fennel,1,1,1,2,1,1,1,1,,
+starch,category,food,,3,1,1,1,1,1,1,1,,
+pasta,component,starch,tagliatelle|linguine|cavatelli|tajarin|agnolotti|gnocchi|risotto|rice,3,1,1,1,1,1,1,1,,
+bread,component,starch,sourdough|country toast|crouton|focaccia|pita|baguette|rye|grissini|carta di musica|naan|injera|cornbread|brioche,2,1,1,1,1,2,2,1,,
+grain,component,starch,farro|barley|quinoa|freekeh|bulgur|couscous,3,1,1,1,1,1,2,1,,
+fruit,category,food,,1,1,3,3,1,1,1,1,,
+citrus,component,fruit,lemon|lime|grapefruit|yuzu|blood orange|orange|calamansi|preserved lemon|meyer lemon|sudachi|kumquat|bergamot|finger lime|key lime|preserved lemon puree|lemon confit|orange blossom|citron,1,1,5,2,1,1,1,2,require_acid,brutal on wine
+stone fruit,component,fruit,peach|apricot|plum|nectarine|cherry,1,1,3,4,1,1,1,1,,
+berry,component,fruit,strawberry|raspberry|blackberry|blueberry|currant,1,1,3,3,1,1,1,1,,
+pome,component,fruit,apple|pear|quince,1,1,3,3,1,1,1,1,,
+rhubarb,component,fruit,,1,1,5,2,1,1,1,2,,
+tropical fruit,component,fruit,mango|pineapple|passionfruit|guava|coconut,1,1,3,4,1,1,1,1,,
+dried fruit,component,fruit,raisin|dried grape|fig|date|prune|dried cherry,1,1,1,5,1,1,1,1,require_sweet,
+sauce,category,food,,2,3,2,1,1,2,3,1,,
+butter sauce,component,sauce,beurre blanc|hollandaise|bearnaise|beurre citron|burro fuso|maitre d'hotel butter|cafe de paris|brown butter vinaigrette|beurre rouge,2,5,2,1,1,2,1,1,,
+cream sauce,component,sauce,alfredo|fonduta|bechamel|veloute,2,4,1,1,1,2,2,1,,
+tomato sauce,component,sauce,pomodoro|ragu|marinara|sugo|arrabbiata|lamb ragu|beef ragu|bolognese|sugo di carne|amatriciana|puttanesca|vodka sauce,2,2,4,2,1,1,3,1,,
+jus,component,sauce,demi glace|reduction|pan sauce|madeira reduction|red wine reduction|bordelaise|perigourdine|sauce robert|veal jus|chicken jus|bone marrow jus,2,2,1,2,1,3,5,1,,
+vinaigrette,component,sauce,dijon vinaigrette|sauce vierge|salsa verde|gremolata|chimichurri|mignonette|mignonette sauce,1,2,5,1,1,1,1,1,require_acid,out-acids a soft wine
+aioli,component,sauce,mayonnaise|remoulade|tartar sauce|garlic aioli|aquafaba aioli,1,5,2,1,1,2,1,1,,
+bbq sauce,component,sauce,barbecue sauce|alabama white|kansas city sauce,1,1,2,4,2,2,3,1,,
+condiment,category,food,,1,1,4,1,1,3,2,2,,
+vinegar,component,condiment,quince vinegar|sherry vinegar|balsamic|banyuls|px vinegar,1,1,5,2,1,1,1,1,require_acid,
+pickle,component,condiment,cornichon|jardiniere|pickled onion|giardiniera|escabeche|kraut,1,1,5,2,1,4,1,1,require_acid,
+mustard,component,condiment,dijon|grain mustard|moutarde|mostarda,1,1,3,1,3,2,2,2,,
+caper,component,condiment,caperberry|caper|salted caper,1,1,4,1,1,5,2,2,,
+olive,component,condiment,picholine|castelvetrano|nicoise|kalamata|taggiasca|olive tapenade,1,3,2,1,1,5,3,2,,
+anchovy,component,condiment,colatura|garum|anchovy paste,1,2,1,1,1,5,5,1,,
+heat,category,food,,1,1,1,1,5,1,1,1,hard_fail_alcohol_tannin,
+chili,component,heat,aleppo|calabrian chili|chili crisp|harissa|gochujang|jalapeno|serrano|cayenne|nduja|fresno|guajillo|ancho|piri piri|sambal|chile de arbol|espelette,1,1,1,1,5,1,1,1,hard_fail_alcohol_tannin,amplifies alcohol and tannin
+peppercorn,component,heat,black pepper|cracked pepper|au poivre|szechuan pepper,1,1,1,1,3,1,1,1,,SYRAH affinity. rotundone
+horseradish,component,heat,wasabi|prepared horseradish,1,1,1,1,4,1,1,1,,
+ginger,component,heat,,1,1,2,1,3,1,1,1,,
+herb,category,food,,1,1,1,1,1,1,1,1,,
+soft herb,component,herb,parsley|basil|cilantro|dill|chive|tarragon|chervil|mint|fines herbes|lovage|shiso|perilla|epazote|marjoram fresh|borage|sorrel|nasturtium|celery leaf,1,1,1,1,1,1,1,1,,
+woody herb,component,herb,thyme|rosemary|sage|oregano|marjoram|bay leaf,1,1,1,1,1,1,1,1,,
+anise,component,herb,pernod|fennel seed|star anise|tarragon anise|absinthe,1,1,1,2,1,1,1,1,,chenin affinity
+warm spice,component,herb,cardamom|cinnamon|clove|nutmeg|allspice|dukkah|za atar|cumin|coriander seed|fennel pollen|sumac|harissa spice|ras el hanout|curry|garam masala|turmeric|paprika,1,1,1,2,1,1,1,1,,
+smoke,component,herb,smoked paprika|wood smoke|charred|binchotan,2,1,1,1,1,1,3,2,,
+nut,category,food,,1,4,1,1,1,1,2,2,,
+walnut,component,nut,noix,1,4,1,1,1,1,2,3,,jura and oxidative affinity
+hazelnut,component,nut,noisette|filbert,1,4,1,1,1,1,2,2,,
+almond,component,nut,marcona|mandorla,1,4,1,1,1,1,2,2,,
+pistachio,component,nut,pistacchio,1,4,1,1,1,2,1,1,,
+pecan,component,nut,,1,4,1,3,1,1,1,1,,
+seed,component,nut,sesame|tahini|benne|sunflower seed|pumpkin seed|nigella,2,4,1,1,1,1,2,2,,
+sweet,category,food,,2,3,1,5,1,1,1,1,require_sweet,
+sugar,component,sweet,caramel|honey|maple|confiture|jam|marmalade|gelee|honeycomb|honey comb|sorghum|molasses|date syrup|agave,1,1,1,5,1,1,1,1,require_sweet,
+chocolate,component,sweet,valrhona|cacao|dark chocolate|ganache,3,4,1,4,1,1,2,3,require_sweet,
+pastry,component,sweet,tart|tatin|choux|profiterole|puff pastry|shortcrust|meringue,2,3,1,3,1,1,1,1,,
+ice cream,component,sweet,gelato|sorbet|granita|glacee|semifreddo,2,3,2,4,1,1,1,1,,
+ferment,category,food,,1,1,2,2,1,5,5,1,,
+soy,component,ferment,soy sauce|tamari|shoyu|ponzu|miso,1,1,1,2,1,5,5,1,,
+fish sauce,component,ferment,nam pla|colatura,1,1,1,1,1,5,5,1,,
+egg,component,food,jammy egg|soft egg|fried egg|deviled egg|oeuf|uovo,2,3,1,1,1,1,3,1,,coats and flattens tannin
+broth,component,food,bone broth|consomme|dashi|stock|brodo,3,2,1,1,1,3,5,1,,
+celery,component,vegetable,celery root|celery heart|celery leaf|cel,1,1,1,1,1,1,2,2,,mirepoix. vegetal and faintly bitter
+saffron,component,herb,zafferano|safran,1,1,1,1,1,1,2,2,,bitter-floral. rice and shellfish dishes
+west coast oyster,component,mollusc,kumamoto|shigoku|hama hama|totten inlet|fanny bay|pacific oyster,1,1,2,1,1,4,3,1,,green cucumber melon from the plankton and tides. Amy's rule.
+east coast oyster,component,mollusc,bluepoint|wellfleet|island creek|malpeque|belon|kusshi|atlantic oyster|oyster|huitre,1,1,2,1,1,4,3,1,,brinier and more mineral than west coast
+gulf oyster,component,mollusc,apalachicola|gulf coast oyster,2,1,1,1,1,4,4,1,,large and overbearing. Amy: basically fish. Louisiana only.
+clam,component,mollusc,vongole|littleneck|manila clam|razor clam,2,1,1,1,1,3,3,1,,brine; split out of mussel 2026-09-17, same axes
+raw,method,uncooked,crudo|tartare|sashimi|on the half shell|raw bar,1,1,1,1,1,2,2,1,,salinity without heat
+acid_cured,method,uncooked,ceviche|aguachile|tiradito|leche de tigre,1,1,4,1,1,2,2,1,,the cure is the acid; escabeche is already a pickle alias
+grilled,method,cooked,char-grilled|plancha|robata,2,1,1,1,1,1,3,3,,char reads bitter and umami; charred is already a smoke alias
+seared,method,cooked,pan-seared|blackened|sauteed,2,2,1,1,1,1,3,2,,maillard without the char
+poached,method,cooked,butter-poached|steamed|boiled|court bouillon,1,1,1,1,1,1,1,1,,gentlest method: neutral on every axis BY DESIGN, carried so steamed RESOLVES and can trigger a rule

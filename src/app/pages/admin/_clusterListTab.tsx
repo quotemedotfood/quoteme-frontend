@@ -15,7 +15,12 @@ import {
   type BulkUpdatePayload,
   type BulkUpdateResult,
   type BulkUpdateWarning,
+  getTastingProfilesForHeads,
+  listTastingProfiles,
+  type HeadTastingProfiles,
+  type TastingProfile,
 } from '../../services/adminApi';
+import { AssignTastingProfilesModal } from './_tastingProfilesTab';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -653,6 +658,12 @@ export function ClusterListTab() {
   const [formType, setFormType] = useState('');
   const [compoundType, setCompoundType] = useState('');
   const [createdVia, setCreatedVia] = useState('');
+  // '' any, 'none' no tasting profile yet, otherwise a tasting profile's id
+  const [tasting, setTasting] = useState('');
+  const [allProfiles, setAllProfiles] = useState<TastingProfile[]>([]);
+  useEffect(() => {
+    listTastingProfiles().then((res) => { if (res.data) setAllProfiles(res.data.profiles); });
+  }, []);
   const [hasBeenEdited, setHasBeenEdited] = useState(false);
   const [recentlyEdited, setRecentlyEdited] = useState(false);
   const [page, setPage] = useState(1);
@@ -675,6 +686,21 @@ export function ClusterListTab() {
   // Bulk edit modal
   const [showBulkModal, setShowBulkModal] = useState(false);
 
+  // Tasting profiles (Moose 2026-11-17): the profiles on the heads shown, by
+  // head id, and the modal that adds or removes them on the ticked heads.
+  const [headProfiles, setHeadProfiles] = useState<Record<string, HeadTastingProfiles>>({});
+  const [showProfilesModal, setShowProfilesModal] = useState(false);
+  const loadHeadProfiles = useCallback(async (ids: string[]) => {
+    const res = await getTastingProfilesForHeads(ids);
+    if (!res.data) return;
+    const next: Record<string, HeadTastingProfiles> = {};
+    res.data.heads.forEach((h) => { next[h.cluster_label_id] = h; });
+    setHeadProfiles(next);
+  }, []);
+  useEffect(() => {
+    loadHeadProfiles(rows.map((r) => r.id));
+  }, [rows, loadHeadProfiles]);
+
   // Debounce ref for text input
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -690,6 +716,8 @@ export function ClusterListTab() {
       form_type: formType || undefined,
       compound_type: (compoundType || undefined) as ClusterLabelListFilters['compound_type'],
       created_via: createdVia || undefined,
+      tasting: tasting === 'none' ? 'none' : undefined,
+      tasting_profile_id: tasting && tasting !== 'none' ? tasting : undefined,
       has_been_edited: hasBeenEdited || undefined,
       recently_edited: recentlyEdited || undefined,
       page,
@@ -714,13 +742,13 @@ export function ClusterListTab() {
     } else {
       setError(res.error || 'Failed to load cluster labels.');
     }
-  }, [q, category, formType, compoundType, createdVia, hasBeenEdited, recentlyEdited, page, sortCol, sortDir]);
+  }, [q, category, formType, compoundType, createdVia, tasting, hasBeenEdited, recentlyEdited, page, sortCol, sortDir]);
 
   // Fetch on mount and whenever non-text filters, page, or sort changes
   useEffect(() => {
     fetchData();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [category, formType, compoundType, createdVia, hasBeenEdited, recentlyEdited, page, sortCol, sortDir]);
+  }, [category, formType, compoundType, createdVia, tasting, hasBeenEdited, recentlyEdited, page, sortCol, sortDir]);
 
   // ── Text input with debounce ──────────────────────────────────────────────
 
@@ -778,6 +806,7 @@ export function ClusterListTab() {
     setFormType('');
     setCompoundType('');
     setCreatedVia('');
+    setTasting('');
     setHasBeenEdited(false);
     setRecentlyEdited(false);
     setActiveCard(null);
@@ -895,6 +924,15 @@ export function ClusterListTab() {
               Apply correction to selected
             </button>
           )}
+          {!bulkCapped && (
+            <button
+              type="button"
+              onClick={() => setShowProfilesModal(true)}
+              className="text-sm px-3 py-1.5 border border-[#2A2A2A] text-[#2A2A2A] rounded-md hover:bg-white"
+            >
+              Tasting profiles
+            </button>
+          )}
           <button
             type="button"
             onClick={() => setSelectedIds(new Set())}
@@ -972,6 +1010,19 @@ export function ClusterListTab() {
               {CREATED_VIA_OPTIONS.map((v) => <option key={v} value={v}>{v}</option>)}
             </select>
           </div>
+
+          <div className="min-w-[200px]">
+            <label className="block text-xs font-medium text-[#4F4F4F] mb-1">Tasting profile</label>
+            <select
+              value={tasting}
+              onChange={(e) => { setTasting(e.target.value); setPage(1); setActiveCard(null); }}
+              className="w-full border border-gray-200 rounded-md px-3 py-2 text-sm text-[#2A2A2A] bg-white focus:outline-none focus:ring-2 focus:ring-[#7FAEC2]"
+            >
+              <option value="">(any)</option>
+              <option value="none">None yet</option>
+              {allProfiles.map((p) => <option key={p.id} value={p.id}>#{p.key}</option>)}
+            </select>
+          </div>
         </div>
 
         {/* Second row: checkboxes + reset */}
@@ -1039,6 +1090,7 @@ export function ClusterListTab() {
                 <SortableTh col="confidence" label="Confidence" currentCol={sortCol} currentDir={sortDir} onSort={handleSort} />
                 <SortableTh col="status" label="Status" currentCol={sortCol} currentDir={sortDir} onSort={handleSort} />
                 <SortableTh col="created_via" label="Created via" currentCol={sortCol} currentDir={sortDir} onSort={handleSort} />
+                <th className="px-3 py-2">Tasting profiles</th>
                 <th className="px-3 py-2">Flags</th>
                 <SortableTh col="last_edited" label="Last edited" currentCol={sortCol} currentDir={sortDir} onSort={handleSort} />
                 <th className="px-3 py-2">Action</th>
@@ -1047,14 +1099,14 @@ export function ClusterListTab() {
             <tbody>
               {!loading && rows.length === 0 && (
                 <tr>
-                  <td colSpan={11} className="px-3 py-8 text-center text-sm text-[#4F4F4F] italic">
+                  <td colSpan={12} className="px-3 py-8 text-center text-sm text-[#4F4F4F] italic">
                     No cluster labels found.
                   </td>
                 </tr>
               )}
               {loading && (
                 <tr>
-                  <td colSpan={11} className="px-3 py-8 text-center text-sm text-[#4F4F4F]">
+                  <td colSpan={12} className="px-3 py-8 text-center text-sm text-[#4F4F4F]">
                     Loading…
                   </td>
                 </tr>
@@ -1089,6 +1141,21 @@ export function ClusterListTab() {
                   </td>
                   <td className="px-3 py-2 text-[#4F4F4F]">{row.status}</td>
                   <td className="px-3 py-2 text-[#4F4F4F]">{row.created_via}</td>
+                  <td className="px-3 py-2">
+                    {(headProfiles[row.id]?.keys.length ?? 0) > 0 ? (
+                      <span className="flex flex-wrap gap-1">
+                        {headProfiles[row.id].keys.map((k) => (
+                          <span key={k} className="text-xs px-1.5 py-0.5 rounded-full bg-[#f0f7fb] border border-[#7FAEC2] text-[#2A2A2A] whitespace-nowrap">
+                            #{k}
+                          </span>
+                        ))}
+                      </span>
+                    ) : headProfiles[row.id]?.not_for_pairing ? (
+                      <span className="text-xs px-1.5 py-0.5 rounded-full bg-gray-100 border border-gray-300 text-[#4F4F4F] whitespace-nowrap">not for pairing</span>
+                    ) : (
+                      <span className="text-gray-300">-</span>
+                    )}
+                  </td>
                   <td className="px-3 py-2 text-center">
                     {row.identity_flags_count > 0 ? (
                       <span
@@ -1142,6 +1209,15 @@ export function ClusterListTab() {
           </button>
         </div>
       </div>
+
+      {/* Tasting profiles on the ticked heads */}
+      {showProfilesModal && (
+        <AssignTastingProfilesModal
+          headIds={[...selectedIds]}
+          onClose={() => setShowProfilesModal(false)}
+          onDone={() => (tasting ? fetchData() : loadHeadProfiles(rows.map((r) => r.id)))}
+        />
+      )}
 
       {/* Bulk edit modal */}
       {showBulkModal && (
