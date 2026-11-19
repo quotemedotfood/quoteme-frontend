@@ -11,13 +11,16 @@
  *       tables are, and the source says so
  *   PL4 a lane is at most four bottles, a pushed bottle that fits goes first,
  *       and a bottle without a price is never shown
+ *   PL5 a draft food is paired from its own scores alone: the picks equal
+ *       pairItBottles on a table holding that one food, heavy and light
+ *       scores pick differently, and the shared tables are never changed
  */
 import { describe, expect, it } from 'vitest';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { pairItBottles } from '../../../../vendor/pairitEngine/pairItKinds.js';
-import { ENGINE_PIN, LOCAL_TABLES, fitBottles, pickKinds, tablesFor, engineDish } from './pairitLookup';
+import { ENGINE_PIN, LOCAL_TABLES, fitBottles, pickKinds, pickKindsForScores, tablesFor, engineDish } from './pairitLookup';
 
 const VENDOR = join(__dirname, '../../../../vendor/pairitEngine');
 
@@ -88,5 +91,27 @@ describe('PL4 a lane of bottles', () => {
     expect(lane.length).toBe(4);
     expect(lane[0].id).toBe('6');
     expect(lane.map((b) => b.id)).not.toContain('3');
+  });
+});
+
+describe('PL5 a draft food pairs from its own scores', () => {
+  const heavy = { weight: 5, fat: 4, acid: 1, sweetness: 1, heat: 1, salt: 3, umami: 4, bitter: 1 };
+  const light = { weight: 1, fat: 1, acid: 4, sweetness: 1, heat: 1, salt: 2, umami: 1, bitter: 1 };
+
+  it('gives what pairItBottles gives for a table holding that one food', () => {
+    const picks = pickKindsForScores('barbecue ribs', heavy, KINDS, LOCAL_TABLES);
+    const T2 = { ...LOCAL_TABLES, dish: { ...LOCAL_TABLES.dish, 'barbecue ribs': { ...heavy, richness: 1 } } };
+    const [group] = pairItBottles([{ id: 'x', name: 'barbecue ribs', components: ['barbecue ribs'] }], KINDS, T2, { bottles: 1 }).groups;
+    expect(picks.traditional.map((k) => k.id)).toEqual(group.traditional.map((t) => t.kind.id));
+    expect(picks.adventurous?.id).toEqual(group.adventurous?.kind.id);
+    expect(picks.traditional.length).toBe(3);
+  });
+
+  it('heavy and light scores pick differently, and the shared tables are untouched', () => {
+    const a = pickKindsForScores('draft heavy', heavy, KINDS, LOCAL_TABLES).traditional.map((k) => k.id);
+    const b = pickKindsForScores('draft light', light, KINDS, LOCAL_TABLES).traditional.map((k) => k.id);
+    expect(a).not.toEqual(b);
+    expect(LOCAL_TABLES.dish['draft heavy']).toBeUndefined();
+    expect(LOCAL_TABLES.dish['draft light']).toBeUndefined();
   });
 });

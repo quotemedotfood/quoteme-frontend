@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { AgentDraftsSection } from './_agentDraftsSection';
 import { createPortal } from 'react-dom';
 import { Pencil, ArrowUp, ArrowDown, ChevronDown, ChevronRight, Undo2, RotateCcw } from 'lucide-react';
 import {
@@ -2136,6 +2137,8 @@ export function QMAdminKnowledgeGapFiller() {
           Show archived
         </label>
       </div>
+
+      <AgentDraftsSection />
 
       <div className="space-y-8">
         {/* ─ Table 1: Tails Queue ─ */}

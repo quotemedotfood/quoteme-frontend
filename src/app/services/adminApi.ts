@@ -4439,3 +4439,104 @@ export async function getCorpusLookupBottles(store: string, kindId: string): Pro
 export async function getStoredRulesBundle(): Promise<ApiResponse<StoredRulesBundle>> {
   return fetchWithAuth('/api/v1/admin/corpus_lookup/rules_bundle');
 }
+
+// ── Draft taste profiles (Moose Q95 to Q98; QuoteMe Api::V1::Admin::AgentDraftsController) ──
+// A draft's scores are the tags' existing tasting profiles combined on the
+// server. Nothing here ever sends a score: Edit sends profile ids and the
+// server recomputes.
+export interface AgentDraftTag {
+  cluster_label_id: string;
+  name: string;
+  from: 'words' | 'agent' | string;
+  pairme_dish_axis_ids?: string[];
+}
+
+export interface AgentDraftEntry {
+  id: string | null;
+  status: 'draft' | 'confirmed' | 'rejected' | string;
+  food: string | null;
+  component_text: string | null;
+  cluster_label_id: string | null;
+  name: string | null;
+  category: string | null;
+  tags: AgentDraftTag[];
+  pairme_dish_axis_ids: string[];
+  scores: Partial<Record<TastingAxis, number | null>> | null;
+  rules: string[];
+  left_out_profile_ids: string[];
+  made_at: string | null;
+  store_slugs: string[];
+  occurrence_count: number | null;
+  default_category?: string | null;
+  when: string | null;
+}
+
+export interface AgentDraftsResponse {
+  entries: AgentDraftEntry[];
+  categories: string[];
+}
+
+export interface DraftProfileOption {
+  id: string;
+  key: string;
+  scores: Partial<Record<TastingAxis, number | null>>;
+  rule: string | null;
+}
+
+export interface DraftPreview {
+  profile_ids: string[];
+  keys: string[];
+  scores: Partial<Record<TastingAxis, number | null>>;
+  rules: string[];
+}
+
+export interface CorpusAttribute {
+  id: string;
+  status: string;
+  attribute: string;
+  for_component_text: string | null;
+  gap_submission_id: string | null;
+  reason: string | null;
+  origin: string | null;
+  submitted_at: string;
+  reviewed_at: string | null;
+  review_notes: string | null;
+}
+
+export async function getAgentDrafts(): Promise<ApiResponse<AgentDraftsResponse>> {
+  return fetchWithAuth('/api/v1/admin/agent_drafts');
+}
+
+export async function searchDraftProfiles(q: string): Promise<ApiResponse<{ profiles: DraftProfileOption[] }>> {
+  return fetchWithAuth(`/api/v1/admin/agent_drafts/profiles?${new URLSearchParams({ q }).toString()}`);
+}
+
+export async function previewDraftProfiles(profileIds: string[]): Promise<ApiResponse<DraftPreview>> {
+  return fetchWithAuth('/api/v1/admin/agent_drafts/preview', { method: 'POST', body: JSON.stringify({ profile_ids: profileIds }) });
+}
+
+export async function confirmAgentDraft(
+  id: string,
+  body: { name: string; category: string; profile_ids: string[]; notes?: string },
+): Promise<ApiResponse<{ cluster_label_id: string; name: string; category: string; entry: AgentDraftEntry }>> {
+  return fetchWithAuth(`/api/v1/admin/agent_drafts/${id}/confirm`, {
+    method: 'POST',
+    body: JSON.stringify({ name: body.name, category: body.category, profile_ids: body.profile_ids, notes: body.notes }),
+  });
+}
+
+export async function rejectAgentDraft(id: string, notes?: string): Promise<ApiResponse<{ entry: AgentDraftEntry }>> {
+  return fetchWithAuth(`/api/v1/admin/agent_drafts/${id}/reject`, { method: 'POST', body: JSON.stringify({ notes }) });
+}
+
+export async function getCorpusAttributes(status = 'pending'): Promise<ApiResponse<{ attributes: CorpusAttribute[] }>> {
+  return fetchWithAuth(`/api/v1/admin/corpus_attributes?${new URLSearchParams({ status }).toString()}`);
+}
+
+export async function approveCorpusAttribute(id: string): Promise<ApiResponse<CorpusAttribute>> {
+  return fetchWithAuth(`/api/v1/admin/corpus_attributes/${id}/approve`, { method: 'POST', body: '{}' });
+}
+
+export async function dismissCorpusAttribute(id: string): Promise<ApiResponse<CorpusAttribute>> {
+  return fetchWithAuth(`/api/v1/admin/corpus_attributes/${id}/dismiss`, { method: 'POST', body: '{}' });
+}
