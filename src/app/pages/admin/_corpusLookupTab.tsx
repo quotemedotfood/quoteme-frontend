@@ -255,8 +255,7 @@ export function CorpusLookupTab() {
               <>
                 <div className="text-xs text-gray-600 mb-3">
                   {answer.store.name} · {answer.store.live ? 'live' : 'not live: shoppers cannot open it yet'} ·{' '}
-                  {answer.store.catalog_id ? `catalog ${answer.store.catalog_id}` : 'no catalog'} · price rule {answer.store.price_rule}
-                  {answer.store.price_rule_stored ? '' : ' (none set, read as list x 1.5)'} · {answer.store.bottles} bottles ·{' '}
+                  {answer.store.catalog_id ? `catalog ${answer.store.catalog_id}` : 'no catalog'} · shelf price · {answer.store.bottles} bottles ·{' '}
                   {answer.kinds.length} kinds from {answer.kinds_source === 'kind_terms' ? "the store's own kind terms" : 'the kinds file'}
                 </div>
                 <div className="text-[11px] text-gray-400 mb-3">

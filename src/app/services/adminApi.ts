@@ -4327,8 +4327,6 @@ export interface CorpusLookupStore {
   name: string;
   live: boolean;
   catalog_id?: string | null;
-  price_rule_stored?: string | null;
-  price_rule?: string;
   bottles?: number;
   has_catalog?: boolean;
 }
