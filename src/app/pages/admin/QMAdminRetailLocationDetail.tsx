@@ -30,6 +30,7 @@ import {
 } from '../../services/adminApi';
 import { ADMIN_PAGE_FRAME, ADMIN_PAGE_FRAME_STYLE } from '../../components/admin/adminPageFrame';
 import { RetailStatusPill, retailStatusLabel } from './QMAdminRetailLocations';
+import { PairmeFlowCard } from '../../components/PairmeFlowCard';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const LOGO_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
@@ -314,6 +315,22 @@ export function RetailLocationDetail({ locationId }: { locationId: string }) {
           </div>
         )}
       </div>
+
+      {/* THE STORE'S QR CODE (Moose 2026-11-18), the restaurant's card. The
+          server sends it only while the store is live; a prospect's link
+          answers 404, so there is no code to print yet. */}
+      {store.pairit_qr ? (
+        <PairmeFlowCard
+          flow={store.pairit_qr}
+          title="PairIt link and QR code"
+          blurb="Shoppers scan this code, or open this link, to pair a wine from this store's shelf."
+        />
+      ) : (
+        <div className={card} data-testid="store-qr-pending">
+          <p className={heading}>PairIt link and QR code</p>
+          <p className="text-sm text-gray-500">Mark live to get the QR.</p>
+        </div>
+      )}
 
       <div className={card}>
         <p className={heading}>Logo and co-brand</p>
