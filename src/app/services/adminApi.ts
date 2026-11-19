@@ -541,6 +541,8 @@ export async function downloadDistributorExport(distributorId: string, type: 'ca
 export interface PairmeFlow {
   url: string;
   qr_png: string;
+  /** An SVG data URI of the same code, when the server sends one (a store's code does). */
+  qr_svg?: string;
 }
 
 export interface AdminRestaurantDetail {
@@ -2514,7 +2516,6 @@ export async function detachHotelOutlet(hotelId: string, restaurantId: string): 
 // A group and a catalog are set by id, never by name.
 
 export type RetailStatus = 'active' | 'prospect';
-export type RetailPriceRule = 'shelf' | 'list_x_1_5';
 
 export interface AdminRetailLocation {
   id: string;
@@ -2543,10 +2544,6 @@ export interface AdminRetailCatalog {
   wines_shown: number;
   wines_hidden: number;
   last_loaded_at: string | null;
-  /** What a shopper is shown: the shelf price as given, or the list price x 1.5. */
-  price_rule: RetailPriceRule;
-  /** False when nobody has set a rule; the catalog then reads as list_x_1_5. */
-  price_rule_set: boolean;
 }
 
 /** A store's Stripe plan, read from the subscription made by hand in Stripe (QuoteMe #971). */
@@ -2568,11 +2565,15 @@ export interface AdminRetailLocationDetail extends AdminRetailLocation {
   logo_url: string | null;
   /** The store's Stripe plan, or null until it is linked. */
   billing?: AdminRetailBilling | null;
+  /** The store's PairIt link with no spot: app.pairme.wine/q/<slug>. */
+  pairit_url?: string | null;
+  /** The store's QR code for that link, PNG and SVG at print size; null unless the store is live. */
+  pairit_qr?: PairmeFlow | null;
   catalog: AdminRetailCatalog | null;
   contacts: Array<Omit<AdminRestaurantContact, 'restaurant_id'>>;
 }
 
-/** Only the keys sent change. price_rule is written on the catalog the location points at. */
+/** Only the keys sent change. There is no price rule: a store's price is always its shelf price as given. */
 export type AdminRetailLocationInput = Partial<{
   name: string;
   address_line_1: string | null;
@@ -2586,7 +2587,6 @@ export type AdminRetailLocationInput = Partial<{
   co_branded: boolean;
   restaurant_group_id: string | null;
   catalog_id: string | null;
-  price_rule: RetailPriceRule;
 }>;
 
 /** Every store by name; q narrows on name or city, status on live or prospect. */
@@ -4314,4 +4314,109 @@ export async function reviewAdminFeedbackMemo(id: string): Promise<ApiResponse<A
 
 export async function deleteAdminFeedbackAudio(id: string): Promise<ApiResponse<AdminFeedbackMemoChange>> {
   return fetchWithAuth(`/api/v1/admin/feedback_memos/${id}/audio`, { method: 'DELETE' });
+}
+
+// ── Corpus lookup (Moose 2026-11-18): a food's cluster labels, their tasting
+// profile links, not_for_pairing, and a store's PairIt kinds and bottles.
+// Read-only. Writer: none. Server: Api::V1::Admin::CorpusLookupController
+// (Pairme::CorpusLookup). Reader: pages/admin/_corpusLookupTab.tsx.
+
+export interface CorpusMatch {
+  corpus_match: 'matched' | 'suggest' | 'none';
+  corpus_id: string | null;
+  corpus_name: string | null;
+  suggestion: string | null;
+  suggestion_id: string | null;
+  suggestion_confidence: number | null;
+}
+
+export interface CorpusLookupProfile {
+  id: string;
+  key: string;
+  kind: string;
+  scores: Partial<Record<TastingAxis, number | null>>;
+  rule: string;
+  link_source: string;
+}
+
+export interface CorpusLookupLabel {
+  id: string;
+  canonical_product: string;
+  category: string | null;
+  status: string;
+  created_via: string;
+  merged_into_id: string | null;
+  not_for_pairing: boolean;
+  corpus: 'matched' | 'suggested' | null;
+  tasting_profiles: CorpusLookupProfile[];
+  combined: { scores: Partial<Record<TastingAxis, number | null>>; rules: string[] } | null;
+}
+
+export interface CorpusLookupStore {
+  slug: string;
+  name: string;
+  live: boolean;
+  catalog_id?: string | null;
+  price_rule_stored?: string | null;
+  price_rule?: string;
+  bottles?: number;
+  has_catalog?: boolean;
+}
+
+export interface PairItKind {
+  id: string;
+  name: string;
+  descriptor: string;
+  pronunciation: string | null;
+  flag: 'traditional' | 'adventurous' | null;
+  profile: { colour: string; grape_head: string; region_head: string };
+  bottle_count: number;
+  push?: 'big_push' | 'push' | null;
+}
+
+export interface CorpusLookupResponse {
+  q: string;
+  corpus_match: CorpusMatch | null;
+  labels: CorpusLookupLabel[];
+  name_matches: number;
+  stores: CorpusLookupStore[];
+  store: CorpusLookupStore | null;
+  kinds_source: 'kind_terms' | 'kinds_file';
+  kinds: PairItKind[];
+}
+
+export interface PairItBottle {
+  id: string;
+  producer: string;
+  wine: string;
+  region: string | null;
+  vintage: number | null;
+  shown_price_cents: number;
+  band: string;
+  push?: 'big_push' | 'push' | null;
+}
+
+export interface PairItBands {
+  kind_id: string;
+  bands: Array<{ band: string; label: string; bottles: PairItBottle[] }>;
+}
+
+export interface StoredRulesBundle {
+  version: number;
+  checksum: string;
+  tables: Record<string, unknown[]>;
+}
+
+export async function getCorpusLookup(q: string, store: string): Promise<ApiResponse<CorpusLookupResponse>> {
+  const params = new URLSearchParams({ q, store });
+  return fetchWithAuth(`/api/v1/admin/corpus_lookup?${params.toString()}`);
+}
+
+export async function getCorpusLookupBottles(store: string, kindId: string): Promise<ApiResponse<PairItBands>> {
+  const params = new URLSearchParams({ store, kind_id: kindId });
+  return fetchWithAuth(`/api/v1/admin/corpus_lookup/bottles?${params.toString()}`);
+}
+
+export async function getStoredRulesBundle(): Promise<ApiResponse<StoredRulesBundle>> {
+  return fetchWithAuth('/api/v1/admin/corpus_lookup/rules_bundle');
 }

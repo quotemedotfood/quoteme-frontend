@@ -9,9 +9,8 @@
 // A group is picked from the list of groups and sent by its id. A catalog is
 // pasted in as its id. Nothing is matched on a name.
 //
-// THE PRICE RULE belongs to the catalog: "shelf" shows the store's price as
-// given; "list_x_1_5" shows a list price x 1.5. A catalog with no rule set
-// reads as x 1.5, so the page says so until a person chooses.
+// THE PRICE is always the store's shelf price as given (Moose 2026-11-18).
+// There is no rule to choose, so the page only says so.
 import { useEffect, useRef, useState } from 'react';
 import { useParams, Link } from 'react-router';
 import { ArrowLeft, Pencil, Plus } from 'lucide-react';
@@ -27,21 +26,16 @@ import {
   AdminRetailLocationDetail,
   AdminRetailLocationInput,
   AdminRestaurantGroup,
-  RetailPriceRule,
   RetailStatus,
 } from '../../services/adminApi';
 import { ADMIN_PAGE_FRAME, ADMIN_PAGE_FRAME_STYLE } from '../../components/admin/adminPageFrame';
 import { RetailStatusPill, retailStatusLabel } from './QMAdminRetailLocations';
 import { StoreBillingCard } from './_storeBillingCard';
+import { PairmeFlowCard } from '../../components/PairmeFlowCard';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const LOGO_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 const LOGO_MAX_BYTES = 5 * 1024 * 1024;
-
-export const PRICE_RULE_LABELS: Record<RetailPriceRule, string> = {
-  shelf: 'Shelf price, as given',
-  list_x_1_5: 'List price x 1.5',
-};
 
 /** "Nov 17, 2026" from an ISO time, or a dash. */
 export function loadDate(iso: string | null | undefined): string {
@@ -323,6 +317,22 @@ export function RetailLocationDetail({ locationId }: { locationId: string }) {
         )}
       </div>
 
+      {/* THE STORE'S QR CODE (Moose 2026-11-18), the restaurant's card. The
+          server sends it only while the store is live; a prospect's link
+          answers 404, so there is no code to print yet. */}
+      {store.pairit_qr ? (
+        <PairmeFlowCard
+          flow={store.pairit_qr}
+          title="PairIt link and QR code"
+          blurb="Shoppers scan this code, or open this link, to pair a wine from this store's shelf."
+        />
+      ) : (
+        <div className={card} data-testid="store-qr-pending">
+          <p className={heading}>PairIt link and QR code</p>
+          <p className="text-sm text-gray-500">Mark live to get the QR.</p>
+        </div>
+      )}
+
       <StoreBillingCard store={store} onChange={setStore} card={card} heading={heading} />
 
       <div className={card}>
@@ -381,28 +391,11 @@ export function RetailLocationDetail({ locationId }: { locationId: string }) {
               <dt className="text-gray-500">Rows in the file</dt><dd>{catalog.rows.toLocaleString()}</dd>
               <dt className="text-gray-500">Last load</dt><dd>{loadDate(catalog.last_loaded_at)}</dd>
               <dt className="text-gray-500">Catalog id</dt><dd className="break-all font-mono text-xs">{catalog.id}</dd>
+              <dt className="text-gray-500">Price shoppers see</dt><dd>Shelf price, as given</dd>
             </dl>
             <p className="text-xs text-gray-500">
               Shown: active, priced, matched to a wine we know, and not a keg. Every other row is hidden from shoppers.
             </p>
-            <label className="block text-xs text-gray-600">
-              Price shoppers see
-              <select
-                value={catalog.price_rule}
-                disabled={busy === 'price_rule'}
-                onChange={(e) => patch('price_rule', { price_rule: e.target.value as RetailPriceRule })}
-                aria-label="Price shoppers see"
-                className="mt-1 block text-sm border border-gray-200 rounded px-2 py-1.5 bg-white"
-              >
-                <option value="shelf">{PRICE_RULE_LABELS.shelf}</option>
-                <option value="list_x_1_5">{PRICE_RULE_LABELS.list_x_1_5}</option>
-              </select>
-            </label>
-            {!catalog.price_rule_set && (
-              <p className="text-xs text-amber-700" role="status">
-                No price rule has been chosen for this catalog, so shoppers see its prices x 1.5. For a store&apos;s own shelf prices, choose &quot;{PRICE_RULE_LABELS.shelf}&quot;.
-              </p>
-            )}
             <Button
               variant="ghost"
               size="sm"

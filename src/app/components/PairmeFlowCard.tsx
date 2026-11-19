@@ -15,7 +15,15 @@ function fileSlug(url: string) {
   return url.split('/').filter(Boolean).pop() || 'pairme';
 }
 
-export function PairmeFlowCard({ flow }: { flow: PairmeFlow }) {
+export function PairmeFlowCard({
+  flow,
+  title = 'PairMe link and QR code',
+  blurb = 'Guests scan this code, or open this link, to see the pairings.',
+}: {
+  flow: PairmeFlow;
+  title?: string;
+  blurb?: string;
+}) {
   const [copied, setCopied] = useState(false);
 
   async function copy() {
@@ -31,7 +39,7 @@ export function PairmeFlowCard({ flow }: { flow: PairmeFlow }) {
   return (
     <section className="mb-8" data-testid="pairme-flow-card">
       <h2 className="text-lg font-semibold text-[#2A2A2A] mb-3" style={{ fontFamily: "'Playfair Display', serif" }}>
-        PairMe link and QR code
+        {title}
       </h2>
       <div className="bg-white border border-gray-200 rounded-lg p-4 flex flex-col sm:flex-row gap-4 sm:items-center">
         <img
@@ -41,7 +49,7 @@ export function PairmeFlowCard({ flow }: { flow: PairmeFlow }) {
           data-testid="pairme-flow-qr"
         />
         <div className="min-w-0 flex-1">
-          <p className="text-sm text-[#4F4F4F] mb-2">Guests scan this code, or open this link, to see the pairings.</p>
+          <p className="text-sm text-[#4F4F4F] mb-2">{blurb}</p>
           <a
             href={flow.url}
             target="_blank"
@@ -67,8 +75,18 @@ export function PairmeFlowCard({ flow }: { flow: PairmeFlow }) {
               className="inline-flex items-center gap-1 px-3 py-1.5 rounded text-xs font-medium border border-gray-200 text-[#2A2A2A] hover:border-gray-400"
               data-testid="pairme-flow-download"
             >
-              <Download size={13} /> Download QR code
+              <Download size={13} /> {flow.qr_svg ? 'Download PNG' : 'Download QR code'}
             </a>
+            {flow.qr_svg && (
+              <a
+                href={flow.qr_svg}
+                download={`${fileSlug(flow.url)}-qr.svg`}
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded text-xs font-medium border border-gray-200 text-[#2A2A2A] hover:border-gray-400"
+                data-testid="pairme-flow-download-svg"
+              >
+                <Download size={13} /> Download SVG
+              </a>
+            )}
           </div>
         </div>
       </div>

@@ -30,7 +30,7 @@ afterEach(() => { cleanup(); vi.resetAllMocks(); });
 const CATALOG_ID = '80fddae4-488e-4ad8-92d9-ec2bc8d26d20';
 const catalog = (extra: Record<string, unknown> = {}) => ({
   id: CATALOG_ID, rows: 4269, wines_shown: 3120, wines_hidden: 1149, last_loaded_at: '2026-11-17T16:30:00.000Z',
-  price_rule: 'list_x_1_5', price_rule_set: false, ...extra,
+  ...extra,
 });
 const store = (extra: Record<string, unknown> = {}) => ({
   id: 's1', name: 'Total Beverage', slug: 'total-beverage-westminster', address_line_1: '9359 Sheridan Blvd', address_line_2: null,
@@ -55,18 +55,13 @@ describe('RetailLocationDetail', () => {
     expect(facts.getByText(CATALOG_ID)).toBeTruthy();
   });
 
-  it('warns that prices show x 1.5 until a price rule is chosen, and writes the shelf rule', async () => {
+  it('says shoppers see the shelf price, with no choice and no x 1.5 warning', async () => {
     show(store({ catalog_id: CATALOG_ID, catalog: catalog() }));
-    expect((await screen.findByRole('status')).textContent).toContain('x 1.5');
-    m.updateAdminRetailLocation.mockResolvedValue({
-      data: store({ catalog_id: CATALOG_ID, catalog: catalog({ price_rule: 'shelf', price_rule_set: true }) }),
-    });
-
-    fireEvent.change(screen.getByLabelText('Price shoppers see'), { target: { value: 'shelf' } });
-
-    await waitFor(() => expect(m.updateAdminRetailLocation).toHaveBeenCalledWith('s1', { price_rule: 'shelf' }));
-    await waitFor(() => expect(screen.queryByRole('status')).toBeNull());
-    expect((screen.getByLabelText('Price shoppers see') as HTMLSelectElement).value).toBe('shelf');
+    const facts = within(await screen.findByTestId('catalog-facts'));
+    expect(facts.getByText('Shelf price, as given')).toBeTruthy();
+    expect(screen.queryByLabelText('Price shoppers see')).toBeNull();
+    expect(screen.queryByRole('status')).toBeNull();
+    expect(document.body.textContent).not.toContain('x 1.5');
   });
 
   it('marks a prospect live, and a live store back to prospect', async () => {
@@ -136,6 +131,34 @@ describe('RetailLocationDetail', () => {
 
     await waitFor(() => expect(m.createAdminRestaurantContact).toHaveBeenCalledWith('s1', { first_name: 'Chuck', last_name: 'Owner' }));
     expect(within(await screen.findByTestId('store-contacts')).getByText('Chuck Owner')).toBeTruthy();
+  });
+});
+
+describe('RetailLocationDetail QR code', () => {
+  const qr = {
+    url: 'https://app.pairme.wine/q/total-bev-westminster',
+    qr_png: 'data:image/png;base64,iVBORw0KGgo=',
+    qr_svg: 'data:image/svg+xml;base64,PHN2Zy8+',
+  };
+
+  it('shows a live store its link, Copy, and PNG and SVG downloads named for the store', async () => {
+    show(store({ status: 'active', live: true, pairit_url: qr.url, pairit_qr: qr }));
+    const card = within(await screen.findByTestId('pairme-flow-card'));
+    expect(card.getByText('PairIt link and QR code')).toBeTruthy();
+    expect(card.getByTestId('pairme-flow-url').textContent).toContain(qr.url);
+    expect((card.getByTestId('pairme-flow-qr') as HTMLImageElement).src).toBe(qr.qr_png);
+    expect(card.getByTestId('pairme-flow-copy')).toBeTruthy();
+    const png = card.getByTestId('pairme-flow-download') as HTMLAnchorElement;
+    const svg = card.getByTestId('pairme-flow-download-svg') as HTMLAnchorElement;
+    expect([png.textContent, png.getAttribute('href'), png.getAttribute('download')]).toEqual([' Download PNG', qr.qr_png, 'total-bev-westminster-qr.png']);
+    expect([svg.getAttribute('href'), svg.getAttribute('download')]).toEqual([qr.qr_svg, 'total-bev-westminster-qr.svg']);
+    expect(screen.queryByTestId('store-qr-pending')).toBeNull();
+  });
+
+  it('tells a prospect store to mark live to get the QR, and shows no code', async () => {
+    show(store({ pairit_url: qr.url, pairit_qr: null }));
+    expect((await screen.findByTestId('store-qr-pending')).textContent).toContain('Mark live to get the QR');
+    expect(screen.queryByTestId('pairme-flow-card')).toBeNull();
   });
 });
 
