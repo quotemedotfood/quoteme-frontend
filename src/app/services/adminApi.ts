@@ -2659,6 +2659,57 @@ export async function unlinkAdminRetailLocationStripe(id: string): Promise<ApiRe
   return fetchWithAuth(`/api/v1/admin/retail_locations/${id}/stripe_link`, { method: 'DELETE' });
 }
 
+// ============= BLANK STICKER CODES =============
+// Stickers printed before anyone knows which store they will mark. A QM admin
+// makes a batch here; a store attaches one by scanning it on its tablet, or a
+// QM admin attaches it by its code (Api::V1::Admin::PairitCodesController,
+// QuoteMe #934).
+
+export interface AdminPairitCode {
+  code: string;
+  /** The link printed on the sticker. */
+  url: string;
+  batch: string | null;
+  /** The spot's name once attached; null while blank. */
+  name: string | null;
+  attached_at: string | null;
+  restaurant_id: string | null;
+}
+
+export interface AdminPairitBatch {
+  batch: string | null;
+  total: number;
+  attached: number;
+}
+
+export interface AdminPairitBatchDetail extends AdminPairitBatch {
+  codes: AdminPairitCode[];
+}
+
+export async function getAdminPairitBatches(): Promise<ApiResponse<{ batches: AdminPairitBatch[] }>> {
+  return fetchWithAuth('/api/v1/admin/pairit_codes');
+}
+
+export async function getAdminPairitBatch(batch: string): Promise<ApiResponse<AdminPairitBatchDetail>> {
+  return fetchWithAuth(`/api/v1/admin/pairit_codes?batch=${encodeURIComponent(batch)}`);
+}
+
+/** 1 to 500 codes in one named batch. */
+export async function createAdminPairitCodes(count: number, batch: string): Promise<ApiResponse<{ batch: string; codes: AdminPairitCode[] }>> {
+  return fetchWithAuth('/api/v1/admin/pairit_codes', {
+    method: 'POST',
+    body: JSON.stringify({ count, batch }),
+  });
+}
+
+/** Puts a blank sticker on a store by its code and names its spot. A code on another store is refused. */
+export async function attachAdminPairitCode(locationId: string, code: string, name: string): Promise<ApiResponse<AdminPairitCode>> {
+  return fetchWithAuth(`/api/v1/admin/retail_locations/${locationId}/attach_code`, {
+    method: 'POST',
+    body: JSON.stringify({ code, name }),
+  });
+}
+
 /** One Stripe price on the PairMe group product, named by its lookup_key. */
 export interface GroupPaymentOffer {
   lookup_key: string;
@@ -4357,8 +4408,6 @@ export interface CorpusLookupStore {
   name: string;
   live: boolean;
   catalog_id?: string | null;
-  price_rule_stored?: string | null;
-  price_rule?: string;
   bottles?: number;
   has_catalog?: boolean;
 }
