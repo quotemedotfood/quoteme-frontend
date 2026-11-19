@@ -2546,8 +2546,25 @@ export interface AdminRetailCatalog {
   last_loaded_at: string | null;
 }
 
+/** A store's Stripe plan, read from the subscription made by hand in Stripe (QuoteMe #971). */
+export interface AdminRetailBilling {
+  stripe_customer_id: string;
+  stripe_subscription_id: string | null;
+  /** The Stripe status, kept current by the webhook. "incomplete" with starts_at: a plan that starts later. */
+  status: string;
+  current_period_start: string | null;
+  current_period_end: string | null;
+  starts_at: string | null;
+  plan: { price_id: string; amount_cents: number | null; currency: string | null; interval: string | null; product_name: string | null } | null;
+  discount: { coupon_id: string; name: string | null; amount_off_cents: number | null; percent_off: number | null; duration: string | null } | null;
+  /** "failed" when Stripe could not be read just now; the status and period still show. */
+  stripe_read: 'ok' | 'failed';
+}
+
 export interface AdminRetailLocationDetail extends AdminRetailLocation {
   logo_url: string | null;
+  /** The store's Stripe plan, or null until it is linked. */
+  billing?: AdminRetailBilling | null;
   /** The store's PairIt link with no spot: app.pairme.wine/q/<slug>. */
   pairit_url?: string | null;
   /** The store's QR code for that link, PNG and SVG at print size; null unless the store is live. */
@@ -2627,6 +2644,19 @@ export async function uploadAdminRetailLocationLogo(id: string, file: File): Pro
 
 export async function deleteAdminRetailLocationLogo(id: string): Promise<ApiResponse<AdminRetailLocationDetail>> {
   return fetchWithAuth(`/api/v1/admin/retail_locations/${id}/logo`, { method: 'DELETE' });
+}
+
+/** Links the store to the Stripe customer made by hand and reads its retail plan. Writes nothing to Stripe. */
+export async function linkAdminRetailLocationStripe(id: string, stripeCustomerId: string): Promise<ApiResponse<AdminRetailLocationDetail>> {
+  return fetchWithAuth(`/api/v1/admin/retail_locations/${id}/stripe_link`, {
+    method: 'POST',
+    body: JSON.stringify({ stripe_customer_id: stripeCustomerId }),
+  });
+}
+
+/** Forgets the link here. Nothing in Stripe changes. */
+export async function unlinkAdminRetailLocationStripe(id: string): Promise<ApiResponse<AdminRetailLocationDetail>> {
+  return fetchWithAuth(`/api/v1/admin/retail_locations/${id}/stripe_link`, { method: 'DELETE' });
 }
 
 // ============= BLANK STICKER CODES =============
