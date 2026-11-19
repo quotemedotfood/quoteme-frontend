@@ -282,7 +282,7 @@ export function QMAdminDistributors() {
                         {d.unclaimed && (
                           <span style={{
                             fontSize: 10, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase',
-                            padding: '2px 8px', borderRadius: 999, background: '#F3F4F6', color: '#6B7280',
+                            padding: '2px 8px', borderRadius: 999, background: 'var(--color-gray-100)', color: 'var(--color-gray-500)',
                             border: '1px solid #E5E7EB'
                           }}>Unclaimed</span>
                         )}

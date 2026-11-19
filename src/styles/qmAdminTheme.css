@@ -1,0 +1,264 @@
+/*
+ * QM admin night mode (Moose 2026-11-19). ADMIN ONLY.
+ *
+ * QMAdminLayout sets data-qm-admin-theme="light" | "dark" on <html> while an
+ * admin page is open and removes it on the way out, so nothing below can
+ * reach PairIt, the diner app or any other surface (Desi owns those looks).
+ * Every rule here starts with :root[data-qm-admin-theme...]; the guard test
+ * qmAdminTheme.test.ts fails on any selector that does not.
+ *
+ * How the pages turn dark without editing each one: Tailwind v4 utilities
+ * read their colour from variables (.bg-gray-50 is var(--color-gray-50)), so
+ * the dark set re-points those variables, plus the handful of hard-coded hex
+ * classes the admin pages use most. Pages that paint colours inline are
+ * listed in the PR as still white.
+ *
+ * Palette: neutral dark grey with the existing orange, until Desi gives one.
+ */
+
+:root[data-qm-admin-theme] {
+  --qm-bg: #f9fafb;
+  --qm-surface: #ffffff;
+  --qm-surface-2: #f3f4f6;
+  --qm-border: #e5e7eb;
+  --qm-ink: #2a2a2a;
+  --qm-ink-2: #4f4f4f;
+  --qm-muted: #6b7280;
+  --qm-accent: #f2993d;
+  --qm-link: #7faec2;
+}
+
+:root[data-qm-admin-theme="dark"] {
+  color-scheme: dark;
+
+  --qm-bg: #17181a;
+  --qm-surface: #1f2023;
+  --qm-surface-2: #27282c;
+  --qm-border: #35373c;
+  --qm-ink: #eceef1;
+  --qm-ink-2: #c4c7cd;
+  --qm-muted: #9a9da5;
+  --qm-accent: #f2993d;
+  --qm-link: #8fbccf;
+
+  /* Tailwind's grey scale, turned over: light backgrounds become dark ones,
+     dark text becomes light text. */
+  --color-gray-50: #17181a;
+  --color-gray-100: #26272b;
+  --color-gray-200: #34363b;
+  --color-gray-300: #45474d;
+  --color-gray-400: #70737b;
+  --color-gray-500: #989ba3;
+  --color-gray-600: #b3b6bd;
+  --color-gray-700: #cdd0d6;
+  --color-gray-800: #e2e4e8;
+  --color-gray-900: #f1f2f4;
+  --color-gray-950: #f8f8f9;
+  --color-slate-50: var(--color-gray-50);
+  --color-slate-100: var(--color-gray-100);
+  --color-slate-200: var(--color-gray-200);
+  --color-slate-300: var(--color-gray-300);
+  --color-slate-500: var(--color-gray-500);
+  --color-slate-600: var(--color-gray-600);
+  --color-slate-700: var(--color-gray-700);
+  --color-slate-800: var(--color-gray-800);
+  --color-slate-900: var(--color-gray-900);
+  --color-stone-50: var(--color-gray-50);
+  --color-stone-100: var(--color-gray-100);
+  --color-stone-200: var(--color-gray-200);
+  --color-stone-600: var(--color-gray-600);
+  --color-stone-700: var(--color-gray-700);
+
+  /* Tints (badges, banners): the pale -50/-100/-200 become dark tints of the
+     same hue, the deep -700/-800/-900 text becomes a light one. -500/-600
+     (buttons, icons) keep their colour. */
+  --color-red-50: color-mix(in oklab, var(--color-red-500) 14%, #1f2023);
+  --color-red-100: color-mix(in oklab, var(--color-red-500) 22%, #1f2023);
+  --color-red-200: color-mix(in oklab, var(--color-red-500) 36%, #1f2023);
+  --color-red-300: color-mix(in oklab, var(--color-red-500) 55%, #1f2023);
+  --color-red-700: color-mix(in oklab, var(--color-red-500) 55%, #ffffff);
+  --color-red-800: color-mix(in oklab, var(--color-red-500) 45%, #ffffff);
+  --color-red-900: color-mix(in oklab, var(--color-red-500) 35%, #ffffff);
+  --color-green-50: color-mix(in oklab, var(--color-green-500) 14%, #1f2023);
+  --color-green-100: color-mix(in oklab, var(--color-green-500) 22%, #1f2023);
+  --color-green-200: color-mix(in oklab, var(--color-green-500) 36%, #1f2023);
+  --color-green-300: color-mix(in oklab, var(--color-green-500) 55%, #1f2023);
+  --color-green-700: color-mix(in oklab, var(--color-green-500) 55%, #ffffff);
+  --color-green-800: color-mix(in oklab, var(--color-green-500) 45%, #ffffff);
+  --color-green-900: color-mix(in oklab, var(--color-green-500) 35%, #ffffff);
+  --color-emerald-50: color-mix(in oklab, var(--color-emerald-500) 14%, #1f2023);
+  --color-emerald-100: color-mix(in oklab, var(--color-emerald-500) 22%, #1f2023);
+  --color-emerald-700: color-mix(in oklab, var(--color-emerald-500) 55%, #ffffff);
+  --color-emerald-800: color-mix(in oklab, var(--color-emerald-500) 45%, #ffffff);
+  --color-blue-50: color-mix(in oklab, var(--color-blue-500) 14%, #1f2023);
+  --color-blue-100: color-mix(in oklab, var(--color-blue-500) 22%, #1f2023);
+  --color-blue-200: color-mix(in oklab, var(--color-blue-500) 36%, #1f2023);
+  --color-blue-300: color-mix(in oklab, var(--color-blue-500) 55%, #1f2023);
+  --color-blue-700: color-mix(in oklab, var(--color-blue-500) 55%, #ffffff);
+  --color-blue-800: color-mix(in oklab, var(--color-blue-500) 45%, #ffffff);
+  --color-blue-900: color-mix(in oklab, var(--color-blue-500) 35%, #ffffff);
+  --color-sky-50: color-mix(in oklab, var(--color-sky-500) 14%, #1f2023);
+  --color-sky-100: color-mix(in oklab, var(--color-sky-500) 22%, #1f2023);
+  --color-sky-700: color-mix(in oklab, var(--color-sky-500) 55%, #ffffff);
+  --color-sky-800: color-mix(in oklab, var(--color-sky-500) 45%, #ffffff);
+  --color-indigo-50: color-mix(in oklab, var(--color-indigo-500) 14%, #1f2023);
+  --color-indigo-100: color-mix(in oklab, var(--color-indigo-500) 22%, #1f2023);
+  --color-indigo-200: color-mix(in oklab, var(--color-indigo-500) 36%, #1f2023);
+  --color-indigo-700: color-mix(in oklab, var(--color-indigo-500) 55%, #ffffff);
+  --color-indigo-800: color-mix(in oklab, var(--color-indigo-500) 45%, #ffffff);
+  --color-purple-50: color-mix(in oklab, var(--color-purple-500) 14%, #1f2023);
+  --color-purple-100: color-mix(in oklab, var(--color-purple-500) 22%, #1f2023);
+  --color-purple-200: color-mix(in oklab, var(--color-purple-500) 36%, #1f2023);
+  --color-purple-700: color-mix(in oklab, var(--color-purple-500) 55%, #ffffff);
+  --color-purple-800: color-mix(in oklab, var(--color-purple-500) 45%, #ffffff);
+  --color-teal-50: color-mix(in oklab, var(--color-teal-500) 14%, #1f2023);
+  --color-teal-100: color-mix(in oklab, var(--color-teal-500) 22%, #1f2023);
+  --color-teal-700: color-mix(in oklab, var(--color-teal-500) 55%, #ffffff);
+  --color-teal-800: color-mix(in oklab, var(--color-teal-500) 45%, #ffffff);
+  --color-amber-50: color-mix(in oklab, var(--color-amber-500) 14%, #1f2023);
+  --color-amber-100: color-mix(in oklab, var(--color-amber-500) 22%, #1f2023);
+  --color-amber-200: color-mix(in oklab, var(--color-amber-500) 36%, #1f2023);
+  --color-amber-300: color-mix(in oklab, var(--color-amber-500) 55%, #1f2023);
+  --color-amber-700: color-mix(in oklab, var(--color-amber-500) 60%, #ffffff);
+  --color-amber-800: color-mix(in oklab, var(--color-amber-500) 50%, #ffffff);
+  --color-amber-900: color-mix(in oklab, var(--color-amber-500) 40%, #ffffff);
+  --color-yellow-50: color-mix(in oklab, var(--color-yellow-500) 12%, #1f2023);
+  --color-yellow-100: color-mix(in oklab, var(--color-yellow-500) 20%, #1f2023);
+  --color-yellow-200: color-mix(in oklab, var(--color-yellow-500) 34%, #1f2023);
+  --color-yellow-300: color-mix(in oklab, var(--color-yellow-500) 50%, #1f2023);
+  --color-yellow-700: color-mix(in oklab, var(--color-yellow-500) 60%, #ffffff);
+  --color-yellow-800: color-mix(in oklab, var(--color-yellow-500) 50%, #ffffff);
+  --color-yellow-900: color-mix(in oklab, var(--color-yellow-500) 40%, #ffffff);
+  --color-orange-50: color-mix(in oklab, var(--color-orange-500) 14%, #1f2023);
+  --color-orange-100: color-mix(in oklab, var(--color-orange-500) 22%, #1f2023);
+  --color-orange-200: color-mix(in oklab, var(--color-orange-500) 36%, #1f2023);
+  --color-orange-300: color-mix(in oklab, var(--color-orange-500) 55%, #1f2023);
+  --color-orange-700: color-mix(in oklab, var(--color-orange-500) 55%, #ffffff);
+  --color-orange-800: color-mix(in oklab, var(--color-orange-500) 45%, #ffffff);
+  --color-orange-900: color-mix(in oklab, var(--color-orange-500) 35%, #ffffff);
+  --color-pink-50: color-mix(in oklab, var(--color-pink-500) 14%, #1f2023);
+  --color-pink-100: color-mix(in oklab, var(--color-pink-500) 22%, #1f2023);
+  --color-pink-700: color-mix(in oklab, var(--color-pink-500) 55%, #ffffff);
+  --color-pink-800: color-mix(in oklab, var(--color-pink-500) 45%, #ffffff);
+  --color-rose-50: color-mix(in oklab, var(--color-rose-500) 14%, #1f2023);
+  --color-rose-100: color-mix(in oklab, var(--color-rose-500) 22%, #1f2023);
+  --color-rose-700: color-mix(in oklab, var(--color-rose-500) 55%, #ffffff);
+  --color-rose-800: color-mix(in oklab, var(--color-rose-500) 45%, #ffffff);
+
+  /* shadcn tokens (cards, popovers, dialogs, shadcn inputs); the primary
+     stays orange. */
+  --background: var(--qm-bg);
+  --foreground: var(--qm-ink);
+  --card: var(--qm-surface);
+  --card-foreground: var(--qm-ink);
+  --popover: var(--qm-surface);
+  --popover-foreground: var(--qm-ink);
+  --muted: var(--qm-surface-2);
+  --muted-foreground: var(--qm-muted);
+  --secondary: #2c4a56;
+  --secondary-foreground: var(--qm-ink);
+  --accent: #2c4a56;
+  --accent-foreground: var(--qm-ink);
+  --border: var(--qm-border);
+  --input-background: var(--qm-surface-2);
+  --switch-background: #45474d;
+  --sidebar: var(--qm-surface);
+  --sidebar-foreground: var(--qm-ink);
+  --sidebar-accent: var(--qm-surface-2);
+  --sidebar-accent-foreground: var(--qm-ink);
+  --sidebar-border: var(--qm-border);
+}
+
+/*
+ * The class overrides sit in Tailwind's utilities layer with the root check
+ * inside :where(), so they weigh exactly what a utility weighs: a page's
+ * hover:, focus: and state classes still win over them, as they do in light.
+ */
+@layer utilities {
+  /* White is both a background (cards, tables, inputs) and a text colour (on
+     orange and blue buttons), so --color-white is left alone and only the
+     white BACKGROUNDS are pointed at the surface. */
+  :where(:root[data-qm-admin-theme="dark"] body),
+  :where(:root[data-qm-admin-theme="dark"]) .bg-white,
+  :where(:root[data-qm-admin-theme="dark"]) .hover\:bg-white:hover,
+  :where(:root[data-qm-admin-theme="dark"]) .bg-\[\#fff\],
+  :where(:root[data-qm-admin-theme="dark"]) .bg-\[\#ffffff\],
+  :where(:root[data-qm-admin-theme="dark"]) .bg-\[\#FFFFFF\] {
+    background-color: var(--qm-surface);
+  }
+  :where(:root[data-qm-admin-theme="dark"] body) {
+    color: var(--qm-ink);
+  }
+  :where(:root[data-qm-admin-theme="dark"]) [class*="bg-white/"] {
+    background-color: color-mix(in oklab, var(--qm-surface) 90%, transparent);
+  }
+  :where(:root[data-qm-admin-theme="dark"]) .bg-\[\#FFF9F3\],
+  :where(:root[data-qm-admin-theme="dark"]) .bg-\[\#fff9f3\],
+  :where(:root[data-qm-admin-theme="dark"]) .bg-\[\#F9FAFB\],
+  :where(:root[data-qm-admin-theme="dark"]) .bg-\[\#F5F5F5\],
+  :where(:root[data-qm-admin-theme="dark"]) .bg-\[\#FAFAFA\] {
+    background-color: var(--qm-bg);
+  }
+  :where(:root[data-qm-admin-theme="dark"]) .bg-\[\#f0f7fb\],
+  :where(:root[data-qm-admin-theme="dark"]) .bg-\[\#EAF3F8\],
+  :where(:root[data-qm-admin-theme="dark"]) .bg-\[\#eaf3f8\],
+  :where(:root[data-qm-admin-theme="dark"]) .bg-\[\#E8F2F6\] {
+    background-color: #23343b;
+  }
+
+  /* Dark buttons and chips (bg-gray-800/900, #2A2A2A, #1a1a1a with white
+     text): the grey scale above would turn them pale, so they stay dark,
+     one step above the surface. */
+  :where(:root[data-qm-admin-theme="dark"]) .bg-gray-700,
+  :where(:root[data-qm-admin-theme="dark"]) .bg-gray-800,
+  :where(:root[data-qm-admin-theme="dark"]) .bg-gray-900,
+  :where(:root[data-qm-admin-theme="dark"]) .hover\:bg-gray-700:hover,
+  :where(:root[data-qm-admin-theme="dark"]) .hover\:bg-gray-800:hover,
+  :where(:root[data-qm-admin-theme="dark"]) .hover\:bg-gray-900:hover,
+  :where(:root[data-qm-admin-theme="dark"]) .bg-\[\#2A2A2A\],
+  :where(:root[data-qm-admin-theme="dark"]) .bg-\[\#1a1a1a\] {
+    background-color: #3a3c42;
+  }
+
+  /* The hard-coded ink the admin pages use most (text-[#2A2A2A] 348 times,
+     text-[#4F4F4F] 256). */
+  :where(:root[data-qm-admin-theme="dark"]) .text-\[\#2A2A2A\],
+  :where(:root[data-qm-admin-theme="dark"]) .text-\[\#2a2a2a\],
+  :where(:root[data-qm-admin-theme="dark"]) .text-\[\#1a1a1a\],
+  :where(:root[data-qm-admin-theme="dark"]) .text-black,
+  :where(:root[data-qm-admin-theme="dark"]) .hover\:text-\[\#2A2A2A\]:hover {
+    color: var(--qm-ink);
+  }
+  :where(:root[data-qm-admin-theme="dark"]) .text-\[\#4F4F4F\],
+  :where(:root[data-qm-admin-theme="dark"]) .text-\[\#4f4f4f\],
+  :where(:root[data-qm-admin-theme="dark"]) .text-\[\#666\],
+  :where(:root[data-qm-admin-theme="dark"]) .text-\[\#666666\] {
+    color: var(--qm-ink-2);
+  }
+  :where(:root[data-qm-admin-theme="dark"]) .border-\[\#2A2A2A\] {
+    border-color: var(--qm-ink-2);
+  }
+  :where(:root[data-qm-admin-theme="dark"]) .border-\[\#E8E8E8\],
+  :where(:root[data-qm-admin-theme="dark"]) .border-\[\#e5e7eb\],
+  :where(:root[data-qm-admin-theme="dark"]) .border-\[\#E5E7EB\] {
+    border-color: var(--qm-border);
+  }
+
+  /* Inputs with no colour class of their own. :where keeps this weaker than
+     any class, so a page's own input colours still win. */
+  :where(:root[data-qm-admin-theme="dark"]) :where(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), select, textarea) {
+    background-color: var(--qm-surface-2);
+    color: var(--qm-ink);
+    border-color: var(--qm-border);
+  }
+  :where(:root[data-qm-admin-theme="dark"]) :where(input, textarea)::placeholder {
+    color: var(--qm-muted);
+  }
+
+  /* Shadows drawn for a white page read as smudges on a dark one. */
+  :where(:root[data-qm-admin-theme="dark"]) .shadow-sm,
+  :where(:root[data-qm-admin-theme="dark"]) .shadow,
+  :where(:root[data-qm-admin-theme="dark"]) .shadow-md {
+    --tw-shadow-color: rgb(0 0 0 / 0.5);
+  }
+}

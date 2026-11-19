@@ -28,11 +28,14 @@ import {
   Handshake,
   MessageSquare,
   Camera,
+  Moon,
+  Sun,
 } from 'lucide-react';
 import logoSquare from '/src/assets/e549e7d27b183e98e791f43494c715b8cc6ce7e9.png';
 import { useAuth } from '../contexts/AuthContext';
 import { isImpersonating } from '../utils/impersonate';
 import { FeedbackNavBadge } from './admin/FeedbackNavBadge';
+import { useQmAdminTheme } from './admin/qmAdminTheme';
 import type { ComponentType } from 'react';
 
 // badge: an optional count shown on the item (Feedback's red number of notes
@@ -85,6 +88,12 @@ export function QMAdminLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, isLoading, logout } = useAuth();
+  // Night mode: admin pages only, never while impersonating (those are the
+  // distributor's own pages).
+  const { theme, toggle: toggleTheme } = useQmAdminTheme(
+    !isLoading && user?.role === 'quoteme_admin' && !isImpersonating(),
+  );
+  const themeLabel = theme === 'dark' ? 'Switch to day mode' : 'Switch to night mode';
 
   function handleSignOut() {
     logout();
@@ -184,6 +193,17 @@ export function QMAdminLayout() {
         </nav>
 
         <div className="p-4 border-t border-gray-200 flex flex-col gap-3">
+          <button
+            type="button"
+            onClick={toggleTheme}
+            aria-label={themeLabel}
+            title={themeLabel}
+            data-testid="qm-admin-theme-toggle"
+            className="flex items-center gap-2 text-xs text-[#4F4F4F] hover:text-[#F2993D] transition-colors"
+          >
+            {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
+            {theme === 'dark' ? 'Day mode' : 'Night mode'}
+          </button>
           <Link to="/dashboard" className="text-xs text-[#4F4F4F] hover:text-[#7FAEC2] transition-colors">
             ← Rep Dashboard
           </Link>
@@ -204,6 +224,15 @@ export function QMAdminLayout() {
       <div className="md:hidden fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200">
         <div className="flex items-center gap-2 px-3 py-2 overflow-x-auto">
           <img src={logoSquare} alt="QM" className="w-7 h-7 flex-shrink-0" />
+          <button
+            type="button"
+            onClick={toggleTheme}
+            aria-label={themeLabel}
+            title={themeLabel}
+            className="flex-shrink-0 p-1.5 rounded-full text-[#4F4F4F] bg-gray-100"
+          >
+            {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
+          </button>
           {[...navItems, ...navSections.flatMap((section) => section.items)].map((item) => {
             const active = isActive(item.path);
             const Badge = (item as { badge?: ComponentType }).badge;

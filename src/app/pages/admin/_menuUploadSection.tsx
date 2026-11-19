@@ -888,7 +888,7 @@ export function MenuDrawer({
                     className={`inline-flex items-center justify-center gap-2 px-3 py-3 text-sm font-semibold border-2 ${
                       pear ? 'rounded-full' : 'rounded-lg'
                     } ${on ? 'border-[#1F2A44]' : pear ? 'border-transparent' : 'border-gray-200 bg-white text-[#2A2A2A]'}`}
-                    style={pear ? { background: PEAR, color: NAVY } : on ? { background: '#F3F4F6' } : undefined}
+                    style={pear ? { background: PEAR, color: NAVY } : on ? { background: 'var(--color-gray-100)' } : undefined}
                   >
                     {pear && <RefreshCw className="w-4 h-4" aria-hidden="true" />}
                     {DRAWER_COPY.kinds[k]}
