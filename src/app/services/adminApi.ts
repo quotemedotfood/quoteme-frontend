@@ -2514,7 +2514,6 @@ export async function detachHotelOutlet(hotelId: string, restaurantId: string): 
 // A group and a catalog are set by id, never by name.
 
 export type RetailStatus = 'active' | 'prospect';
-export type RetailPriceRule = 'shelf' | 'list_x_1_5';
 
 export interface AdminRetailLocation {
   id: string;
@@ -2543,10 +2542,6 @@ export interface AdminRetailCatalog {
   wines_shown: number;
   wines_hidden: number;
   last_loaded_at: string | null;
-  /** What a shopper is shown: the shelf price as given, or the list price x 1.5. */
-  price_rule: RetailPriceRule;
-  /** False when nobody has set a rule; the catalog then reads as list_x_1_5. */
-  price_rule_set: boolean;
 }
 
 export interface AdminRetailLocationDetail extends AdminRetailLocation {
@@ -2555,7 +2550,7 @@ export interface AdminRetailLocationDetail extends AdminRetailLocation {
   contacts: Array<Omit<AdminRestaurantContact, 'restaurant_id'>>;
 }
 
-/** Only the keys sent change. price_rule is written on the catalog the location points at. */
+/** Only the keys sent change. There is no price rule: a store's price is always its shelf price as given. */
 export type AdminRetailLocationInput = Partial<{
   name: string;
   address_line_1: string | null;
@@ -2569,7 +2564,6 @@ export type AdminRetailLocationInput = Partial<{
   co_branded: boolean;
   restaurant_group_id: string | null;
   catalog_id: string | null;
-  price_rule: RetailPriceRule;
 }>;
 
 /** Every store by name; q narrows on name or city, status on live or prospect. */
