@@ -39,4 +39,26 @@ describe('StoreLinkCard', () => {
     expect(box.value).toBe('555-0142');
     expect(screen.queryByTestId('store-link-sent')).toBeNull();
   });
+
+  it('puts the PIN in only when the box is ticked, then turns the option off again', async () => {
+    render(<StoreLinkCard storeId="s1" card="" heading="" />);
+    const box = screen.getByLabelText("Manager's mobile number") as HTMLInputElement;
+    const btn = screen.getByRole('button', { name: 'Text the link' }) as HTMLButtonElement;
+    const option = screen.getByRole('checkbox', { name: 'Put the PIN in the text' }) as HTMLInputElement;
+    expect(option.checked).toBe(false);
+    expect(screen.queryByLabelText("Store's staff PIN")).toBeNull();
+
+    fireEvent.change(box, { target: { value: '720-555-0142' } });
+    fireEvent.click(option);
+    expect(btn.disabled).toBe(true);
+    fireEvent.change(screen.getByLabelText("Store's staff PIN"), { target: { value: ' 0482 ' } });
+    expect(btn.disabled).toBe(false);
+
+    m.textAdminStoreLink.mockResolvedValueOnce({ data: { sent: true, url: 'https://app.pairme.wine/store/total-bev', pin: 'own' } });
+    fireEvent.click(btn);
+    await screen.findByTestId('store-link-sent');
+    expect(m.textAdminStoreLink).toHaveBeenCalledWith('s1', '720-555-0142', '0482');
+    expect(option.checked).toBe(false);
+    expect(screen.queryByLabelText("Store's staff PIN")).toBeNull();
+  });
 });
