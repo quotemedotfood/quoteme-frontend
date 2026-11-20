@@ -20,6 +20,8 @@ const m = vi.hoisted(() => ({
   attachAdminPairitCode: vi.fn(),
   getAdminRetailLocations: vi.fn(),
   createAdminRetailLocation: vi.fn(),
+  // The History card on the page reads a day; an empty one here.
+  getAdminRetailLocationHistory: vi.fn(() => Promise.resolve({ data: { date: '2026-11-20', today: '2026-11-20', time_zone: 'America/Denver', entries: [] } })),
 }));
 vi.mock('../../services/adminApi', () => m);
 
