@@ -4470,34 +4470,6 @@ export async function getStoredRulesBundle(): Promise<ApiResponse<StoredRulesBun
   return fetchWithAuth('/api/v1/admin/corpus_lookup/rules_bundle');
 }
 
-// ============= WINE FAMILIARITY (Moose Q85 2026-11-19) ======
-
-// Traditional or adventurous per kind of wine (grape and style terms), by
-// term id. WRITER: QuoteMe Api::V1::Admin::WineFamiliaritiesController.
-// READER: WineKindsTab here; PairIt's kinds screen through the flag.
-
-export type WineFamiliarity = 'traditional' | 'adventurous';
-
-export interface WineKindTerm {
-  id: string;
-  key: string;
-  kind: 'grape' | 'style';
-  name: string;
-  familiarity: WineFamiliarity | null;
-  wines: number;
-}
-
-export async function getWineFamiliarities(): Promise<ApiResponse<{ terms: WineKindTerm[]; familiarities: WineFamiliarity[] }>> {
-  return fetchWithAuth('/api/v1/admin/wine_familiarities');
-}
-
-export async function setWineFamiliarity(id: string, familiarity: WineFamiliarity | null): Promise<ApiResponse<{ term: WineKindTerm }>> {
-  return fetchWithAuth(`/api/v1/admin/wine_familiarities/${encodeURIComponent(id)}`, {
-    method: 'PATCH',
-    body: JSON.stringify({ familiarity: familiarity ?? '' }),
-  });
-}
-=======
 // ── Draft taste profiles (Moose Q95 to Q98; QuoteMe Api::V1::Admin::AgentDraftsController) ──
 // A draft's scores are the tags' existing tasting profiles combined on the
 // server. Nothing here ever sends a score: Edit sends profile ids and the
@@ -4597,4 +4569,31 @@ export async function approveCorpusAttribute(id: string): Promise<ApiResponse<Co
 
 export async function dismissCorpusAttribute(id: string): Promise<ApiResponse<CorpusAttribute>> {
   return fetchWithAuth(`/api/v1/admin/corpus_attributes/${id}/dismiss`, { method: 'POST', body: '{}' });
+}
+
+// ============= WINE FAMILIARITY (Moose Q85 2026-11-19) =============
+// Traditional or adventurous per kind of wine (grape and style terms), by
+// term id. WRITER: QuoteMe Api::V1::Admin::WineFamiliaritiesController.
+// READER: WineKindsTab here; PairIt's kinds screen through the flag.
+
+export type WineFamiliarity = 'traditional' | 'adventurous';
+
+export interface WineKindTerm {
+  id: string;
+  key: string;
+  kind: 'grape' | 'style';
+  name: string;
+  familiarity: WineFamiliarity | null;
+  wines: number;
+}
+
+export async function getWineFamiliarities(): Promise<ApiResponse<{ terms: WineKindTerm[]; familiarities: WineFamiliarity[] }>> {
+  return fetchWithAuth('/api/v1/admin/wine_familiarities');
+}
+
+export async function setWineFamiliarity(id: string, familiarity: WineFamiliarity | null): Promise<ApiResponse<{ term: WineKindTerm }>> {
+  return fetchWithAuth(`/api/v1/admin/wine_familiarities/${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ familiarity: familiarity ?? '' }),
+  });
 }
