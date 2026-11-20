@@ -64,7 +64,7 @@ export function StoreHistoryCard({ storeId, card, heading }: { storeId: string; 
     let live = true;
     setLoading(true);
     setError(null);
-    getAdminRetailLocationHistory(storeId, asked || undefined).then((res) => {
+    getAdminRetailLocationHistory(storeId, undefined).then((res) => {
       if (!live) return;
       setLoading(false);
       if (res.data) {
