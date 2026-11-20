@@ -30,6 +30,7 @@ import {
   type StoredRulesBundle,
   type TastingAxis,
 } from '../../services/adminApi';
+import { AgentDraftsSection } from './_agentDraftsSection';
 import { ENGINE_PIN, fitBottles, formatPrice, pickKinds, tablesFor } from './corpusLookup/pairitLookup';
 
 export const DEFAULT_STORE = 'total-bev-westminster';
@@ -230,6 +231,8 @@ export function CorpusLookupTab() {
             )}
             {answer.corpus_match?.corpus_match === 'none' && <div className="text-sm text-gray-600">Nothing in the corpus reads as this food.</div>}
           </Card>
+
+          <AgentDraftsSection match={answer.q} store={store} />
 
           <Card title={`Cluster labels (${answer.labels.length} shown, ${answer.name_matches} with the words in their name)`}>
             {answer.labels.length === 0

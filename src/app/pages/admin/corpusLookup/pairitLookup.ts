@@ -25,7 +25,7 @@
  * Reads only. Ids are the join: kinds by id, bottles by products.id.
  */
 import { parseCsv } from '../../../../vendor/pairitEngine/csv.js';
-import { buildTables } from '../../../../vendor/pairitEngine/tables.js';
+import { AXES_DISH, buildTables } from '../../../../vendor/pairitEngine/tables.js';
 import { dishProfile } from '../../../../vendor/pairitEngine/scoring.js';
 import { suggestForGroup } from '../../../../vendor/pairitEngine/pairIt.js';
 import { pairItBottles } from '../../../../vendor/pairitEngine/pairItKinds.js';
@@ -139,6 +139,37 @@ export function pickKinds(text: string, kinds, T): KindPicks {
     readable: true,
     components: dish.components,
     known,
+    ask: group.ask,
+    traditional: group.traditional.map((t) => t.kind),
+    adventurous: group.adventurous ? group.adventurous.kind : null,
+  };
+}
+
+/**
+ * A DRAFT FOOD'S SAMPLE PAIRING (Moose Q95 to Q98). The draft's scores are
+ * the tags' existing tasting profiles combined on the server; here they become
+ * one food row in a copy of the tables, under the draft's own key, and the
+ * dish is that one food. The engine itself is unchanged and the shared tables
+ * are never touched. Axes the server does not score read as the engine's
+ * default, 1. Rule keys are not mapped (the pin predates Cork's mapping), so
+ * the sample ignores them; the screen lists them as text.
+ */
+export function pickKindsForScores(key: string, scores: Record<string, number | null | undefined>, kinds, T): KindPicks {
+  const food = String(key || '').trim().toLowerCase() || 'draft food';
+  const row: Record<string, number> = {};
+  for (const a of AXES_DISH) {
+    const v = scores ? scores[a] : null;
+    row[a] = typeof v === 'number' && Number.isFinite(v) ? v : 1;
+  }
+  const T2 = { ...T, dish: { ...T.dish, [food]: row } };
+  const dish = { id: 'draft', name: food, components: [food] };
+  const usable = cleanKinds(kinds);
+  if (!usable.length) return { readable: true, components: [food], known: [food], ask: null, traditional: [], adventurous: null };
+  const [group] = pairItBottles([dish], usable, T2, { bottles: 1 }).groups;
+  return {
+    readable: true,
+    components: [food],
+    known: [food],
     ask: group.ask,
     traditional: group.traditional.map((t) => t.kind),
     adventurous: group.adventurous ? group.adventurous.kind : null,
