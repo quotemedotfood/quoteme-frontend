@@ -18,7 +18,7 @@ const PIN_NOTE: Record<AdminStoreLinkSent['pin'], string> = {
 
 export function StoreLinkCard({ storeId, card, heading }: { storeId: string; card: string; heading: string }) {
   const [phone, setPhone] = useState('');
-  const [withPin, setWithPin] = useState(false);
+  const [withPin, setWithPin] = useState(true); // RED-CHECK
   const [pin, setPin] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
