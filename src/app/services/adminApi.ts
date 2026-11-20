@@ -2710,6 +2710,22 @@ export async function attachAdminPairitCode(locationId: string, code: string, na
   });
 }
 
+/** What QuoteMe answers when the store's manager link is texted (Pairme::StoreLink). */
+export interface AdminStoreLinkSent {
+  sent: true;
+  url: string;
+  /** none: no PIN set; standard: still 1234, so picks and the floor wait; own: the store's own PIN. */
+  pin: 'none' | 'standard' | 'own';
+}
+
+/** Texts the store's manager page link to a US mobile number. By hand only; the PIN is never in the text. */
+export async function textAdminStoreLink(locationId: string, phone: string): Promise<ApiResponse<AdminStoreLinkSent>> {
+  return fetchWithAuth(`/api/v1/admin/retail_locations/${locationId}/text_store_link`, {
+    method: 'POST',
+    body: JSON.stringify({ phone }),
+  });
+}
+
 /** One Stripe price on the PairMe group product, named by its lookup_key. */
 export interface GroupPaymentOffer {
   lookup_key: string;
