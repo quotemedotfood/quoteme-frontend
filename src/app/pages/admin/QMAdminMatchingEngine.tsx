@@ -13,6 +13,7 @@ import { formatStructuredEntry } from '../../utils/format';
 import { ClusterListTab } from './_clusterListTab';
 import { TastingProfilesTab } from './_tastingProfilesTab';
 import { CorpusLookupTab } from './_corpusLookupTab';
+import { WineKindsTab } from './_wineKindsTab';
 import {
   getMatchingEngineRules,
   getMatchingEngineLogs,
@@ -60,7 +61,7 @@ import {
 } from '../../services/adminApi';
 import { ADMIN_PAGE_FRAME, ADMIN_PAGE_FRAME_STYLE } from '../../components/admin/adminPageFrame';
 
-type Tab = 'rules' | 'synonyms' | 'training' | 'concepts' | 'changelog' | 'diagnose' | 'catalogs' | 'exclusions' | 'cluster_list' | 'tasting_profiles' | 'corpus_lookup';
+type Tab = 'rules' | 'synonyms' | 'training' | 'concepts' | 'changelog' | 'diagnose' | 'catalogs' | 'exclusions' | 'cluster_list' | 'tasting_profiles' | 'corpus_lookup' | 'wine_kinds';
 
 function toTitleCase(str: string) {
   const normalized = str.replace(/_/g, ' ');
@@ -2193,7 +2194,7 @@ function SynonymsTab({ rules }: { rules: MatchingEngineRules | null }) {
 export function QMAdminMatchingEngine() {
   const [searchParams] = useSearchParams();
   // ?tab=corpus_lookup&food=...&store=... opens a shared Corpus lookup on its answer.
-  const initialTab = ['catalogs', 'corpus_lookup'].includes(searchParams.get('tab') || '') ? searchParams.get('tab') : 'training';
+  const initialTab = ['catalogs', 'corpus_lookup', 'wine_kinds'].includes(searchParams.get('tab') || '') ? searchParams.get('tab') : 'training';
   const [tab, setTab] = useState<Tab>(initialTab as Tab);
   const [rules, setRules] = useState<MatchingEngineRules | null>(null);
   const [loading, setLoading] = useState(true);
@@ -2224,6 +2225,7 @@ export function QMAdminMatchingEngine() {
     { key: 'cluster_list' as Tab, label: 'Cluster List' },
     { key: 'tasting_profiles' as Tab, label: 'Tasting Profiles' },
     { key: 'corpus_lookup' as Tab, label: 'Corpus Lookup' },
+    { key: 'wine_kinds' as Tab, label: 'Wine Kinds' },
     { key: 'catalogs' as Tab, label: 'Catalogs' },
   ];
 
@@ -2261,6 +2263,7 @@ export function QMAdminMatchingEngine() {
       {tab === 'cluster_list' && <ClusterListTab />}
       {tab === 'tasting_profiles' && <TastingProfilesTab />}
       {tab === 'corpus_lookup' && <CorpusLookupTab />}
+      {tab === 'wine_kinds' && <WineKindsTab />}
     </div>
   );
 }
