@@ -2710,6 +2710,65 @@ export async function attachAdminPairitCode(locationId: string, code: string, na
   });
 }
 
+/** One paid placement: one wine at one store, with a badge and its days (Pairme::StorePromotions). */
+export interface AdminStorePromotion {
+  id: string;
+  store_id: string;
+  wine_id: string;
+  producer: string;
+  wine: string;
+  badge: string;
+  starts_on: string;
+  ends_on: string;
+  state: 'upcoming' | 'live' | 'ended';
+}
+
+/** One of a store's shown wines, to pick from by id. */
+export interface AdminPromotionWine {
+  id: string;
+  producer?: string;
+  wine?: string;
+  product_name: string;
+  shown_price_cents: number;
+}
+
+/** A store that shows the same wine (same beverage id). */
+export interface AdminPromotionStore {
+  store_id: string;
+  name: string;
+  wines: AdminPromotionWine[];
+}
+
+/** GET /api/v1/admin/retail_promotions?store_id= */
+export async function getAdminStorePromotions(storeId: string): Promise<ApiResponse<{ promotions: AdminStorePromotion[] }>> {
+  return fetchWithAuth(`/api/v1/admin/retail_promotions?store_id=${encodeURIComponent(storeId)}`);
+}
+
+/** GET .../retail_promotions/wines?store_id=&q=  up to 25 of the store's shown wines. */
+export async function searchAdminPromotionWines(storeId: string, q: string): Promise<ApiResponse<{ wines: AdminPromotionWine[] }>> {
+  return fetchWithAuth(`/api/v1/admin/retail_promotions/wines?store_id=${encodeURIComponent(storeId)}&q=${encodeURIComponent(q)}`);
+}
+
+/** GET .../retail_promotions/stores?wine_id=  the stores showing the same wine, and the badges we offer. */
+export async function getAdminPromotionStores(wineId: string): Promise<ApiResponse<{ badges: string[]; stores: AdminPromotionStore[] }>> {
+  return fetchWithAuth(`/api/v1/admin/retail_promotions/stores?wine_id=${encodeURIComponent(wineId)}`);
+}
+
+/** POST /api/v1/admin/retail_promotions. All or none are made. */
+export async function createAdminStorePromotions(input: {
+  badge: string;
+  starts_on: string;
+  ends_on: string;
+  wines: { store_id: string; wine_id: string }[];
+}): Promise<ApiResponse<{ promotions: AdminStorePromotion[] }>> {
+  return fetchWithAuth('/api/v1/admin/retail_promotions', { method: 'POST', body: JSON.stringify(input) });
+}
+
+/** DELETE /api/v1/admin/retail_promotions/:id  ends it now. */
+export async function endAdminStorePromotion(id: string): Promise<ApiResponse<{ ended?: boolean; deleted?: boolean }>> {
+  return fetchWithAuth(`/api/v1/admin/retail_promotions/${id}`, { method: 'DELETE' });
+}
+
 /** One Stripe price on the PairMe group product, named by its lookup_key. */
 export interface GroupPaymentOffer {
   lookup_key: string;

@@ -32,6 +32,7 @@ import {
 import { ADMIN_PAGE_FRAME, ADMIN_PAGE_FRAME_STYLE } from '../../components/admin/adminPageFrame';
 import { RetailStatusPill, retailStatusLabel } from './QMAdminRetailLocations';
 import { StoreBillingCard } from './_storeBillingCard';
+import { StorePromotionsCard } from './_storePromotionsCard';
 import { PairmeFlowCard } from '../../components/PairmeFlowCard';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -356,6 +357,10 @@ export function RetailLocationDetail({ locationId }: { locationId: string }) {
       )}
 
       <StoreBillingCard store={store} onChange={setStore} card={card} heading={heading} />
+
+      {/* PAID PLACEMENT (Moose 2026-11-20, Q119): a brand's wine promoted at
+          this store and the others we tick. Set here only, never by the store. */}
+      <StorePromotionsCard storeId={store.id} card={card} heading={heading} />
 
       <div className={card}>
         <p className={heading}>Logo and co-brand</p>

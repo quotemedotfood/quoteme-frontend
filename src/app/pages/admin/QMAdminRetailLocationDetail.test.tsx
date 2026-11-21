@@ -20,6 +20,8 @@ const m = vi.hoisted(() => ({
   attachAdminPairitCode: vi.fn(),
   getAdminRetailLocations: vi.fn(),
   createAdminRetailLocation: vi.fn(),
+  // The Paid placement card on the page lists none here.
+  getAdminStorePromotions: vi.fn(() => Promise.resolve({ data: { promotions: [] } })),
 }));
 vi.mock('../../services/adminApi', () => m);
 
