@@ -42,7 +42,7 @@ describe('StorePromotionsCard', () => {
     await waitFor(() => expect(screen.queryAllByRole('button', { name: 'End' })).toHaveLength(0));
   });
 
-  it('finds a wine, ticks this store first, and sends ids only', async () => {
+  it('finds a wine, ticks this store first, and sends only the ticked stores, by id', async () => {
     m.getAdminStorePromotions.mockResolvedValue({ data: { promotions: [] } });
     render(<StorePromotionsCard storeId="s1" card="" heading="" />);
     expect(await screen.findByText('No paid placements at this store.')).toBeTruthy();
@@ -58,6 +58,7 @@ describe('StorePromotionsCard', () => {
         stores: [
           { store_id: 's1', name: 'Total Beverage', wines: [{ id: 'w1', product_name: 'Pinot A', shown_price_cents: 1299 }] },
           { store_id: 's2', name: 'Winter Wine', wines: [{ id: 'w9', product_name: 'Pinot A', shown_price_cents: 1399 }] },
+          { store_id: 's3', name: 'Corner Shop', wines: [{ id: 'w7', product_name: 'Pinot A 1.5L', shown_price_cents: 2999 }] },
         ],
       },
     });
@@ -68,6 +69,7 @@ describe('StorePromotionsCard', () => {
     const there = screen.getByLabelText('Winter Wine: Pinot A') as HTMLInputElement;
     expect(here.checked).toBe(true);
     expect(there.checked).toBe(false);
+    expect((screen.getByLabelText('Corner Shop: Pinot A 1.5L') as HTMLInputElement).checked).toBe(false);
     const addBtn = screen.getByRole('button', { name: 'Add paid placement' }) as HTMLButtonElement;
     expect(addBtn.disabled).toBe(true);
 
