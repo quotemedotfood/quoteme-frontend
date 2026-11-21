@@ -108,7 +108,7 @@ export function StorePromotionsCard({ storeId, card, heading }: { storeId: strin
     if (busy || !badge || ticked.size === 0 || !startsOn || !endsOn) return;
     setBusy(true);
     setError(null);
-    const wines = [...ticked].map((k) => {
+    const wines = stores.flatMap((st) => st.wines.map((w) => pairKey(st.store_id, w.id))).map((k) => {
       const [store_id, wine_id] = k.split('|');
       return { store_id, wine_id };
     });
