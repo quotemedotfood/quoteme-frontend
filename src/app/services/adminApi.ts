@@ -2726,6 +2726,30 @@ export async function textAdminStoreLink(locationId: string, phone: string): Pro
   });
 }
 
+/** One saved PairIt session at a store (Pairme::StoreSessions.day). */
+export interface AdminStoreSession {
+  id: string;
+  time: string;
+  who: 'shopper' | 'staff';
+  code: string | null;
+  dishes: { name: string; parts: string[] }[];
+  bottles: { id: string; producer: string; wine: string; price_cents: number }[];
+}
+
+/** One day of a store's saved sessions, in the store's own time zone. */
+export interface AdminStoreHistoryDay {
+  date: string;
+  today: string;
+  time_zone: string;
+  entries: AdminStoreSession[];
+}
+
+/** GET .../retail_locations/:id/history. date is YYYY-MM-DD; left out, the store's today. Read only. */
+export async function getAdminRetailLocationHistory(locationId: string, date?: string): Promise<ApiResponse<AdminStoreHistoryDay>> {
+  const qs = date ? `?date=${encodeURIComponent(date)}` : '';
+  return fetchWithAuth(`/api/v1/admin/retail_locations/${locationId}/history${qs}`);
+}
+
 /** One Stripe price on the PairMe group product, named by its lookup_key. */
 export interface GroupPaymentOffer {
   lookup_key: string;
