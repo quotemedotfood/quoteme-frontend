@@ -2718,11 +2718,15 @@ export interface AdminStoreLinkSent {
   pin: 'none' | 'standard' | 'own';
 }
 
-/** Texts the store's manager page link to a US mobile number. By hand only; the PIN is never in the text. */
-export async function textAdminStoreLink(locationId: string, phone: string): Promise<ApiResponse<AdminStoreLinkSent>> {
+/**
+ * Texts the store's manager page link to a US mobile number. By hand only.
+ * pin (the option, off by default, Q110) puts the PIN in the text; the server
+ * sends nothing if it is not the store's PIN now (error PIN_MISMATCH).
+ */
+export async function textAdminStoreLink(locationId: string, phone: string, pin?: string): Promise<ApiResponse<AdminStoreLinkSent>> {
   return fetchWithAuth(`/api/v1/admin/retail_locations/${locationId}/text_store_link`, {
     method: 'POST',
-    body: JSON.stringify({ phone }),
+    body: JSON.stringify(pin ? { phone, pin } : { phone }),
   });
 }
 
