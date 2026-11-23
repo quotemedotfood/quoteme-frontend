@@ -62,6 +62,8 @@ const navItems: Array<{ icon: typeof LayoutDashboard; label: string; path: strin
   { icon: ChefHat, label: 'Chefs', path: '/qm-admin/chefs' },
   { icon: Cpu, label: 'Matching', path: '/qm-admin/matching-engine' },
   { icon: Tag, label: 'Brands', path: '/qm-admin/brands' },
+  // Wine brands (producers) with the Everywhere tick (Moose 11-23).
+  { icon: Wine, label: 'Wine producers', path: '/qm-admin/wine-producers' },
   { icon: ShieldCheck, label: 'Ingestion Rules', path: '/qm-admin/brand-rules' },
   { icon: Layers, label: 'Cluster Labels', path: '/qm-admin/cluster-labels' },
   { icon: BrainCircuit, label: 'Gap Filler', path: '/qm-admin/knowledge-gap-filler' },

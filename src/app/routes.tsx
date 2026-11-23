@@ -46,6 +46,7 @@ import { QMAdminHealth } from "./pages/admin/QMAdminHealth";
 import { QMAdminUsers } from "./pages/admin/QMAdminUsers";
 import { QMAdminUserDetailPage } from "./pages/admin/QMAdminUserDetail";
 import { QMAdminBrands } from "./pages/admin/QMAdminBrands";
+import { QMAdminWineProducers } from "./pages/admin/QMAdminWineProducers";
 import { QMAdminBrandDetail } from "./pages/admin/QMAdminBrandDetail";
 import { QMAdminMatchingEngine } from "./pages/admin/QMAdminMatchingEngine";
 import { QMAdminBrandRules } from "./pages/admin/QMAdminBrandRules";
@@ -391,6 +392,7 @@ export const router = createBrowserRouter([
           { path: "restaurant-loads/:id", Component: QMAdminRestaurantLoadDetail },
           { path: "matching-engine", Component: QMAdminMatchingEngine },
           { path: "brands", Component: QMAdminBrands },
+          { path: "wine-producers", Component: QMAdminWineProducers },
           { path: "brands/:id", Component: QMAdminBrandDetail },
           { path: "brand-rules", Component: QMAdminBrandRules },
           { path: "cluster-labels", Component: QMAdminClusterLabels },
