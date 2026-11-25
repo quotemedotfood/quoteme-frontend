@@ -4637,3 +4637,40 @@ export async function setWineFamiliarity(id: string, familiarity: WineFamiliarit
     body: JSON.stringify({ familiarity: familiarity ?? '' }),
   });
 }
+
+// ── Wine producers + the "everywhere" tick (QuoteMe #1042, Moose 11-23) ──
+// A wine producer is a brands row of kind "producer". "everywhere" = a brand
+// a shopper finds in any Colorado grocery or chain liquor store.
+export interface AdminWineProducer {
+  id: string;
+  name: string;
+  status: string;
+  everywhere: boolean;
+  wines: number;
+}
+
+export interface AdminWineProducersPage {
+  producers: AdminWineProducer[];
+  total: number;
+  everywhere_total: number;
+  page: number;
+  per_page: number;
+}
+
+export async function getAdminWineProducers(opts: { q?: string; everywhere?: 'all' | 'yes' | 'no'; page?: number } = {}): Promise<ApiResponse<AdminWineProducersPage>> {
+  const p = new URLSearchParams();
+  if (opts.q?.trim()) p.set('q', opts.q.trim());
+  if (opts.everywhere === 'yes') p.set('everywhere', '1');
+  if (opts.everywhere === 'no') p.set('everywhere', '0');
+  if (opts.page && opts.page > 1) p.set('page', String(opts.page));
+  const qs = p.toString();
+  return fetchWithAuth(`/api/v1/admin/wine_producers${qs ? `?${qs}` : ''}`);
+}
+
+/** Ticks or unticks one producer. A company id answers 404. */
+export async function setAdminWineProducerEverywhere(id: string, everywhere: boolean): Promise<ApiResponse<AdminWineProducer>> {
+  return fetchWithAuth(`/api/v1/admin/wine_producers/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ everywhere }),
+  });
+}
