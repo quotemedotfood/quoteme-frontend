@@ -2750,6 +2750,29 @@ export async function getAdminRetailLocationHistory(locationId: string, date?: s
   return fetchWithAuth(`/api/v1/admin/retail_locations/${locationId}/history${qs}`);
 }
 
+/** The five PairIt steps, in the order a shopper takes them. */
+export const FUNNEL_STEPS = ['opened', 'started', 'understood', 'picks', 'presented'] as const;
+export type FunnelStep = typeof FUNNEL_STEPS[number];
+
+/** One store day of PairIt step counts. Counts only: no ids, no device or person data. */
+export type AdminStoreFunnelDay = { date: string } & Partial<Record<FunnelStep, number>>;
+
+/** A date range of a store's PairIt step counts, days in the store's own time zone. */
+export interface AdminStoreFunnel {
+  from: string;
+  to: string;
+  today: string;
+  time_zone: string;
+  days: AdminStoreFunnelDay[];
+}
+
+/** GET .../retail_locations/:id/funnel (Cellar, PR 1 of the funnel counts).
+ * from and to are YYYY-MM-DD; left out, the store's today. Read only. */
+export async function getAdminRetailLocationFunnel(locationId: string, from?: string, to?: string): Promise<ApiResponse<AdminStoreFunnel>> {
+  const qs = from && to ? `?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}` : '';
+  return fetchWithAuth(`/api/v1/admin/retail_locations/${locationId}/funnel${qs}`);
+}
+
 /** One Stripe price on the PairMe group product, named by its lookup_key. */
 export interface GroupPaymentOffer {
   lookup_key: string;

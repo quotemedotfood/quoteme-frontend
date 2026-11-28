@@ -34,6 +34,7 @@ import { RetailStatusPill, retailStatusLabel } from './QMAdminRetailLocations';
 import { StoreBillingCard } from './_storeBillingCard';
 import { StoreLinkCard } from './_storeLinkCard';
 import { StoreHistoryCard } from './_storeHistoryCard';
+import { StoreFunnelCard } from './_storeFunnelCard';
 import { PairmeFlowCard } from '../../components/PairmeFlowCard';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -360,6 +361,10 @@ export function RetailLocationDetail({ locationId }: { locationId: string }) {
       <StoreBillingCard store={store} onChange={setStore} card={card} heading={heading} />
 
       <StoreLinkCard storeId={store.id} card={card} heading={heading} />
+
+      {/* PAIRIT FUNNEL (Moose 2026-11-28): how many visits reach each step,
+          counts only, read only. */}
+      <StoreFunnelCard storeId={store.id} card={card} heading={heading} />
 
       {/* SAVED PAIRINGS (Moose 2026-11-20): one day of the store's PairIt
           sessions, read only. */}
